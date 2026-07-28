@@ -60,7 +60,8 @@ tasks.register("test") {
     group = "verification"
     dependsOn(
         ":objs-core:test",
-        ":objs-service:test"
+        ":objs-service:test",
+        ":objs-sbom-example:test",
     )
 }
 

@@ -365,9 +365,57 @@ This keeps each WI a **reviewable, reproducible checkpoint** on the story branch
 
 ## Module Reference
 
-- `objs-core` — Spring primitives, domain types, JPA persistence
-- `objs-service` — Spring REST API and Boot autoconfiguration
-- `objs-app` — Runnable assembly (`./gradlew :objs-app:run`)
+- `objs-core` — Entity SDK, domain types, JPA / PostgreSQL persistence, typed-domain toolkit
+- `objs-service` — Spring REST API and Boot autoconfiguration (library)
+- `objs-sbom-example` — Concrete SBOM app on the foundation (canonical ontology, `SbomService`, `/api/v1/example/sbom`)
+- `objs-app` — Runnable assembly (`./gradlew :objs-app:run`); depends on the example module for demo
+
+---
+
+## Concrete example integration (`objs-sbom-example`)
+
+`objs-sbom-example` is the **living consumer** of the graph foundation and the **canonical software
+graph** ontology. New product features must not land in `objs-core` / `objs-service` alone while the
+example stays stale.
+
+### When integration is required
+
+For every story/WI that changes **consumer-visible** foundation or domain capability — including but
+not limited to entity/edge model, catalogs, validation, `BoMGraphStore`, generic REST
+(`/api/v1/objs/**`), typed toolkit (`org.poc.objs.core.typed`), annotations/subgraphs, OpenAPI shapes,
+or the **canonical ontology** — the **same WI** (or an explicit companion WI in the same story)
+**must** update `objs-sbom-example` so the feature is exercised and documented end-to-end.
+
+### What “integrated” means
+
+Update whichever of the following the change implies (all that apply, in the **same** per-WI commit):
+
+| Area | Typical touchpoints |
+|------|---------------------|
+| Registry / allow-list | `SbomRegistry.pack()` schemas and edge rules |
+| Typed domain | payloads / `EntityTypeMeta` under `org.poc.objs.sbom.model`; builders/helpers |
+| App behaviour | `SbomService`, `SbomGraphBuilder`, controller, auto-config, demo seed |
+| API docs | OpenAPI customizer / example group when request/response shapes change |
+| Tests | module tests proving the new capability via the example path |
+| Design | [`docs/design/sbom/`](../design/sbom/) — especially `example.md` and, for ontology edits, **`canonical-spec.md`** |
+
+Ontology additions or relationship-table changes are incomplete until **`canonical-spec.md`**, typed
+models, and `SbomRegistry` agree.
+
+### Planning
+
+- Call out example integration in `STORY.md` / WI acceptance (or a dedicated WI) when the story
+  touches foundation or ontology.
+- Prefer integrating in the **feature WI** itself; use a follow-up WI in the **same story** only when
+  the feature WI would otherwise become unreviewably large — never defer to a later story by default.
+- `objs-app` wiring (dependency, config, seed flags) stays consistent with the example module.
+
+### Exceptions
+
+Integration may be skipped **only** when the change is clearly invisible to domain apps (pure
+internal refactor, test-only harness, CI/docs process with no runtime API) **or** the story’s
+`GAPS.md` / user explicitly marks the example out of scope for that WI. When skipping, record the
+reason in the WI or `GAPS.md`.
 
 ---
 

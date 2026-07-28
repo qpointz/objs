@@ -5,7 +5,7 @@ plugins {
     alias(libs.plugins.spring.dependency.management)
 }
 
-description = "Runnable Objs assembly (REST + core persistence)."
+description = "Runnable Objs assembly (REST + core + SBOM example)."
 
 dependencyManagement {
     imports {
@@ -15,6 +15,7 @@ dependencyManagement {
 
 dependencies {
     implementation(project(":objs-service"))
+    implementation(project(":objs-sbom-example"))
     implementation(libs.kotlin.stdlib)
     implementation(libs.kotlin.reflect)
     implementation(libs.springdoc.openapi.starter.webmvc.ui)
