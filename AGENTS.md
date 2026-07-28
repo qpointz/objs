@@ -6,7 +6,8 @@ Repository Guidelines
 Gradle multi-module Kotlin project. Leaf modules at the repository root:
 
 - `objs-core` — Entity SDK, domain types, JPA / PostgreSQL persistence
-- `objs-service` — Spring REST API and Boot autoconfiguration
+- `objs-service` — Spring REST API and Boot autoconfiguration (library)
+- `objs-app` — Runnable assembly (`./gradlew :objs-app:run`)
 
 Production sources: `src/main/kotlin`. Tests: `src/test/kotlin` (integration suites under `src/testIT/kotlin` when present).
 
@@ -16,6 +17,7 @@ Production sources: `src/main/kotlin`. Tests: `src/test/kotlin` (integration sui
 - `./gradlew test` — unit tests (all leaf modules)
 - `./gradlew :objs-core:test` / `./gradlew :objs-service:test` — scoped tests
 - `./gradlew :objs-service:testIT` — integration tests when defined
+- `./gradlew :objs-app:run` — run the service locally (H2)
 - `./gradlew clean` — remove build outputs
 
 ## Coding Style & Naming Conventions

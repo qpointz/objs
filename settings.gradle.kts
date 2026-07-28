@@ -2,6 +2,7 @@ rootProject.name = "objs"
 
 include(":objs-core")
 include(":objs-service")
+include(":objs-app")
 
 dependencyResolutionManagement {
     repositories {

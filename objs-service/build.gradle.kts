@@ -7,7 +7,7 @@ plugins {
     alias(libs.plugins.spring.dependency.management)
 }
 
-description = "Objs Spring REST service and autoconfiguration (Kotlin)."
+description = "Objs Spring REST service and Boot autoconfiguration (Kotlin)."
 
 dependencyManagement {
     imports {
@@ -20,8 +20,6 @@ dependencies {
     api(libs.boot.starter.webmvc)
     api(libs.kotlin.stdlib)
     api(libs.kotlin.reflect)
-    implementation(libs.boot.starter)
-    implementation(libs.bundles.logging)
     annotationProcessor(libs.boot.configuration.processor)
 }
 

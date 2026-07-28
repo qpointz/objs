@@ -1,8 +1,7 @@
 # objs-service
 
 **Module:** `:objs-service`  
-**Packages (target):** `org.poc.objs.service`, `org.poc.objs.service.web`  
-**Packages (scaffold today):** `io.qpointz.poc.objs.service`, `io.qpointz.poc.objs.service.web` — rename in a later WI
+**Packages:** `org.poc.objs.service`, `org.poc.objs.service.web`
 
 ## Role
 
@@ -11,7 +10,7 @@ Publishable Spring library that exposes:
 - **REST** controllers for the objs HTTP API
 - **Boot autoconfiguration** so a consuming application can pick up objs beans by classpath
 
-Depends on `:objs-core`. Domain: [`../graph/`](../graph/README.md).
+Depends on `:objs-core`. Runnable assembly: [`../platform/overview.md`](../platform/overview.md) / `:objs-app`. Domain: [`../graph/`](../graph/README.md).
 
 ## Current scaffold
 
@@ -25,10 +24,7 @@ Depends on `:objs-core`. Domain: [`../graph/`](../graph/README.md).
 
 ## Autoconfiguration contract
 
-Consumers add `objs-service` on the classpath (and provide a DataSource / JPA / PostgreSQL
-setup when using core persistence). Autoconfig currently only scans the **service** package; it does **not** yet
-declare `@AutoConfigureAfter` / entity scan for core — that should be decided with the domain
-design.
+Consumers add `objs-service` on the classpath (and provide a DataSource / JPA setup when using core persistence). Autoconfig scans the **service** package; core persistence is picked up via `objs-core` autoconfig imports.
 
 ## API surface (known)
 
@@ -36,12 +32,9 @@ design.
 |--------|------|----------|
 | `GET` | `/api/v1/objs/status` | `ObjsStatus(state, module)` |
 
-Further resources (entities, edges, subgraph-by-annotation) are TBD under `/api/v1/objs/**` (after foundation story).
+Further resources (entities, edges, subgraph-by-annotation) are TBD under `/api/v1/objs/**`.
 
 ## Design notes / next steps
 
-1. Align packages with `org.poc.objs`
-2. Expand REST under `/api/v1/objs/**` per graph design (subgraph retrieve, persist with validation) — **not** in the first foundation story
-3. Decide whether autoconfig should `@Import` core JPA config / `@EntityScan`
-4. Add a thin runnable app module only when local/runtime demos need it
-5. Prefer MockMvc / `@WebMvcTest` for controller tests; use `testIT` for broader wiring
+1. Expand REST under `/api/v1/objs/**` per graph design
+2. Prefer MockMvc / `@WebMvcTest` for controller tests; use `testIT` for broader wiring
