@@ -1,40 +1,41 @@
 # Graph / entity domain
 
-**Status:** early design (requirements captured; implementation not started)  
+**Status:** early design (gaps for foundation story largely resolved — see story [`GAPS.md`](../../workitems/planned/entity-graph-foundation/GAPS.md))  
 **Packages (target):** `org.poc.objs.*`  
 **Modules:** [`objs-core`](../core/README.md) (entity SDK + persistence), [`objs-service`](../service/README.md) (REST — later stories)
 
-Objs is an **entity store**: independent informational **entities** linked by **relations (edges)** into a **graph**. Callers select **subgraphs** via **annotations**. Validation uses JSON Schema (payloads) and allowed type–role rules (edges), enforced at the **persistence** boundary.
+Objs is an **entity store**: independent informational **entities** linked by **relations (edges)** into a **graph**. Callers select **subgraphs** via **annotations**. Validation uses JSON Schema and allowed type–role rules, enforced at the **persistence** boundary.
 
-**Naming:** the domain element is **Entity**, not Object — avoids clashing with `java.lang.Object` in Java APIs. (Prefer carefully managed imports vs `jakarta.persistence.Entity` on JPA types.)
+**Naming:** domain **entity** / **edge**; Java types **`BoMEntity`**, **`BoMEdge`** (`Bo` prefix).
 
 ## Documents in this folder
 
 | Doc | Contents |
 |-----|----------|
-| [model.md](model.md) | Entity, entity type, payload, relation/edge |
-| [annotations-and-subgraphs.md](annotations-and-subgraphs.md) | Annotations as subgraph selection; additive edges |
-| [validation.md](validation.md) | Persist-time enforcement vs audit validation |
-| [persistence.md](persistence.md) | PostgreSQL, generic columns, JSONB |
+| [model.md](model.md) | Entity, central schema `(type, version)`, relation/edge |
+| [annotations-and-subgraphs.md](annotations-and-subgraphs.md) | Annotations, matchers, induced subgraphs |
+| [validation.md](validation.md) | Persist gate, batch two-stage validation, create/update by id |
+| [persistence.md](persistence.md) | PostgreSQL, JSONB, Flyway, H2 tests |
 
 ## Core ideas (summary)
 
-- **Entity** — independent element with a **type**, **JSON payload**, and **annotations**.
-- **Entity type** — binds a **JSON Schema** for the payload; many types coexist.
-- **Relation / edge** — link with a **role** and **properties**; subject to **allowed type–role** rules.
-- **Annotation** — caller-defined, opaque criteria used to **select** entities (hence subgraphs).
-- **Subgraph** — entities matching an annotation filter, plus **edges that exist on those entities** (edges not annotated — provisional).
+- **Entity** (`BoMEntity`) — **type + version**, JSON **payload**, **annotations**; optional id (absent → create, present → update).
+- **Edge** (`BoMEdge`) — **source** / **target**, **role**; optional properties per allow-list **properties policy** (`none` = bare edge, `schema` = JSON Schema).
+- **Central schema repo** — `(type, version)` → JSON Schema for entity payloads and edge properties (in-memory now; PG later).
+- **Allowed edges** — `(sourceType, role, targetType)` + properties policy; directed allow-list.
+- **Annotations** — key-value map; matcher base + default **match-all**; subgraph = matched entities + **induced** edges.
+- **Batch write** — entities + edges in one payload; **two-stage** validation (entities vs schema, then edges vs payload∪store).
+- **Persist gate** — create / update / delete; SDK may build invalid graphs in memory.
 
 ```mermaid
 flowchart LR
-  typeA["EntityType A + JSON Schema"]
-  typeB["EntityType B + JSON Schema"]
-  entA["Entity payload"]
-  entB["Entity payload"]
-  edge["Edge role + properties"]
-  allow["Allowed edges typeA --role--> typeB"]
-  typeA --> entA
-  typeB --> entB
+  schema["Central schema type+version"]
+  entA["BoMEntity"]
+  entB["BoMEntity"]
+  edge["BoMEdge source/target/role"]
+  allow["Allow-list + properties policy"]
+  schema --> entA
+  schema --> edge
   entA --> edge
   edge --> entB
   allow -.-> edge
@@ -43,28 +44,23 @@ flowchart LR
 ## Access
 
 - **Entity SDK** (`objs-core`): construct any in-memory graph without validation enforcement.
-- **Persistence**: validation enforced immediately before persist; reject invalid writes. REST comes in a later story.
-- **Read**: return whatever graph exists, including non-conforming data.
+- **Persistence**: two-stage gate; Flyway; PostgreSQL runtime; H2 for foundation tests. REST later.
+- **Read**: return whatever exists, including non-conforming data.
 
 ## Coordinates
 
 | Concern | Choice |
 |---------|--------|
-| Java package root (target) | `org.poc.objs` |
-| Maven group (scaffold today) | still `io.qpointz.poc.objs` until a rename WI |
-| Primary DB | PostgreSQL |
+| Java package root (target) | `org.poc.objs` (WI-001) |
+| Primary DB | PostgreSQL + **Flyway** |
+| Tests (foundation) | **H2** |
 | HTTP prefix (later) | `/api/v1/objs/**` |
 
-## Open decisions
+## Remaining / deferred
 
-See each child doc. Cross-cutting items still open:
+Normative list: story [`GAPS.md`](../../workitems/planned/entity-graph-foundation/GAPS.md).
 
-- Entity identity; type/schema registry and versioning
-- Annotation shape and matching semantics
-- Allowed-edge rule declaration (direction, cardinality)
-- Edge property schema; edge table shape
-- Whether edges may later carry annotations (**half-open**)
-- Update/delete enforcement details; audit-validation API shape
-- REST resource design beyond status stub (out of scope for first story)
-- Flyway / migrations
-- Code rename from `io.qpointz.poc.objs` → `org.poc.objs`
+- **G-13** default-ok: artifact names stay `objs-core` / `objs-service`
+- **Half-open:** edge annotations (G-14), JSONB indexing (G-16), soft-delete/versioning (G-17)
+- **Out of story:** REST (G-15 / C-2); persist schema catalog to PG (C-3)
+- **During WIs:** exact DDL columns; annotation map value types (string vs richer); cascade/delete detail; audit report shape (G-18)

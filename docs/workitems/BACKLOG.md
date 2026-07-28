@@ -5,7 +5,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 **pruned at release housekeeping** — see [`RULES.md`](RULES.md) § **Release (version) process**.
 
 **Legend:**
-- **Status**: `backlog` | `planned` | `in-progress`
+- **Status**: `backlog` | `planned` | `in-progress` | `done`
 - **Type**: feature | improvement | fix | refactoring | test | docs
 - **Source**: design document (relative to `docs/design/`) or work item (`docs/workitems/`)
 
@@ -15,8 +15,9 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 
 | # | Item | Type | Status | Source |
 |---|------|------|--------|--------|
-| C-1 | Entity graph foundation (domain, subgraph, validation, persistence) | feature | planned | [`planned/entity-graph-foundation/`](planned/entity-graph-foundation/STORY.md) |
-| C-2 | REST API for entities / edges / subgraphs | feature | backlog | [`docs/design/service/`](../design/service/README.md) |
+| C-1 | Entity graph foundation (domain, subgraph, validation, persistence) | feature | done | [`completed/20260728-entity-graph-foundation/`](completed/20260728-entity-graph-foundation/STORY.md) |
+| C-2 | REST API for entities / edges / subgraphs + registry | feature | done | [`completed/20260728-entity-rest-api/`](completed/20260728-entity-rest-api/STORY.md) |
+| C-3 | Persist central schema catalog (type+version) + allowed-edge rules as PostgreSQL tables | feature | backlog | [`docs/design/graph/model.md`](../design/graph/model.md) (G-6/G-8) |
 
 ---
 
@@ -25,5 +26,6 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | Status | Count |
 |--------|------:|
 | backlog | 1 |
-| planned | 1 |
+| planned | 0 |
 | in-progress | 0 |
+| done | 2 |

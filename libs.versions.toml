@@ -1,4 +1,5 @@
 [versions]
+kotlin = "2.2.21"
 lombok = "1.18.42"
 springBoot = "4.0.6"
 junit = "6.0.2"
@@ -6,6 +7,9 @@ mockito = "5.21.0"
 assertj = "3.27.3"
 jackson = "3.1.2"
 logback = "1.5.28"
+jsonSchemaValidator = "1.5.6"
+flyway = "11.7.2"
+springDoc = "3.0.3"
 
 [libraries]
 lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
@@ -19,6 +23,7 @@ boot-starter-webmvc-test = { module = "org.springframework.boot:spring-boot-star
 boot-starter-data-jpa = { module = "org.springframework.boot:spring-boot-starter-data-jpa", version.ref = "springBoot" }
 boot-starter-data-jpa-test = { module = "org.springframework.boot:spring-boot-starter-data-jpa-test", version.ref = "springBoot" }
 boot-starter-jackson = { module = "org.springframework.boot:spring-boot-starter-jackson", version.ref = "springBoot" }
+boot-starter-flyway = { module = "org.springframework.boot:spring-boot-starter-flyway", version.ref = "springBoot" }
 
 junit-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit" }
 junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit" }
@@ -32,15 +37,27 @@ mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version.
 assertj-core = { module = "org.assertj:assertj-core", version.ref = "assertj" }
 
 h2-database = { module = "com.h2database:h2", version = "2.4.240" }
+flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway" }
 
 jackson-core = { module = "tools.jackson.core:jackson-core", version.ref = "jackson" }
 jackson-databind = { module = "tools.jackson.core:jackson-databind", version.ref = "jackson" }
 jackson-dataformat-yaml = { module = "tools.jackson.dataformat:jackson-dataformat-yaml", version.ref = "jackson" }
+jackson-module-kotlin = { module = "tools.jackson.module:jackson-module-kotlin", version.ref = "jackson" }
+
+json-schema-validator = { module = "com.networknt:json-schema-validator", version.ref = "jsonSchemaValidator" }
+
+springdoc-openapi-starter-webmvc-ui = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springDoc" }
+
+kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin" }
+kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }
 
 [bundles]
-jackson = ["jackson-databind", "jackson-dataformat-yaml"]
+jackson = ["jackson-databind", "jackson-dataformat-yaml", "jackson-module-kotlin"]
 logging = ["slf4j-api", "logback-core", "logback-classic"]
 
 [plugins]
 spring-dependency-management = { id = "io.spring.dependency-management", version = "1.1.6" }
 spring-boot-plugin = { id = "org.springframework.boot", version.ref = "springBoot" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }
+kotlin-jpa = { id = "org.jetbrains.kotlin.plugin.jpa", version.ref = "kotlin" }

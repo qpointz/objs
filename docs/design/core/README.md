@@ -1,39 +1,35 @@
-# objs-core
+# objs-core (Kotlin)
 
-**Module:** `:core:objs-core`  
-**Packages (target):** `org.poc.objs.core`, `org.poc.objs.core.persistence`  
-**Packages (scaffold today):** `io.qpointz.poc.objs.core`, `io.qpointz.poc.objs.core.persistence` — rename in a later WI
+**Module:** `:objs-core`  
+**Packages:** `org.poc.objs.core.*`
 
 ## Role
 
-Shared library for the entity store PoC:
+Entity SDK + validation + JPA/Flyway persistence for the entity store.
 
-- **Entity SDK** — in-memory construction of entities, edges, and graphs (no validation enforcement on construct)
-- Spring Boot starter primitives (`spring-boot-starter`)
-- **JPA persistence** (`spring-boot-starter-data-jpa`) against **PostgreSQL**
-- Persistence boundary that **enforces** payload JSON Schema and allowed type–role edges on save — see [`../graph/validation.md`](../graph/validation.md)
+## Package map
 
-Domain model: [`../graph/`](../graph/README.md).
+| Package | Types | Responsibility |
+|---------|-------|----------------|
+| `org.poc.objs.core` | `ObjsCore` | Module marker |
+| `…domain` | `BoMEntity`, `BoMEdge`, `BoMGraph`, `BoMSubgraph`, `BoMSchema*`, `BoAllowedEdge*` | In-memory domain + catalogs |
+| `…match` | `BoMAnnotationMatcher`, `MatchAllAnnotationMatcher` | Annotation matching strategies |
+| `…subgraph` | `BoMSubgraphSelector` | Induced subgraph selection |
+| `…validation` | `BoMValidator`, `BoMPersistGate`, `BoMValidationResult` | Schema + allow-list; two-stage persist gate |
+| `…persistence` | `BoMEntityRecord`, `BoMEdgeRecord`, repos, `BoMGraphStore`, autoconfig | JPA + Flyway + store facade |
 
-## Current scaffold
+## Key behaviours
 
-| Type | Purpose |
-|------|---------|
-| `ObjsCore` | Module marker (`MODULE = "objs-core"`) |
-| `PersistableEntity` | `@MappedSuperclass` with generated `Long` id — base for future persistence mappings |
+- **SDK:** construct any `BoMGraph` in memory without validation.
+- **Schemas:** in-memory `BoMSchemaCatalog` keyed by `(type, version)`.
+- **Allow-list:** `BoMAllowedEdgeCatalog` with properties policy `NONE` | `SCHEMA`.
+- **Persist gate:** stage 1 entities vs schema → assign missing `UUID.randomUUID()` → stage 2 edges vs payload∪store.
+- **Id rule:** no id → create (`UUID.randomUUID()`); id not in store → create with client id; id in store → update.
+- **DB:** Flyway `V1__bom_entity_edge.sql`; tests on H2 (`MODE=PostgreSQL`); runtime PostgreSQL.
 
-No concrete domain entities, repositories, or Flyway migrations yet.
+## Tests
 
-## Dependencies (notable)
+- Domain / subgraph / validator / persist-gate unit tests (no Spring)
+- `BoMGraphStoreTest` — `@DataJpaTest` + Flyway + H2 round-trip and batch validation
 
-- API: Spring Boot starter, Data JPA, Jackson
-- Compile-only: Lombok
-- Test: Boot test, Data JPA test, H2, AssertJ, Mockito
-
-## Design notes / next steps
-
-1. Align packages/group with `org.poc.objs`
-2. Place domain + persistence per [`../graph/model.md`](../graph/model.md) and [`../graph/persistence.md`](../graph/persistence.md)
-3. Implement persist-time validation gate; keep SDK free for arbitrary in-memory graphs
-4. Wire repositories and any core `@Configuration` that service autoconfig should import
-5. Decide ID strategy and PostgreSQL/JSONB mapping details
+See also [`../graph/`](../graph/README.md).

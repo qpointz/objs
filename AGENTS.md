@@ -3,24 +3,26 @@ Repository Guidelines
 
 ## Project Structure & Module Organization
 
-Gradle multi-module Java project. Libraries live under domain folders:
+Gradle multi-module Kotlin project. Leaf modules at the repository root:
 
-- `core/objs-core` — Entity SDK, domain types, JPA / PostgreSQL persistence
-- `services/objs-service` — Spring REST API and Boot autoconfiguration
+- `objs-core` — Entity SDK, domain types, JPA / PostgreSQL persistence
+- `objs-service` — Spring REST API and Boot autoconfiguration (library)
+- `objs-app` — Runnable assembly (`./gradlew :objs-app:run`)
 
-Production sources: `src/main/java`. Tests: `src/test/java` (integration suites under `src/testIT/java` when present).
+Production sources: `src/main/kotlin`. Tests: `src/test/kotlin` (integration suites under `src/testIT/kotlin` when present).
 
 ## Build, Test, and Development Commands
 
 - `./gradlew build` — compile, test, assemble
 - `./gradlew test` — unit tests (all leaf modules)
-- `./gradlew :core:objs-core:test` / `./gradlew :services:objs-service:test` — scoped tests
-- `./gradlew :services:objs-service:testIT` — integration tests when defined
+- `./gradlew :objs-core:test` / `./gradlew :objs-service:test` — scoped tests
+- `./gradlew :objs-service:testIT` — integration tests when defined
+- `./gradlew :objs-app:run` — run the service locally (H2)
 - `./gradlew clean` — remove build outputs
 
 ## Coding Style & Naming Conventions
 
-Java: four-space indentation, `PascalCase` classes. Prefer Lombok (`@Slf4j`, `@Getter`) over boilerplate. Package root: `org.poc.objs` (scaffold may still use `io.qpointz.poc.objs` until renamed).
+Java/Kotlin: four-space indentation, `PascalCase` classes. Prefer Lombok only if Java remains; new code is **Kotlin**. Package root: `org.poc.objs`. Domain types use `BoM` prefix (Bill of Materials: `BoMEntity`, `BoMEdge`).
 
 ## Testing Guidelines
 
@@ -28,9 +30,10 @@ JUnit Jupiter + Mockito. Name tests `<Subject>Test`; methods `shouldX_whenY`. Pr
 
 ## Branching Strategy
 
-Each story uses a **dedicated branch**, usually from `origin/dev`:
-`git fetch origin && git checkout -b <story-slug> origin/dev`.
-Rebase onto `origin/dev` before push. Never commit directly to `dev`.
+Each story uses a **dedicated branch**, usually from `dev` / `origin/dev`:
+`git fetch origin && git checkout -b <story-slug> origin/dev`
+(or from local `dev` if no remote yet).
+Rebase onto `dev` / `origin/dev` before push. Never commit directly to `dev`.
 
 ## Stories & Work Items
 

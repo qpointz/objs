@@ -36,20 +36,21 @@ group/version/toolchain live in the root [`build.gradle.kts`](../../../build.gra
 
 ```mermaid
 flowchart LR
-  consumer[Consuming Spring Boot app]
-  service[services/objs-service]
-  core[core/objs-core]
-  consumer -->|"depends on / autoconfigures"| service
+  app[objs-app]
+  service[objs-service]
+  core[objs-core]
+  app -->|implementation| service
   service -->|api| core
-  core -->|JPA / JSONB| db[(PostgreSQL)]
+  core -->|JPA / JSON| db[(H2 local / PostgreSQL)]
 ```
 
 | Module | Gradle path | Responsibility |
 |--------|-------------|----------------|
-| **objs-core** | `:core:objs-core` | Entity SDK, core types, **JPA / PostgreSQL persistence** |
-| **objs-service** | `:services:objs-service` | Spring **REST** + Boot **autoconfiguration** |
+| **objs-core** | `:objs-core` | Entity SDK, core types, **JPA / PostgreSQL persistence** |
+| **objs-service** | `:objs-service` | Spring **REST** + Boot **autoconfiguration** (library) |
+| **objs-app** | `:objs-app` | Runnable assembly — see [`app.md`](app.md) |
 
-Dependency rule: `objs-service` → `objs-core`. Core must not depend on service.
+Dependency rule: `objs-app` → `objs-service` → `objs-core`. Core must not depend on service/app.
 
 ## Process alignment with Mill
 
@@ -60,21 +61,20 @@ Dependency rule: `objs-service` → `objs-core`. Core must not depend on service
 
 ## Explicitly out of scope (current scaffold)
 
-- Runnable `apps/*` Spring Boot application
 - Security / OAuth
-- Flyway (or other) migrations (direction TBD with domain persistence)
 - UI
 - GitLab CI / Maven Central publishing credentials
+
+**Persistence migrations:** **Flyway** for domain tables (G-10).
 
 ## Open questions
 
 Capture answers under `graph/` when decided; remaining highlights:
 
-1. Entity identity; type/schema registry
+1. Entity identity — plain **`UUID`** (resolved); type/schema registry — **in-memory** this story, **PostgreSQL tables later**
 2. Annotation shape; confirm JSON storage/indexing
 3. Allowed-edge rule model; edge table / property schema
 4. Whether edges may carry annotations later (half-open)
 5. Public HTTP API shape beyond `/api/v1/objs/status` (deferred past foundation story)
 6. Whether autoconfig should also pull in JPA entity scanning from core
-7. When to add a runnable Boot app that composes `objs-service`
-8. Apply package/group rename `io.qpointz.poc.objs` → `org.poc.objs` in code
+7. Apply package/group rename leftovers / docs that still mention `io.qpointz.poc.objs`
