@@ -20,7 +20,7 @@ Production sources: `src/main/java`. Tests: `src/test/java` (integration suites 
 
 ## Coding Style & Naming Conventions
 
-Java: four-space indentation, `PascalCase` classes. Prefer Lombok (`@Slf4j`, `@Getter`) over boilerplate. Package root: `org.poc.objs` (scaffold may still use `io.qpointz.poc.objs` until renamed).
+Java/Kotlin: four-space indentation, `PascalCase` classes. Prefer Lombok only if Java remains; new code is **Kotlin**. Package root: `org.poc.objs`. Domain types use `Bo` prefix (`BoEntity`, `BoEdge`).
 
 ## Testing Guidelines
 

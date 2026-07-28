@@ -14,7 +14,7 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 
 ### In Progress
 
-No active in-progress items currently.
+- [`entity-graph-foundation`](in-progress/entity-graph-foundation/STORY.md) — Kotlin core: domain, subgraph, validation, Flyway/JPA (WIs complete on branch; awaiting closure).
 
 ### Planned
 

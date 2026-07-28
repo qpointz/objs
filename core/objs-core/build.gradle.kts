@@ -2,10 +2,13 @@ import org.gradle.api.plugins.jvm.JvmTestSuite
 
 plugins {
     `java-library`
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.spring)
+    alias(libs.plugins.kotlin.jpa)
     alias(libs.plugins.spring.dependency.management)
 }
 
-description = "Objs core: Spring primitives, domain types, and JPA persistence."
+description = "Objs core: entity SDK, validation, and JPA persistence (Kotlin)."
 
 dependencyManagement {
     imports {
@@ -16,11 +19,20 @@ dependencyManagement {
 dependencies {
     api(libs.boot.starter)
     api(libs.boot.starter.data.jpa)
+    api(libs.boot.starter.flyway)
     api(libs.bundles.jackson)
+    api(libs.kotlin.stdlib)
+    api(libs.kotlin.reflect)
     implementation(libs.bundles.logging)
+    implementation(libs.json.schema.validator)
+    implementation(libs.flyway.core)
+}
 
-    compileOnly(libs.lombok)
-    annotationProcessor(libs.lombok)
+kotlin {
+    jvmToolchain(24)
+    compilerOptions {
+        freeCompilerArgs.add("-Xjsr305=strict")
+    }
 }
 
 testing {
@@ -36,8 +48,6 @@ testing {
                     implementation(libs.mockito.core)
                     implementation(libs.mockito.junit.jupiter)
                     runtimeOnly(libs.h2.database)
-                    compileOnly(libs.lombok)
-                    annotationProcessor(libs.lombok)
                 }
             }
         }

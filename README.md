@@ -1,18 +1,18 @@
 # Objs
 
-Entity/graph application (PoC). Multi-module Gradle Java project.
+Entity/graph application (PoC). Multi-module Gradle **Kotlin** project.
 
 ## Modules
 
 | Module | Path | Role |
 |--------|------|------|
-| `objs-core` | `core/objs-core` | Entity SDK, core types, JPA / PostgreSQL persistence |
+| `objs-core` | `core/objs-core` | Entity SDK, validation, JPA / Flyway |
 | `objs-service` | `services/objs-service` | Spring REST + Boot autoconfiguration |
 
-**Group / packages (target):** `org.poc.objs` · **Scaffold today:** `io.qpointz.poc.objs` · **Java:** 25 · **Spring Boot:** 4.x (via catalog)
+**Group / packages:** `org.poc.objs` · **JVM toolchain:** 24 (Kotlin) · **Spring Boot:** 4.x
 
 Domain design: [`docs/design/graph/`](docs/design/graph/README.md).  
-First story: [`docs/workitems/planned/entity-graph-foundation/`](docs/workitems/planned/entity-graph-foundation/STORY.md).
+Story: [`docs/workitems/in-progress/entity-graph-foundation/`](docs/workitems/in-progress/entity-graph-foundation/STORY.md).
 
 ## Build
 

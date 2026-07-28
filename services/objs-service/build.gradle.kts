@@ -2,10 +2,12 @@ import org.gradle.api.plugins.jvm.JvmTestSuite
 
 plugins {
     `java-library`
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.spring)
     alias(libs.plugins.spring.dependency.management)
 }
 
-description = "Objs Spring REST service and autoconfiguration."
+description = "Objs Spring REST service and autoconfiguration (Kotlin)."
 
 dependencyManagement {
     imports {
@@ -16,12 +18,18 @@ dependencyManagement {
 dependencies {
     api(project(":core:objs-core"))
     api(libs.boot.starter.webmvc)
+    api(libs.kotlin.stdlib)
+    api(libs.kotlin.reflect)
     implementation(libs.boot.starter)
     implementation(libs.bundles.logging)
-
-    compileOnly(libs.lombok)
-    annotationProcessor(libs.lombok)
     annotationProcessor(libs.boot.configuration.processor)
+}
+
+kotlin {
+    jvmToolchain(24)
+    compilerOptions {
+        freeCompilerArgs.add("-Xjsr305=strict")
+    }
 }
 
 testing {
@@ -39,8 +47,6 @@ testing {
                     implementation(libs.assertj.core)
                     implementation(libs.mockito.core)
                     implementation(libs.mockito.junit.jupiter)
-                    compileOnly(libs.lombok)
-                    annotationProcessor(libs.lombok)
                 }
             }
         }

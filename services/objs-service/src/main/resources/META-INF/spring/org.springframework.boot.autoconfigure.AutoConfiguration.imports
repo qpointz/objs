@@ -1,1 +1,1 @@
-io.qpointz.poc.objs.service.ObjsServiceAutoConfiguration
+org.poc.objs.service.ObjsServiceAutoConfiguration
