@@ -367,6 +367,7 @@ This keeps each WI a **reviewable, reproducible checkpoint** on the story branch
 
 - `objs-core` — Spring primitives, domain types, JPA persistence
 - `objs-service` — Spring REST API and Boot autoconfiguration
+- `objs-app` — Runnable assembly (`./gradlew :objs-app:run`)
 
 ---
 

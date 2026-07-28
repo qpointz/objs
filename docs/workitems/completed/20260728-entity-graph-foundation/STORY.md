@@ -2,7 +2,7 @@
 
 **Slug:** `entity-graph-foundation`  
 **Branch:** `entity-graph-foundation` (from `dev`)  
-**Status:** in-progress  
+**Status:** closed (2026-07-28)  
 **Design:** [`docs/design/graph/`](../../../design/graph/README.md), [`docs/design/core/`](../../../design/core/README.md), [`docs/design/platform/kotlin.md`](../../../design/platform/kotlin.md)  
 **Gaps:** [`GAPS.md`](GAPS.md)
 

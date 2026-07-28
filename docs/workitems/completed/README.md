@@ -10,4 +10,4 @@ docs/workitems/completed/YYYYMMDD-<story-slug>/
 
 ## Index (optional, newest first)
 
-_(none yet)_
+- [`20260728-entity-graph-foundation`](20260728-entity-graph-foundation/STORY.md) — Kotlin entity store foundation (`BoEntity`/`BoEdge`, validation, Flyway/JPA, `objs-app`)

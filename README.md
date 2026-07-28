@@ -13,7 +13,7 @@ Entity/graph application (PoC). Multi-module Gradle **Kotlin** project.
 **Group / packages:** `org.poc.objs` · **JVM toolchain:** 24 (Kotlin) · **Spring Boot:** 4.x
 
 Domain design: [`docs/design/graph/`](docs/design/graph/README.md).  
-Story: [`docs/workitems/in-progress/entity-graph-foundation/`](docs/workitems/in-progress/entity-graph-foundation/STORY.md).
+Story: [`docs/workitems/completed/20260728-entity-graph-foundation/`](docs/workitems/completed/20260728-entity-graph-foundation/STORY.md).
 
 ## Build
 
