@@ -1,0 +1,33 @@
+# Stray classpath/sync artifacts at repo root — never commit
+/org/
+
+# Gradle
+.gradle
+.gradle/
+.gradle-home/
+
+# Runtime log dirs
+**/logs/
+
+# Build output
+build
+bin
+out/
+target/
+
+# IDE
+.idea
+.idea/
+*.iml
+.vscode/
+.kotlin/
+.cursor/
+.obsidian/
+.claude/
+
+# Secrets / local
+.secrets
+.data
+.tmp/
+.temp/
+/.certs/
