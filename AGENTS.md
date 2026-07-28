@@ -5,8 +5,9 @@ Repository Guidelines
 
 Gradle multi-module Kotlin project. Leaf modules at the repository root:
 
-- `objs-core` — Entity SDK, domain types, JPA / PostgreSQL persistence
+- `objs-core` — Entity SDK, domain types, JPA / PostgreSQL persistence, typed-domain toolkit
 - `objs-service` — Spring REST API and Boot autoconfiguration (library)
+- `objs-sbom-example` — Concrete SBOM app (canonical ontology + `/api/v1/example/sbom`); keep in sync with foundation features — see [`docs/workitems/RULES.md`](docs/workitems/RULES.md) **Concrete example integration**
 - `objs-app` — Runnable assembly (`./gradlew :objs-app:run`)
 
 Production sources: `src/main/kotlin`. Tests: `src/test/kotlin` (integration suites under `src/testIT/kotlin` when present).

@@ -1,0 +1,330 @@
+package org.poc.objs.sbom.registry
+
+import org.poc.objs.core.domain.BoMAllowedEdgeRule
+import org.poc.objs.core.domain.BoMPropertiesPolicy
+import org.poc.objs.core.domain.BoMSchema
+import org.poc.objs.core.typed.RegistryPack
+import org.poc.objs.core.typed.TypedEdgeMeta
+import org.poc.objs.sbom.model.ApiType
+import org.poc.objs.sbom.model.ArtifactType
+import org.poc.objs.sbom.model.BuildType
+import org.poc.objs.sbom.model.CanonicalEdgeType
+import org.poc.objs.sbom.model.ComponentType
+import org.poc.objs.sbom.model.ContainerImageType
+import org.poc.objs.sbom.model.ContainerLayerType
+import org.poc.objs.sbom.model.DatabaseType
+import org.poc.objs.sbom.model.DatasetType
+import org.poc.objs.sbom.model.DeploymentType
+import org.poc.objs.sbom.model.EnvironmentType
+import org.poc.objs.sbom.model.HostType
+import org.poc.objs.sbom.model.KubernetesClusterType
+import org.poc.objs.sbom.model.LicenseType
+import org.poc.objs.sbom.model.NamespaceType
+import org.poc.objs.sbom.model.OperatingSystemType
+import org.poc.objs.sbom.model.OrganizationType
+import org.poc.objs.sbom.model.PolicyType
+import org.poc.objs.sbom.model.ProductType
+import org.poc.objs.sbom.model.RuntimeType
+import org.poc.objs.sbom.model.SCHEMA_VERSION
+import org.poc.objs.sbom.model.ServiceType
+import org.poc.objs.sbom.model.SourceModuleType
+import org.poc.objs.sbom.model.SourceRepositoryType
+import org.poc.objs.sbom.model.VulnerabilityType
+
+object SbomRoles {
+    const val DEPENDS_ON = "DEPENDS_ON"
+    const val PROVIDED_BY = "PROVIDED_BY"
+    const val LICENSED_UNDER = "LICENSED_UNDER"
+    const val HAS_VULNERABILITY = "HAS_VULNERABILITY"
+    const val CONTAINS = "CONTAINS"
+    const val OWNED_BY = "OWNED_BY"
+    const val USES = "USES"
+    const val PRODUCES = "PRODUCES"
+    const val BUILDS = "BUILDS"
+    const val PACKAGES = "PACKAGES"
+    const val BASED_ON = "BASED_ON"
+    const val RUNS_ON = "RUNS_ON"
+    const val DEPLOYS = "DEPLOYS"
+    const val TARGETS = "TARGETS"
+    const val MEMBER_OF = "MEMBER_OF"
+    const val LOCATED_IN = "LOCATED_IN"
+    const val IMPLEMENTS = "IMPLEMENTS"
+    const val CALLS = "CALLS"
+    const val CONNECTS_TO = "CONNECTS_TO"
+    const val COMPLIES_WITH = "COMPLIES_WITH"
+}
+
+object SbomRegistry {
+    private val stringProp = mapOf("type" to "string")
+    private val numberProp = mapOf("type" to "number")
+    private val integerProp = mapOf("type" to "integer")
+    private val arrayOfString = mapOf("type" to "array", "items" to mapOf("type" to "string"))
+    private val objectProp = mapOf("type" to "object")
+
+    private val commonOptional = mapOf(
+        "description" to stringProp,
+        "labels" to arrayOfString,
+        "attributes" to objectProp,
+    )
+
+    private fun edgeRule(source: String, role: String, target: String) = BoMAllowedEdgeRule(
+        sourceType = source,
+        role = role,
+        targetType = target,
+        propertiesPolicy = BoMPropertiesPolicy.SCHEMA,
+        emptyPropertiesAllowed = true,
+    )
+
+    private fun schema(
+        type: String,
+        required: List<String>,
+        properties: Map<String, Map<String, Any?>>,
+    ): BoMSchema = RegistryPack.objectSchema(
+        type = type,
+        version = SCHEMA_VERSION,
+        required = required,
+        properties = properties + commonOptional,
+    )
+
+    fun canonicalEdgeMeta(role: String, sourceType: String, targetType: String) = TypedEdgeMeta(
+        role = role,
+        sourceType = sourceType,
+        targetType = targetType,
+        propertiesPolicy = BoMPropertiesPolicy.SCHEMA,
+        propertiesMeta = CanonicalEdgeType.meta,
+        emptyPropertiesAllowed = true,
+    )
+
+    fun dependsOnMeta() = canonicalEdgeMeta(SbomRoles.DEPENDS_ON, "Component", "Component")
+
+    /** Full canonical ontology: all entity schemas + relationship allow-list. */
+    fun pack(): RegistryPack {
+        val canonicalEdge = RegistryPack.objectSchema(
+            type = CanonicalEdgeType.meta.type,
+            version = SCHEMA_VERSION,
+            required = emptyList(),
+            properties = mapOf(
+                "createdAt" to stringProp,
+                "source" to stringProp,
+                "confidence" to numberProp,
+                "attributes" to objectProp,
+            ),
+        )
+
+        val entitySchemas = listOf(
+            schema(
+                ComponentType.meta.type,
+                listOf("name", "version", "ecosystem", "kind"),
+                mapOf(
+                    "name" to stringProp,
+                    "version" to stringProp,
+                    "ecosystem" to stringProp,
+                    "kind" to stringProp,
+                    "coordinates" to stringProp,
+                ),
+            ),
+            schema(
+                ProductType.meta.type,
+                listOf("name", "version"),
+                mapOf(
+                    "name" to stringProp,
+                    "version" to stringProp,
+                    "supplier" to stringProp,
+                    "lifecycle" to stringProp,
+                    "homepage" to stringProp,
+                ),
+            ),
+            schema(
+                OrganizationType.meta.type,
+                listOf("name"),
+                mapOf(
+                    "name" to stringProp,
+                    "domain" to stringProp,
+                    "website" to stringProp,
+                    "country" to stringProp,
+                ),
+            ),
+            schema(
+                LicenseType.meta.type,
+                listOf("name", "spdxId"),
+                mapOf("name" to stringProp, "spdxId" to stringProp, "url" to stringProp),
+            ),
+            schema(
+                VulnerabilityType.meta.type,
+                listOf("name", "cve", "severity"),
+                mapOf(
+                    "name" to stringProp,
+                    "cve" to stringProp,
+                    "severity" to stringProp,
+                    "cvss" to numberProp,
+                ),
+            ),
+            schema(
+                BuildType.meta.type,
+                listOf("name", "buildNumber", "status"),
+                mapOf(
+                    "name" to stringProp,
+                    "buildNumber" to stringProp,
+                    "builder" to stringProp,
+                    "status" to stringProp,
+                ),
+            ),
+            schema(
+                SourceRepositoryType.meta.type,
+                listOf("name", "url"),
+                mapOf(
+                    "name" to stringProp,
+                    "url" to stringProp,
+                    "revision" to stringProp,
+                    "branch" to stringProp,
+                ),
+            ),
+            schema(
+                SourceModuleType.meta.type,
+                listOf("name", "path"),
+                mapOf("name" to stringProp, "path" to stringProp, "language" to stringProp),
+            ),
+            schema(
+                ArtifactType.meta.type,
+                listOf("name", "artifactType"),
+                mapOf(
+                    "name" to stringProp,
+                    "artifactType" to stringProp,
+                    "checksum" to stringProp,
+                    "size" to integerProp,
+                ),
+            ),
+            schema(
+                ContainerImageType.meta.type,
+                listOf("name", "tag"),
+                mapOf(
+                    "name" to stringProp,
+                    "tag" to stringProp,
+                    "digest" to stringProp,
+                    "registry" to stringProp,
+                ),
+            ),
+            schema(
+                ContainerLayerType.meta.type,
+                listOf("name", "digest"),
+                mapOf("name" to stringProp, "digest" to stringProp, "size" to integerProp),
+            ),
+            schema(
+                RuntimeType.meta.type,
+                listOf("name", "runtimeType"),
+                mapOf("name" to stringProp, "runtimeType" to stringProp, "version" to stringProp),
+            ),
+            schema(
+                OperatingSystemType.meta.type,
+                listOf("name", "distribution"),
+                mapOf(
+                    "name" to stringProp,
+                    "distribution" to stringProp,
+                    "version" to stringProp,
+                    "architecture" to stringProp,
+                ),
+            ),
+            schema(
+                DeploymentType.meta.type,
+                listOf("name"),
+                mapOf(
+                    "name" to stringProp,
+                    "status" to stringProp,
+                    "replicas" to integerProp,
+                    "deployedAt" to stringProp,
+                ),
+            ),
+            schema(
+                EnvironmentType.meta.type,
+                listOf("name", "environment"),
+                mapOf("name" to stringProp, "environment" to stringProp),
+            ),
+            schema(
+                HostType.meta.type,
+                listOf("name", "hostname"),
+                mapOf(
+                    "name" to stringProp,
+                    "hostname" to stringProp,
+                    "ip" to stringProp,
+                    "provider" to stringProp,
+                ),
+            ),
+            schema(
+                KubernetesClusterType.meta.type,
+                listOf("name"),
+                mapOf("name" to stringProp, "version" to stringProp),
+            ),
+            schema(
+                NamespaceType.meta.type,
+                listOf("name", "namespace"),
+                mapOf("name" to stringProp, "namespace" to stringProp),
+            ),
+            schema(
+                ServiceType.meta.type,
+                listOf("name"),
+                mapOf("name" to stringProp, "protocol" to stringProp, "endpoint" to stringProp),
+            ),
+            schema(
+                ApiType.meta.type,
+                listOf("name", "protocol"),
+                mapOf("name" to stringProp, "protocol" to stringProp, "version" to stringProp),
+            ),
+            schema(
+                DatabaseType.meta.type,
+                listOf("name", "engine"),
+                mapOf("name" to stringProp, "engine" to stringProp, "version" to stringProp),
+            ),
+            schema(
+                DatasetType.meta.type,
+                listOf("name", "datasetType"),
+                mapOf(
+                    "name" to stringProp,
+                    "datasetType" to stringProp,
+                    "classification" to stringProp,
+                ),
+            ),
+            schema(
+                PolicyType.meta.type,
+                listOf("name"),
+                mapOf("name" to stringProp, "policyType" to stringProp, "version" to stringProp),
+            ),
+        )
+
+        // Exact triples from canonical-spec.md relationship table
+        val edgeRules = listOf(
+            edgeRule("Product", SbomRoles.CONTAINS, "Component"),
+            edgeRule("Product", SbomRoles.CONTAINS, "Artifact"),
+            edgeRule("Container Image", SbomRoles.CONTAINS, "Container Layer"),
+            edgeRule("Database", SbomRoles.CONTAINS, "Dataset"),
+            edgeRule("Source Repository", SbomRoles.CONTAINS, "Source Module"),
+            edgeRule("Component", SbomRoles.DEPENDS_ON, "Component"),
+            edgeRule("Source Module", SbomRoles.PRODUCES, "Artifact"),
+            edgeRule("Build", SbomRoles.BUILDS, "Artifact"),
+            edgeRule("Build", SbomRoles.BUILDS, "Container Image"),
+            edgeRule("Build", SbomRoles.USES, "Component"),
+            edgeRule("Container Image", SbomRoles.PACKAGES, "Artifact"),
+            edgeRule("Container Image", SbomRoles.BASED_ON, "Operating System"),
+            edgeRule("Product", SbomRoles.RUNS_ON, "Runtime"),
+            edgeRule("Runtime", SbomRoles.RUNS_ON, "Operating System"),
+            edgeRule("Deployment", SbomRoles.DEPLOYS, "Container Image"),
+            edgeRule("Deployment", SbomRoles.TARGETS, "Environment"),
+            edgeRule("Deployment", SbomRoles.RUNS_ON, "Host"),
+            edgeRule("Host", SbomRoles.MEMBER_OF, "Kubernetes Cluster"),
+            edgeRule("Deployment", SbomRoles.LOCATED_IN, "Namespace"),
+            edgeRule("Service", SbomRoles.IMPLEMENTS, "API"),
+            edgeRule("Product", SbomRoles.CALLS, "API"),
+            edgeRule("Product", SbomRoles.CONNECTS_TO, "Database"),
+            edgeRule("Component", SbomRoles.PROVIDED_BY, "Organization"),
+            edgeRule("Product", SbomRoles.OWNED_BY, "Organization"),
+            edgeRule("Component", SbomRoles.LICENSED_UNDER, "License"),
+            edgeRule("Component", SbomRoles.HAS_VULNERABILITY, "Vulnerability"),
+            edgeRule("Container Image", SbomRoles.HAS_VULNERABILITY, "Vulnerability"),
+            edgeRule("Product", SbomRoles.COMPLIES_WITH, "Policy"),
+        )
+
+        return RegistryPack(
+            schemas = listOf(canonicalEdge) + entitySchemas,
+            edgeRules = edgeRules,
+        )
+    }
+}
