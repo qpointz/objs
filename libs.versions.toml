@@ -9,6 +9,7 @@ jackson = "3.1.2"
 logback = "1.5.28"
 jsonSchemaValidator = "1.5.6"
 flyway = "11.7.2"
+springDoc = "3.0.3"
 
 [libraries]
 lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
@@ -41,14 +42,17 @@ flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway" }
 jackson-core = { module = "tools.jackson.core:jackson-core", version.ref = "jackson" }
 jackson-databind = { module = "tools.jackson.core:jackson-databind", version.ref = "jackson" }
 jackson-dataformat-yaml = { module = "tools.jackson.dataformat:jackson-dataformat-yaml", version.ref = "jackson" }
+jackson-module-kotlin = { module = "tools.jackson.module:jackson-module-kotlin", version.ref = "jackson" }
 
 json-schema-validator = { module = "com.networknt:json-schema-validator", version.ref = "jsonSchemaValidator" }
+
+springdoc-openapi-starter-webmvc-ui = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springDoc" }
 
 kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin" }
 kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }
 
 [bundles]
-jackson = ["jackson-databind", "jackson-dataformat-yaml"]
+jackson = ["jackson-databind", "jackson-dataformat-yaml", "jackson-module-kotlin"]
 logging = ["slf4j-api", "logback-core", "logback-classic"]
 
 [plugins]

@@ -5,26 +5,26 @@ import java.util.UUID
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.poc.objs.core.domain.BoAllowedEdgeCatalog
-import org.poc.objs.core.domain.BoAllowedEdgeRule
-import org.poc.objs.core.domain.BoEdge
-import org.poc.objs.core.domain.BoEntity
-import org.poc.objs.core.domain.BoGraph
-import org.poc.objs.core.domain.BoPropertiesPolicy
-import org.poc.objs.core.domain.BoSchema
-import org.poc.objs.core.domain.BoSchemaCatalog
+import org.poc.objs.core.domain.BoMAllowedEdgeCatalog
+import org.poc.objs.core.domain.BoMAllowedEdgeRule
+import org.poc.objs.core.domain.BoMEdge
+import org.poc.objs.core.domain.BoMEntity
+import org.poc.objs.core.domain.BoMGraph
+import org.poc.objs.core.domain.BoMPropertiesPolicy
+import org.poc.objs.core.domain.BoMSchema
+import org.poc.objs.core.domain.BoMSchemaCatalog
 
-class BoValidatorTest {
-    private lateinit var schemas: BoSchemaCatalog
-    private lateinit var allowed: BoAllowedEdgeCatalog
-    private lateinit var validator: BoValidator
+class BoMValidatorTest {
+    private lateinit var schemas: BoMSchemaCatalog
+    private lateinit var allowed: BoMAllowedEdgeCatalog
+    private lateinit var validator: BoMValidator
 
     @BeforeEach
     fun setUp() {
-        schemas = BoSchemaCatalog()
-        allowed = BoAllowedEdgeCatalog()
+        schemas = BoMSchemaCatalog()
+        allowed = BoMAllowedEdgeCatalog()
         schemas.register(
-            BoSchema(
+            BoMSchema(
                 type = "Person",
                 version = "1",
                 schema = mapOf(
@@ -37,7 +37,7 @@ class BoValidatorTest {
             ),
         )
         schemas.register(
-            BoSchema(
+            BoMSchema(
                 type = "LinkProps",
                 version = "1",
                 schema = mapOf(
@@ -49,34 +49,34 @@ class BoValidatorTest {
             ),
         )
         allowed.register(
-            BoAllowedEdgeRule(
+            BoMAllowedEdgeRule(
                 sourceType = "Person",
                 role = "knows",
                 targetType = "Person",
-                propertiesPolicy = BoPropertiesPolicy.NONE,
+                propertiesPolicy = BoMPropertiesPolicy.NONE,
             ),
         )
         allowed.register(
-            BoAllowedEdgeRule(
+            BoMAllowedEdgeRule(
                 sourceType = "Person",
                 role = "weighted",
                 targetType = "Person",
-                propertiesPolicy = BoPropertiesPolicy.SCHEMA,
+                propertiesPolicy = BoMPropertiesPolicy.SCHEMA,
                 emptyPropertiesAllowed = false,
             ),
         )
-        validator = BoValidator(schemas, allowed)
+        validator = BoMValidator(schemas, allowed)
     }
 
     @Test
     fun shouldAcceptValidEntity() {
-        val entity = BoEntity(type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "Ada"))
+        val entity = BoMEntity(type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "Ada"))
         assertThat(validator.validateEntities(listOf(entity)).isValid).isTrue()
     }
 
     @Test
     fun shouldRejectInvalidEntityPayload() {
-        val entity = BoEntity(type = "Person", schemaVersion = "1", payload = mutableMapOf())
+        val entity = BoMEntity(type = "Person", schemaVersion = "1", payload = mutableMapOf())
         val result = validator.validateEntities(listOf(entity))
         assertThat(result.isValid).isFalse()
         assertThat(result.issues.map { it.code }).contains("SCHEMA_VIOLATION")
@@ -86,8 +86,8 @@ class BoValidatorTest {
     fun shouldDenyUnknownEdgeRule() {
         val a = UUID.randomUUID()
         val b = UUID.randomUUID()
-        val edge = BoEdge(source = a, target = b, role = "unknown")
-        val lookup = BoEntityTypeLookup { "Person" }
+        val edge = BoMEdge(source = a, target = b, role = "unknown")
+        val lookup = BoMEntityTypeLookup { "Person" }
         val result = validator.validateEdges(listOf(edge), lookup)
         assertThat(result.isValid).isFalse()
         assertThat(result.issues.map { it.code }).contains("EDGE_NOT_ALLOWED")
@@ -97,13 +97,13 @@ class BoValidatorTest {
     fun shouldRejectPropertiesOnBareEdge() {
         val a = UUID.randomUUID()
         val b = UUID.randomUUID()
-        val edge = BoEdge(
+        val edge = BoMEdge(
             source = a,
             target = b,
             role = "knows",
             properties = mutableMapOf("x" to 1),
         )
-        val result = validator.validateEdges(listOf(edge), BoEntityTypeLookup { "Person" })
+        val result = validator.validateEdges(listOf(edge), BoMEntityTypeLookup { "Person" })
         assertThat(result.issues.map { it.code }).contains("PROPERTIES_NOT_ALLOWED")
     }
 
@@ -111,7 +111,7 @@ class BoValidatorTest {
     fun shouldRequirePropertiesWhenEmptyForbidden() {
         val a = UUID.randomUUID()
         val b = UUID.randomUUID()
-        val edge = BoEdge(
+        val edge = BoMEdge(
             source = a,
             target = b,
             role = "weighted",
@@ -119,29 +119,29 @@ class BoValidatorTest {
             schemaVersion = "1",
             properties = mutableMapOf(),
         )
-        val result = validator.validateEdges(listOf(edge), BoEntityTypeLookup { "Person" })
+        val result = validator.validateEdges(listOf(edge), BoMEntityTypeLookup { "Person" })
         assertThat(result.issues.map { it.code }).contains("PROPERTIES_REQUIRED")
     }
 
     @Test
     fun shouldReportMissingEndpoint() {
-        val edge = BoEdge(source = UUID.randomUUID(), target = UUID.randomUUID(), role = "knows")
-        val result = validator.validateEdges(listOf(edge), BoEntityTypeLookup { null })
+        val edge = BoMEdge(source = UUID.randomUUID(), target = UUID.randomUUID(), role = "knows")
+        val result = validator.validateEdges(listOf(edge), BoMEntityTypeLookup { null })
         assertThat(result.issues.map { it.code }).contains("SOURCE_NOT_FOUND", "TARGET_NOT_FOUND")
     }
 }
 
-class BoPersistGateTest {
-    private lateinit var schemas: BoSchemaCatalog
-    private lateinit var allowed: BoAllowedEdgeCatalog
-    private lateinit var validator: BoValidator
+class BoMPersistGateTest {
+    private lateinit var schemas: BoMSchemaCatalog
+    private lateinit var allowed: BoMAllowedEdgeCatalog
+    private lateinit var validator: BoMValidator
 
     @BeforeEach
     fun setUp() {
-        schemas = BoSchemaCatalog()
-        allowed = BoAllowedEdgeCatalog()
+        schemas = BoMSchemaCatalog()
+        allowed = BoMAllowedEdgeCatalog()
         schemas.register(
-            BoSchema(
+            BoMSchema(
                 type = "Person",
                 version = "1",
                 schema = mapOf(
@@ -152,22 +152,22 @@ class BoPersistGateTest {
             ),
         )
         allowed.register(
-            BoAllowedEdgeRule("Person", "knows", "Person", BoPropertiesPolicy.NONE),
+            BoMAllowedEdgeRule("Person", "knows", "Person", BoMPropertiesPolicy.NONE),
         )
-        validator = BoValidator(schemas, allowed)
+        validator = BoMValidator(schemas, allowed)
     }
 
     @Test
     fun shouldFailFastOnInvalidEntitiesBeforeEdges() {
         val store = mutableMapOf<java.util.UUID, String>()
-        val gate = BoPersistGate(
+        val gate = BoMPersistGate(
             validator,
-            storeLookup = BoEntityTypeLookup { store[it] },
+            storeLookup = BoMEntityTypeLookup { store[it] },
             existsEntity = { it in store },
             existsEdge = { false },
         )
-        val graph = BoGraph(
-            entities = mutableListOf(BoEntity(type = "Person", schemaVersion = "1", payload = mutableMapOf())),
+        val graph = BoMGraph(
+            entities = mutableListOf(BoMEntity(type = "Person", schemaVersion = "1", payload = mutableMapOf())),
             edges = mutableListOf(),
         )
         val result = gate.validateWrite(graph)
@@ -179,18 +179,18 @@ class BoPersistGateTest {
     fun shouldValidateEdgeAgainstStoreEntity() {
         val existing = UUID.randomUUID()
         val store = mutableMapOf(existing to "Person")
-        val gate = BoPersistGate(
+        val gate = BoMPersistGate(
             validator,
-            storeLookup = BoEntityTypeLookup { store[it] },
+            storeLookup = BoMEntityTypeLookup { store[it] },
             existsEntity = { it in store },
             existsEdge = { false },
         )
         val neu = UUID.randomUUID()
-        val graph = BoGraph(
+        val graph = BoMGraph(
             entities = mutableListOf(
-                BoEntity(id = neu, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "Bob")),
+                BoMEntity(id = neu, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "Bob")),
             ),
-            edges = mutableListOf(BoEdge(source = neu, target = existing, role = "knows")),
+            edges = mutableListOf(BoMEdge(source = neu, target = existing, role = "knows")),
         )
         val result = gate.validateWrite(graph)
         assertThat(result.isValid).isTrue()
@@ -199,15 +199,15 @@ class BoPersistGateTest {
 
     @Test
     fun shouldAssignIdsWhenMissing() {
-        val gate = BoPersistGate(
+        val gate = BoMPersistGate(
             validator,
-            storeLookup = BoEntityTypeLookup { null },
+            storeLookup = BoMEntityTypeLookup { null },
             existsEntity = { false },
             existsEdge = { false },
         )
-        val graph = BoGraph(
+        val graph = BoMGraph(
             entities = mutableListOf(
-                BoEntity(type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "Ada")),
+                BoMEntity(type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "Ada")),
             ),
         )
         assertThat(gate.validateWrite(graph).isValid).isTrue()

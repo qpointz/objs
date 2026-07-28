@@ -3,12 +3,12 @@ package org.poc.objs.core.domain
 import java.util.UUID
 
 /**
- * Domain entity (`BoEntity`): typed JSON payload + caller annotations.
+ * Domain entity (`BoMEntity`): typed JSON payload + caller annotations.
  *
  * [id] absent means create on persist; present means update (G-20).
  * [type] + [schemaVersion] select the JSON Schema from the central catalog.
  */
-data class BoEntity(
+data class BoMEntity(
     var id: UUID? = null,
     var type: String,
     var schemaVersion: String,
@@ -17,12 +17,12 @@ data class BoEntity(
 )
 
 /**
- * Directed edge (`BoEdge`) with optional property schema.
+ * Directed edge (`BoMEdge`) with optional property schema.
  *
  * [source] / [target] reference entity ids. [type]/[schemaVersion]/[properties] used when
- * the allow-list properties policy is [BoPropertiesPolicy.SCHEMA].
+ * the allow-list properties policy is [BoMPropertiesPolicy.SCHEMA].
  */
-data class BoEdge(
+data class BoMEdge(
     var id: UUID? = null,
     var source: UUID,
     var target: UUID,
@@ -33,15 +33,15 @@ data class BoEdge(
 )
 
 /** In-memory bag of entities and edges (SDK / write payload). */
-data class BoGraph(
-    val entities: MutableList<BoEntity> = mutableListOf(),
-    val edges: MutableList<BoEdge> = mutableListOf(),
+data class BoMGraph(
+    val entities: MutableList<BoMEntity> = mutableListOf(),
+    val edges: MutableList<BoMEdge> = mutableListOf(),
 ) {
-    fun entityById(id: UUID): BoEntity? = entities.find { it.id == id }
+    fun entityById(id: UUID): BoMEntity? = entities.find { it.id == id }
 }
 
 /** Result of annotation-based subgraph selection (induced edges). */
-data class BoSubgraph(
-    val entities: List<BoEntity>,
-    val edges: List<BoEdge>,
+data class BoMSubgraph(
+    val entities: List<BoMEntity>,
+    val edges: List<BoMEdge>,
 )

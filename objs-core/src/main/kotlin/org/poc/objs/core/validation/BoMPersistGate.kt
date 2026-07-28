@@ -1,8 +1,8 @@
 package org.poc.objs.core.validation
 
-import org.poc.objs.core.domain.BoEdge
-import org.poc.objs.core.domain.BoEntity
-import org.poc.objs.core.domain.BoGraph
+import org.poc.objs.core.domain.BoMEdge
+import org.poc.objs.core.domain.BoMEntity
+import org.poc.objs.core.domain.BoMGraph
 import java.util.UUID
 
 /**
@@ -13,9 +13,9 @@ import java.util.UUID
  * - id present and not in store → create with client-supplied id (edges can reference new entities)
  * - id present and in store → update
  */
-class BoPersistGate(
-    private val validator: BoValidator,
-    private val storeLookup: BoEntityTypeLookup,
+class BoMPersistGate(
+    private val validator: BoMValidator,
+    private val storeLookup: BoMEntityTypeLookup,
     private val existsEntity: (UUID) -> Boolean,
     private val existsEdge: (UUID) -> Boolean,
 ) {
@@ -23,7 +23,7 @@ class BoPersistGate(
      * Two-stage validation for a subgraph write payload.
      * Assigns missing ids before edge validation so new entities are addressable.
      */
-    fun validateWrite(graph: BoGraph): BoValidationResult {
+    fun validateWrite(graph: BoMGraph): BoMValidationResult {
         val stage1 = validator.validateEntities(graph.entities)
         if (!stage1.isValid) {
             return stage1
@@ -33,26 +33,26 @@ class BoPersistGate(
         return validator.validateEdges(graph.edges, lookup)
     }
 
-    fun validateDeleteEntity(id: UUID): BoValidationResult {
+    fun validateDeleteEntity(id: UUID): BoMValidationResult {
         if (!existsEntity(id)) {
-            return BoValidationResult.of(
-                BoValidationIssue(code = "ENTITY_NOT_FOUND", message = "Entity $id not found"),
+            return BoMValidationResult.of(
+                BoMValidationIssue(code = "ENTITY_NOT_FOUND", message = "Entity $id not found"),
             )
         }
-        return BoValidationResult.ok()
+        return BoMValidationResult.ok()
     }
 
-    fun validateDeleteEdge(id: UUID): BoValidationResult {
+    fun validateDeleteEdge(id: UUID): BoMValidationResult {
         if (!existsEdge(id)) {
-            return BoValidationResult.of(
-                BoValidationIssue(code = "EDGE_NOT_FOUND", message = "Edge $id not found"),
+            return BoMValidationResult.of(
+                BoMValidationIssue(code = "EDGE_NOT_FOUND", message = "Edge $id not found"),
             )
         }
-        return BoValidationResult.ok()
+        return BoMValidationResult.ok()
     }
 
     /** Assign [UUID.randomUUID] to items without id. */
-    fun prepareIds(graph: BoGraph) {
+    fun prepareIds(graph: BoMGraph) {
         graph.entities.forEach { e ->
             if (e.id == null) {
                 e.id = UUID.randomUUID()
@@ -65,12 +65,12 @@ class BoPersistGate(
         }
     }
 
-    fun isCreateEntity(entity: BoEntity): Boolean {
+    fun isCreateEntity(entity: BoMEntity): Boolean {
         val id = entity.id ?: return true
         return !existsEntity(id)
     }
 
-    fun isCreateEdge(edge: BoEdge): Boolean {
+    fun isCreateEdge(edge: BoMEdge): Boolean {
         val id = edge.id ?: return true
         return !existsEdge(id)
     }

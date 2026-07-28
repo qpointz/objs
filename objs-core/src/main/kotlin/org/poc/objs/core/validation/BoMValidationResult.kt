@@ -3,33 +3,33 @@ package org.poc.objs.core.validation
 /**
  * Outcome of audit or persist-gate validation.
  */
-data class BoValidationIssue(
+data class BoMValidationIssue(
     val code: String,
     val message: String,
     val path: String? = null,
 )
 
-data class BoValidationResult(
-    val issues: List<BoValidationIssue> = emptyList(),
+data class BoMValidationResult(
+    val issues: List<BoMValidationIssue> = emptyList(),
 ) {
     val isValid: Boolean get() = issues.isEmpty()
 
     fun requireValid(operation: String = "validation") {
         if (!isValid) {
-            throw BoValidationException(operation, this)
+            throw BoMValidationException(operation, this)
         }
     }
 
     companion object {
-        fun ok(): BoValidationResult = BoValidationResult()
-        fun of(vararg issues: BoValidationIssue) = BoValidationResult(issues.toList())
-        fun of(issues: List<BoValidationIssue>) = BoValidationResult(issues)
+        fun ok(): BoMValidationResult = BoMValidationResult()
+        fun of(vararg issues: BoMValidationIssue) = BoMValidationResult(issues.toList())
+        fun of(issues: List<BoMValidationIssue>) = BoMValidationResult(issues)
     }
 }
 
-class BoValidationException(
+class BoMValidationException(
     val operation: String,
-    val result: BoValidationResult,
+    val result: BoMValidationResult,
 ) : RuntimeException(
     "$operation failed: ${result.issues.joinToString("; ") { it.message }}",
 )

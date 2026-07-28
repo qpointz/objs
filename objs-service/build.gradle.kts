@@ -20,6 +20,8 @@ dependencies {
     api(libs.boot.starter.webmvc)
     api(libs.kotlin.stdlib)
     api(libs.kotlin.reflect)
+    implementation(libs.jackson.module.kotlin)
+    implementation(libs.springdoc.openapi.starter.webmvc.ui)
     annotationProcessor(libs.boot.configuration.processor)
 }
 

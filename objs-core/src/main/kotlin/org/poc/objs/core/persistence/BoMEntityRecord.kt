@@ -9,11 +9,11 @@ import org.hibernate.type.SqlTypes
 import java.util.UUID
 
 /**
- * JPA row for [org.poc.objs.core.domain.BoEntity] — generic columns + JSON payload/annotations.
+ * JPA row for [org.poc.objs.core.domain.BoMEntity] — generic columns + JSON payload/annotations.
  */
 @Entity
-@Table(name = "bo_entity")
-class BoEntityRecord(
+@Table(name = "bom_entity")
+class BoMEntityRecord(
     @Id
     @Column(name = "id", nullable = false)
     var id: UUID = UUID.randomUUID(),
@@ -34,11 +34,11 @@ class BoEntityRecord(
 )
 
 /**
- * JPA row for [org.poc.objs.core.domain.BoEdge].
+ * JPA row for [org.poc.objs.core.domain.BoMEdge].
  */
 @Entity
-@Table(name = "bo_edge")
-class BoEdgeRecord(
+@Table(name = "bom_edge")
+class BoMEdgeRecord(
     @Id
     @Column(name = "id", nullable = false)
     var id: UUID = UUID.randomUUID(),

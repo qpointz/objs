@@ -1,13 +1,13 @@
 package org.poc.objs.core.match
 
-import org.poc.objs.core.domain.BoEntity
+import org.poc.objs.core.domain.BoMEntity
 
 /**
  * Extension point for annotation matching strategies (G-2).
  */
-fun interface BoAnnotationMatcher {
+fun interface BoMAnnotationMatcher {
     /** Returns true if [entity] satisfies this matcher. */
-    fun matches(entity: BoEntity): Boolean
+    fun matches(entity: BoMEntity): Boolean
 }
 
 /**
@@ -16,7 +16,7 @@ fun interface BoAnnotationMatcher {
  */
 class MatchAllAnnotationMatcher(
     private val filter: Map<String, String>,
-) : BoAnnotationMatcher {
-    override fun matches(entity: BoEntity): Boolean =
+) : BoMAnnotationMatcher {
+    override fun matches(entity: BoMEntity): Boolean =
         filter.all { (key, value) -> entity.annotations[key] == value }
 }

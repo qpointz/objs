@@ -8,19 +8,19 @@ class BoDomainTypesTest {
     @Test
     fun shouldBuildEntityAndEdgeInMemory() {
         val id = UUID.randomUUID()
-        val entity = BoEntity(
+        val entity = BoMEntity(
             id = id,
             type = "Person",
             schemaVersion = "1",
             payload = mutableMapOf("name" to "Ada"),
             annotations = mutableMapOf("item" to "X"),
         )
-        val edge = BoEdge(
+        val edge = BoMEdge(
             source = id,
             target = UUID.randomUUID(),
             role = "knows",
         )
-        val graph = BoGraph(mutableListOf(entity), mutableListOf(edge))
+        val graph = BoMGraph(mutableListOf(entity), mutableListOf(edge))
         assertThat(graph.entityById(id)).isEqualTo(entity)
         assertThat(edge.role).isEqualTo("knows")
     }

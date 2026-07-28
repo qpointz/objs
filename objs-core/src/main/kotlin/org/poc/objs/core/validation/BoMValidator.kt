@@ -3,19 +3,19 @@ package org.poc.objs.core.validation
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.networknt.schema.JsonSchemaFactory
 import com.networknt.schema.SpecVersion
-import org.poc.objs.core.domain.BoAllowedEdgeCatalog
-import org.poc.objs.core.domain.BoAllowedEdgeRule
-import org.poc.objs.core.domain.BoEdge
-import org.poc.objs.core.domain.BoEntity
-import org.poc.objs.core.domain.BoGraph
-import org.poc.objs.core.domain.BoPropertiesPolicy
-import org.poc.objs.core.domain.BoSchemaCatalog
+import org.poc.objs.core.domain.BoMAllowedEdgeCatalog
+import org.poc.objs.core.domain.BoMAllowedEdgeRule
+import org.poc.objs.core.domain.BoMEdge
+import org.poc.objs.core.domain.BoMEntity
+import org.poc.objs.core.domain.BoMGraph
+import org.poc.objs.core.domain.BoMPropertiesPolicy
+import org.poc.objs.core.domain.BoMSchemaCatalog
 import java.util.UUID
 
 /**
  * Resolves entity types for edge endpoints from the write payload and/or an existing store.
  */
-fun interface BoEntityTypeLookup {
+fun interface BoMEntityTypeLookup {
     /**
      * @return entity type string, or null if the id is unknown
      */
@@ -25,27 +25,27 @@ fun interface BoEntityTypeLookup {
 /**
  * JSON Schema + allow-list validation (audit and persist stages).
  */
-class BoValidator(
-    private val schemas: BoSchemaCatalog,
-    private val allowedEdges: BoAllowedEdgeCatalog,
+class BoMValidator(
+    private val schemas: BoMSchemaCatalog,
+    private val allowedEdges: BoMAllowedEdgeCatalog,
     private val objectMapper: ObjectMapper = ObjectMapper(),
 ) {
     private val schemaFactory = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012)
 
     /** Stage 1 — validate entity payloads only. */
-    fun validateEntities(entities: Collection<BoEntity>): BoValidationResult {
-        val issues = mutableListOf<BoValidationIssue>()
+    fun validateEntities(entities: Collection<BoMEntity>): BoMValidationResult {
+        val issues = mutableListOf<BoMValidationIssue>()
         entities.forEachIndexed { index, entity ->
             issues += validateEntity(entity, path = "entities[$index]")
         }
-        return BoValidationResult(issues)
+        return BoMValidationResult(issues)
     }
 
-    fun validateEntity(entity: BoEntity, path: String = "entity"): List<BoValidationIssue> {
-        val issues = mutableListOf<BoValidationIssue>()
+    fun validateEntity(entity: BoMEntity, path: String = "entity"): List<BoMValidationIssue> {
+        val issues = mutableListOf<BoMValidationIssue>()
         val schema = schemas.get(entity.type, entity.schemaVersion)
         if (schema == null) {
-            issues += BoValidationIssue(
+            issues += BoMValidationIssue(
                 code = "SCHEMA_NOT_FOUND",
                 message = "No schema for type=${entity.type} schemaVersion=${entity.schemaVersion}",
                 path = path,
@@ -61,33 +61,33 @@ class BoValidator(
      * (payload entities ∪ persisted store).
      */
     fun validateEdges(
-        edges: Collection<BoEdge>,
-        typeLookup: BoEntityTypeLookup,
-    ): BoValidationResult {
-        val issues = mutableListOf<BoValidationIssue>()
+        edges: Collection<BoMEdge>,
+        typeLookup: BoMEntityTypeLookup,
+    ): BoMValidationResult {
+        val issues = mutableListOf<BoMValidationIssue>()
         edges.forEachIndexed { index, edge ->
             issues += validateEdge(edge, typeLookup, path = "edges[$index]")
         }
-        return BoValidationResult(issues)
+        return BoMValidationResult(issues)
     }
 
     fun validateEdge(
-        edge: BoEdge,
-        typeLookup: BoEntityTypeLookup,
+        edge: BoMEdge,
+        typeLookup: BoMEntityTypeLookup,
         path: String = "edge",
-    ): List<BoValidationIssue> {
-        val issues = mutableListOf<BoValidationIssue>()
+    ): List<BoMValidationIssue> {
+        val issues = mutableListOf<BoMValidationIssue>()
         val sourceType = typeLookup.typeOf(edge.source)
         val targetType = typeLookup.typeOf(edge.target)
         if (sourceType == null) {
-            issues += BoValidationIssue(
+            issues += BoMValidationIssue(
                 code = "SOURCE_NOT_FOUND",
                 message = "Edge source ${edge.source} not in payload or store",
                 path = "$path.source",
             )
         }
         if (targetType == null) {
-            issues += BoValidationIssue(
+            issues += BoMValidationIssue(
                 code = "TARGET_NOT_FOUND",
                 message = "Edge target ${edge.target} not in payload or store",
                 path = "$path.target",
@@ -98,7 +98,7 @@ class BoValidator(
         }
         val rule = allowedEdges.find(sourceType, edge.role, targetType)
         if (rule == null) {
-            issues += BoValidationIssue(
+            issues += BoMValidationIssue(
                 code = "EDGE_NOT_ALLOWED",
                 message = "No allow-list rule for ($sourceType, ${edge.role}, $targetType)",
                 path = path,
@@ -110,27 +110,27 @@ class BoValidator(
     }
 
     private fun validateEdgeProperties(
-        edge: BoEdge,
-        rule: BoAllowedEdgeRule,
+        edge: BoMEdge,
+        rule: BoMAllowedEdgeRule,
         path: String,
-    ): List<BoValidationIssue> {
-        val issues = mutableListOf<BoValidationIssue>()
+    ): List<BoMValidationIssue> {
+        val issues = mutableListOf<BoMValidationIssue>()
         val props = edge.properties
         when (rule.propertiesPolicy) {
-            BoPropertiesPolicy.NONE -> {
+            BoMPropertiesPolicy.NONE -> {
                 if (!props.isNullOrEmpty()) {
-                    issues += BoValidationIssue(
+                    issues += BoMValidationIssue(
                         code = "PROPERTIES_NOT_ALLOWED",
                         message = "Role ${edge.role} forbids properties (bare edge)",
                         path = "$path.properties",
                     )
                 }
             }
-            BoPropertiesPolicy.SCHEMA -> {
+            BoMPropertiesPolicy.SCHEMA -> {
                 val type = edge.type
                 val schemaVersion = edge.schemaVersion
                 if (type.isNullOrBlank() || schemaVersion.isNullOrBlank()) {
-                    issues += BoValidationIssue(
+                    issues += BoMValidationIssue(
                         code = "EDGE_SCHEMA_REF_MISSING",
                         message = "Edge type+schemaVersion required for schema properties policy",
                         path = path,
@@ -139,7 +139,7 @@ class BoValidator(
                 }
                 if (props == null) {
                     if (!rule.emptyPropertiesAllowed) {
-                        issues += BoValidationIssue(
+                        issues += BoMValidationIssue(
                             code = "PROPERTIES_REQUIRED",
                             message = "Empty properties not allowed for this edge rule",
                             path = "$path.properties",
@@ -148,7 +148,7 @@ class BoValidator(
                     return issues
                 }
                 if (props.isEmpty() && !rule.emptyPropertiesAllowed) {
-                    issues += BoValidationIssue(
+                    issues += BoMValidationIssue(
                         code = "PROPERTIES_REQUIRED",
                         message = "Empty properties not allowed for this edge rule",
                         path = "$path.properties",
@@ -157,7 +157,7 @@ class BoValidator(
                 }
                 val schema = schemas.get(type, schemaVersion)
                 if (schema == null) {
-                    issues += BoValidationIssue(
+                    issues += BoMValidationIssue(
                         code = "SCHEMA_NOT_FOUND",
                         message = "No schema for edge type=$type schemaVersion=$schemaVersion",
                         path = path,
@@ -171,38 +171,38 @@ class BoValidator(
     }
 
     /** Full audit of an in-memory graph (entities then edges) using only payload entities for types. */
-    fun audit(graph: BoGraph): BoValidationResult {
+    fun audit(graph: BoMGraph): BoMValidationResult {
         val entityIssues = validateEntities(graph.entities).issues
         val lookup = payloadLookup(graph.entities)
         val edgeIssues = validateEdges(graph.edges, lookup).issues
-        return BoValidationResult(entityIssues + edgeIssues)
+        return BoMValidationResult(entityIssues + edgeIssues)
     }
 
-    fun payloadLookup(entities: Collection<BoEntity>): BoEntityTypeLookup {
+    fun payloadLookup(entities: Collection<BoMEntity>): BoMEntityTypeLookup {
         val map = entities.mapNotNull { e -> e.id?.let { it to e.type } }.toMap()
-        return BoEntityTypeLookup { id -> map[id] }
+        return BoMEntityTypeLookup { id -> map[id] }
     }
 
     fun combinedLookup(
-        payloadEntities: Collection<BoEntity>,
-        storeLookup: BoEntityTypeLookup,
-    ): BoEntityTypeLookup {
+        payloadEntities: Collection<BoMEntity>,
+        storeLookup: BoMEntityTypeLookup,
+    ): BoMEntityTypeLookup {
         val payload = payloadLookup(payloadEntities)
-        return BoEntityTypeLookup { id -> payload.typeOf(id) ?: storeLookup.typeOf(id) }
+        return BoMEntityTypeLookup { id -> payload.typeOf(id) ?: storeLookup.typeOf(id) }
     }
 
     private fun validateAgainstSchema(
         schemaDoc: Map<String, Any?>,
         data: Map<String, Any?>,
         path: String,
-    ): List<BoValidationIssue> {
+    ): List<BoMValidationIssue> {
         return try {
             val schemaNode = objectMapper.valueToTree<com.fasterxml.jackson.databind.JsonNode>(schemaDoc)
             val dataNode = objectMapper.valueToTree<com.fasterxml.jackson.databind.JsonNode>(data)
             val schema = schemaFactory.getSchema(schemaNode)
             val errors = schema.validate(dataNode)
             errors.map {
-                BoValidationIssue(
+                BoMValidationIssue(
                     code = "SCHEMA_VIOLATION",
                     message = it.message,
                     path = path,
@@ -210,7 +210,7 @@ class BoValidator(
             }
         } catch (ex: Exception) {
             listOf(
-                BoValidationIssue(
+                BoMValidationIssue(
                     code = "SCHEMA_ERROR",
                     message = ex.message ?: "schema validation failed",
                     path = path,

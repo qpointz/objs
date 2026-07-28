@@ -17,6 +17,7 @@ dependencies {
     implementation(project(":objs-service"))
     implementation(libs.kotlin.stdlib)
     implementation(libs.kotlin.reflect)
+    implementation(libs.springdoc.openapi.starter.webmvc.ui)
     runtimeOnly(libs.h2.database)
 }
 

@@ -1,8 +1,8 @@
 package org.poc.objs.core.persistence
 
-import org.poc.objs.core.domain.BoAllowedEdgeCatalog
-import org.poc.objs.core.domain.BoSchemaCatalog
-import org.poc.objs.core.validation.BoValidator
+import org.poc.objs.core.domain.BoMAllowedEdgeCatalog
+import org.poc.objs.core.domain.BoMSchemaCatalog
+import org.poc.objs.core.validation.BoMValidator
 import org.springframework.boot.autoconfigure.AutoConfiguration
 import org.springframework.boot.persistence.autoconfigure.EntityScan
 import org.springframework.context.annotation.Bean
@@ -20,14 +20,14 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories
 class ObjsCoreAutoConfiguration {
 
     @Bean
-    fun boSchemaCatalog(): BoSchemaCatalog = BoSchemaCatalog()
+    fun bomSchemaCatalog(): BoMSchemaCatalog = BoMSchemaCatalog()
 
     @Bean
-    fun boAllowedEdgeCatalog(): BoAllowedEdgeCatalog = BoAllowedEdgeCatalog()
+    fun bomAllowedEdgeCatalog(): BoMAllowedEdgeCatalog = BoMAllowedEdgeCatalog()
 
     @Bean
-    fun boValidator(
-        schemas: BoSchemaCatalog,
-        allowedEdges: BoAllowedEdgeCatalog,
-    ): BoValidator = BoValidator(schemas, allowedEdges)
+    fun bomValidator(
+        schemas: BoMSchemaCatalog,
+        allowedEdges: BoMAllowedEdgeCatalog,
+    ): BoMValidator = BoMValidator(schemas, allowedEdges)
 }
