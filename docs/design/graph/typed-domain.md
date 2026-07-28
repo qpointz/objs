@@ -1,6 +1,6 @@
 # Typed domain layer
 
-**Status:** implemented (story [`sbom-typed-example`](../../workitems/in-progress/sbom-typed-example/STORY.md))
+**Status:** implemented (story [`sbom-typed-example`](../../workitems/completed/20260728-sbom-typed-example/STORY.md))
 
 Reusable helpers in `objs-core` (`org.poc.objs.core.typed`) convert typed domain objects to foundation
 `BoMEntity` / `BoMEdge` / `BoMGraph` **by composition** (not subclassing).

@@ -21,6 +21,14 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 
 ---
 
+## domain — Concrete graphs / examples
+
+| # | Item | Type | Status | Source |
+|---|------|------|--------|--------|
+| D-1 | SBOM typed example (toolkit + ontology + REST + SPA) | feature | done | [`completed/20260728-sbom-typed-example/`](completed/20260728-sbom-typed-example/STORY.md), [`docs/design/sbom/example.md`](../design/sbom/example.md) |
+
+---
+
 ## Summary
 
 | Status | Count |
@@ -28,4 +36,4 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | backlog | 1 |
 | planned | 0 |
 | in-progress | 0 |
-| done | 2 |
+| done | 3 |

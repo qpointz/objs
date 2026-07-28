@@ -1,6 +1,6 @@
 # Software BOM example
 
-**Status:** in-progress (story [`sbom-typed-example`](../../workitems/in-progress/sbom-typed-example/STORY.md))  
+**Status:** completed (story [`sbom-typed-example`](../../workitems/completed/20260728-sbom-typed-example/STORY.md))  
 **Module:** `objs-sbom-example` (**concrete app**)  
 **Foundation:** low-level entity graph (`BoMEntity` / `BoMEdge` / `BoMGraphStore` / generic REST) — see [`../graph/`](../graph/README.md)  
 **Ontology:** [`canonical-spec.md`](canonical-spec.md) (v1.0 Draft)
@@ -230,7 +230,7 @@ python objs-sbom-example/scripts/random_sbom_crud.py get --app demo-app --versio
 ## Related
 
 - Canonical ontology: [`canonical-spec.md`](canonical-spec.md)
-- Story: [`docs/workitems/in-progress/sbom-typed-example/`](../../workitems/in-progress/sbom-typed-example/STORY.md)
-- Gaps: [`GAPS.md`](../../workitems/in-progress/sbom-typed-example/GAPS.md)
+- Story: [`docs/workitems/completed/20260728-sbom-typed-example/`](../../workitems/completed/20260728-sbom-typed-example/STORY.md)
+- Gaps: [`GAPS.md`](../../workitems/completed/20260728-sbom-typed-example/GAPS.md)
 - Annotations design: [`../graph/annotations-and-subgraphs.md`](../graph/annotations-and-subgraphs.md)
 - Typed toolkit (when written): [`../graph/typed-domain.md`](../graph/typed-domain.md)

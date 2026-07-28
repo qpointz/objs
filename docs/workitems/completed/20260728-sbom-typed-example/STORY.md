@@ -2,7 +2,7 @@
 
 **Slug:** `sbom-typed-example`  
 **Branch:** `sbom-typed-example`  
-**Status:** in-progress  
+**Status:** closed (2026-07-28)  
 **Backlog:** D-1  
 **Design:** [`docs/design/sbom/example.md`](../../../design/sbom/example.md), [`docs/design/sbom/canonical-spec.md`](../../../design/sbom/canonical-spec.md), [`docs/design/graph/typed-domain.md`](../../../design/graph/typed-domain.md)  
 **Gaps:** [`GAPS.md`](GAPS.md)

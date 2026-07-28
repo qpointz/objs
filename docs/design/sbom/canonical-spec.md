@@ -2,8 +2,8 @@
 
 **Version:** 1.0 Draft  
 **Generated:** 2026-07-28  
-**Status:** registered in [`objs-sbom-example`](../../workitems/in-progress/sbom-typed-example/STORY.md) (`SbomRegistry`) — all object types and relationship triples below  
-**Mapping to objs foundation:** see [`example.md`](example.md) and story [`GAPS.md`](../../workitems/in-progress/sbom-typed-example/GAPS.md)
+**Status:** registered in [`objs-sbom-example`](../../workitems/completed/20260728-sbom-typed-example/STORY.md) (`SbomRegistry`) — all object types and relationship triples below  
+**Mapping to objs foundation:** see [`example.md`](example.md) and story [`GAPS.md`](../../workitems/completed/20260728-sbom-typed-example/GAPS.md)
 
 ## Purpose
 
