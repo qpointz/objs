@@ -28,9 +28,10 @@ JUnit Jupiter + Mockito. Name tests `<Subject>Test`; methods `shouldX_whenY`. Pr
 
 ## Branching Strategy
 
-Each story uses a **dedicated branch**, usually from `origin/dev`:
-`git fetch origin && git checkout -b <story-slug> origin/dev`.
-Rebase onto `origin/dev` before push. Never commit directly to `dev`.
+Each story uses a **dedicated branch**, usually from `dev` / `origin/dev`:
+`git fetch origin && git checkout -b <story-slug> origin/dev`
+(or from local `dev` if no remote yet).
+Rebase onto `dev` / `origin/dev` before push. Never commit directly to `dev`.
 
 ## Stories & Work Items
 

@@ -22,7 +22,7 @@ Domain model: [`../graph/`](../graph/README.md).
 | `ObjsCore` | Module marker (`MODULE = "objs-core"`) |
 | `PersistableEntity` | `@MappedSuperclass` with generated `Long` id — base for future persistence mappings |
 
-No concrete domain entities, repositories, or Flyway migrations yet.
+No concrete domain entities, repositories, or Flyway migrations yet (Flyway required from WI-005 / G-10).
 
 ## Dependencies (notable)
 
@@ -36,4 +36,4 @@ No concrete domain entities, repositories, or Flyway migrations yet.
 2. Place domain + persistence per [`../graph/model.md`](../graph/model.md) and [`../graph/persistence.md`](../graph/persistence.md)
 3. Implement persist-time validation gate; keep SDK free for arbitrary in-memory graphs
 4. Wire repositories and any core `@Configuration` that service autoconfig should import
-5. Decide ID strategy and PostgreSQL/JSONB mapping details
+5. Decide ID strategy — **UUID v7** (resolved) — and PostgreSQL/JSONB mapping details

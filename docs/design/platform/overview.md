@@ -62,15 +62,16 @@ Dependency rule: `objs-service` → `objs-core`. Core must not depend on service
 
 - Runnable `apps/*` Spring Boot application
 - Security / OAuth
-- Flyway (or other) migrations (direction TBD with domain persistence)
 - UI
 - GitLab CI / Maven Central publishing credentials
+
+**Persistence migrations:** **Flyway from day one** for domain tables (G-10) — land with WI-005 / foundation story; not yet in scaffold.
 
 ## Open questions
 
 Capture answers under `graph/` when decided; remaining highlights:
 
-1. Entity identity; type/schema registry
+1. Entity identity — **UUID v7** (resolved); type/schema registry — **in-memory** this story, **PostgreSQL tables later**
 2. Annotation shape; confirm JSON storage/indexing
 3. Allowed-edge rule model; edge table / property schema
 4. Whether edges may carry annotations later (half-open)

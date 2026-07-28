@@ -11,10 +11,10 @@ Introduce the in-memory **entity SDK** types in `objs-core` per
 
 ## Scope
 
-- **Entity** — type, JSON payload, annotations; independent create/mutate in memory
-- **Entity type** — association with a JSON Schema for the payload (registry shape may be minimal)
-- **Relation / edge** — endpoints, role, properties
-- **Annotation** — caller-defined opaque metadata on entities (shape: prefer simple key-value unless design says otherwise; document choice in design if decided here)
+- **Entity** (`BoEntity`) — optional id (**UUID v7**; absent → create, present → update on persist), **type + version**, JSON payload, annotations; independent create/mutate in memory
+- **Central schema catalog** — in-memory map of `(type, version)` → JSON Schema (entities and edges)
+- **Relation / edge** (`BoEdge`) — optional id (same create/update-by-id rule); **source**, **target** (UUID refs), **role**; optional **type + version** + JSON properties when allow-list policy requires them; bare edges supported
+- **Annotation** — caller-defined opaque metadata on entities as a **key-value map** (value types TBD; see design)
 - Unit tests for construction and basic invariants (no persistence, no validation enforcement on construct)
 
 ## Out of scope
@@ -26,7 +26,7 @@ Introduce the in-memory **entity SDK** types in `objs-core` per
 
 ## Acceptance
 
-- [ ] Domain types live under `org.poc.objs.core…`
+- [ ] Domain types live under `org.poc.objs.core…` as **`BoEntity`**, **`BoEdge`** (and related); ids optional until persist (**UUID v7**)
 - [ ] SDK can build arbitrary in-memory graphs without validation
-- [ ] Design docs use **Entity** (not Object); Java naming avoids `java.lang.Object` clash
-- [ ] Tests cover entity + edge construction
+- [ ] Design docs use domain **entity** / **edge**; Java uses `Bo*` names
+- [ ] Tests cover `BoEntity` + `BoEdge` construction
