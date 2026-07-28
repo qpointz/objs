@@ -24,7 +24,7 @@ Do not invent silently in code without updating this file or [`docs/design/graph
 
 | # | Topic | Status | Notes |
 |---|--------|--------|-------|
-| G-5 | **Entity identity** | resolved | **UUID v7** everywhere (see resolution log) |
+| G-5 | **Entity identity** | resolved | Plain **`UUID`** (`UUID.randomUUID()`) — see resolution log |
 | G-6 | **Entity type + JSON Schema registry** | resolved | **In-memory**; later PG tables — refined by **G-8** (central **type+version** schemas) |
 | G-7 | **Allowed-edge rule shape** | resolved | `(sourceType, role, targetType)` + **properties policy** — see **G-7 detail** |
 | G-8 | **Edge properties + schema mgmt** | resolved | Central **type+version** schemas; bare edges allowed per G-7 policy — see **G-8 detail** |
@@ -47,10 +47,11 @@ Do not invent silently in code without updating this file or [`docs/design/graph
 
 | Decision | Choice |
 |----------|--------|
-| Rule identity | `(sourceType, role, targetType)` |
+| Rule identity | `(sourceType, role, targetType)` — each component may be `*` (any) |
 | Direction | **Directed** — `A --role--> B` ≠ `B --role--> A` unless both rules exist |
 | Cardinality | **Unlimited** for now |
-| Role | **Free string** |
+| Role | **Free string** (or `*` for any role) |
+| Wildcards | `*` matches any value in that position. Example: `(* , depends_on , *)` allows `depends_on` between any types. When several rules match, the **most specific** (fewest wildcards) wins; ties → later registration. |
 | Catalog | **In-memory** allow-list; later PostgreSQL (C-3) |
 | Policy | In catalog → continue checks; not in catalog → **deny** |
 | **Properties policy** (per rule) | Declared on the allow-list entry — see below |
@@ -113,7 +114,7 @@ For **entities and edges** in a write (including batch subgraph payload):
 
 | Id on item | Operation |
 |------------|-----------|
-| **Absent** (null / not provided) | **Create** — assign **UUID v7** on persist |
+| **Absent** (null / not provided) | **Create** — assign **`UUID.randomUUID()`** on persist |
 | **Present** | **Update** — must refer to an existing persisted row; reject if unknown id |
 
 - Same rule for both `BoEntity` and `BoEdge`.
@@ -141,14 +142,14 @@ For **entities and edges** in a write (including batch subgraph payload):
 | G-2 | Extensible matching: **base matcher** + default **match-all** (entity matches iff **all** filter key-value pairs are present on the entity) | 2026-07-28 | [`annotations-and-subgraphs.md`](../../../design/graph/annotations-and-subgraphs.md); WI-003 |
 | G-3 | Subgraph edges are **induced**: include edge iff **source** and **target** are both in the selected entity set. Edge ends named **source** / **target** (not “endpoints”) | 2026-07-28 | [`annotations-and-subgraphs.md`](../../../design/graph/annotations-and-subgraphs.md); [`model.md`](../../../design/graph/model.md) |
 | G-4 | Java types use **`Bo` prefix:** `BoEntity`, `BoEdge` (avoids `java.lang.Object` / JPA `@Entity` clash). Domain vocabulary remains entity / edge | 2026-07-28 | [`model.md`](../../../design/graph/model.md); WI-002 |
-| G-5 | Identity is **UUID v7** for entities (and edges if they have ids) — same in memory and PostgreSQL; v7 preferred for **index locality** | 2026-07-28 | [`model.md`](../../../design/graph/model.md); [`persistence.md`](../../../design/graph/persistence.md) |
+| G-5 | Identity is plain **`UUID`** (`java.util.UUID` / PostgreSQL `uuid`); generated with **`UUID.randomUUID()`** | 2026-07-28 | [`model.md`](../../../design/graph/model.md); [`persistence.md`](../../../design/graph/persistence.md) |
 | G-6 | Entity type + JSON Schema **registry is in-memory** for this story; **later** persisted as **separate PostgreSQL tables** (follow-up) | 2026-07-28 | [`model.md`](../../../design/graph/model.md); WI-004 |
-| G-7 | Allowed edge = `(sourceType, role, targetType)` + **properties policy** (`none` bare edge vs `schema` + empty allowed/forbidden); directed allow-list | 2026-07-28 | this file (G-7 detail); [`validation.md`](../../../design/graph/validation.md); WI-004 |
+| G-7 | Allowed edge = `(sourceType, role, targetType)` with optional `*` wildcards + **properties policy** (`none` bare edge vs `schema` + empty allowed/forbidden); directed allow-list; most-specific match wins | 2026-07-28 | this file (G-7 detail); [`validation.md`](../../../design/graph/validation.md); WI-004 |
 | G-8 | Edge properties JSON Schema via central **type+version** when policy=`schema`; **bare edges** when policy=`none` | 2026-07-28 | this file (G-8 detail); [`model.md`](../../../design/graph/model.md); [`validation.md`](../../../design/graph/validation.md) |
 | G-9 | Persist-time validation gate applies equally to **create, update, and delete** | 2026-07-28 | [`validation.md`](../../../design/graph/validation.md); WI-004 / WI-005 |
 | G-10 | DB schema owned by **Flyway from day one** (not Hibernate `ddl-auto` as source of truth) | 2026-07-28 | [`persistence.md`](../../../design/graph/persistence.md); WI-005 |
 | G-11 | Persistence tests use **H2** for this story (PostgreSQL remains the primary runtime DB) | 2026-07-28 | WI-005; [`persistence.md`](../../../design/graph/persistence.md) |
 | G-19 | Persist **subgraph payload**; **two-stage** validation — (1) entities vs schema, (2) edges vs payload∪store right before persist | 2026-07-28 | this file (G-19 detail); [`validation.md`](../../../design/graph/validation.md); WI-004 / WI-005 |
-| G-20 | **No id → create** (assign UUID v7); **id present → update** (must exist); delete is explicit | 2026-07-28 | this file (G-20 detail); [`validation.md`](../../../design/graph/validation.md); WI-002 / WI-005 |
+| G-20 | **No id → create** (assign `UUID.randomUUID()`); **id present → update** (must exist); delete is explicit | 2026-07-28 | this file (G-20 detail); [`validation.md`](../../../design/graph/validation.md); WI-002 / WI-005 |
 | G-12 | Local **`dev`** branch is the integration / story base (create story branches from `dev`; use `origin/dev` once remote exists) | 2026-07-28 | this file; git `dev` |
 | G-13 | Maven **group** `org.poc.objs`; artifact ids **`objs-core`** / **`objs-service`** unchanged | 2026-07-28 | WI-001 |

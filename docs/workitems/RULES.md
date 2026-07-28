@@ -314,7 +314,7 @@ implementation on the feature branch:
    or **unknown** — fix failures, amend with a new commit if needed, push again, and re-check until
    green (or report a blocker to the user).
 4. **Local tests** — run module-appropriate tests locally as part of the WI (e.g. `./gradlew test`,
-   `./gradlew :core:objs-core:test :services:objs-service:test`) **before** push; CI is the remote
+   `./gradlew :objs-core:test :objs-service:test`) **before** push; CI is the remote
    confirmation, not a substitute for local verification when the WI touches that code.
 
 Which pipeline jobs apply depends on the change (Gradle modules, etc.); at minimum expect the
@@ -365,8 +365,8 @@ This keeps each WI a **reviewable, reproducible checkpoint** on the story branch
 
 ## Module Reference
 
-- `core/objs-core` — Spring primitives, domain types, JPA persistence
-- `services/objs-service` — Spring REST API and Boot autoconfiguration
+- `objs-core` — Spring primitives, domain types, JPA persistence
+- `objs-service` — Spring REST API and Boot autoconfiguration
 
 ---
 

@@ -3,19 +3,19 @@ Repository Guidelines
 
 ## Project Structure & Module Organization
 
-Gradle multi-module Java project. Libraries live under domain folders:
+Gradle multi-module Kotlin project. Leaf modules at the repository root:
 
-- `core/objs-core` — Entity SDK, domain types, JPA / PostgreSQL persistence
-- `services/objs-service` — Spring REST API and Boot autoconfiguration
+- `objs-core` — Entity SDK, domain types, JPA / PostgreSQL persistence
+- `objs-service` — Spring REST API and Boot autoconfiguration
 
-Production sources: `src/main/java`. Tests: `src/test/java` (integration suites under `src/testIT/java` when present).
+Production sources: `src/main/kotlin`. Tests: `src/test/kotlin` (integration suites under `src/testIT/kotlin` when present).
 
 ## Build, Test, and Development Commands
 
 - `./gradlew build` — compile, test, assemble
 - `./gradlew test` — unit tests (all leaf modules)
-- `./gradlew :core:objs-core:test` / `./gradlew :services:objs-service:test` — scoped tests
-- `./gradlew :services:objs-service:testIT` — integration tests when defined
+- `./gradlew :objs-core:test` / `./gradlew :objs-service:test` — scoped tests
+- `./gradlew :objs-service:testIT` — integration tests when defined
 - `./gradlew clean` — remove build outputs
 
 ## Coding Style & Naming Conventions

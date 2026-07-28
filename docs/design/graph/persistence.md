@@ -12,7 +12,7 @@
 ## Entity storage
 
 - Entities live in **relational tables** that expose only **generic / high-level attributes** (type, schema reference, **id**, … — exact column set TBD beyond id).
-- **Primary key / identity: UUID v7** (Java `UUID`, PostgreSQL `uuid`). Prefer v7 over v4 for insert/index locality.
+- **Primary key / identity: `UUID`** (Java `UUID.randomUUID()`, PostgreSQL `uuid`).
 - Domain-specific fields from the informational model are **not** first-class columns.
 - Entity **payload** is stored as **JSON / JSONB**.
 - **Annotations** are **most probably** also stored as **JSON** (working assumption; confirm when query/index needs are known).
@@ -20,8 +20,8 @@
 ## Edges
 
 - Edge / relation table shape is **TBD** (expect generic columns for **source**, **target**, role, and properties).
-- **Source** / **target** reference entity ids as **UUID v7**.
-- Whether edges have their own UUID id: prefer **yes** (UUID v7) unless decided otherwise during WI-005.
+- **Source** / **target** reference entity ids as **`UUID`**.
+- Whether edges have their own UUID id: prefer **yes** unless decided otherwise during WI-005.
 - Whether edge properties use JSONB: **yes** when properties present (bare edges may store null/empty)
 
 ## Validation gate
@@ -38,7 +38,7 @@ Persistence is the **enforcement** point for payload schema and allowed edges �
 
 ## Open
 
-- Exact DDL / column lists beyond **UUID v7** identity
+- Exact DDL / column lists beyond **UUID** identity
 - JSONB indexing strategy for payload and annotations
 - Type/schema catalog storage — **central `(type, version)` → JSON Schema** in-memory for foundation; **later** PostgreSQL tables (entities + edges share catalog)
 - Allowed-edge rules storage

@@ -1,6 +1,6 @@
 # objs-service
 
-**Module:** `:services:objs-service`  
+**Module:** `:objs-service`  
 **Packages (target):** `org.poc.objs.service`, `org.poc.objs.service.web`  
 **Packages (scaffold today):** `io.qpointz.poc.objs.service`, `io.qpointz.poc.objs.service.web` — rename in a later WI
 
@@ -11,7 +11,7 @@ Publishable Spring library that exposes:
 - **REST** controllers for the objs HTTP API
 - **Boot autoconfiguration** so a consuming application can pick up objs beans by classpath
 
-Depends on `:core:objs-core`. Domain: [`../graph/`](../graph/README.md).
+Depends on `:objs-core`. Domain: [`../graph/`](../graph/README.md).
 
 ## Current scaffold
 

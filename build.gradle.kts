@@ -59,8 +59,8 @@ tasks.register("test") {
     description = "Runs all test tasks across leaf modules"
     group = "verification"
     dependsOn(
-        ":core:objs-core:test",
-        ":services:objs-service:test"
+        ":objs-core:test",
+        ":objs-service:test"
     )
 }
 
@@ -68,6 +68,6 @@ tasks.register("testIT") {
     description = "Runs all testIT tasks across leaf modules"
     group = "verification"
     dependsOn(
-        ":services:objs-service:testIT"
+        ":objs-service:testIT"
     )
 }

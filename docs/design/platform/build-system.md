@@ -4,15 +4,13 @@
 
 ```text
 objs/
-  settings.gradle.kts      # includes :core:objs-core, :services:objs-service
+  settings.gradle.kts      # includes :objs-core, :objs-service
   build.gradle.kts         # group, version, toolchain, aggregate test tasks
   libs.versions.toml       # Spring Boot, JUnit, Lombok, Jackson, …
   VERSION                  # default project version (e.g. 0.1.0)
   gradle/wrapper/          # Gradle 9.4.0
-  core/
-    objs-core/
-  services/
-    objs-service/
+  objs-core/
+  objs-service/
 ```
 
 ## Conventions
@@ -29,7 +27,7 @@ objs/
 
 ```bash
 ./gradlew test
-./gradlew :core:objs-core:build
-./gradlew :services:objs-service:build
-./gradlew :services:objs-service:testIT
+./gradlew :objs-core:build
+./gradlew :objs-service:build
+./gradlew :objs-service:testIT
 ```

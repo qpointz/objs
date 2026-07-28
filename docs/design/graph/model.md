@@ -25,9 +25,9 @@ Every entity (`BoEntity`) has:
 | **Payload** | A **JSON object** (JSON document) |
 | **Annotations** | Caller-defined metadata used for subgraph selection — see [annotations-and-subgraphs.md](annotations-and-subgraphs.md) |
 
-Identity: **UUID version 7** (`UUID` / PostgreSQL `uuid`), same in-memory and persisted. v7 for better B-tree index locality than random v4.
+Identity: plain **`UUID`** (`UUID.randomUUID()` / PostgreSQL `uuid`), same in-memory and persisted.
 
-**Create vs update:** if id is **absent** on persist → **create** (assign UUID v7); if id is **present** → **update** (must exist). See [validation.md](validation.md) / G-20.
+**Create vs update:** if id is **absent** on persist → **create** (assign `UUID.randomUUID()`); if id is **present** → **update** (must exist). See [validation.md](validation.md) / G-20.
 
 ## Central schema repository
 
@@ -47,6 +47,7 @@ Identity: **UUID version 7** (`UUID` / PostgreSQL `uuid`), same in-memory and pe
 - Allowed edges: **in-memory allow-list** keyed by **`(sourceType, role, targetType)`**, each with a **properties policy**:
   - **none** — no properties allowed/expected
   - **schema** — properties validated against central schema `(type, version)`; policy also says if **empty** properties are allowed
+- Any component may be **`*`** (wildcard). Example: `(* , depends_on , *)` allows that role between any entity types. Most specific matching rule wins.
 - Rules are **directed**; **role** is a **free string**; **cardinality** unlimited for now.
 - Persist/audit: not in allow-list → **deny**; then enforce properties policy (and schema when applicable).
 - In-memory construction is unrestricted — see [validation.md](validation.md).

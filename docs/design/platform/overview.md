@@ -37,8 +37,8 @@ group/version/toolchain live in the root [`build.gradle.kts`](../../../build.gra
 ```mermaid
 flowchart LR
   consumer[Consuming Spring Boot app]
-  service[services/objs-service]
-  core[core/objs-core]
+  service[objs-service]
+  core[objs-core]
   consumer -->|"depends on / autoconfigures"| service
   service -->|api| core
   core -->|JPA / JSONB| db[(PostgreSQL)]
@@ -46,8 +46,8 @@ flowchart LR
 
 | Module | Gradle path | Responsibility |
 |--------|-------------|----------------|
-| **objs-core** | `:core:objs-core` | Entity SDK, core types, **JPA / PostgreSQL persistence** |
-| **objs-service** | `:services:objs-service` | Spring **REST** + Boot **autoconfiguration** |
+| **objs-core** | `:objs-core` | Entity SDK, core types, **JPA / PostgreSQL persistence** |
+| **objs-service** | `:objs-service` | Spring **REST** + Boot **autoconfiguration** |
 
 Dependency rule: `objs-service` → `objs-core`. Core must not depend on service.
 
@@ -71,7 +71,7 @@ Dependency rule: `objs-service` → `objs-core`. Core must not depend on service
 
 Capture answers under `graph/` when decided; remaining highlights:
 
-1. Entity identity — **UUID v7** (resolved); type/schema registry — **in-memory** this story, **PostgreSQL tables later**
+1. Entity identity — plain **`UUID`** (resolved); type/schema registry — **in-memory** this story, **PostgreSQL tables later**
 2. Annotation shape; confirm JSON storage/indexing
 3. Allowed-edge rule model; edge table / property schema
 4. Whether edges may carry annotations later (half-open)

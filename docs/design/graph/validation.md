@@ -17,7 +17,7 @@ Same policy applies for the **entity SDK** save path. REST (later stories) uses 
 
 | Case | Rule |
 |------|------|
-| Entity/edge **without id** | **Create** — generate **UUID v7** at persist |
+| Entity/edge **without id** | **Create** — generate **`UUID.randomUUID()`** at persist |
 | Entity/edge **with id** | **Update** — id must already exist in the store; else **reject** |
 | **Delete** | Explicit API; requires id (not inferred from a create/update payload) |
 
@@ -35,9 +35,10 @@ Schema lookup (when properties policy = **schema**): **type + version** → sche
 
 ## Allowed-edge rules
 
-- Identity: **`(sourceType, role, targetType)`** (entity types of source/target)
+- Identity: **`(sourceType, role, targetType)`** (entity types of source/target); each part may be **`*`**
 - Plus **properties policy**: `none` | `schema` (+ empty allowed/forbidden when `schema`)
 - **Directed**; role is a **free string**; **no cardinality** limits in this story
+- Wildcards: e.g. `(* , depends_on , *)` permits that role for any types; most specific match wins
 - Catalog: **in-memory**; not in catalog → **deny**
 - Later: persist rules as PostgreSQL tables (follow-up with schema catalog / C-3)
 

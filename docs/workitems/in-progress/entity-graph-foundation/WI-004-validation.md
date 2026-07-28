@@ -29,7 +29,7 @@ Provide core validation per [`docs/design/graph/validation.md`](../../../design/
 
 - [ ] Constructing invalid graphs in memory succeeds
 - [ ] Persist-gate rejects invalid entity/edge on **create, update, and delete**
-- [ ] No id → create (UUID v7 assigned); id present → update (unknown id rejects); delete explicit
+- [ ] No id → create (`UUID.randomUUID()` assigned); id present → update (unknown id rejects); delete explicit
 - [ ] Two-stage batch: entity schema failures reject before edge checks; edge stage sees payload ∪ store
 - [ ] Batch payload: edge to **existing** store entity validates using store entity type; missing endpoint rejects
 - [ ] Audit validation returns conformance info without requiring persistence

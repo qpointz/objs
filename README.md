@@ -6,8 +6,8 @@ Entity/graph application (PoC). Multi-module Gradle **Kotlin** project.
 
 | Module | Path | Role |
 |--------|------|------|
-| `objs-core` | `core/objs-core` | Entity SDK, validation, JPA / Flyway |
-| `objs-service` | `services/objs-service` | Spring REST + Boot autoconfiguration |
+| `objs-core` | `objs-core/` | Entity SDK, validation, JPA / Flyway |
+| `objs-service` | `objs-service/` | Spring REST + Boot autoconfiguration |
 
 **Group / packages:** `org.poc.objs` · **JVM toolchain:** 24 (Kotlin) · **Spring Boot:** 4.x
 
@@ -18,7 +18,7 @@ Story: [`docs/workitems/in-progress/entity-graph-foundation/`](docs/workitems/in
 
 ```bash
 ./gradlew test
-./gradlew :core:objs-core:build :services:objs-service:build
+./gradlew :objs-core:build :objs-service:build
 ```
 
 Version comes from the root `VERSION` file (override with `-PprojectVersion=`).
