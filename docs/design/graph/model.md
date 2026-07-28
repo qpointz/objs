@@ -13,11 +13,11 @@ The product is an **entity store**: it persists and manages informational elemen
 
 ### Why “Entity” not “Object”
 
-Domain concept is **entity**; Java type is **`BoEntity`** (and edges **`BoEdge`**) — `Bo` prefix avoids clashes with `java.lang.Object` and `jakarta.persistence.Entity`. Domain docs still say entity / edge; code uses the `Bo*` types.
+Domain concept is **entity**; Java type is **`BoMEntity`** (and edges **`BoMEdge`**) — `Bo` prefix avoids clashes with `java.lang.Object` and `jakarta.persistence.Entity`. Domain docs still say entity / edge; code uses the `Bo*` types.
 
 ## Entity
 
-Every entity (`BoEntity`) has:
+Every entity (`BoMEntity`) has:
 
 | Aspect | Requirement |
 |--------|-------------|
@@ -40,7 +40,7 @@ Identity: plain **`UUID`** (`UUID.randomUUID()` / PostgreSQL `uuid`), same in-me
 
 ## Relation / edge
 
-- Entities form a **graph** via **relations (edges)** — Java type **`BoEdge`**.
+- Entities form a **graph** via **relations (edges)** — Java type **`BoMEdge`**.
 - Each edge has: **source**, **target**, **role**, and optionally **type + version** + **properties** (JSON).
 - Prefer terminology **source** / **target** (directed); avoid “endpoints” in APIs and docs.
 - **Bare edges** (no properties) are first-class: some roles are links only, in the graph-theory sense.
@@ -58,10 +58,10 @@ Identity: plain **`UUID`** (`UUID.randomUUID()` / PostgreSQL `uuid`), same in-me
 
 | Domain | Java (foundation) |
 |--------|-------------------|
-| Entity | `BoEntity` |
-| Edge / relation | `BoEdge` |
-| Schema catalog entry | TBD (`BoSchema` / similar — type + version + JSON Schema document) |
-| Annotations map | Prefer plain key-value on `BoEntity` |
-| Annotation matcher | TBD (`BoAnnotationMatcher` base + match-all impl) |
+| Entity | `BoMEntity` |
+| Edge / relation | `BoMEdge` |
+| Schema catalog entry | TBD (`BoMSchema` / similar — type + version + JSON Schema document) |
+| Annotations map | Prefer plain key-value on `BoMEntity` |
+| Annotation matcher | TBD (`BoMAnnotationMatcher` base + match-all impl) |
 
 Annotation type name may still avoid `java.lang.annotation` clash if a dedicated class is introduced.

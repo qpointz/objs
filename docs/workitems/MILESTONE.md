@@ -11,11 +11,11 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 ### Completed
 
 - Project scaffold — Gradle multi-module shell (`objs-core`, `objs-service`), workitem process docs.
-- [`entity-graph-foundation`](completed/20260728-entity-graph-foundation/STORY.md) — Kotlin entity store: `BoEntity`/`BoEdge`, annotations/subgraphs, schema + allow-list (`*` wildcards), persist gate, Flyway/JPA (H2), packages `org.poc.objs`; modules flattened; `:objs-app` runnable assembly.
+- [`entity-graph-foundation`](completed/20260728-entity-graph-foundation/STORY.md) — Kotlin entity store: `BoMEntity`/`BoMEdge`, annotations/subgraphs, schema + allow-list (`*` wildcards), persist gate, Flyway/JPA (H2), packages `org.poc.objs`; modules flattened; `:objs-app` runnable assembly.
 
 ### In Progress
 
-_(none)_
+- [`entity-rest-api`](in-progress/entity-rest-api/STORY.md) — `/graph` + `/registry` REST, OpenAPI (springdoc in `:objs-app` / service); catalogs remain in-memory until C-3.
 
 ### Planned
 

@@ -18,7 +18,7 @@ Do not invent silently in code without updating this file or [`docs/design/graph
 | G-1 | **Annotation shape** | resolved | **Key-value map** (see resolution log) |
 | G-2 | **Annotation filter matching** | resolved | Extensible matcher base + default **match-all** (see resolution log) |
 | G-3 | **Edge inclusion in subgraph** | resolved | **Induced:** edge included iff **source** and **target** are both in the selected entity set |
-| G-4 | **Java type names** | resolved | **`Bo` prefix:** `BoEntity`, `BoEdge` (see resolution log) |
+| G-4 | **Java type names** | resolved | **`Bo` prefix:** `BoMEntity`, `BoMEdge` (see resolution log) |
 
 ## Before WI-004 / WI-005 (validation + persistence)
 
@@ -117,7 +117,7 @@ For **entities and edges** in a write (including batch subgraph payload):
 | **Absent** (null / not provided) | **Create** — assign **`UUID.randomUUID()`** on persist |
 | **Present** | **Update** — must refer to an existing persisted row; reject if unknown id |
 
-- Same rule for both `BoEntity` and `BoEdge`.
+- Same rule for both `BoMEntity` and `BoMEdge`.
 - **Create with client id:** id present but **not** in store → treat as **create** (needed so batch edges can reference new entities).
 - **Delete** remains an **explicit** operation (requires id); not inferred from payload shape.
 - Batch payloads may mix creates and updates (some items with ids, some without).
@@ -141,7 +141,7 @@ For **entities and edges** in a write (including batch subgraph payload):
 | G-1 | Annotations are a **key-value map** | 2026-07-28 | [`annotations-and-subgraphs.md`](../../../design/graph/annotations-and-subgraphs.md); this file |
 | G-2 | Extensible matching: **base matcher** + default **match-all** (entity matches iff **all** filter key-value pairs are present on the entity) | 2026-07-28 | [`annotations-and-subgraphs.md`](../../../design/graph/annotations-and-subgraphs.md); WI-003 |
 | G-3 | Subgraph edges are **induced**: include edge iff **source** and **target** are both in the selected entity set. Edge ends named **source** / **target** (not “endpoints”) | 2026-07-28 | [`annotations-and-subgraphs.md`](../../../design/graph/annotations-and-subgraphs.md); [`model.md`](../../../design/graph/model.md) |
-| G-4 | Java types use **`Bo` prefix:** `BoEntity`, `BoEdge` (avoids `java.lang.Object` / JPA `@Entity` clash). Domain vocabulary remains entity / edge | 2026-07-28 | [`model.md`](../../../design/graph/model.md); WI-002 |
+| G-4 | Java types use **`Bo` prefix:** `BoMEntity`, `BoMEdge` (avoids `java.lang.Object` / JPA `@Entity` clash). Domain vocabulary remains entity / edge | 2026-07-28 | [`model.md`](../../../design/graph/model.md); WI-002 |
 | G-5 | Identity is plain **`UUID`** (`java.util.UUID` / PostgreSQL `uuid`); generated with **`UUID.randomUUID()`** | 2026-07-28 | [`model.md`](../../../design/graph/model.md); [`persistence.md`](../../../design/graph/persistence.md) |
 | G-6 | Entity type + JSON Schema **registry is in-memory** for this story; **later** persisted as **separate PostgreSQL tables** (follow-up) | 2026-07-28 | [`model.md`](../../../design/graph/model.md); WI-004 |
 | G-7 | Allowed edge = `(sourceType, role, targetType)` with optional `*` wildcards + **properties policy** (`none` bare edge vs `schema` + empty allowed/forbidden); directed allow-list; most-specific match wins | 2026-07-28 | this file (G-7 detail); [`validation.md`](../../../design/graph/validation.md); WI-004 |

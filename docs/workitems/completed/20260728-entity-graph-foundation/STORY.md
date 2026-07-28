@@ -8,7 +8,7 @@
 
 ## Goal
 
-Foundational **Kotlin** entity store in `objs-core`: `BoEntity` / `BoEdge`, annotations, subgraphs,
+Foundational **Kotlin** entity store in `objs-core`: `BoMEntity` / `BoMEdge`, annotations, subgraphs,
 central schemas, allow-list, persist gate (batch two-stage), Flyway + JPA (H2 tests), packages
 `org.poc.objs`.
 
@@ -26,7 +26,7 @@ central schemas, allow-list, persist gate (batch two-stage), Flyway + JPA (H2 te
 ## Work Items
 
 - [x] WI-001 — Align packages to `org.poc.objs` + Kotlin (`WI-001-package-rename.md`)
-- [x] WI-002 — Core domain types: `BoEntity`, `BoEdge`, central schema `(type, version)` (`WI-002-domain-types.md`)
+- [x] WI-002 — Core domain types: `BoMEntity`, `BoMEdge`, central schema `(type, version)` (`WI-002-domain-types.md`)
 - [x] WI-003 — Subgraph selection by annotations (`WI-003-subgraph-selection.md`)
 - [x] WI-004 — Validation APIs in core (`WI-004-validation.md`)
 - [x] WI-005 — PostgreSQL/JPA persistence for entities and edges (`WI-005-persistence.md`)

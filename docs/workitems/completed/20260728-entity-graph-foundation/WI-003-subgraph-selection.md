@@ -3,7 +3,7 @@
 **Story:** [`STORY.md`](STORY.md)  
 **Status:** pending  
 **Depends on:** WI-002  
-**Gaps:** G-2 (match-all), G-3 (induced source/target), G-4 (`BoEntity` / `BoEdge`)
+**Gaps:** G-2 (match-all), G-3 (induced source/target), G-4 (`BoMEntity` / `BoMEdge`)
 
 ## Goal
 

@@ -11,9 +11,9 @@ Introduce the in-memory **entity SDK** types in `objs-core` per
 
 ## Scope
 
-- **Entity** (`BoEntity`) — optional id (**UUID**; absent → create, present → update on persist), **type + version**, JSON payload, annotations; independent create/mutate in memory
+- **Entity** (`BoMEntity`) — optional id (**UUID**; absent → create, present → update on persist), **type + version**, JSON payload, annotations; independent create/mutate in memory
 - **Central schema catalog** — in-memory map of `(type, version)` → JSON Schema (entities and edges)
-- **Relation / edge** (`BoEdge`) — optional id (same create/update-by-id rule); **source**, **target** (UUID refs), **role**; optional **type + version** + JSON properties when allow-list policy requires them; bare edges supported
+- **Relation / edge** (`BoMEdge`) — optional id (same create/update-by-id rule); **source**, **target** (UUID refs), **role**; optional **type + version** + JSON properties when allow-list policy requires them; bare edges supported
 - **Annotation** — caller-defined opaque metadata on entities as a **key-value map** (value types TBD; see design)
 - Unit tests for construction and basic invariants (no persistence, no validation enforcement on construct)
 
@@ -26,7 +26,7 @@ Introduce the in-memory **entity SDK** types in `objs-core` per
 
 ## Acceptance
 
-- [ ] Domain types live under `org.poc.objs.core…` as **`BoEntity`**, **`BoEdge`** (and related); ids optional until persist (**UUID**)
+- [ ] Domain types live under `org.poc.objs.core…` as **`BoMEntity`**, **`BoMEdge`** (and related); ids optional until persist (**UUID**)
 - [ ] SDK can build arbitrary in-memory graphs without validation
-- [ ] Design docs use domain **entity** / **edge**; Java uses `Bo*` names
-- [ ] Tests cover `BoEntity` + `BoEdge` construction
+- [ ] Design docs use domain **entity** / **edge**; Java uses `BoM*` names (Bill of Materials)
+- [ ] Tests cover `BoMEntity` + `BoMEdge` construction

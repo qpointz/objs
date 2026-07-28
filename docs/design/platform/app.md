@@ -13,4 +13,7 @@ Thin runnable assembly that depends on `:objs-service` (and transitively `:objs-
 ```bash
 ./gradlew :objs-app:run
 curl http://localhost:8080/api/v1/objs/status
+# OpenAPI: http://localhost:8080/swagger-ui.html  ·  /v3/api-docs
 ```
+
+SpringDoc **3.0.3** is on the classpath (also on `:objs-service`). Endpoint catalogue: [`../service/rest-api.md`](../service/rest-api.md).

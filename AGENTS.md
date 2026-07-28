@@ -22,7 +22,7 @@ Production sources: `src/main/kotlin`. Tests: `src/test/kotlin` (integration sui
 
 ## Coding Style & Naming Conventions
 
-Java/Kotlin: four-space indentation, `PascalCase` classes. Prefer Lombok only if Java remains; new code is **Kotlin**. Package root: `org.poc.objs`. Domain types use `Bo` prefix (`BoEntity`, `BoEdge`).
+Java/Kotlin: four-space indentation, `PascalCase` classes. Prefer Lombok only if Java remains; new code is **Kotlin**. Package root: `org.poc.objs`. Domain types use `BoM` prefix (Bill of Materials: `BoMEntity`, `BoMEdge`).
 
 ## Testing Guidelines
 

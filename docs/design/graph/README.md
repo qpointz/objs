@@ -6,7 +6,7 @@
 
 Objs is an **entity store**: independent informational **entities** linked by **relations (edges)** into a **graph**. Callers select **subgraphs** via **annotations**. Validation uses JSON Schema and allowed type–role rules, enforced at the **persistence** boundary.
 
-**Naming:** domain **entity** / **edge**; Java types **`BoEntity`**, **`BoEdge`** (`Bo` prefix).
+**Naming:** domain **entity** / **edge**; Java types **`BoMEntity`**, **`BoMEdge`** (`Bo` prefix).
 
 ## Documents in this folder
 
@@ -19,8 +19,8 @@ Objs is an **entity store**: independent informational **entities** linked by **
 
 ## Core ideas (summary)
 
-- **Entity** (`BoEntity`) — **type + version**, JSON **payload**, **annotations**; optional id (absent → create, present → update).
-- **Edge** (`BoEdge`) — **source** / **target**, **role**; optional properties per allow-list **properties policy** (`none` = bare edge, `schema` = JSON Schema).
+- **Entity** (`BoMEntity`) — **type + version**, JSON **payload**, **annotations**; optional id (absent → create, present → update).
+- **Edge** (`BoMEdge`) — **source** / **target**, **role**; optional properties per allow-list **properties policy** (`none` = bare edge, `schema` = JSON Schema).
 - **Central schema repo** — `(type, version)` → JSON Schema for entity payloads and edge properties (in-memory now; PG later).
 - **Allowed edges** — `(sourceType, role, targetType)` + properties policy; directed allow-list.
 - **Annotations** — key-value map; matcher base + default **match-all**; subgraph = matched entities + **induced** edges.
@@ -30,9 +30,9 @@ Objs is an **entity store**: independent informational **entities** linked by **
 ```mermaid
 flowchart LR
   schema["Central schema type+version"]
-  entA["BoEntity"]
-  entB["BoEntity"]
-  edge["BoEdge source/target/role"]
+  entA["BoMEntity"]
+  entB["BoMEntity"]
+  edge["BoMEdge source/target/role"]
   allow["Allow-list + properties policy"]
   schema --> entA
   schema --> edge
