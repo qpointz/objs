@@ -16,19 +16,19 @@ class ObjectSchemaSeedHandler(
     override val kind: String = SEED_KIND_OBJECT_SCHEMA
 
     override fun parse(document: SeedRawDocument): ParsedSeedDocument {
-        val type = requireText(document.metadata, "type", document.index)
-        val version = requireText(document.metadata, "version", document.index)
-        val usages = parseUsages(document.metadata["usages"], document.index)
-        val contentRaw = document.spec["contentSchema"]
+        val type = requireText(document.raw, "type", document.index)
+        val version = requireText(document.raw, "version", document.index)
+        val usages = parseUsages(document.raw["usages"], document.index)
+        val contentRaw = document.raw["contentSchema"]
             ?: throw SeedDocumentParseException(
                 document.index,
-                "ObjectSchema requires spec.contentSchema",
+                "ObjectSchema requires contentSchema",
             )
         @Suppress("UNCHECKED_CAST")
         val contentMap = contentRaw as? Map<String, Any?>
             ?: throw SeedDocumentParseException(
                 document.index,
-                "spec.contentSchema must be an object",
+                "contentSchema must be an object",
             )
         val contentSchema = try {
             PayloadMapper.fromMap(contentMap, BoMSchemaNode::class.java)
@@ -71,21 +71,17 @@ class ObjectSchemaSeedHandler(
     }
 
     fun serialize(schema: BoMSchema): Map<String, Any?> {
-        val metadata = linkedMapOf<String, Any?>(
+        val document = linkedMapOf<String, Any?>(
+            "apiVersion" to SEED_API_VERSION_V1,
+            "kind" to kind,
             "type" to schema.type,
             "version" to schema.version,
         )
         if (schema.usages != setOf(BoMSchemaUsage.ENTITY)) {
-            metadata["usages"] = schema.usages.map { it.name }.sorted()
+            document["usages"] = schema.usages.map { it.name }.sorted()
         }
-        return linkedMapOf(
-            "apiVersion" to SEED_API_VERSION_V1,
-            "kind" to kind,
-            "metadata" to metadata,
-            "spec" to linkedMapOf(
-                "contentSchema" to PayloadMapper.toMap(schema.contentSchema),
-            ),
-        )
+        document["contentSchema"] = PayloadMapper.toMap(schema.contentSchema)
+        return document
     }
 
     private fun parseUsages(raw: Any?, index: Int): Set<BoMSchemaUsage> {
@@ -93,15 +89,15 @@ class ObjectSchemaSeedHandler(
         val values = when (raw) {
             is Collection<*> -> raw.map { it.toString() }
             is Array<*> -> raw.map { it.toString() }
-            else -> throw SeedDocumentParseException(index, "metadata.usages must be a list")
+            else -> throw SeedDocumentParseException(index, "usages must be a list")
         }
         if (values.isEmpty()) {
-            throw SeedDocumentParseException(index, "metadata.usages must not be empty")
+            throw SeedDocumentParseException(index, "usages must not be empty")
         }
         return try {
             values.map { BoMSchemaUsage.valueOf(it) }.toSet()
         } catch (ex: IllegalArgumentException) {
-            throw SeedDocumentParseException(index, "Unknown schema usage in metadata.usages", ex)
+            throw SeedDocumentParseException(index, "Unknown schema usage in usages", ex)
         }
     }
 }

@@ -15,7 +15,7 @@ For PostgreSQL:
 
 ```powershell
 docker compose -f deploy/local-dev/docker-compose.yml up -d
-./gradlew :objs-app:run --args="--spring.profiles.active=postgres"
+./gradlew :objs-app:run --args="--spring.profiles.active=postgres,sbom"
 ```
 
 The left navigation contains three views:

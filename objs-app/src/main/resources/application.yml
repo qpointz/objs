@@ -18,16 +18,33 @@ server:
   port: 8080
 
 objs:
-  sbom:
-    demo-seed: true
+  seeds:
+    enabled: false
+    on-failure: FAIL_FAST
 
 # Keep registry-published domain schemas visible even when not $ref'd from operations
 springdoc:
   remove-broken-reference-definitions: false
 
 ---
+# Configure SBOM resources through the shared seed pipeline:
+#   ./gradlew :objs-app:run --args="--spring.profiles.active=sbom"
+spring:
+  config:
+    activate:
+      on-profile: sbom
+
+objs:
+  seeds:
+    enabled: true
+    resources:
+      - classpath:seeds/sbom-ontology.yaml
+      # Include the graph only when sample data is wanted:
+      # - classpath:seeds/sbom-demo-graph.yaml
+
+---
 # PostgreSQL persistence. Start PostgreSQL separately, then run with:
-#   ./gradlew :objs-app:run --args="--spring.profiles.active=postgres"
+#   ./gradlew :objs-app:run --args="--spring.profiles.active=postgres,sbom"
 spring:
   config:
     activate:

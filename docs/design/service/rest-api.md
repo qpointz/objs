@@ -3,7 +3,7 @@
 **Module:** `:objs-service` (controllers) + `:objs-app` (runnable + Swagger UI)  
 **Base path:** `/api/v1/objs`  
 **Auth:** none (G-R15)  
-**OpenAPI:** springdoc-openapi **3.0.3** — UI via `:objs-app:run` (`/swagger-ui.html`, `/v3/api-docs`, groups `graph` / `registry`)
+**OpenAPI:** springdoc-openapi **3.0.3** — UI via `:objs-app:run` (`/swagger-ui.html`, `/v3/api-docs`, groups `graph` / `registry` / `seeds`)
 
 ## Graph
 
@@ -16,7 +16,7 @@
 
 Entity delete removes incident edges (store behaviour).
 
-## Registry (in-memory until C-3)
+## Registry
 
 | Method | Path | Behaviour |
 |--------|------|-----------|
@@ -27,6 +27,16 @@ Entity delete removes incident edges (store behaviour).
 | `GET`/`PUT` | `/registry/edges` | List / upsert edge definition (allow-list) |
 | `DELETE` | `/registry/edges?sourceType&role&targetType` | Remove exact triple |
 
+## Seeds
+
+| Method | Path | Behaviour |
+|--------|------|-----------|
+| `POST` | `/seeds/import` | Multipart YAML (`file`); transactional MERGE via shared importer |
+| `GET` | `/seeds/export` | Canonical YAML for catalogs; Graph when annotation params present |
+| `GET` | `/seeds/export/graph` | Requires annotation filter; never dumps the whole graph |
+
+See [`../graph/seeds.md`](../graph/seeds.md).
+
 ## Status
 
 | Method | Path | Behaviour |
@@ -35,5 +45,5 @@ Entity delete removes incident edges (store behaviour).
 
 ## Related
 
-- Story: [`docs/workitems/in-progress/entity-rest-api/`](../../workitems/in-progress/entity-rest-api/STORY.md)
-- Catalog persistence: backlog **C-3**
+- Catalog persistence / seeds: [`docs/workitems/in-progress/graph-config-seeds/`](../../workitems/in-progress/graph-config-seeds/STORY.md)
+- Catalog persistence: backlog **C-3** / **C-4**

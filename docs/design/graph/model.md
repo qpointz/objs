@@ -25,7 +25,8 @@ Every entity (`BoMEntity`) has:
 | **Payload** | A **JSON object** (JSON document) |
 | **Annotations** | Caller-defined metadata used for subgraph selection — see [annotations-and-subgraphs.md](annotations-and-subgraphs.md) |
 
-Identity: plain **`UUID`** (`UUID.randomUUID()` / PostgreSQL `uuid`), same in-memory and persisted.
+Identity: plain **`UUID`**. Runtime creates use `UUID.randomUUID()`; configuration seeds use
+deterministic **UUIDv5** from stable textual keys (see [seeds.md](seeds.md)).
 
 **Create vs update:** if id is **absent** on persist → **create** (assign `UUID.randomUUID()`); if id is **present** → **update** (must exist). See [validation.md](validation.md) / G-20.
 

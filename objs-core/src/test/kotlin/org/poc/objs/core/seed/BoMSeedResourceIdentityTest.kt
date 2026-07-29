@@ -13,8 +13,9 @@ class BoMSeedResourceIdentityTest {
     }
 
     @Test
-    fun shouldPreferExplicitNameAndSanitizeLocations() {
-        assertThat(BoMSeedResourceIdentity.ledgerKey("ontology", "classpath:x.yaml")).isEqualTo("ontology")
+    fun shouldUseSanitizedLocationAsLedgerKey() {
+        assertThat(BoMSeedResourceIdentity.ledgerKey("classpath:/seeds/a.yaml"))
+            .isEqualTo("classpath:seeds/a.yaml")
         assertThat(BoMSeedResourceIdentity.normalizeLocation("classpath:/seeds/a.yaml"))
             .isEqualTo("classpath:seeds/a.yaml")
         assertThat(

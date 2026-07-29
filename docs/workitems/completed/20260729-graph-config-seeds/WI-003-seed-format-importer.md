@@ -34,7 +34,7 @@ and initial graph data through one transactional service.
 
 The handler:
 
-1. parses `metadata.type`, `metadata.version`, optional `metadata.usages`, and `spec.contentSchema`;
+1. parses root-level `type`, `version`, optional `usages`, and `contentSchema`;
 2. runs strict DSL normalization before applying any document;
 3. registers `BoMSchema(type, version, contentSchema, usages)`;
 4. persists only the normalized DSL definition;
@@ -45,15 +45,13 @@ The handler:
 ```yaml
 apiVersion: objs.poc.org/v1
 kind: AllowedEdgeRule
-metadata:
-  sourceType: Product
-  role: OWNED_BY
-  targetType: Organization
-spec:
-  propertiesPolicy: SCHEMA
-  emptyPropertiesAllowed: true
-  propertiesSchemaType: CanonicalEdge
-  propertiesSchemaVersion: 1.0.0
+sourceType: Product
+role: OWNED_BY
+targetType: Organization
+propertiesPolicy: SCHEMA
+emptyPropertiesAllowed: true
+propertiesSchemaType: CanonicalEdge
+propertiesSchemaVersion: 1.0.0
 ```
 
 ### `Graph` document
@@ -61,23 +59,22 @@ spec:
 ```yaml
 apiVersion: objs.poc.org/v1
 kind: Graph
-metadata:
-  name: demo-payments
-spec:
-  entities:
-    - key: product
-      type: Product
-      schemaVersion: 1.0.0
-      annotations: {}
-      payload: {}
-  edges:
-    - key: product-owned-by-org
-      source: product
-      target: org
-      role: OWNED_BY
+name: demo-payments
+entities:
+  - key: product
+    type: Product
+    schemaVersion: 1.0.0
+    annotations: {}
+    payload: {}
+edges:
+  - key: product-owned-by-org
+    source: product
+    target: org
+    role: OWNED_BY
 ```
 
 Entity/edge UUIDs are UUIDv5 over `graphName/entity|edge/key` in the Objs seed namespace.
+Kind-specific fields are flat at the document root, matching Mill seed resources.
 
 ## Out of scope
 

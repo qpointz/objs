@@ -11,15 +11,8 @@ object BoMSeedResourceIdentity {
         return "sha256:" + HexFormat.of().formatHex(digest)
     }
 
-    /**
-     * Prefer an explicit name; otherwise normalize the resource location by stripping
-     * credentials, query, and fragment.
-     */
-    fun ledgerKey(explicitName: String?, location: String): String {
-        val name = explicitName?.trim().orEmpty()
-        if (name.isNotEmpty()) return name
-        return normalizeLocation(location)
-    }
+    /** Ledger identity is the normalized resource location. */
+    fun ledgerKey(location: String): String = normalizeLocation(location)
 
     fun normalizeLocation(location: String): String {
         val trimmed = location.trim()

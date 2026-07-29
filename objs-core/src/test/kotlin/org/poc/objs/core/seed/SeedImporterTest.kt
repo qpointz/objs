@@ -45,30 +45,26 @@ class SeedImporterTest {
         val yaml = """
             apiVersion: objs.poc.org/v1
             kind: AllowedEdgeRule
-            metadata:
-              sourceType: Person
-              role: knows
-              targetType: Person
-            spec:
-              propertiesPolicy: NONE
+            sourceType: Person
+            role: knows
+            targetType: Person
+            propertiesPolicy: NONE
             ---
             apiVersion: objs.poc.org/v1
             kind: ObjectSchema
-            metadata:
-              type: Person
-              version: "1"
-            spec:
-              contentSchema:
-                type: OBJECT
-                title: Person
-                description: Person payload
-                fields:
-                  - name: name
-                    required: true
-                    schema:
-                      type: STRING
-                      title: Name
-                      description: Person name
+            type: Person
+            version: "1"
+            contentSchema:
+              type: OBJECT
+              title: Person
+              description: Person payload
+              fields:
+                - name: name
+                  required: true
+                  schema:
+                    type: STRING
+                    title: Name
+                    description: Person name
         """.trimIndent()
 
         val result = importer.importYaml(yaml)
@@ -86,15 +82,13 @@ class SeedImporterTest {
                 """
                 apiVersion: objs.poc.org/v0
                 kind: ObjectSchema
-                metadata:
-                  type: X
-                  version: "1"
-                spec:
-                  contentSchema:
-                    type: OBJECT
-                    title: X
-                    description: X
-                    fields: []
+                type: X
+                version: "1"
+                contentSchema:
+                  type: OBJECT
+                  title: X
+                  description: X
+                  fields: []
                 """.trimIndent(),
             )
         }.isInstanceOf(SeedImportException::class.java)
@@ -104,8 +98,6 @@ class SeedImporterTest {
                 """
                 apiVersion: objs.poc.org/v1
                 kind: UnknownKind
-                metadata: {}
-                spec: {}
                 """.trimIndent(),
             )
         }.isInstanceOf(SeedImportException::class.java)
@@ -115,8 +107,6 @@ class SeedImporterTest {
                 """
                 apiVersion: objs.poc.org/v1
                 kind: UnknownKind
-                metadata: {}
-                spec: {}
                 """.trimIndent(),
             )
         } catch (ex: SeedImportException) {
@@ -131,14 +121,12 @@ class SeedImporterTest {
                 """
                 apiVersion: objs.poc.org/v1
                 kind: ObjectSchema
-                metadata:
-                  type: Bad
-                  version: "1"
-                spec:
-                  contentSchema:
-                    type: STRING
-                    title: Bad
-                    description: not an object root
+                type: Bad
+                version: "1"
+                contentSchema:
+                  type: STRING
+                  title: Bad
+                  description: not an object root
                 """.trimIndent(),
             )
         }.isInstanceOf(SeedImportException::class.java)
@@ -153,22 +141,20 @@ class SeedImporterTest {
             """
             apiVersion: objs.poc.org/v1
             kind: Graph
-            metadata:
-              name: demo
-            spec:
-              entities:
-                - key: p1
-                  type: Person
-                  schemaVersion: "1"
-                  annotations:
-                    app: demo
-                  payload:
-                    name: Ada
-              edges:
-                - key: e1
-                  source: p1
-                  target: p1
-                  role: knows
+            name: demo
+            entities:
+              - key: p1
+                type: Person
+                schemaVersion: "1"
+                annotations:
+                  app: demo
+                payload:
+                  name: Ada
+            edges:
+              - key: e1
+                source: p1
+                target: p1
+                role: knows
             """.trimIndent(),
         )
         val parsed = handler.parse(docs.single())
@@ -201,6 +187,10 @@ class SeedImporterTest {
             ),
         )
         val yaml = serializer.serializeCatalogs()
+        assertThat(yaml).doesNotContain("metadata:")
+        assertThat(yaml).doesNotContain("spec:")
+        assertThat(yaml).contains("type: \"Person\"")
+        assertThat(yaml).contains("sourceType: \"Person\"")
         schemas.clear()
         rules.clear()
         val result = importer.importYaml(yaml)

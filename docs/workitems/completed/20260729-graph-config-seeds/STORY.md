@@ -2,9 +2,9 @@
 
 **Slug:** `graph-config-seeds`  
 **Branch:** `graph-config-seeds`  
-**Status:** in-progress
+**Status:** completed
 **Backlog:** C-3, C-4  
-**Design:** [`docs/design/graph/persistence.md`](../../../design/graph/persistence.md), [`docs/design/graph/model.md`](../../../design/graph/model.md), [`docs/design/graph/object-schema-dsl.md`](../../../design/graph/object-schema-dsl.md)
+**Design:** [`docs/design/graph/persistence.md`](../../../design/graph/persistence.md), [`docs/design/graph/model.md`](../../../design/graph/model.md), [`docs/design/graph/object-schema-dsl.md`](../../../design/graph/object-schema-dsl.md), [`docs/design/graph/seeds.md`](../../../design/graph/seeds.md)
 **Gaps:** [`GAPS.md`](GAPS.md)
 
 ## Goal
@@ -46,7 +46,7 @@ PostgreSQL, and explicitly approved.
 - [x] WI-003 — Multi-document seed format and importer (`WI-003-seed-format-importer.md`)
 - [x] WI-004 — Seed ledger and startup loading (`WI-004-seed-ledger-startup.md`)
 - [x] WI-005 — Seed import/export REST API (`WI-005-seed-rest-api.md`)
-- [ ] WI-006 — SBOM seed migration and design documentation (`WI-006-sbom-seeds-docs.md`)
+- [x] WI-006 — SBOM seed migration and design documentation (`WI-006-sbom-seeds-docs.md`)
 
 ## Scope
 

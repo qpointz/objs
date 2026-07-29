@@ -66,34 +66,30 @@ class SeedImporterIT {
         val yaml = """
             apiVersion: objs.poc.org/v1
             kind: ObjectSchema
-            metadata:
-              type: Person
-              version: "1"
-            spec:
-              contentSchema:
-                type: OBJECT
-                title: Person
-                description: Person payload
-                fields:
-                  - name: name
-                    required: true
-                    schema:
-                      type: STRING
-                      title: Name
-                      description: Person name
+            type: Person
+            version: "1"
+            contentSchema:
+              type: OBJECT
+              title: Person
+              description: Person payload
+              fields:
+                - name: name
+                  required: true
+                  schema:
+                    type: STRING
+                    title: Name
+                    description: Person name
             ---
             apiVersion: objs.poc.org/v1
             kind: Graph
-            metadata:
-              name: demo
-            spec:
-              entities:
-                - key: p
-                  type: Person
-                  schemaVersion: "1"
-                  annotations: {}
-                  payload: {}
-              edges: []
+            name: demo
+            entities:
+              - key: p
+                type: Person
+                schemaVersion: "1"
+                annotations: {}
+                payload: {}
+            edges: []
         """.trimIndent()
 
         assertThatThrownBy { importer.importYaml(yaml) }
@@ -108,36 +104,32 @@ class SeedImporterIT {
         val yaml = """
             apiVersion: objs.poc.org/v1
             kind: ObjectSchema
-            metadata:
-              type: Person
-              version: "1"
-            spec:
-              contentSchema:
-                type: OBJECT
-                title: Person
-                description: Person payload
-                fields:
-                  - name: name
-                    required: true
-                    schema:
-                      type: STRING
-                      title: Name
-                      description: Person name
+            type: Person
+            version: "1"
+            contentSchema:
+              type: OBJECT
+              title: Person
+              description: Person payload
+              fields:
+                - name: name
+                  required: true
+                  schema:
+                    type: STRING
+                    title: Name
+                    description: Person name
             ---
             apiVersion: objs.poc.org/v1
             kind: Graph
-            metadata:
-              name: demo
-            spec:
-              entities:
-                - key: p
-                  type: Person
-                  schemaVersion: "1"
-                  annotations:
-                    app: demo
-                  payload:
-                    name: Ada
-              edges: []
+            name: demo
+            entities:
+              - key: p
+                type: Person
+                schemaVersion: "1"
+                annotations:
+                  app: demo
+                payload:
+                  name: Ada
+            edges: []
         """.trimIndent()
 
         assertThat(importer.importYaml(yaml).isSuccess).isTrue()
@@ -152,39 +144,35 @@ class SeedImporterIT {
         val first = """
             apiVersion: objs.poc.org/v1
             kind: ObjectSchema
-            metadata:
-              type: Person
-              version: "1"
-            spec:
-              contentSchema:
-                type: OBJECT
-                title: Person
-                description: Person payload
-                fields:
-                  - name: name
-                    required: true
-                    schema:
-                      type: STRING
-                      title: Name
-                      description: Person name
+            type: Person
+            version: "1"
+            contentSchema:
+              type: OBJECT
+              title: Person
+              description: Person payload
+              fields:
+                - name: name
+                  required: true
+                  schema:
+                    type: STRING
+                    title: Name
+                    description: Person name
             ---
             apiVersion: objs.poc.org/v1
             kind: ObjectSchema
-            metadata:
-              type: Org
-              version: "1"
-            spec:
-              contentSchema:
-                type: OBJECT
-                title: Org
-                description: Org payload
-                fields:
-                  - name: name
-                    required: true
-                    schema:
-                      type: STRING
-                      title: Name
-                      description: Org name
+            type: Org
+            version: "1"
+            contentSchema:
+              type: OBJECT
+              title: Org
+              description: Org payload
+              fields:
+                - name: name
+                  required: true
+                  schema:
+                    type: STRING
+                    title: Name
+                    description: Org name
         """.trimIndent()
         importer.importYaml(first)
         assertThat(schemas.get("Person", "1")).isNotNull
@@ -193,21 +181,19 @@ class SeedImporterIT {
         val second = """
             apiVersion: objs.poc.org/v1
             kind: ObjectSchema
-            metadata:
-              type: Person
-              version: "1"
-            spec:
-              contentSchema:
-                type: OBJECT
-                title: Person
-                description: Person payload updated
-                fields:
-                  - name: name
-                    required: true
-                    schema:
-                      type: STRING
-                      title: Name
-                      description: Person name
+            type: Person
+            version: "1"
+            contentSchema:
+              type: OBJECT
+              title: Person
+              description: Person payload updated
+              fields:
+                - name: name
+                  required: true
+                  schema:
+                    type: STRING
+                    title: Name
+                    description: Person name
         """.trimIndent()
         importer.importYaml(second)
         assertThat(schemas.get("Person", "1")!!.contentSchema.description).isEqualTo("Person payload updated")

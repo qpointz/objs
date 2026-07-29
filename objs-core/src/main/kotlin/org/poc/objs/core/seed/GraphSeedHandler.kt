@@ -21,41 +21,41 @@ class GraphSeedHandler(
     override val kind: String = SEED_KIND_GRAPH
 
     override fun parse(document: SeedRawDocument): ParsedSeedDocument {
-        val name = requireText(document.metadata, "name", document.index)
-        val entitiesRaw = document.spec["entities"] as? List<*>
-            ?: throw SeedDocumentParseException(document.index, "Graph requires spec.entities list")
-        val edgesRaw = document.spec["edges"] as? List<*> ?: emptyList<Any?>()
+        val name = requireText(document.raw, "name", document.index)
+        val entitiesRaw = document.raw["entities"] as? List<*>
+            ?: throw SeedDocumentParseException(document.index, "Graph requires entities list")
+        val edgesRaw = document.raw["edges"] as? List<*> ?: emptyList<Any?>()
 
         val entityKeys = linkedMapOf<String, UUID>()
         val entities = mutableListOf<BoMEntity>()
         entitiesRaw.forEachIndexed { i, raw ->
-            val map = asObject(raw, document.index, "spec.entities[$i]")
-            val key = requireText(map, "key", document.index, "spec.entities[$i].key")
+            val map = asObject(raw, document.index, "entities[$i]")
+            val key = requireText(map, "key", document.index, "entities[$i].key")
             if (key in entityKeys) {
                 throw SeedDocumentParseException(document.index, "Duplicate entity key: $key")
             }
-            val id = parseOptionalUuid(map["id"], document.index, "spec.entities[$i].id")
+            val id = parseOptionalUuid(map["id"], document.index, "entities[$i].id")
                 ?: UuidV5.entityId(name, key)
             entityKeys[key] = id
             entities += BoMEntity(
                 id = id,
-                type = requireText(map, "type", document.index, "spec.entities[$i].type"),
-                schemaVersion = requireText(map, "schemaVersion", document.index, "spec.entities[$i].schemaVersion"),
+                type = requireText(map, "type", document.index, "entities[$i].type"),
+                schemaVersion = requireText(map, "schemaVersion", document.index, "entities[$i].schemaVersion"),
                 payload = stringKeyedMap(map["payload"]).toMutableMap(),
-                annotations = stringStringMap(map["annotations"], document.index, "spec.entities[$i].annotations"),
+                annotations = stringStringMap(map["annotations"], document.index, "entities[$i].annotations"),
             )
         }
 
         val edgeKeys = linkedMapOf<String, UUID>()
         val edges = mutableListOf<BoMEdge>()
         edgesRaw.forEachIndexed { i, raw ->
-            val map = asObject(raw, document.index, "spec.edges[$i]")
-            val key = requireText(map, "key", document.index, "spec.edges[$i].key")
+            val map = asObject(raw, document.index, "edges[$i]")
+            val key = requireText(map, "key", document.index, "edges[$i].key")
             if (key in edgeKeys) {
                 throw SeedDocumentParseException(document.index, "Duplicate edge key: $key")
             }
-            val sourceKey = requireText(map, "source", document.index, "spec.edges[$i].source")
-            val targetKey = requireText(map, "target", document.index, "spec.edges[$i].target")
+            val sourceKey = requireText(map, "source", document.index, "edges[$i].source")
+            val targetKey = requireText(map, "target", document.index, "edges[$i].target")
             val sourceId = entityKeys[sourceKey]
                 ?: throw SeedDocumentParseException(
                     document.index,
@@ -66,7 +66,7 @@ class GraphSeedHandler(
                     document.index,
                     "Edge '$key' target '$targetKey' is not defined in this Graph",
                 )
-            val id = parseOptionalUuid(map["id"], document.index, "spec.edges[$i].id")
+            val id = parseOptionalUuid(map["id"], document.index, "edges[$i].id")
                 ?: UuidV5.edgeId(name, key)
             edgeKeys[key] = id
             val properties = map["properties"]?.let { stringKeyedMap(it).toMutableMap() }
@@ -74,7 +74,7 @@ class GraphSeedHandler(
                 id = id,
                 source = sourceId,
                 target = targetId,
-                role = requireText(map, "role", document.index, "spec.edges[$i].role"),
+                role = requireText(map, "role", document.index, "edges[$i].role"),
                 type = map["type"]?.toString()?.trim()?.takeIf { it.isNotEmpty() },
                 schemaVersion = map["schemaVersion"]?.toString()?.trim()?.takeIf { it.isNotEmpty() },
                 properties = properties,
@@ -155,11 +155,9 @@ class GraphSeedHandler(
         return linkedMapOf(
             "apiVersion" to SEED_API_VERSION_V1,
             "kind" to kind,
-            "metadata" to linkedMapOf("name" to name),
-            "spec" to linkedMapOf(
-                "entities" to entityDocs,
-                "edges" to edgeDocs,
-            ),
+            "name" to name,
+            "entities" to entityDocs,
+            "edges" to edgeDocs,
         )
     }
 

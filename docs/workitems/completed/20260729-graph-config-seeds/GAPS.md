@@ -52,7 +52,7 @@ default may be accepted or changed · `resolved` = agreed
 | # | Topic | Status | Clarification |
 |---|-------|--------|---------------|
 | G-S8 | Fingerprint | resolved | SHA-256 over raw resource bytes; store algorithm prefix (`sha256:`) |
-| G-S9 | Ledger key | resolved | Explicit seed name when configured, otherwise normalized resource location with credentials/query removed |
+| G-S9 | Ledger key | resolved | Normalized resource location with credentials/query removed; resources require no separate name |
 | G-S10 | REST import | resolved | Multipart YAML import using the same importer and structured per-document result |
 | G-S11 | REST export scope | resolved | Export **all seed kinds** present in the system, including `Graph` seeds; keep the format/handler design open so new seed types can be added later; never expose an unbounded load-all graph dump — graph export remains annotation-filtered / otherwise bounded |
 | G-S12 | SBOM source of truth | resolved | Canonical YAML becomes registry source of truth; retain typed Kotlin metadata/builders and enforce parity in tests |

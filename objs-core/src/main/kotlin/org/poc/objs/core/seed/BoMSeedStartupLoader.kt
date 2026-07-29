@@ -40,12 +40,12 @@ class BoMSeedStartupLoader(
         val seenKeys = linkedSetOf<String>()
         val results = mutableListOf<SeedStartupResourceResult>()
 
-        for (resourceProps in properties.resources) {
-            val location = resourceProps.location.trim()
+        for (configuredLocation in properties.resources) {
+            val location = configuredLocation.trim()
             if (location.isEmpty()) {
-                throw IllegalStateException("objs.seeds.resources[].location must not be blank")
+                throw IllegalStateException("objs.seeds.resources[] must not be blank")
             }
-            val seedKey = BoMSeedResourceIdentity.ledgerKey(resourceProps.name, location)
+            val seedKey = BoMSeedResourceIdentity.ledgerKey(location)
             if (!seenKeys.add(seedKey)) {
                 throw IllegalStateException("Duplicate seed ledger key: $seedKey")
             }

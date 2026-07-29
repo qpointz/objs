@@ -34,6 +34,11 @@ Local benchmark against ~85,656 entities / ~71,380 edges (`GET /api/v1/objs/grap
 
 Remaining time is dominated by selected-row transfer and HTTP JSON serialization of the matched subgraph, not full-table materialization.
 
+## Seed ledger
+
+Flyway `V2__bom_seed_ledger.sql` adds `bom_seed_ledger` for startup seed fingerprints.
+See [`seeds.md`](seeds.md).
+
 ## Edges
 
 - Edge / relation table shape is **TBD** (expect generic columns for **source**, **target**, role, and properties).

@@ -61,12 +61,11 @@ class BoMSeedStartupLoaderIT {
     fun shouldSkipUnchangedAndReimportChangedBytes() {
         val file = Files.createTempFile("seed-", ".yaml")
         Files.writeString(file, validSchemaYaml("Person", "Person payload"))
+        val location = file.toUri().toString()
         val props = BoMSeedProperties(
             enabled = true,
             onFailure = SeedFailureMode.FAIL_FAST,
-            resources = mutableListOf(
-                SeedResourceProperties(location = file.toUri().toString(), name = "person"),
-            ),
+            resources = mutableListOf(location),
         )
         val loader = BoMSeedStartupLoader(props, DefaultResourceLoader(), importer, ledger)
 
@@ -92,29 +91,26 @@ class BoMSeedStartupLoaderIT {
         val good = Files.createTempFile("seed-good-", ".yaml")
         val bad = Files.createTempFile("seed-bad-", ".yaml")
         Files.writeString(good, validSchemaYaml("Org", "Org payload"))
+        val goodLocation = good.toUri().toString()
+        val badLocation = bad.toUri().toString()
         Files.writeString(
             bad,
             """
             apiVersion: objs.poc.org/v1
             kind: ObjectSchema
-            metadata:
-              type: Bad
-              version: "1"
-            spec:
-              contentSchema:
-                type: STRING
-                title: Bad
-                description: not object
+            type: Bad
+            version: "1"
+            contentSchema:
+              type: STRING
+              title: Bad
+              description: not object
             """.trimIndent(),
         )
 
         val props = BoMSeedProperties(
             enabled = true,
             onFailure = SeedFailureMode.CONTINUE,
-            resources = mutableListOf(
-                SeedResourceProperties(location = bad.toUri().toString(), name = "bad"),
-                SeedResourceProperties(location = good.toUri().toString(), name = "good"),
-            ),
+            resources = mutableListOf(badLocation, goodLocation),
         )
         val loader = BoMSeedStartupLoader(props, DefaultResourceLoader(), importer, ledger)
         val result = loader.loadConfiguredResources()
@@ -123,8 +119,9 @@ class BoMSeedStartupLoaderIT {
             SeedLedgerStatus.SUCCESS,
         )
         assertThat(schemas.get("Org", "1")).isNotNull
-        assertThat(ledger.find("bad")!!.lastAttemptStatus).isEqualTo(SeedLedgerStatus.FAILED.name)
-        assertThat(ledger.find("bad")!!.lastSuccessFingerprint).isNull()
+        val badKey = BoMSeedResourceIdentity.ledgerKey(badLocation)
+        assertThat(ledger.find(badKey)!!.lastAttemptStatus).isEqualTo(SeedLedgerStatus.FAILED.name)
+        assertThat(ledger.find(badKey)!!.lastSuccessFingerprint).isNull()
 
         Files.deleteIfExists(good)
         Files.deleteIfExists(bad)
@@ -135,36 +132,34 @@ class BoMSeedStartupLoaderIT {
     fun shouldFailFastAndPreservePriorSuccessFingerprint() {
         val file = Files.createTempFile("seed-ff-", ".yaml")
         Files.writeString(file, validSchemaYaml("Thing", "ok"))
+        val location = file.toUri().toString()
+        val seedKey = BoMSeedResourceIdentity.ledgerKey(location)
         val props = BoMSeedProperties(
             enabled = true,
             onFailure = SeedFailureMode.FAIL_FAST,
-            resources = mutableListOf(
-                SeedResourceProperties(location = file.toUri().toString(), name = "thing"),
-            ),
+            resources = mutableListOf(location),
         )
         val loader = BoMSeedStartupLoader(props, DefaultResourceLoader(), importer, ledger)
         loader.loadConfiguredResources()
-        val successFp = ledger.find("thing")!!.lastSuccessFingerprint
+        val successFp = ledger.find(seedKey)!!.lastSuccessFingerprint
 
         Files.writeString(
             file,
             """
             apiVersion: objs.poc.org/v1
             kind: ObjectSchema
-            metadata:
-              type: Thing
-              version: "1"
-            spec:
-              contentSchema:
-                type: STRING
-                title: Thing
-                description: bad root
+            type: Thing
+            version: "1"
+            contentSchema:
+              type: STRING
+              title: Thing
+              description: bad root
             """.trimIndent(),
         )
         assertThatThrownBy { loader.loadConfiguredResources() }
             .isInstanceOf(SeedStartupException::class.java)
 
-        val record = ledger.find("thing")!!
+        val record = ledger.find(seedKey)!!
         assertThat(record.lastSuccessFingerprint).isEqualTo(successFp)
         assertThat(record.lastAttemptStatus).isEqualTo(SeedLedgerStatus.FAILED.name)
 
@@ -174,20 +169,18 @@ class BoMSeedStartupLoaderIT {
     private fun validSchemaYaml(type: String, description: String): String = """
         apiVersion: objs.poc.org/v1
         kind: ObjectSchema
-        metadata:
-          type: $type
-          version: "1"
-        spec:
-          contentSchema:
-            type: OBJECT
-            title: $type
-            description: $description
-            fields:
-              - name: name
-                required: true
-                schema:
-                  type: STRING
-                  title: Name
-                  description: Name
+        type: $type
+        version: "1"
+        contentSchema:
+          type: OBJECT
+          title: $type
+          description: $description
+          fields:
+            - name: name
+              required: true
+              schema:
+                type: STRING
+                title: Name
+                description: Name
     """.trimIndent()
 }

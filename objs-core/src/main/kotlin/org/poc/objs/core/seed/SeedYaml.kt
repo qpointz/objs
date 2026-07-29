@@ -37,18 +37,11 @@ object SeedYaml {
         } + "\n"
     }
 
-    @Suppress("UNCHECKED_CAST")
     private fun toRawDocument(index: Int, raw: Map<String, Any?>): SeedRawDocument {
-        val metadata = (raw["metadata"] as? Map<*, *>)?.entries
-            ?.associate { it.key.toString() to it.value } ?: emptyMap()
-        val spec = (raw["spec"] as? Map<*, *>)?.entries
-            ?.associate { it.key.toString() to it.value } ?: emptyMap()
         return SeedRawDocument(
             index = index,
             apiVersion = raw["apiVersion"]?.toString(),
             kind = raw["kind"]?.toString(),
-            metadata = metadata,
-            spec = spec,
             raw = raw,
         )
     }

@@ -12,10 +12,10 @@ class AllowedEdgeRuleSeedHandler(
     override val kind: String = SEED_KIND_ALLOWED_EDGE_RULE
 
     override fun parse(document: SeedRawDocument): ParsedSeedDocument {
-        val sourceType = requireText(document.metadata, "sourceType", document.index)
-        val role = requireText(document.metadata, "role", document.index)
-        val targetType = requireText(document.metadata, "targetType", document.index)
-        val policy = when (val raw = document.spec["propertiesPolicy"]?.toString()) {
+        val sourceType = requireText(document.raw, "sourceType", document.index)
+        val role = requireText(document.raw, "role", document.index)
+        val targetType = requireText(document.raw, "targetType", document.index)
+        val policy = when (val raw = document.raw["propertiesPolicy"]?.toString()) {
             null -> BoMPropertiesPolicy.NONE
             else -> try {
                 BoMPropertiesPolicy.valueOf(raw)
@@ -26,7 +26,7 @@ class AllowedEdgeRuleSeedHandler(
                 )
             }
         }
-        val emptyAllowed = when (val raw = document.spec["emptyPropertiesAllowed"]) {
+        val emptyAllowed = when (val raw = document.raw["emptyPropertiesAllowed"]) {
             null -> true
             is Boolean -> raw
             else -> throw SeedDocumentParseException(
@@ -34,9 +34,9 @@ class AllowedEdgeRuleSeedHandler(
                 "emptyPropertiesAllowed must be a boolean",
             )
         }
-        val propertiesSchemaType = document.spec["propertiesSchemaType"]?.toString()?.trim()?.takeIf { it.isNotEmpty() }
+        val propertiesSchemaType = document.raw["propertiesSchemaType"]?.toString()?.trim()?.takeIf { it.isNotEmpty() }
         val propertiesSchemaVersion =
-            document.spec["propertiesSchemaVersion"]?.toString()?.trim()?.takeIf { it.isNotEmpty() }
+            document.raw["propertiesSchemaVersion"]?.toString()?.trim()?.takeIf { it.isNotEmpty() }
         if (policy == BoMPropertiesPolicy.SCHEMA) {
             if (propertiesSchemaType == null || propertiesSchemaVersion == null) {
                 throw SeedDocumentParseException(
@@ -74,25 +74,21 @@ class AllowedEdgeRuleSeedHandler(
     }
 
     fun serialize(rule: BoMAllowedEdgeRule): Map<String, Any?> {
-        val spec = linkedMapOf<String, Any?>(
+        val document = linkedMapOf<String, Any?>(
+            "apiVersion" to SEED_API_VERSION_V1,
+            "kind" to kind,
+            "sourceType" to rule.sourceType,
+            "role" to rule.role,
+            "targetType" to rule.targetType,
             "propertiesPolicy" to rule.propertiesPolicy.name,
             "emptyPropertiesAllowed" to rule.emptyPropertiesAllowed,
         )
         if (rule.propertiesSchemaType != null) {
-            spec["propertiesSchemaType"] = rule.propertiesSchemaType
+            document["propertiesSchemaType"] = rule.propertiesSchemaType
         }
         if (rule.propertiesSchemaVersion != null) {
-            spec["propertiesSchemaVersion"] = rule.propertiesSchemaVersion
+            document["propertiesSchemaVersion"] = rule.propertiesSchemaVersion
         }
-        return linkedMapOf(
-            "apiVersion" to SEED_API_VERSION_V1,
-            "kind" to kind,
-            "metadata" to linkedMapOf(
-                "sourceType" to rule.sourceType,
-                "role" to rule.role,
-                "targetType" to rule.targetType,
-            ),
-            "spec" to spec,
-        )
+        return document
     }
 }

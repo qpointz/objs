@@ -18,7 +18,7 @@ internal fun requireText(
     map: Map<String, Any?>,
     key: String,
     documentIndex: Int,
-    path: String = "metadata.$key",
+    path: String = key,
 ): String {
     val value = map[key]?.toString()?.trim()
     if (value.isNullOrEmpty()) {

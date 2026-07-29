@@ -326,19 +326,18 @@ Seed v1 uses this same DSL without introducing a second schema language:
 ```yaml
 apiVersion: objs.poc.org/v1
 kind: ObjectSchema
-metadata:
-  type: Component
-  version: 1.0.0
-spec:
-  contentSchema:
-    type: OBJECT
-    title: Component
-    description: Canonical component payload
-    fields: []
+type: Component
+version: 1.0.0
+contentSchema:
+  type: OBJECT
+  title: Component
+  description: Canonical component payload
+  fields: []
 ```
 
-The seed handler parses `spec.contentSchema` directly into `BoMSchemaNode`, applies strict
-normalization, and registers `BoMSchema(metadata.type, metadata.version, contentSchema)`.
+The seed handler parses `contentSchema` directly into `BoMSchemaNode`, applies strict
+normalization, and registers `BoMSchema(type, version, contentSchema)`. Kind-specific fields are
+flat at the document root, matching Mill seed resources.
 
 ## Deliberate limits
 

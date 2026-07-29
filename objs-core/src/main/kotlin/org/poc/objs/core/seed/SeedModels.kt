@@ -8,13 +8,11 @@ const val SEED_KIND_OBJECT_SCHEMA = "ObjectSchema"
 const val SEED_KIND_ALLOWED_EDGE_RULE = "AllowedEdgeRule"
 const val SEED_KIND_GRAPH = "Graph"
 
-/** Parsed multi-document seed envelope before kind-specific validation. */
+/** Parsed flat multi-document seed before kind-specific validation. */
 data class SeedRawDocument(
     val index: Int,
     val apiVersion: String?,
     val kind: String?,
-    val metadata: Map<String, Any?> = emptyMap(),
-    val spec: Map<String, Any?> = emptyMap(),
     val raw: Map<String, Any?>,
 )
 

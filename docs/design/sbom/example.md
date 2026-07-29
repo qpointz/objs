@@ -23,7 +23,7 @@
 | Edge `createdAt`, `source`, `confidence`, `attributes` | Edge **properties** via shared schema `CanonicalEdge` |
 | Multi-app BOM partition | Entity **annotations** `app`, `appVersion`, … (not payload) |
 
-**Ontology coverage:** `SbomRegistry` registers the **entire** draft ontology (Waves A–D): 23 entity types + shared `CanonicalEdge` + all 28 relationship triples from [`canonical-spec.md`](canonical-spec.md).
+**Ontology coverage:** classpath seed `seeds/sbom-ontology.yaml` registers the **entire** draft ontology (Waves A–D): 23 entity types + shared `CanonicalEdge` + all 28 relationship triples from [`canonical-spec.md`](canonical-spec.md). Typed `SbomRegistry.pack()` remains the parity/builder companion.
 
 ## Problem
 
@@ -182,7 +182,7 @@ val bom = sbomService.getSbom("payments-api", "2.3.1")
 |--------|----------|
 | `objs-core` | Typed toolkit (`TypedEntity`, `GraphBuilder`, `RegistryPack`, …) |
 | `objs-sbom-example` | Full canonical types (A–D), annotation vocabulary, `SbomService`, registry pack, **`/api/v1/example/sbom` REST**, graph explorer SPA at **`/ui/`** |
-| `objs-app` | Depends on example module for demo; optional seed of SBOM pack at startup |
+| `objs-app` | Depends on example module for demo; ontology + optional demo graph via shared seed pipeline |
 
 ### Workbench SPA
 

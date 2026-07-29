@@ -29,10 +29,8 @@ objs:
     enabled: true
     on-failure: FAIL_FAST   # or CONTINUE
     resources:
-      - name: sbom-ontology
-        location: classpath:seeds/sbom-ontology.yaml
-      - name: sbom-demo
-        location: classpath:seeds/sbom-demo-graph.yaml
+      - classpath:seeds/sbom-ontology.yaml
+      - classpath:seeds/sbom-demo-graph.yaml
 ```
 
 ## Acceptance
