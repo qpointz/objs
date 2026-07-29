@@ -11,8 +11,11 @@
 |--------|------|-----------|
 | `PUT` | `/graph` | Upsert `BoMGraph`; return graph with assigned ids; `400` + issues if invalid |
 | `POST` | `/graph/validate` | Dry-run; always `200` + `BoMValidationResult` |
-| `GET` | `/graph` | Annotation query params → match-all induced subgraph; empty filter → `400` |
+| `POST` | `/graph/query` | JSON/YAML matcher DSL → induced subgraph; sole graph matching/query endpoint |
 | `DELETE` | `/graph` | Body `{ entityIds?, edgeIds? }`; all-or-nothing; `204` / `404` / `400` |
+
+Matcher DSL root is one matcher object (`anno`, `anno-expr`, …) or an ordered array of matcher
+objects (chained). See [`../graph/annotations-and-subgraphs.md`](../graph/annotations-and-subgraphs.md).
 
 Entity delete removes incident edges (store behaviour).
 

@@ -19,7 +19,7 @@ fun interface BoMAnnotationMatcher {
  * same Kotlin evaluation semantics.
  */
 class MatchAllAnnotationMatcher(
-    private val filter: Map<String, String>,
+    val filter: Map<String, String>,
 ) : BoMPushableMatcher() {
     override val expression: BoMMatchExpression =
         BoMMatchExpression.matchAllAnnotations(filter)

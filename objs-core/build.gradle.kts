@@ -25,6 +25,7 @@ dependencies {
     api(libs.kotlin.reflect)
     implementation(libs.bundles.logging)
     implementation(libs.json.schema.validator)
+    implementation(libs.commons.jexl)
     implementation(libs.flyway.core)
 }
 

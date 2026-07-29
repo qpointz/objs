@@ -8,6 +8,7 @@ import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
 import org.poc.objs.core.domain.BoMGraph
 import org.poc.objs.core.domain.BoMSubgraph
+import org.poc.objs.core.match.BoMMatcher
 import org.poc.objs.core.persistence.BoMGraphStore
 import org.poc.objs.core.validation.BoMValidationIssue
 import org.poc.objs.core.validation.BoMValidationResult
@@ -97,23 +98,50 @@ class ObjsGraphControllerTest {
     }
 
     @Test
-    fun shouldRejectGetGraph_whenFilterEmpty() {
-        mockMvc.perform(get("/api/v1/objs/graph"))
-            .andExpect(status().isBadRequest)
-            .andExpect(jsonPath("$.issues[0].code").value("FILTER_EMPTY"))
-    }
-
-    @Test
-    fun shouldGetSubgraph_whenFilterPresent() {
-        given(store.selectSubgraphMatchAll(mapOf("env" to "prod"))).willReturn(
+    fun shouldQuerySubgraph_withAnnoJson() {
+        given(store.selectSubgraph(anyObj<BoMMatcher>())).willReturn(
             BoMSubgraph(entities = emptyList(), edges = emptyList()),
         )
 
-        mockMvc.perform(get("/api/v1/objs/graph").param("env", "prod"))
+        mockMvc.perform(
+            post("/api/v1/objs/graph/query")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"anno":{"env":"prod"}}"""),
+        )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.entities").isArray)
 
-        verify(store).selectSubgraphMatchAll(mapOf("env" to "prod"))
+        verify(store).selectSubgraph(anyObj<BoMMatcher>())
+    }
+
+    @Test
+    fun shouldQuerySubgraph_withYamlBody() {
+        given(store.selectSubgraph(anyObj<BoMMatcher>())).willReturn(
+            BoMSubgraph(entities = emptyList(), edges = emptyList()),
+        )
+
+        mockMvc.perform(
+            post("/api/v1/objs/graph/query")
+                .contentType(MediaType.parseMediaType("application/yaml"))
+                .content(
+                    """
+                    anno:
+                      env: prod
+                    """.trimIndent(),
+                ),
+        )
+            .andExpect(status().isOk)
+    }
+
+    @Test
+    fun shouldRejectQuery_whenMatcherEmpty() {
+        mockMvc.perform(
+            post("/api/v1/objs/graph/query")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"),
+        )
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.issues[0].code").value("MATCHER_DSL_EMPTY"))
     }
 
     @Test

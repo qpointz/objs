@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import {
+  ActionIcon,
   Alert,
   Badge,
   Button,
@@ -8,9 +9,11 @@ import {
   Menu,
   Paper,
   ScrollArea,
+  SegmentedControl,
   Stack,
   Text,
   Textarea,
+  TextInput,
   Title,
   Anchor,
 } from '@mantine/core'
@@ -20,14 +23,25 @@ import {
   type GraphCanvasHandle,
   type GraphLayout,
 } from './GraphCanvas'
-import { fetchGraph, schemaDetailPath, toGraphData } from './api'
+import { queryGraph, schemaDetailPath, toGraphData } from './api'
 import { colorForType } from './color'
 import type { GraphLink, GraphNode, GraphSelection } from './types'
 
-const DEFAULT_ANNOTATIONS = `{
-  "app": "payments-api",
-  "appVersion": "2.3.1"
-}`
+type MatcherMode = 'anno' | 'anno-expr' | 'chained'
+
+type AnnoRow = { key: string; value: string }
+
+const DEFAULT_ANNO_ROWS: AnnoRow[] = [
+  { key: 'app', value: 'payments-api' },
+  { key: 'appVersion', value: '2.3.1' },
+]
+
+const DEFAULT_EXPR = "app == 'payments-api' && appVersion == '2.3.1'"
+
+const DEFAULT_CHAINED = `[
+  { "anno": { "app": "payments-api" } },
+  { "anno-expr": "appVersion == '2.3.1'" }
+]`
 
 const GRAPH_LAYOUTS: { value: GraphLayout; label: string }[] = [
   { value: 'TB', label: 'Top to bottom' },
@@ -38,7 +52,10 @@ const GRAPH_LAYOUTS: { value: GraphLayout; label: string }[] = [
 
 export function GraphExplorerPage() {
   const graphRef = useRef<GraphCanvasHandle>(null)
-  const [annotationText, setAnnotationText] = useState(DEFAULT_ANNOTATIONS)
+  const [mode, setMode] = useState<MatcherMode>('anno')
+  const [annoRows, setAnnoRows] = useState<AnnoRow[]>(DEFAULT_ANNO_ROWS)
+  const [exprText, setExprText] = useState(DEFAULT_EXPR)
+  const [chainedText, setChainedText] = useState(DEFAULT_CHAINED)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [nodes, setNodes] = useState<GraphNode[]>([])
@@ -54,12 +71,45 @@ export function GraphExplorerPage() {
     return [...set.entries()].sort(([a], [b]) => a.localeCompare(b))
   }, [nodes])
 
+  function buildMatcherBody(): unknown {
+    if (mode === 'anno') {
+      const filter: Record<string, string> = {}
+      for (const row of annoRows) {
+        const key = row.key.trim()
+        if (!key) continue
+        filter[key] = row.value
+      }
+      if (Object.keys(filter).length === 0) {
+        throw new Error('Provide at least one annotation key/value')
+      }
+      return { anno: filter }
+    }
+    if (mode === 'anno-expr') {
+      const expression = exprText.trim()
+      if (!expression) {
+        throw new Error('Provide a non-blank anno-expr expression')
+      }
+      return { 'anno-expr': expression }
+    }
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(chainedText)
+    } catch {
+      throw new Error('Chained matcher must be valid JSON')
+    }
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      throw new Error('Chained matcher must be a non-empty JSON array')
+    }
+    return parsed
+  }
+
   async function onExec() {
     setLoading(true)
     setError(null)
     setSelection(null)
     try {
-      const subgraph = await fetchGraph(annotationText)
+      const body = buildMatcherBody()
+      const subgraph = await queryGraph(body)
       const graph = toGraphData(subgraph)
       setNodes(graph.nodes)
       setLinks(graph.links)
@@ -78,7 +128,8 @@ export function GraphExplorerPage() {
         <div>
           <Title order={3}>Graph explorer</Title>
           <Text size="sm" c="dimmed">
-            Query <Code>GET /api/v1/objs/graph</Code>. Open a type to inspect its object model in Schema explorer.
+            Query <Code>POST /api/v1/objs/graph/query</Code>. Open a type to inspect its object model in Schema
+            explorer.
           </Text>
         </div>
         <Group>
@@ -133,15 +184,83 @@ export function GraphExplorerPage() {
         </Group>
       </Group>
 
-      <Textarea
-        label="Annotations (JSON object)"
-        autosize
-        minRows={2}
-        maxRows={6}
-        value={annotationText}
-        onChange={(e) => setAnnotationText(e.currentTarget.value)}
-        styles={{ input: { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' } }}
+      <SegmentedControl
+        value={mode}
+        onChange={(value) => setMode(value as MatcherMode)}
+        data={[
+          { label: 'anno', value: 'anno' },
+          { label: 'anno-expr', value: 'anno-expr' },
+          { label: 'chained', value: 'chained' },
+        ]}
       />
+
+      {mode === 'anno' && (
+        <Stack gap="xs">
+          {annoRows.map((row, index) => (
+            <Group key={index} align="flex-end" wrap="nowrap">
+              <TextInput
+                label={index === 0 ? 'Key' : undefined}
+                value={row.key}
+                onChange={(e) => {
+                  const next = [...annoRows]
+                  next[index] = { ...next[index], key: e.currentTarget.value }
+                  setAnnoRows(next)
+                }}
+                style={{ flex: 1 }}
+              />
+              <TextInput
+                label={index === 0 ? 'Value' : undefined}
+                value={row.value}
+                onChange={(e) => {
+                  const next = [...annoRows]
+                  next[index] = { ...next[index], value: e.currentTarget.value }
+                  setAnnoRows(next)
+                }}
+                style={{ flex: 1 }}
+              />
+              <ActionIcon
+                variant="subtle"
+                color="red"
+                aria-label="Remove annotation row"
+                onClick={() => setAnnoRows(annoRows.filter((_, i) => i !== index))}
+                disabled={annoRows.length <= 1}
+              >
+                ×
+              </ActionIcon>
+            </Group>
+          ))}
+          <Button
+            variant="light"
+            size="xs"
+            w="fit-content"
+            onClick={() => setAnnoRows([...annoRows, { key: '', value: '' }])}
+          >
+            Add key/value
+          </Button>
+        </Stack>
+      )}
+
+      {mode === 'anno-expr' && (
+        <TextInput
+          label="Expression"
+          description="Direct annotation variables, e.g. app == 'payments-api'"
+          value={exprText}
+          onChange={(e) => setExprText(e.currentTarget.value)}
+          styles={{ input: { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' } }}
+        />
+      )}
+
+      {mode === 'chained' && (
+        <Textarea
+          label="Chained matchers (JSON array)"
+          autosize
+          minRows={4}
+          maxRows={10}
+          value={chainedText}
+          onChange={(e) => setChainedText(e.currentTarget.value)}
+          styles={{ input: { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' } }}
+        />
+      )}
 
       {error && (
         <Alert color="red" title="Query failed">

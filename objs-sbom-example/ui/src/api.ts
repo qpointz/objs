@@ -61,6 +61,16 @@ async function parseResponse<T>(res: Response): Promise<T> {
   return body as T
 }
 
+export async function queryGraph(matcherBody: unknown): Promise<BoMSubgraph> {
+  const res = await fetch('/api/v1/objs/graph/query', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(matcherBody),
+  })
+  return parseResponse<BoMSubgraph>(res)
+}
+
+/** @deprecated Prefer [queryGraph] with an `anno` matcher body. */
 export async function fetchGraph(annotationJson: string): Promise<BoMSubgraph> {
   let parsed: unknown
   try {
@@ -71,12 +81,15 @@ export async function fetchGraph(annotationJson: string): Promise<BoMSubgraph> {
   if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
     throw new Error('Annotation JSON must be an object, e.g. {"app":"payments-api"}')
   }
-  const query = annotationsToQuery(parsed as Record<string, unknown>)
-  if (!query) {
+  const filter = Object.fromEntries(
+    Object.entries(parsed as Record<string, unknown>)
+      .filter(([, value]) => value !== null && value !== undefined)
+      .map(([key, value]) => [key, String(value)]),
+  )
+  if (Object.keys(filter).length === 0) {
     throw new Error('Provide at least one annotation key/value')
   }
-  const res = await fetch(`/api/v1/objs/graph?${query}`)
-  return parseResponse<BoMSubgraph>(res)
+  return queryGraph({ anno: filter })
 }
 
 export async function validateGraphDraft(graph: unknown): Promise<GraphValidationResult> {

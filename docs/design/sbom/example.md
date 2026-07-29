@@ -105,7 +105,8 @@ capturedBy=alice
 ### Why annotations (not payload)
 
 - Same Component **type** appears in many apps/versions; membership is contextual.
-- `GET /api/v1/objs/graph` already filters by annotation match-all.
+- `POST /api/v1/objs/graph/query` selects by matcher DSL (`anno`, `anno-expr`, or chained).
++ `POST /api/v1/objs/graph/query` selects by matcher DSL (`anno`, `anno-expr`, or chained).
 - Payload stays aligned with supply-chain object schemas; partition keys stay orthogonal.
 
 ---
@@ -142,7 +143,7 @@ Content-Type: application/json
 
 **Service layer:** `SbomService.listApplications()`, `getSbom(app, appVersion?)`, `save(…)`, plus filter overlays for extra annotations. Controllers delegate here.
 
-**Generic foundation REST** remains available (`GET /api/v1/objs/graph?app=…&appVersion=…`) for low-level access; SBOM REST is the domain-facing API.
+**Generic foundation REST** remains available (`POST /api/v1/objs/graph/query` with matcher DSL) for low-level access; SBOM REST is the domain-facing API.
 
 ### Isolation guarantee
 
