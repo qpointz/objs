@@ -25,7 +25,7 @@ PostgreSQL, and explicitly approved.
 | Stage | Work items | Readiness | Exit condition |
 |-------|------------|-----------|----------------|
 | 1 — PostgreSQL persistence | WI-001–WI-002 | Ready after remaining Stage 1 gap clarifications | Automated checks pass; user completes manual PostgreSQL test checklist and approves Stage 2 |
-| 2 — Seed implementation | WI-003–WI-006 | Blocked by Stage 1 acceptance; Stage 2 blocking gaps resolved (G-S1, G-S11); remaining defaults may be accepted at WI start | Durable seed pipeline and SBOM example integration pass |
+| 2 — Seed implementation | WI-003–WI-006 | Stage 1 accepted; Stage 2 defaults accepted | Durable seed pipeline and SBOM example integration pass |
 
 ## Work Items
 
@@ -43,9 +43,9 @@ PostgreSQL, and explicitly approved.
 
 ### Stage 2 — Seed implementation
 
-- [ ] WI-003 — Multi-document seed format and importer (`WI-003-seed-format-importer.md`)
-- [ ] WI-004 — Seed ledger and startup loading (`WI-004-seed-ledger-startup.md`)
-- [ ] WI-005 — Seed import/export REST API (`WI-005-seed-rest-api.md`)
+- [x] WI-003 — Multi-document seed format and importer (`WI-003-seed-format-importer.md`)
+- [x] WI-004 — Seed ledger and startup loading (`WI-004-seed-ledger-startup.md`)
+- [x] WI-005 — Seed import/export REST API (`WI-005-seed-rest-api.md`)
 - [ ] WI-006 — SBOM seed migration and design documentation (`WI-006-sbom-seeds-docs.md`)
 
 ## Scope

@@ -3,9 +3,8 @@
 Open decisions for [`STORY.md`](STORY.md). Resolve each blocking item before its dependent work
 item. Do not invent unresolved behavior silently in code.
 
-**Current state:** No Stage 1 or Stage 2 **blocking** gaps remain. Stage 1 may proceed on
-default-ok items (G-P1, G-P5) unless changed. Stage 2 remains blocked until Stage 1 passes the
-user's manual PostgreSQL testing; remaining Stage 2 items are default-ok proposals.
+**Current state:** Stage 1 accepted; Stage 2 in progress. Remaining Stage 2 defaults were
+accepted at Stage 2 start (2026-07-29). No blocking gaps remain.
 
 **Legend:** `blocking` = user decision required before implementation · `default-ok` = proposed
 default may be accepted or changed · `resolved` = agreed
@@ -41,23 +40,23 @@ default may be accepted or changed · `resolved` = agreed
 | # | Topic | Status | Clarification |
 |---|-------|--------|---------------|
 | G-S1 | Seed graph identity | resolved | YAML uses stable textual keys; importer maps them to deterministic **UUIDv5** entity/edge ids so repeated imports are idempotent |
-| G-S2 | Format envelope/version | default-ok | Proposed: each YAML document has `apiVersion: objs.poc.org/v1` and a `kind`; reject unsupported versions |
+| G-S2 | Format envelope/version | resolved | Each YAML document has `apiVersion: objs.poc.org/v1` and a `kind`; reject unsupported versions |
 | G-S3 | Initial document kinds | resolved | Extensible multi-document pack with `ObjectSchema`, `AllowedEdgeRule`, and `Graph` in v1 |
-| G-S4 | Unknown document kinds | default-ok | Proposed: fail the resource by default rather than silently skipping likely typos; future versions register new handlers |
-| G-S5 | Merge and deletion semantics | default-ok | Proposed: upsert schemas/rules/graph items by stable identity; omission never deletes; no `REPLACE` in v1 |
-| G-S6 | Resource locations | default-ok | Proposed: ordered `classpath:` and `file:` resources only in v1 |
-| G-S7 | Seed failure behavior | default-ok | Proposed: `fail-fast` default with configurable `continue`; any document error prevents a successful ledger entry |
+| G-S4 | Unknown document kinds | resolved | Fail the resource by default rather than silently skipping likely typos; future versions register new handlers |
+| G-S5 | Merge and deletion semantics | resolved | Upsert schemas/rules/graph items by stable identity; omission never deletes; no `REPLACE` in v1 |
+| G-S6 | Resource locations | resolved | Ordered `classpath:` and `file:` resources only in v1 |
+| G-S7 | Seed failure behavior | resolved | `fail-fast` default with configurable `continue`; any document error prevents a successful ledger entry |
 
 ## Stage 2 — Ledger and API
 
 | # | Topic | Status | Clarification |
 |---|-------|--------|---------------|
-| G-S8 | Fingerprint | default-ok | Proposed: SHA-256 over raw resource bytes; store algorithm prefix (`sha256:`) |
-| G-S9 | Ledger key | default-ok | Proposed: explicit seed name when configured, otherwise normalized resource location with credentials/query removed |
-| G-S10 | REST import | default-ok | Proposed: multipart YAML import using the same importer and structured per-document result |
-| G-S11 | REST export scope | resolved | Export **all seed kinds** present in the system, including `Graph` seeds; keep the format/handler design open so new seed kinds can be added later; never expose an unbounded load-all graph dump — graph export remains annotation-filtered / otherwise bounded |
-| G-S12 | SBOM source of truth | default-ok | Proposed: canonical YAML becomes registry source of truth; retain typed Kotlin metadata/builders and enforce parity in tests |
-| G-S13 | Demo graph | default-ok | Proposed: convert the existing SBOM demo graph to a property-gated `Graph` seed |
+| G-S8 | Fingerprint | resolved | SHA-256 over raw resource bytes; store algorithm prefix (`sha256:`) |
+| G-S9 | Ledger key | resolved | Explicit seed name when configured, otherwise normalized resource location with credentials/query removed |
+| G-S10 | REST import | resolved | Multipart YAML import using the same importer and structured per-document result |
+| G-S11 | REST export scope | resolved | Export **all seed kinds** present in the system, including `Graph` seeds; keep the format/handler design open so new seed types can be added later; never expose an unbounded load-all graph dump — graph export remains annotation-filtered / otherwise bounded |
+| G-S12 | SBOM source of truth | resolved | Canonical YAML becomes registry source of truth; retain typed Kotlin metadata/builders and enforce parity in tests |
+| G-S13 | Demo graph | resolved | Convert the existing SBOM demo graph to a property-gated `Graph` seed |
 
 ## Object-schema DSL
 
@@ -81,4 +80,6 @@ default may be accepted or changed · `resolved` = agreed
 | G-S3 | Use an extensible, qpointz-style multi-document pack with `ObjectSchema` definitions | 2026-07-29 |
 | G-S11 | Export all seed kinds including graphs; keep kind registry extensible; graph export stays bounded | 2026-07-29 |
 | G-D1–G-D5 | Adopt and persist the qpointz-inspired object-schema DSL before defining seed v1 | 2026-07-29 |
+| G-S2, G-S4–G-S10, G-S12–G-S13 | Accept Stage 2 defaults at Stage 2 start | 2026-07-29 |
+| G-P2 | Stage 1 PostgreSQL acceptance confirmed; Stage 2 approved | 2026-07-29 |
 

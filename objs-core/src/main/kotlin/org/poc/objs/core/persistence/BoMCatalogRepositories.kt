@@ -7,3 +7,6 @@ interface BoMSchemaCatalogRepository :
 
 interface BoMAllowedEdgeRuleRepository :
     JpaRepository<BoMAllowedEdgeRuleRecord, BoMAllowedEdgeRuleId>
+
+interface BoMSeedLedgerRepository :
+    JpaRepository<BoMSeedLedgerRecord, String>

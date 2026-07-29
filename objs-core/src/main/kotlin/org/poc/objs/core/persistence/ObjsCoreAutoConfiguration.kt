@@ -2,10 +2,13 @@ package org.poc.objs.core.persistence
 
 import org.poc.objs.core.domain.BoMAllowedEdgeCatalog
 import org.poc.objs.core.domain.BoMSchemaCatalog
+import org.poc.objs.core.seed.BoMSeedProperties
+import org.poc.objs.core.seed.BoMSeedStartupLoader
 import org.poc.objs.core.validation.BoMValidator
 import org.springframework.boot.ApplicationRunner
 import org.springframework.boot.autoconfigure.AutoConfiguration
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
+import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.persistence.autoconfigure.EntityScan
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.ComponentScan
@@ -25,6 +28,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories
 @ComponentScan(basePackages = ["org.poc.objs.core"])
 @EntityScan(basePackages = ["org.poc.objs.core.persistence"])
 @EnableJpaRepositories(basePackages = ["org.poc.objs.core.persistence"])
+@EnableConfigurationProperties(BoMSeedProperties::class)
 class ObjsCoreAutoConfiguration {
 
     // ── JPA-backed catalogs ──
@@ -50,6 +54,12 @@ class ObjsCoreAutoConfiguration {
         schemaCatalog.hydrate()
         edgeCatalog.hydrate()
     }
+
+    /** Ordered classpath/file seed import after catalogs are hydrated. */
+    @Bean
+    @Order(Ordered.HIGHEST_PRECEDENCE + 100)
+    fun bomSeedStartup(loader: BoMSeedStartupLoader): ApplicationRunner =
+        ApplicationRunner { loader.loadConfiguredResources() }
 
     // ── Validator ──
 
