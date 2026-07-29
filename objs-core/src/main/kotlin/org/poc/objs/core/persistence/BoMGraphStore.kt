@@ -1,12 +1,14 @@
 package org.poc.objs.core.persistence
 
+import jakarta.persistence.EntityManager
 import org.poc.objs.core.domain.BoMEdge
 import org.poc.objs.core.domain.BoMEntity
 import org.poc.objs.core.domain.BoMGraph
 import org.poc.objs.core.domain.BoMSubgraph
 import org.poc.objs.core.match.BoMAnnotationMatcher
+import org.poc.objs.core.match.BoMMatcher
 import org.poc.objs.core.match.MatchAllAnnotationMatcher
-import org.poc.objs.core.subgraph.BoMSubgraphSelector
+import org.poc.objs.core.match.asBoMMatcher
 import org.poc.objs.core.validation.BoMEntityTypeLookup
 import org.poc.objs.core.validation.BoMPersistGate
 import org.poc.objs.core.validation.BoMValidationIssue
@@ -24,6 +26,8 @@ class BoMGraphStore(
     private val entityRepository: BoMEntityRepository,
     private val edgeRepository: BoMEdgeRepository,
     private val validator: BoMValidator,
+    private val rawGraphReader: BoMRawGraphReader,
+    private val entityManager: EntityManager,
 ) {
     private fun gate(): BoMPersistGate = BoMPersistGate(
         validator = validator,
@@ -135,8 +139,19 @@ class BoMGraphStore(
     }
 
     @Transactional(readOnly = true)
+    fun selectSubgraph(matcher: BoMMatcher): BoMSubgraph {
+        // JDBC reads share the Spring transaction connection; flush pending JPA writes first.
+        entityManager.flush()
+        val (entities, edges) = rawGraphReader.select(matcher)
+        return BoMSubgraph(
+            entities = entities.map { it.toDomain() },
+            edges = edges.map { it.toDomain() },
+        )
+    }
+
+    @Transactional(readOnly = true)
     fun selectSubgraph(matcher: BoMAnnotationMatcher): BoMSubgraph =
-        BoMSubgraphSelector.select(loadAll(), matcher)
+        selectSubgraph(matcher.asBoMMatcher())
 
     @Transactional(readOnly = true)
     fun selectSubgraphMatchAll(filter: Map<String, String>): BoMSubgraph =

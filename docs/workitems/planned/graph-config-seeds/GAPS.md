@@ -18,7 +18,7 @@ default may be accepted or changed · `resolved` = agreed
 | G-P2 | Stage boundary | resolved | Stop after WI-002 so the user can perform manual PostgreSQL testing; begin Stage 2 only after explicit approval |
 | G-P3 | Automated PostgreSQL tests | resolved | Use Testcontainers PostgreSQL for PostgreSQL-specific integration tests; retain fast H2 tests where they still provide useful coverage |
 | G-P4 | Catalog / registry abstraction | resolved | Consumers use catalog interfaces/base types; production uses PostgreSQL-authoritative implementations with an in-memory write-through cache; see detail |
-| G-P5 | Existing registry API compatibility | default-ok | Proposed: preserve current `/api/v1/objs/registry` contracts; only durability changes |
+| G-P5 | Existing registry API compatibility | resolved | Replace raw JSON Schema registration with the authoritative object-schema DSL before seed v1; expose generated JSON Schema through a projection endpoint |
 
 ### G-P4 detail — registry abstraction
 
@@ -42,7 +42,7 @@ default may be accepted or changed · `resolved` = agreed
 |---|-------|--------|---------------|
 | G-S1 | Seed graph identity | resolved | YAML uses stable textual keys; importer maps them to deterministic **UUIDv5** entity/edge ids so repeated imports are idempotent |
 | G-S2 | Format envelope/version | default-ok | Proposed: each YAML document has `apiVersion: objs.poc.org/v1` and a `kind`; reject unsupported versions |
-| G-S3 | Initial document kinds | resolved | Extensible multi-document pack with `EntitySchema`, `AllowedEdgeRule`, and `Graph` in v1 |
+| G-S3 | Initial document kinds | resolved | Extensible multi-document pack with `ObjectSchema`, `AllowedEdgeRule`, and `Graph` in v1 |
 | G-S4 | Unknown document kinds | default-ok | Proposed: fail the resource by default rather than silently skipping likely typos; future versions register new handlers |
 | G-S5 | Merge and deletion semantics | default-ok | Proposed: upsert schemas/rules/graph items by stable identity; omission never deletes; no `REPLACE` in v1 |
 | G-S6 | Resource locations | default-ok | Proposed: ordered `classpath:` and `file:` resources only in v1 |
@@ -59,6 +59,16 @@ default may be accepted or changed · `resolved` = agreed
 | G-S12 | SBOM source of truth | default-ok | Proposed: canonical YAML becomes registry source of truth; retain typed Kotlin metadata/builders and enforce parity in tests |
 | G-S13 | Demo graph | default-ok | Proposed: convert the existing SBOM demo graph to a property-gated `Graph` seed |
 
+## Object-schema DSL
+
+| # | Topic | Status | Clarification |
+|---|-------|--------|---------------|
+| G-D1 | Authoritative representation | resolved | Persist the typed recursive DSL only; generate JSON Schema on demand |
+| G-D2 | Facet semantics | resolved | Reuse the qpointz payload-schema DSL structure and capabilities, but do not introduce facets, applicability, cardinality, categories, or scopes |
+| G-D3 | Type system | resolved | Support `OBJECT`, `ARRAY`, `STRING`, `NUMBER`, `INTEGER`, `BOOLEAN`, and `ENUM`; `INTEGER` is the required Objs/SBOM extension |
+| G-D4 | Existing development data | resolved | No raw JSON Schema migration; recreate development data because seed v1 has not shipped |
+| G-D5 | Seed schema kind | resolved | `ObjectSchema` embeds the same DSL; there is no parallel raw-JSON-Schema seed kind |
+
 ## Resolution log
 
 | Gap | Decision | Date |
@@ -66,7 +76,9 @@ default may be accepted or changed · `resolved` = agreed
 | G-P2 | Manual PostgreSQL acceptance gates Stage 2 | 2026-07-29 |
 | G-P3 | Use Testcontainers PostgreSQL in addition to useful H2 tests | 2026-07-29 |
 | G-P4 | Abstract catalogs; PostgreSQL-authoritative production implementation with in-memory write-through cache | 2026-07-29 |
+| G-P5 | Make the object-schema DSL authoritative and expose JSON Schema as a generated projection | 2026-07-29 |
 | G-S1 | Stable textual keys → deterministic UUIDv5 for seeded entities/edges | 2026-07-29 |
-| G-S3 | Use an extensible, qpointz-style multi-document pack | 2026-07-29 |
+| G-S3 | Use an extensible, qpointz-style multi-document pack with `ObjectSchema` definitions | 2026-07-29 |
 | G-S11 | Export all seed kinds including graphs; keep kind registry extensible; graph export stays bounded | 2026-07-29 |
+| G-D1–G-D5 | Adopt and persist the qpointz-inspired object-schema DSL before defining seed v1 | 2026-07-29 |
 

@@ -5,6 +5,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.poc.objs.core.domain.BoMAllowedEdgeCatalog
 import org.poc.objs.core.domain.BoMSchemaCatalog
+import org.poc.objs.core.domain.BoMSchemaUsage
 import org.poc.objs.core.persistence.BoMGraphStore
 import org.poc.objs.core.persistence.ObjsCoreAutoConfiguration
 import org.poc.objs.sbom.annotations.Provenance
@@ -101,9 +102,29 @@ class CanonicalOntologyTest {
         assertThat(pack.schemas).hasSize(24)
         // Exact relationship table in canonical-spec.md
         assertThat(pack.edgeRules).hasSize(28)
+        assertThat(pack.edgeRules)
+            .allSatisfy {
+                assertThat(it.propertiesSchemaType).isEqualTo("CanonicalEdge")
+                assertThat(it.propertiesSchemaVersion).isEqualTo("1.0.0")
+            }
         assertThat(schemas.get("Container Image", "1.0.0")).isNotNull
         assertThat(schemas.get("Kubernetes Cluster", "1.0.0")).isNotNull
         assertThat(edges.all()).hasSize(28)
+
+        @Suppress("UNCHECKED_CAST")
+        val artifactProperties =
+            schemas.get("Artifact", "1.0.0")!!.toJsonSchema()["properties"] as Map<String, Map<String, Any?>>
+        assertThat(artifactProperties["size"]!!["type"]).isEqualTo("integer")
+
+        @Suppress("UNCHECKED_CAST")
+        val productProperties =
+            schemas.get("Product", "1.0.0")!!.toJsonSchema()["properties"] as Map<String, Map<String, Any?>>
+        assertThat(productProperties["homepage"]!!["format"]).isEqualTo("uri")
+
+        assertThat(schemas.get("CanonicalEdge", "1.0.0")!!.usages)
+            .containsExactly(BoMSchemaUsage.EDGE_PROPERTIES)
+        assertThat(schemas.get("Component", "1.0.0")!!.usages)
+            .containsExactly(BoMSchemaUsage.ENTITY)
     }
 
     @Test

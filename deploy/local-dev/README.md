@@ -6,7 +6,7 @@ Database files are retained under `.data/local-dev/postgres`.
 From the repository root:
 
 ```powershell
-docker compose -f deploy/local-dev/docker-compose.yml up -d
+docker compose -f deploy/local-dev/docker-compose.yml up -d --wait
 docker compose -f deploy/local-dev/docker-compose.yml ps
 ./gradlew :objs-app:run --args="--spring.profiles.active=postgres"
 ```
@@ -22,7 +22,7 @@ Reset the local database:
 ```powershell
 docker compose -f deploy/local-dev/docker-compose.yml down
 Remove-Item -Recurse -Force .data/local-dev/postgres
-docker compose -f deploy/local-dev/docker-compose.yml up -d
+docker compose -f deploy/local-dev/docker-compose.yml up -d --wait
 ```
 
 Defaults match `objs-app/src/main/resources/application.yml`:

@@ -52,7 +52,7 @@ class BoMValidator(
             )
             return issues
         }
-        issues += validateAgainstSchema(schema.schema, entity.payload, path = "$path.payload")
+        issues += validateAgainstSchema(schema.toJsonSchema(), entity.payload, path = "$path.payload")
         return issues
     }
 
@@ -137,6 +137,19 @@ class BoMValidator(
                     )
                     return issues
                 }
+                if (
+                    rule.propertiesSchemaType != null &&
+                    rule.propertiesSchemaVersion != null &&
+                    (type != rule.propertiesSchemaType || schemaVersion != rule.propertiesSchemaVersion)
+                ) {
+                    issues += BoMValidationIssue(
+                        code = "EDGE_SCHEMA_REF_MISMATCH",
+                        message = "Edge schema $type@$schemaVersion does not match allowed " +
+                            "${rule.propertiesSchemaType}@${rule.propertiesSchemaVersion}",
+                        path = path,
+                    )
+                    return issues
+                }
                 if (props == null) {
                     if (!rule.emptyPropertiesAllowed) {
                         issues += BoMValidationIssue(
@@ -163,7 +176,7 @@ class BoMValidator(
                         path = path,
                     )
                 } else {
-                    issues += validateAgainstSchema(schema.schema, props, path = "$path.properties")
+                    issues += validateAgainstSchema(schema.toJsonSchema(), props, path = "$path.properties")
                 }
             }
         }

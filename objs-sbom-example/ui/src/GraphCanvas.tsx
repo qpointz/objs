@@ -28,10 +28,13 @@ type Props = {
   links: GraphLink[]
   selection: GraphSelection | null
   onSelect: (selection: GraphSelection | null) => void
+  layout: GraphLayout
 }
 
+export type GraphLayout = 'TB' | 'LR' | 'BT' | 'RL'
+
 export type GraphCanvasHandle = {
-  applyLayout: () => void
+  applyLayout: (layout?: GraphLayout) => void
 }
 
 const NODE_W = 180
@@ -45,10 +48,11 @@ type EdgeData = { edge: GraphLink }
 function layoutWithDagre(
   rfNodes: Node<EntityCardData>[],
   rfEdges: Edge[],
+  layout: GraphLayout,
 ): Node<EntityCardData>[] {
   const g = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}))
   g.setGraph({
-    rankdir: 'TB',
+    rankdir: layout,
     nodesep: 48,
     ranksep: 72,
     marginx: 24,
@@ -134,7 +138,7 @@ function toFlowElements(
 }
 
 function GraphCanvasInner(
-  { nodes: entities, links, selection, onSelect }: Props,
+  { nodes: entities, links, selection, onSelect, layout }: Props,
   ref: React.Ref<GraphCanvasHandle>,
 ) {
   const { fitView } = useReactFlow()
@@ -148,13 +152,13 @@ function GraphCanvasInner(
 
   useEffect(() => {
     const next = toFlowElements(entities, links, selection)
-    const laidOut = layoutWithDagre(next.nodes, next.edges)
+    const laidOut = layoutWithDagre(next.nodes, next.edges, layout)
     setNodes(laidOut)
     setEdges(next.edges)
     requestAnimationFrame(() => fitView({ padding: 0.15, duration: 300 }))
     // selection applied in separate effect; avoid re-layout on every click
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entities, links, setNodes, setEdges, fitView])
+  }, [entities, links, layout, setNodes, setEdges, fitView])
 
   useEffect(() => {
     const selectedNodeId = selection?.kind === 'node' ? selection.node.id : null
@@ -191,10 +195,10 @@ function GraphCanvasInner(
     )
   }, [selection, setNodes, setEdges])
 
-  const applyLayout = useCallback(() => {
-    setNodes((curr) => layoutWithDagre(curr, edges))
+  const applyLayout = useCallback((nextLayout: GraphLayout = layout) => {
+    setNodes((curr) => layoutWithDagre(curr, edges, nextLayout))
     requestAnimationFrame(() => fitView({ padding: 0.15, duration: 400 }))
-  }, [edges, fitView, setNodes])
+  }, [edges, fitView, layout, setNodes])
 
   useImperativeHandle(ref, () => ({ applyLayout }), [applyLayout])
 

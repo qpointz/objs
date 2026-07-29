@@ -21,7 +21,7 @@ Every entity (`BoMEntity`) has:
 
 | Aspect | Requirement |
 |--------|-------------|
-| **Type + version** | Identifies the **JSON Schema** for the payload in the central schema repository |
+| **Type + version** | Identifies the authoritative object-schema DSL definition for the payload |
 | **Payload** | A **JSON object** (JSON document) |
 | **Annotations** | Caller-defined metadata used for subgraph selection — see [annotations-and-subgraphs.md](annotations-and-subgraphs.md) |
 
@@ -33,9 +33,10 @@ Identity: plain **`UUID`** (`UUID.randomUUID()` / PostgreSQL `uuid`), same in-me
 
 - **One catalog** for schemas used by **entities and edges** (not separate silos).
 - Schema key: **`type` + `version`**.
-- Lookup: given type+version → JSON Schema used to validate entity **payload** or edge **properties**.
-- **Foundation:** catalog is **in-memory**.
-- **Later:** same catalog persisted as **PostgreSQL tables** (backlog C-3).
+- Lookup: given type+version → typed object-schema definition.
+- The recursive DSL is documented in [object-schema-dsl.md](object-schema-dsl.md).
+- PostgreSQL is authoritative; an in-memory cache serves validation lookups.
+- JSON Schema 2020-12 is generated from the DSL for payload/property validation and tooling.
 - Multiple versions of a type may coexist; stored entities/edges keep the type+version they were written with (non-conforming vs *current* rules remains allowed on read — see [validation.md](validation.md)).
 
 ## Relation / edge
@@ -60,8 +61,8 @@ Identity: plain **`UUID`** (`UUID.randomUUID()` / PostgreSQL `uuid`), same in-me
 |--------|-------------------|
 | Entity | `BoMEntity` |
 | Edge / relation | `BoMEdge` |
-| Schema catalog entry | TBD (`BoMSchema` / similar — type + version + JSON Schema document) |
+| Schema catalog entry | `BoMSchema` — type + version + authoritative `BoMSchemaNode` DSL |
 | Annotations map | Prefer plain key-value on `BoMEntity` |
-| Annotation matcher | TBD (`BoMAnnotationMatcher` base + match-all impl) |
+| Annotation matcher | `BoMMatcher` / `BoMPushableMatcher` / `BoMNonPushableMatcher`; default match-all is pushable |
 
 Annotation type name may still avoid `java.lang.annotation` clash if a dedicated class is introduced.

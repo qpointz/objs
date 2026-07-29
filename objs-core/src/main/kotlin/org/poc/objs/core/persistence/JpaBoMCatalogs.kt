@@ -2,13 +2,15 @@ package org.poc.objs.core.persistence
 
 import org.poc.objs.core.domain.BoMAllowedEdgeCatalog
 import org.poc.objs.core.domain.BoMAllowedEdgeRule
-import org.poc.objs.core.domain.BoMPropertiesPolicy
 import org.poc.objs.core.domain.BoMSchema
-import org.poc.objs.core.domain.BoMSchemaKey
 import org.poc.objs.core.domain.BoMSchemaCatalog
+import org.poc.objs.core.domain.BoMSchemaKey
+import org.poc.objs.core.domain.BoMSchemaNode
+import org.poc.objs.core.domain.BoMSchemaNormalizer
+import org.poc.objs.core.domain.BoMSchemaUsage
 import org.poc.objs.core.domain.InMemoryBoMAllowedEdgeCatalog
 import org.poc.objs.core.domain.InMemoryBoMSchemaCatalog
-import org.poc.objs.core.domain.findMostSpecificRule
+import org.poc.objs.core.typed.PayloadMapper
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 
@@ -32,19 +34,21 @@ open class JpaBoMSchemaCatalog(
 
     @Transactional
     override fun register(schema: BoMSchema) {
+        val normalized = BoMSchemaNormalizer.normalizeStrict(schema)
         val now = Instant.now()
-        val id = BoMSchemaCatalogId(schema.type, schema.version)
+        val id = BoMSchemaCatalogId(normalized.type, normalized.version)
         val record = repository.findById(id).orElseGet {
             BoMSchemaCatalogRecord(
-                type = schema.type,
-                version = schema.version,
+                type = normalized.type,
+                version = normalized.version,
                 createdAt = now,
             )
         }
-        record.schemaDoc = schema.schema.toMutableMap()
+        record.definitionDoc = PayloadMapper.toMap(normalized.contentSchema)
+        record.usages = normalized.usages.map { it.name }.sorted().toMutableList()
         record.updatedAt = now
         repository.save(record)
-        cache.register(schema)
+        cache.register(normalized)
     }
 
     override fun get(type: String, version: String): BoMSchema? = cache.get(type, version)
@@ -106,6 +110,8 @@ open class JpaBoMAllowedEdgeCatalog(
         }
         record.propertiesPolicy = rule.propertiesPolicy
         record.emptyPropertiesAllowed = rule.emptyPropertiesAllowed
+        record.propertiesSchemaType = rule.propertiesSchemaType
+        record.propertiesSchemaVersion = rule.propertiesSchemaVersion
         record.updatedAt = now
         repository.save(record)
         cache.register(rule)
@@ -137,7 +143,8 @@ open class JpaBoMAllowedEdgeCatalog(
 fun BoMSchemaCatalogRecord.toDomain() = BoMSchema(
     type = type,
     version = version,
-    schema = schemaDoc.toMap(),
+    contentSchema = PayloadMapper.fromMap(definitionDoc, BoMSchemaNode::class.java),
+    usages = usages.map { BoMSchemaUsage.valueOf(it) }.toSet().ifEmpty { setOf(BoMSchemaUsage.ENTITY) },
 )
 
 fun BoMAllowedEdgeRuleRecord.toDomain() = BoMAllowedEdgeRule(
@@ -146,4 +153,6 @@ fun BoMAllowedEdgeRuleRecord.toDomain() = BoMAllowedEdgeRule(
     targetType = targetType,
     propertiesPolicy = propertiesPolicy,
     emptyPropertiesAllowed = emptyPropertiesAllowed,
+    propertiesSchemaType = propertiesSchemaType,
+    propertiesSchemaVersion = propertiesSchemaVersion,
 )

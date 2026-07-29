@@ -1,15 +1,25 @@
 package org.poc.objs.core.domain
 
-/**
- * JSON Schema entry keyed by [type] + [version] in the central catalog.
- */
+/** How a catalog schema is used by the graph model. */
+enum class BoMSchemaUsage {
+    /** Entity payload schema (`BoMEntity.type` + `schemaVersion`). */
+    ENTITY,
+
+    /** Edge properties schema (`BoMEdge.type` + `schemaVersion` when policy is SCHEMA). */
+    EDGE_PROPERTIES,
+}
+
+/** Authoritative object-schema DSL definition keyed by [type] + [version]. */
 data class BoMSchema(
     val type: String,
     val version: String,
-    /** JSON Schema document as a JSON object map (draft used by networknt validator). */
-    val schema: Map<String, Any?>,
+    val contentSchema: BoMSchemaNode,
+    val usages: Set<BoMSchemaUsage> = setOf(BoMSchemaUsage.ENTITY),
 ) {
     val key: BoMSchemaKey get() = BoMSchemaKey(type, version)
+
+    /** Generate the JSON Schema projection used for payload validation and external tooling. */
+    fun toJsonSchema(): Map<String, Any?> = BoMJsonSchema.from(this)
 }
 
 data class BoMSchemaKey(val type: String, val version: String)
@@ -53,6 +63,10 @@ data class BoMAllowedEdgeRule(
     val propertiesPolicy: BoMPropertiesPolicy = BoMPropertiesPolicy.NONE,
     /** When [propertiesPolicy] is [BoMPropertiesPolicy.SCHEMA], whether empty properties are allowed. */
     val emptyPropertiesAllowed: Boolean = true,
+    /** Property-schema catalog type selected for this relation. */
+    val propertiesSchemaType: String? = null,
+    /** Property-schema catalog version selected for this relation. */
+    val propertiesSchemaVersion: String? = null,
 ) {
     companion object {
         /** Wildcard token: matches any type or role in that position. */

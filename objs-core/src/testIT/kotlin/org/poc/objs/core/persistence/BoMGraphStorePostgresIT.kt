@@ -11,6 +11,7 @@ import org.poc.objs.core.domain.BoMGraph
 import org.poc.objs.core.domain.BoMPropertiesPolicy
 import org.poc.objs.core.domain.BoMSchema
 import org.poc.objs.core.domain.BoMSchemaCatalog
+import org.poc.objs.core.domain.BoMSchemaDsl
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.SpringBootConfiguration
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration
@@ -68,12 +69,12 @@ class BoMGraphStorePostgresIT {
         allowed.clear()
         schemas.register(
             BoMSchema(
-                type = "Person",
-                version = "1",
-                schema = mapOf(
-                    "type" to "object",
-                    "required" to listOf("name"),
-                    "properties" to mapOf("name" to mapOf("type" to "string")),
+                "Person",
+                "1",
+                BoMSchemaDsl.obj(
+                    "Person",
+                    "Person payload",
+                    listOf(BoMSchemaDsl.field("name", BoMSchemaDsl.string("Name", "Person name"))),
                 ),
             ),
         )
@@ -84,6 +85,7 @@ class BoMGraphStorePostgresIT {
     fun shouldRoundTripEntitiesAndEdgesOnPostgres() {
         val a = UUID.randomUUID()
         val b = UUID.randomUUID()
+        val c = UUID.randomUUID()
         val graph = BoMGraph(
             entities = mutableListOf(
                 BoMEntity(id = a, type = "Person", schemaVersion = "1",
@@ -92,23 +94,43 @@ class BoMGraphStorePostgresIT {
                 BoMEntity(id = b, type = "Person", schemaVersion = "1",
                     payload = mutableMapOf("name" to "Bob"),
                     annotations = mutableMapOf("env" to "test")),
+                BoMEntity(id = c, type = "Person", schemaVersion = "1",
+                    payload = mutableMapOf("name" to "Carol"),
+                    annotations = mutableMapOf("env" to "prod", "team" to "core")),
             ),
-            edges = mutableListOf(BoMEdge(source = a, target = b, role = "knows")),
+            edges = mutableListOf(
+                BoMEdge(source = a, target = b, role = "knows"),
+                BoMEdge(source = a, target = c, role = "knows"),
+            ),
         )
         assertThat(store.write(graph).isValid).isTrue()
 
         val loaded = store.loadAll()
-        assertThat(loaded.entities).hasSize(2)
-        assertThat(loaded.edges).hasSize(1)
+        assertThat(loaded.entities).hasSize(3)
+        assertThat(loaded.edges).hasSize(2)
 
         val alice = loaded.entities.find { it.id == a }!!
         assertThat(alice.payload["name"]).isEqualTo("Alice")
         assertThat(alice.annotations["env"]).isEqualTo("test")
         assertThat(alice.annotations["team"]).isEqualTo("core")
 
-        val sub = store.selectSubgraphMatchAll(mapOf("env" to "test"))
-        assertThat(sub.entities).hasSize(2)
-        assertThat(sub.edges).hasSize(1)
+        val sub = store.selectSubgraphMatchAll(mapOf("env" to "test", "team" to "core"))
+        assertThat(sub.entities.map { it.id }).containsExactly(a)
+        assertThat(sub.edges).isEmpty()
+
+        val testSubgraph = store.selectSubgraphMatchAll(mapOf("env" to "test"))
+        assertThat(testSubgraph.entities.map { it.id }).containsExactlyInAnyOrder(a, b)
+        assertThat(testSubgraph.edges).hasSize(1)
+
+        val nonPushable = store.selectSubgraph(
+            org.poc.objs.core.match.BoMAnnotationMatcher { entity ->
+                entity.annotations["team"] == "core"
+            },
+        )
+        assertThat(nonPushable.entities.map { it.id }).containsExactlyInAnyOrder(a, c)
+        assertThat(nonPushable.edges).hasSize(1)
+        assertThat(nonPushable.edges.single().source).isEqualTo(a)
+        assertThat(nonPushable.edges.single().target).isEqualTo(c)
     }
 
     @Test

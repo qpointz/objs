@@ -19,7 +19,7 @@ data class BoMAllowedEdgeRuleId(
 ) : Serializable
 
 @Entity
-@Table(name = "bom_allowed_edge")
+@Table(name = "bom_graph_edge_schema")
 @IdClass(BoMAllowedEdgeRuleId::class)
 class BoMAllowedEdgeRuleRecord(
     @Id
@@ -40,6 +40,12 @@ class BoMAllowedEdgeRuleRecord(
 
     @Column(name = "empty_properties_allowed", nullable = false)
     var emptyPropertiesAllowed: Boolean = true,
+
+    @Column(name = "properties_schema_type")
+    var propertiesSchemaType: String? = null,
+
+    @Column(name = "properties_schema_version", length = 64)
+    var propertiesSchemaVersion: String? = null,
 
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant = Instant.now(),

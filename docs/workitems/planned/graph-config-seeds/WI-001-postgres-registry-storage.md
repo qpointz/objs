@@ -40,7 +40,7 @@ storage for schemas and allowed-edge rules (G-P4).
 - [ ] Schema and allowed-edge catalog APIs are expressed as consumer-facing abstractions
 - [ ] In-memory implementations preserve current behavior and shared edge matching semantics
 - [ ] Flyway creates schema and allowed-edge-rule tables with required uniqueness and constraints
-- [ ] Schema repository CRUD round-trips complete JSON Schema documents
+- [x] Schema repository CRUD round-trips complete authoritative DSL definitions
 - [ ] Allowed-edge-rule repository CRUD round-trips every policy field and wildcard value
 - [ ] Migrations and repositories pass Testcontainers PostgreSQL integration tests and retained H2 tests
 - [ ] Design notes record PostgreSQL-specific choices and limitations discovered

@@ -13,7 +13,7 @@ Entity SDK + validation + JPA/Flyway persistence for the entity store.
 |---------|-------|----------------|
 | `org.poc.objs.core` | `ObjsCore` | Module marker |
 | `…domain` | `BoMEntity`, `BoMEdge`, `BoMGraph`, `BoMSubgraph`, `BoMSchema*`, `BoAllowedEdge*` | In-memory domain + catalogs |
-| `…match` | `BoMAnnotationMatcher`, `MatchAllAnnotationMatcher` | Annotation matching strategies |
+| `…match` | `BoMMatcher`, `BoMPushableMatcher`, `BoMNonPushableMatcher`, `MatchAllAnnotationMatcher`, `BoMMatchExpression` | Annotation matching strategies |
 | `…subgraph` | `BoMSubgraphSelector` | Induced subgraph selection |
 | `…validation` | `BoMValidator`, `BoMPersistGate`, `BoMValidationResult` | Schema + allow-list; two-stage persist gate |
 | `…persistence` | `BoMEntityRecord`, `BoMEdgeRecord`, repos, `BoMGraphStore`, autoconfig | JPA + Flyway + store facade |
@@ -21,11 +21,11 @@ Entity SDK + validation + JPA/Flyway persistence for the entity store.
 ## Key behaviours
 
 - **SDK:** construct any `BoMGraph` in memory without validation.
-- **Schemas:** in-memory `BoMSchemaCatalog` keyed by `(type, version)`.
+- **Schemas:** PostgreSQL-authoritative `BoMSchemaCatalog` keyed by `(type, version)`.
 - **Allow-list:** `BoMAllowedEdgeCatalog` with properties policy `NONE` | `SCHEMA`.
 - **Persist gate:** stage 1 entities vs schema → assign missing `UUID.randomUUID()` → stage 2 edges vs payload∪store.
 - **Id rule:** no id → create (`UUID.randomUUID()`); id not in store → create with client id; id in store → update.
-- **DB:** Flyway `V1__bom_entity_edge.sql`; tests on H2 (`MODE=PostgreSQL`); runtime PostgreSQL.
+- **DB:** Flyway graph tables use the `bom_graph_*` prefix; tests run on H2 and Testcontainers PostgreSQL.
 
 ## Tests
 

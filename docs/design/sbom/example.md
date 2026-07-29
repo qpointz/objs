@@ -47,7 +47,7 @@ flowchart TB
   domain[SbomGraphBuilder + typed Component]
   graph[BoMGraph]
   store[BoMGraphStore]
-  db[(bom_entity / bom_edge)]
+  db[(bom_graph_entity / bom_graph_edge)]
   fetch[SbomService]
   rest --> fetch
   domain --> graph
@@ -184,9 +184,21 @@ val bom = sbomService.getSbom("payments-api", "2.3.1")
 | `objs-sbom-example` | Full canonical types (A–D), annotation vocabulary, `SbomService`, registry pack, **`/api/v1/example/sbom` REST**, graph explorer SPA at **`/ui/`** |
 | `objs-app` | Depends on example module for demo; optional seed of SBOM pack at startup |
 
-### Graph explorer SPA
+### Workbench SPA
 
-Open **`http://localhost:8080/ui/`** (packaged with the example module). Enter an annotation JSON object and press **Exec** — the UI calls foundation `GET /api/v1/objs/graph` (match-all) and renders a force-directed graph. Nodes are colored by entity `type`; selecting a node shows `payload` and `annotations`.
+Open **`http://localhost:8080/ui/`** (packaged with the example module). Routes:
+See the user-level [`Objs UI manual`](../ui.md) for complete operating instructions.
+
+| Path | View |
+|------|------|
+| `/ui/graph` | Graph explorer — annotation query, canvas, selection inspector |
+| `/ui/schemas` | Schema explorer — entity / edge-property catalogs, allowed edges, DSL + JSON Schema |
+| `/ui/linter` | Schema linter — visual tree + YAML/JSON source, server lint, create/update versions |
+| `/ui/object-linter` | Object linter — dry-run graph validation from YAML/JSON |
+
+Graph explorer type badges and selection links open the matching schema in Schema explorer.
+Schema explorer **Edit / lint** updates the opened version; **Create version** increments the highest
+major across that type (`4` → `5`, `4.2.1` → `5.0.0`).
 
 Dev: `cd objs-sbom-example/ui && npm install && npm run dev` (Vite proxies `/api` → `:8080`).  
 Build: Gradle builds the UI into `static/ui/` unless `-PskipUi=true`.
@@ -219,7 +231,6 @@ python objs-sbom-example/scripts/random_sbom_crud.py get --app demo-app --versio
 
 ## Out of scope for this example
 
-- Persisting schema/edge catalogs to PostgreSQL (backlog **C-3**)
 - Auth / multi-tenant security
 - Full replace / prune of an SBOM on PUT (upsert-only)
 - Importer merge-by-natural-key
@@ -233,4 +244,5 @@ python objs-sbom-example/scripts/random_sbom_crud.py get --app demo-app --versio
 - Story: [`docs/workitems/completed/20260728-sbom-typed-example/`](../../workitems/completed/20260728-sbom-typed-example/STORY.md)
 - Gaps: [`GAPS.md`](../../workitems/completed/20260728-sbom-typed-example/GAPS.md)
 - Annotations design: [`../graph/annotations-and-subgraphs.md`](../graph/annotations-and-subgraphs.md)
+- Persistence / lazy reads: [`../graph/persistence.md`](../graph/persistence.md)
 - Typed toolkit (when written): [`../graph/typed-domain.md`](../graph/typed-domain.md)

@@ -8,6 +8,9 @@ import org.poc.objs.core.domain.BoMAllowedEdgeCatalog
 import org.poc.objs.core.domain.BoMPropertiesPolicy
 import org.poc.objs.core.domain.BoMSchema
 import org.poc.objs.core.domain.BoMSchemaCatalog
+import org.poc.objs.core.domain.BoMSchemaDsl
+import org.poc.objs.core.domain.BoMSchemaUsage
+import org.poc.objs.core.typed.PayloadMapper
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.SpringBootConfiguration
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration
@@ -17,6 +20,9 @@ import org.springframework.test.context.DynamicPropertySource
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
+
+private fun schema(type: String, version: String, title: String = type) =
+    BoMSchema(type, version, BoMSchemaDsl.obj(title, "$title payload"))
 
 /**
  * Integration tests for [JpaBoMSchemaCatalog] and [JpaBoMAllowedEdgeCatalog] against real
@@ -77,11 +83,21 @@ class JpaBoMCatalogsIT {
 
     @Test
     fun shouldRegisterAndRetrieveSchema() {
-        val schema = BoMSchema("Person", "1", mapOf("type" to "object", "required" to listOf("name")))
-        schemaCatalog.register(schema)
+        schemaCatalog.register(
+            BoMSchema(
+                "Person",
+                "1",
+                BoMSchemaDsl.obj(
+                    "Person",
+                    "Person payload",
+                    listOf(BoMSchemaDsl.field("name", BoMSchemaDsl.string("Name", "Person name"))),
+                ),
+            ),
+        )
 
         assertThat(schemaCatalog.get("Person", "1")).isNotNull
-        assertThat(schemaCatalog.get("Person", "1")!!.schema["type"]).isEqualTo("object")
+        assertThat(schemaCatalog.get("Person", "1")!!.contentSchema.type.name).isEqualTo("OBJECT")
+        assertThat(schemaCatalog.get("Person", "1")!!.usages).containsExactly(BoMSchemaUsage.ENTITY)
         assertThat(schemaCatalog.contains("Person", "1")).isTrue()
         assertThat(schemaCatalog.types()).contains("Person")
         assertThat(schemaRepo.count()).isEqualTo(1)
@@ -89,17 +105,17 @@ class JpaBoMCatalogsIT {
 
     @Test
     fun shouldUpsertSchema() {
-        schemaCatalog.register(BoMSchema("X", "1", mapOf("type" to "object")))
-        schemaCatalog.register(BoMSchema("X", "1", mapOf("type" to "object", "title" to "updated")))
+        schemaCatalog.register(schema("X", "1"))
+        schemaCatalog.register(schema("X", "1", "Updated"))
 
         val schema = schemaCatalog.get("X", "1")!!
-        assertThat(schema.schema["title"]).isEqualTo("updated")
+        assertThat(schema.contentSchema.title).isEqualTo("Updated")
         assertThat(schemaCatalog.all()).hasSize(1)
     }
 
     @Test
     fun shouldRemoveSchema() {
-        schemaCatalog.register(BoMSchema("A", "1", mapOf("type" to "object")))
+        schemaCatalog.register(schema("A", "1"))
         assertThat(schemaCatalog.remove("A", "1")).isTrue()
         assertThat(schemaCatalog.get("A", "1")).isNull()
         assertThat(schemaCatalog.remove("A", "1")).isFalse()
@@ -107,9 +123,9 @@ class JpaBoMCatalogsIT {
 
     @Test
     fun shouldListByType() {
-        schemaCatalog.register(BoMSchema("P", "1", mapOf("type" to "object")))
-        schemaCatalog.register(BoMSchema("P", "2", mapOf("type" to "object")))
-        schemaCatalog.register(BoMSchema("Q", "1", mapOf("type" to "object")))
+        schemaCatalog.register(schema("P", "1"))
+        schemaCatalog.register(schema("P", "2"))
+        schemaCatalog.register(schema("Q", "1"))
 
         assertThat(schemaCatalog.listByType("P")).hasSize(2)
         assertThat(schemaCatalog.types()).containsExactlyInAnyOrder("P", "Q")
@@ -118,10 +134,14 @@ class JpaBoMCatalogsIT {
     @Test
     fun shouldHydrate() {
         // Insert directly via repo to ensure the row is in the DB
-        schemaRepo.save(BoMSchemaCatalogRecord(
-            type = "H", version = "1",
-            schemaDoc = mutableMapOf("type" to "object"),
-        ))
+        schemaRepo.save(
+            BoMSchemaCatalogRecord(
+                type = "H",
+                version = "1",
+                definitionDoc = PayloadMapper.toMap(schema("H", "1").contentSchema),
+                usages = mutableListOf("ENTITY"),
+            ),
+        )
         schemaRepo.flush()
         // Simulate restart: create a fresh catalog and hydrate from the same repo
         val fresh = JpaBoMSchemaCatalog(schemaRepo)
@@ -135,12 +155,22 @@ class JpaBoMCatalogsIT {
     @Test
     fun shouldRegisterAndFindEdgeRule() {
         edgeCatalog.register(
-            BoMAllowedEdgeRule("Person", "knows", "Person", BoMPropertiesPolicy.SCHEMA, false),
+            BoMAllowedEdgeRule(
+                "Person",
+                "knows",
+                "Person",
+                BoMPropertiesPolicy.SCHEMA,
+                false,
+                propertiesSchemaType = "CanonicalEdge",
+                propertiesSchemaVersion = "1.0.0",
+            ),
         )
         val rule = edgeCatalog.find("Person", "knows", "Person")
         assertThat(rule).isNotNull
         assertThat(rule!!.propertiesPolicy).isEqualTo(BoMPropertiesPolicy.SCHEMA)
         assertThat(rule.emptyPropertiesAllowed).isFalse()
+        assertThat(rule.propertiesSchemaType).isEqualTo("CanonicalEdge")
+        assertThat(rule.propertiesSchemaVersion).isEqualTo("1.0.0")
         assertThat(edgeRuleRepo.count()).isEqualTo(1)
     }
 

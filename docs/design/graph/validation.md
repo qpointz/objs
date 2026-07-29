@@ -27,20 +27,23 @@ Batch subgraph payloads may **mix** creates and updates.
 
 | Concern | Rule |
 |---------|------|
-| Entity **payload** | Must conform to JSON Schema for entity **`(type, version)`** from the **central** schema repo |
+| Entity **payload** | Must conform to JSON Schema generated from the object-schema DSL for entity **`(type, version)`** |
 | **Edge** allow-list | Must match **`(sourceType, role, targetType)`**; else **deny** |
-| Edge **properties policy** | From the allow-list rule: **none** (bare edge — reject non-empty properties) or **schema** (validate against `(type, version)`; honor empty allowed/forbidden on the rule) |
+| Edge **properties policy** | From the allow-list rule: **none** (bare edge — reject non-empty properties) or **schema** (validate against the rule's property-schema `(type, version)`; honor empty allowed/forbidden) |
 
-Schema lookup (when properties policy = **schema**): **type + version** → schema document (shared repository for entities and edges).
+Schema lookup (when properties policy = **schema**): the edge's `type + schemaVersion` must match
+the property-schema reference configured on the allowed relation. That reference resolves to the
+authoritative DSL definition and deterministic JSON Schema 2020-12 projection. The repository is
+shared by entities and edges; see [object-schema-dsl.md](object-schema-dsl.md).
 
 ## Allowed-edge rules
 
 - Identity: **`(sourceType, role, targetType)`** (entity types of source/target); each part may be **`*`**
-- Plus **properties policy**: `none` | `schema` (+ empty allowed/forbidden when `schema`)
+- Plus **properties policy**: `none` | `schema`; a schema rule carries property-schema
+  `type + version` and empty allowed/forbidden
 - **Directed**; role is a **free string**; **no cardinality** limits in this story
 - Wildcards: e.g. `(* , depends_on , *)` permits that role for any types; most specific match wins
-- Catalog: **in-memory**; not in catalog → **deny**
-- Later: persist rules as PostgreSQL tables (follow-up with schema catalog / C-3)
+- Catalog: PostgreSQL-authoritative with an in-memory lookup cache; not in catalog → **deny**
 
 ## Two modes
 

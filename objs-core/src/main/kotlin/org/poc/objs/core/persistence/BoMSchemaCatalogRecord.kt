@@ -17,7 +17,7 @@ data class BoMSchemaCatalogId(
 ) : Serializable
 
 @Entity
-@Table(name = "bom_schema_catalog")
+@Table(name = "bom_graph_entity_schema")
 @IdClass(BoMSchemaCatalogId::class)
 class BoMSchemaCatalogRecord(
     @Id
@@ -29,8 +29,12 @@ class BoMSchemaCatalogRecord(
     var version: String = "",
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "schema_doc", nullable = false, columnDefinition = "json")
-    var schemaDoc: MutableMap<String, Any?> = mutableMapOf(),
+    @Column(name = "definition_doc", nullable = false, columnDefinition = "json")
+    var definitionDoc: MutableMap<String, Any?> = mutableMapOf(),
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "usages", nullable = false, columnDefinition = "json")
+    var usages: MutableList<String> = mutableListOf("ENTITY"),
 
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant = Instant.now(),

@@ -4,6 +4,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.poc.objs.core.domain.BoMAllowedEdgeRule
 import org.poc.objs.core.domain.BoMPropertiesPolicy
+import org.poc.objs.core.domain.BoMSchemaDsl
 import org.poc.objs.core.domain.InMemoryBoMAllowedEdgeCatalog
 import org.poc.objs.core.domain.InMemoryBoMSchemaCatalog
 
@@ -62,8 +63,9 @@ class TypedToolkitTest {
                 RegistryPack.objectSchema(
                     type = "Person",
                     version = "1.0.0",
-                    required = listOf("name"),
-                    properties = mapOf("name" to mapOf("type" to "string")),
+                    fields = listOf(
+                        BoMSchemaDsl.field("name", BoMSchemaDsl.string("Name", "Person name")),
+                    ),
                 ),
             ),
             edgeRules = listOf(

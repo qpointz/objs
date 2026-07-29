@@ -8,7 +8,8 @@ open class InMemoryBoMSchemaCatalog : BoMSchemaCatalog {
     private val schemas = linkedMapOf<BoMSchemaKey, BoMSchema>()
 
     override fun register(schema: BoMSchema) {
-        schemas[schema.key] = schema
+        val normalized = BoMSchemaNormalizer.normalizeStrict(schema)
+        schemas[normalized.key] = normalized
     }
 
     override fun get(type: String, version: String): BoMSchema? = schemas[BoMSchemaKey(type, version)]

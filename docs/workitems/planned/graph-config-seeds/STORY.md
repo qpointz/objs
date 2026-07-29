@@ -4,7 +4,7 @@
 **Branch:** `graph-config-seeds`  
 **Status:** in-progress
 **Backlog:** C-3, C-4  
-**Design:** [`docs/design/graph/persistence.md`](../../../design/graph/persistence.md), [`docs/design/graph/model.md`](../../../design/graph/model.md)  
+**Design:** [`docs/design/graph/persistence.md`](../../../design/graph/persistence.md), [`docs/design/graph/model.md`](../../../design/graph/model.md), [`docs/design/graph/object-schema-dsl.md`](../../../design/graph/object-schema-dsl.md)
 **Gaps:** [`GAPS.md`](GAPS.md)
 
 ## Goal
@@ -34,6 +34,13 @@ PostgreSQL, and explicitly approved.
 - [x] WI-001 — PostgreSQL baseline and registry storage (`WI-001-postgres-registry-storage.md`)
 - [x] WI-002 — Durable catalogs and Stage 1 verification (`WI-002-durable-catalogs-verification.md`)
 
+### Pre-Stage 2 UI workbench
+
+- [x] Schema explorer + visual/source linter in `objs-sbom-example/ui`
+  - separate Graph explorer, Schema explorer, and Schema linter views
+  - entity/edge-property usages, directional allowed edges, DSL JSON/YAML, JSON Schema projection
+  - version update vs next-major create; graph inspector links into schema detail
+
 ### Stage 2 — Seed implementation
 
 - [ ] WI-003 — Multi-document seed format and importer (`WI-003-seed-format-importer.md`)
@@ -46,6 +53,7 @@ PostgreSQL, and explicitly approved.
 - PostgreSQL/Flyway persistence for entity, edge, schema, allowed-edge-rule, and seed-ledger data
 - Consumer-facing registry/catalog abstractions; production uses PostgreSQL-authoritative
   implementations with in-memory write-through caches
+- Authoritative qpointz-inspired object-schema DSL with deterministic JSON Schema projection
 - Versioned, kind-discriminated multi-document YAML
 - Ordered `classpath:` and `file:` startup resources
 - Fingerprint-based, idempotent startup application

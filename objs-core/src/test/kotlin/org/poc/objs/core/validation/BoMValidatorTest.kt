@@ -12,7 +12,18 @@ import org.poc.objs.core.domain.BoMEntity
 import org.poc.objs.core.domain.BoMGraph
 import org.poc.objs.core.domain.BoMPropertiesPolicy
 import org.poc.objs.core.domain.BoMSchema
+import org.poc.objs.core.domain.BoMSchemaDsl
 import org.poc.objs.core.domain.InMemoryBoMSchemaCatalog
+
+private fun personSchema() = BoMSchema(
+    "Person",
+    "1",
+    BoMSchemaDsl.obj(
+        "Person",
+        "Person payload",
+        listOf(BoMSchemaDsl.field("name", BoMSchemaDsl.string("Name", "Person name"))),
+    ),
+)
 
 class BoMValidatorTest {
     private lateinit var schemas: InMemoryBoMSchemaCatalog
@@ -23,27 +34,20 @@ class BoMValidatorTest {
     fun setUp() {
         schemas = InMemoryBoMSchemaCatalog()
         allowed = InMemoryBoMAllowedEdgeCatalog()
+        schemas.register(personSchema())
         schemas.register(
             BoMSchema(
-                type = "Person",
-                version = "1",
-                schema = mapOf(
-                    "type" to "object",
-                    "required" to listOf("name"),
-                    "properties" to mapOf(
-                        "name" to mapOf("type" to "string"),
-                    ),
-                ),
-            ),
-        )
-        schemas.register(
-            BoMSchema(
-                type = "LinkProps",
-                version = "1",
-                schema = mapOf(
-                    "type" to "object",
-                    "properties" to mapOf(
-                        "weight" to mapOf("type" to "number"),
+                "LinkProps",
+                "1",
+                BoMSchemaDsl.obj(
+                    "Link properties",
+                    "Weighted relationship properties",
+                    listOf(
+                        BoMSchemaDsl.field(
+                            "weight",
+                            BoMSchemaDsl.number("Weight", "Relationship weight"),
+                            required = false,
+                        ),
                     ),
                 ),
             ),
@@ -63,6 +67,8 @@ class BoMValidatorTest {
                 targetType = "Person",
                 propertiesPolicy = BoMPropertiesPolicy.SCHEMA,
                 emptyPropertiesAllowed = false,
+                propertiesSchemaType = "LinkProps",
+                propertiesSchemaVersion = "1",
             ),
         )
         validator = BoMValidator(schemas, allowed)
@@ -124,6 +130,22 @@ class BoMValidatorTest {
     }
 
     @Test
+    fun shouldRejectEdgeSchemaThatDoesNotMatchAllowedRelation() {
+        val edge = BoMEdge(
+            source = UUID.randomUUID(),
+            target = UUID.randomUUID(),
+            role = "weighted",
+            type = "Person",
+            schemaVersion = "1",
+            properties = mutableMapOf("name" to "wrong schema"),
+        )
+
+        val result = validator.validateEdges(listOf(edge), BoMEntityTypeLookup { "Person" })
+
+        assertThat(result.issues.map { it.code }).contains("EDGE_SCHEMA_REF_MISMATCH")
+    }
+
+    @Test
     fun shouldReportMissingEndpoint() {
         val edge = BoMEdge(source = UUID.randomUUID(), target = UUID.randomUUID(), role = "knows")
         val result = validator.validateEdges(listOf(edge), BoMEntityTypeLookup { null })
@@ -140,17 +162,7 @@ class BoMPersistGateTest {
     fun setUp() {
         schemas = InMemoryBoMSchemaCatalog()
         allowed = InMemoryBoMAllowedEdgeCatalog()
-        schemas.register(
-            BoMSchema(
-                type = "Person",
-                version = "1",
-                schema = mapOf(
-                    "type" to "object",
-                    "required" to listOf("name"),
-                    "properties" to mapOf("name" to mapOf("type" to "string")),
-                ),
-            ),
-        )
+        schemas.register(personSchema())
         allowed.register(
             BoMAllowedEdgeRule("Person", "knows", "Person", BoMPropertiesPolicy.NONE),
         )
