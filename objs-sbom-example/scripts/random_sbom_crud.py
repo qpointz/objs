@@ -41,6 +41,14 @@ EDGE_TYPE = "CanonicalEdge"
 DEFAULT_BASE = "http://localhost:8080"
 DEFAULT_TIMEOUT_S = 120
 
+# Realistic provenance values. Randomized per entity, so objects inside the same
+# app@version carry a mix of sources and origins.
+CAPTURE_SOURCES = ("manual", "detected", "enriched")
+ORIGINS = ("ui", "api", "ci-pipeline", "dependency-scanner", "catalog-sync")
+CAPTURED_BY = ("alice", "bob", "carol", "dave", "erin")
+DETECTORS = ("syft", "trivy", "grype", "cyclonedx-maven-plugin", "npm-audit")
+CATALOGS = ("deps-dev", "ossindex", "nvd", "internal-catalog")
+
 # Canonical relationship allow-list (source_type, role, target_type)
 EDGE_RULES: list[tuple[str, str, str]] = [
     ("Product", "CONTAINS", "Component"),
@@ -288,16 +296,18 @@ class ObjsClient:
         version: str,
         graph: dict[str, Any],
         *,
-        origin: str = "python-script",
-        source: str = "detected",
+        origin: str | None = None,
+        source: str | None = None,
         raise_http: bool = True,
     ) -> Any:
         app_q = urllib.parse.quote(app, safe="")
         ver_q = urllib.parse.quote(version, safe="")
+        selected_origin = origin or random.choice(ORIGINS)
+        selected_source = source or random.choice(CAPTURE_SOURCES)
         return self._request(
             "PUT",
             f"/api/v1/example/sbom/apps/{app_q}/versions/{ver_q}",
-            query={"origin": origin, "source": source},
+            query={"origin": selected_origin, "source": selected_source},
             body=graph,
             raise_http=raise_http,
         )
@@ -323,13 +333,27 @@ class ObjsClient:
         )
 
 
+def random_provenance() -> dict[str, str]:
+    """Provenance annotations for a single object: source, origin, and matching detail."""
+    source = random.choice(CAPTURE_SOURCES)
+    provenance = {"source": source, "origin": random.choice(ORIGINS)}
+    if source == "manual":
+        provenance["capturedBy"] = random.choice(CAPTURED_BY)
+    elif source == "detected":
+        provenance["sourceDetail"] = random.choice(DETECTORS)
+    else:
+        provenance["sourceDetail"] = random.choice(CATALOGS)
+    return provenance
+
+
 def make_entity(type_name: str, annotations: dict[str, str] | None = None) -> dict[str, Any]:
     return {
         "id": str(uuid.uuid4()),
         "type": type_name,
         "schemaVersion": SCHEMA_VERSION,
         "payload": _payload(type_name),
-        "annotations": dict(annotations or {}),
+        # Per-entity provenance; overrides the request-level defaults server-side.
+        "annotations": {**random_provenance(), **(annotations or {})},
     }
 
 

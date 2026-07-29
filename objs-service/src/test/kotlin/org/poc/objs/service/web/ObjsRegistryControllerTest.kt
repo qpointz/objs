@@ -2,9 +2,9 @@ package org.poc.objs.service.web
 
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.poc.objs.core.domain.BoMAllowedEdgeCatalog
 import org.poc.objs.core.domain.BoMSchema
-import org.poc.objs.core.domain.BoMSchemaCatalog
+import org.poc.objs.core.domain.InMemoryBoMAllowedEdgeCatalog
+import org.poc.objs.core.domain.InMemoryBoMSchemaCatalog
 import org.springframework.http.MediaType
 import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter
 import org.springframework.test.web.servlet.MockMvc
@@ -19,13 +19,13 @@ import tools.jackson.databind.json.JsonMapper
 class ObjsRegistryControllerTest {
 
     private lateinit var mockMvc: MockMvc
-    private lateinit var schemas: BoMSchemaCatalog
-    private lateinit var edgeRules: BoMAllowedEdgeCatalog
+    private lateinit var schemas: InMemoryBoMSchemaCatalog
+    private lateinit var edgeRules: InMemoryBoMAllowedEdgeCatalog
 
     @BeforeEach
     fun setUp() {
-        schemas = BoMSchemaCatalog()
-        edgeRules = BoMAllowedEdgeCatalog()
+        schemas = InMemoryBoMSchemaCatalog()
+        edgeRules = InMemoryBoMAllowedEdgeCatalog()
         mockMvc = MockMvcBuilders
             .standaloneSetup(ObjsRegistryController(schemas, edgeRules))
             .setMessageConverters(JacksonJsonHttpMessageConverter(JsonMapper.builder().findAndAddModules().build()))

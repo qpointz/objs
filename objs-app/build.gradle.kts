@@ -20,6 +20,8 @@ dependencies {
     implementation(libs.kotlin.reflect)
     implementation(libs.springdoc.openapi.starter.webmvc.ui)
     runtimeOnly(libs.h2.database)
+    runtimeOnly(libs.postgresql)
+    runtimeOnly(libs.flyway.postgresql)
 }
 
 kotlin {

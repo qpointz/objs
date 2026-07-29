@@ -24,3 +24,24 @@ objs:
 # Keep registry-published domain schemas visible even when not $ref'd from operations
 springdoc:
   remove-broken-reference-definitions: false
+
+---
+# PostgreSQL persistence. Start PostgreSQL separately, then run with:
+#   ./gradlew :objs-app:run --args="--spring.profiles.active=postgres"
+spring:
+  config:
+    activate:
+      on-profile: postgres
+  datasource:
+    url: ${OBJS_DB_URL:jdbc:postgresql://localhost:5432/objs}
+    driver-class-name: org.postgresql.Driver
+    username: ${OBJS_DB_USERNAME:postgres}
+    password: ${OBJS_DB_PASSWORD:postgres}
+    hikari:
+      maximum-pool-size: ${OBJS_DB_POOL_MAX:20}
+      minimum-idle: ${OBJS_DB_POOL_MIN_IDLE:2}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true

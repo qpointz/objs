@@ -6,12 +6,15 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.poc.objs.core.domain.BoMAllowedEdgeCatalog
 import org.poc.objs.core.domain.BoMSchemaCatalog
+import org.poc.objs.core.persistence.BoMAllowedEdgeRuleRepository
 import org.poc.objs.core.persistence.BoMGraphStore
+import org.poc.objs.core.persistence.BoMSchemaCatalogRepository
 import org.poc.objs.core.persistence.ObjsCoreAutoConfiguration
 import org.poc.objs.sbom.annotations.Provenance
 import org.poc.objs.sbom.annotations.SbomContext
 import org.poc.objs.sbom.builder.SbomGraphBuilder
 import org.poc.objs.sbom.model.ComponentPayload
+import org.poc.objs.sbom.registry.SbomRegistry
 import org.poc.objs.sbom.service.SbomService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.SpringBootConfiguration
@@ -48,6 +51,12 @@ class SbomServiceTest {
     @Autowired
     lateinit var edges: BoMAllowedEdgeCatalog
 
+    @Autowired
+    lateinit var schemaRepository: BoMSchemaCatalogRepository
+
+    @Autowired
+    lateinit var edgeRuleRepository: BoMAllowedEdgeRuleRepository
+
     @BeforeEach
     fun resetCatalogs() {
         schemas.clear()
@@ -57,6 +66,13 @@ class SbomServiceTest {
         field.isAccessible = true
         field.setBoolean(sbom, false)
         sbom.ensureRegistry()
+    }
+
+    @Test
+    fun shouldPersistCanonicalRegistry() {
+        val pack = SbomRegistry.pack()
+        assertThat(schemaRepository.count()).isEqualTo(pack.schemas.size.toLong())
+        assertThat(edgeRuleRepository.count()).isEqualTo(pack.edgeRules.size.toLong())
     }
 
     @Test

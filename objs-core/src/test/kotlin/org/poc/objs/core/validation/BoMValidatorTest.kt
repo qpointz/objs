@@ -5,24 +5,24 @@ import java.util.UUID
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.poc.objs.core.domain.BoMAllowedEdgeCatalog
 import org.poc.objs.core.domain.BoMAllowedEdgeRule
+import org.poc.objs.core.domain.InMemoryBoMAllowedEdgeCatalog
 import org.poc.objs.core.domain.BoMEdge
 import org.poc.objs.core.domain.BoMEntity
 import org.poc.objs.core.domain.BoMGraph
 import org.poc.objs.core.domain.BoMPropertiesPolicy
 import org.poc.objs.core.domain.BoMSchema
-import org.poc.objs.core.domain.BoMSchemaCatalog
+import org.poc.objs.core.domain.InMemoryBoMSchemaCatalog
 
 class BoMValidatorTest {
-    private lateinit var schemas: BoMSchemaCatalog
-    private lateinit var allowed: BoMAllowedEdgeCatalog
+    private lateinit var schemas: InMemoryBoMSchemaCatalog
+    private lateinit var allowed: InMemoryBoMAllowedEdgeCatalog
     private lateinit var validator: BoMValidator
 
     @BeforeEach
     fun setUp() {
-        schemas = BoMSchemaCatalog()
-        allowed = BoMAllowedEdgeCatalog()
+        schemas = InMemoryBoMSchemaCatalog()
+        allowed = InMemoryBoMAllowedEdgeCatalog()
         schemas.register(
             BoMSchema(
                 type = "Person",
@@ -132,14 +132,14 @@ class BoMValidatorTest {
 }
 
 class BoMPersistGateTest {
-    private lateinit var schemas: BoMSchemaCatalog
-    private lateinit var allowed: BoMAllowedEdgeCatalog
+    private lateinit var schemas: InMemoryBoMSchemaCatalog
+    private lateinit var allowed: InMemoryBoMAllowedEdgeCatalog
     private lateinit var validator: BoMValidator
 
     @BeforeEach
     fun setUp() {
-        schemas = BoMSchemaCatalog()
-        allowed = BoMAllowedEdgeCatalog()
+        schemas = InMemoryBoMSchemaCatalog()
+        allowed = InMemoryBoMAllowedEdgeCatalog()
         schemas.register(
             BoMSchema(
                 type = "Person",

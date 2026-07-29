@@ -2,10 +2,10 @@ package org.poc.objs.core.typed
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import org.poc.objs.core.domain.BoMAllowedEdgeCatalog
 import org.poc.objs.core.domain.BoMAllowedEdgeRule
 import org.poc.objs.core.domain.BoMPropertiesPolicy
-import org.poc.objs.core.domain.BoMSchemaCatalog
+import org.poc.objs.core.domain.InMemoryBoMAllowedEdgeCatalog
+import org.poc.objs.core.domain.InMemoryBoMSchemaCatalog
 
 class TypedToolkitTest {
 
@@ -55,8 +55,8 @@ class TypedToolkitTest {
 
     @Test
     fun shouldRegisterRegistryPack() {
-        val schemas = BoMSchemaCatalog()
-        val edges = BoMAllowedEdgeCatalog()
+        val schemas = InMemoryBoMSchemaCatalog()
+        val edges = InMemoryBoMAllowedEdgeCatalog()
         val pack = RegistryPack(
             schemas = listOf(
                 RegistryPack.objectSchema(
