@@ -17,5 +17,6 @@ Organised by logical component (not by story). Story process lives under
 | Service | [`service/README.md`](service/README.md) | `objs-service`: REST + autoconfiguration |
 | Graph domain | [`graph/README.md`](graph/README.md) | Entity store model, annotations, validation, persistence |
 | Typed domain | [`graph/typed-domain.md`](graph/typed-domain.md) | Reusable typed façades / GraphBuilder on the foundation |
+| UI manual | [`ui.md`](ui.md) | User guide for graph exploration, schema browsing, and schema authoring |
 | SBOM example | [`sbom/example.md`](sbom/example.md) | Concrete SBOM app on the entity store |
 | Canonical software graph | [`sbom/canonical-spec.md`](sbom/canonical-spec.md) | Ontology draft (types + relationships) |

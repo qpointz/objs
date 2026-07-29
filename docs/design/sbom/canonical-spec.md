@@ -2,7 +2,7 @@
 
 **Version:** 1.0 Draft  
 **Generated:** 2026-07-28  
-**Status:** registered in [`objs-sbom-example`](../../workitems/completed/20260728-sbom-typed-example/STORY.md) (`SbomRegistry`) — all object types and relationship triples below  
+**Status:** registered in [`objs-sbom-example`](../../workitems/completed/20260728-sbom-typed-example/STORY.md) via classpath seed YAML (`seeds/sbom-ontology.yaml`) with typed `SbomRegistry` parity — all object types and relationship triples below  
 **Mapping to objs foundation:** see [`example.md`](example.md) and story [`GAPS.md`](../../workitems/completed/20260728-sbom-typed-example/GAPS.md)
 
 ## Purpose
@@ -14,7 +14,8 @@ A technology-neutral ontology for representing software systems. SBOMs, deployme
 | Concern | Binding |
 |---------|---------|
 | Module | `objs-sbom-example` |
-| Registry pack | `org.poc.objs.sbom.registry.SbomRegistry.pack()` |
+| Registry pack (typed / parity) | `org.poc.objs.sbom.registry.SbomRegistry.pack()` |
+| Runtime ontology seed | `classpath:seeds/sbom-ontology.yaml` via [`../graph/seeds.md`](../graph/seeds.md) |
 | Schema version | `1.0.0` for every entity type and shared edge properties |
 | Typed payloads | `org.poc.objs.sbom.model` (`WaveATypes`, `WaveBCDTypes`, `Component`) |
 | Edge properties | Shared schema type `CanonicalEdge` → `BoMEdge.properties` (`SCHEMA`, empty allowed) |

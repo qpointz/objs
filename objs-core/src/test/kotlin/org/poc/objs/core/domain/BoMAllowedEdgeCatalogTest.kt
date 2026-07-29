@@ -8,11 +8,11 @@ import org.poc.objs.core.validation.BoMValidator
 import java.util.UUID
 
 class BoMAllowedEdgeCatalogTest {
-    private lateinit var catalog: BoMAllowedEdgeCatalog
+    private lateinit var catalog: InMemoryBoMAllowedEdgeCatalog
 
     @BeforeEach
     fun setUp() {
-        catalog = BoMAllowedEdgeCatalog()
+        catalog = InMemoryBoMAllowedEdgeCatalog()
     }
 
     @Test
@@ -78,10 +78,15 @@ class BoMAllowedEdgeCatalogTest {
 class BoMSchemaCatalogTest {
     @Test
     fun shouldListByTypeAndRemove() {
-        val catalog = BoMSchemaCatalog()
-        catalog.register(BoMSchema("Person", "1", mapOf("type" to "object")))
-        catalog.register(BoMSchema("Person", "2", mapOf("type" to "object")))
-        catalog.register(BoMSchema("Org", "1", mapOf("type" to "object")))
+        val catalog = InMemoryBoMSchemaCatalog()
+        fun schema(type: String, version: String) = BoMSchema(
+            type,
+            version,
+            BoMSchemaDsl.obj(type, "$type payload"),
+        )
+        catalog.register(schema("Person", "1"))
+        catalog.register(schema("Person", "2"))
+        catalog.register(schema("Org", "1"))
 
         assertThat(catalog.types()).containsExactlyInAnyOrder("Person", "Org")
         assertThat(catalog.listByType("Person")).hasSize(2)
@@ -95,8 +100,8 @@ class BoMSchemaCatalogTest {
 class BoMValidatorWildcardEdgeTest {
     @Test
     fun shouldAllowAnyTypes_whenWildcardRoleRuleRegistered() {
-        val schemas = BoMSchemaCatalog()
-        val allowed = BoMAllowedEdgeCatalog()
+        val schemas = InMemoryBoMSchemaCatalog()
+        val allowed = InMemoryBoMAllowedEdgeCatalog()
         allowed.register(
             BoMAllowedEdgeRule(
                 sourceType = BoMAllowedEdgeRule.ANY,

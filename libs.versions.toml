@@ -9,6 +9,7 @@ jackson = "3.1.2"
 logback = "1.5.28"
 jsonSchemaValidator = "1.5.6"
 flyway = "11.7.2"
+testcontainers = "1.21.1"
 springDoc = "3.0.3"
 
 [libraries]
@@ -37,7 +38,12 @@ mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version.
 assertj-core = { module = "org.assertj:assertj-core", version.ref = "assertj" }
 
 h2-database = { module = "com.h2database:h2", version = "2.4.240" }
+postgresql = { module = "org.postgresql:postgresql" }
 flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway" }
+flyway-postgresql = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }
+
+testcontainers-junit-jupiter = { module = "org.testcontainers:junit-jupiter", version.ref = "testcontainers" }
+testcontainers-postgresql = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }
 
 jackson-core = { module = "tools.jackson.core:jackson-core", version.ref = "jackson" }
 jackson-databind = { module = "tools.jackson.core:jackson-databind", version.ref = "jackson" }

@@ -69,6 +69,7 @@ tasks.register("testIT") {
     description = "Runs all testIT tasks across leaf modules"
     group = "verification"
     dependsOn(
-        ":objs-service:testIT"
+        ":objs-core:testIT",
+        ":objs-service:testIT",
     )
 }

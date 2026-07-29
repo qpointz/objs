@@ -12,16 +12,16 @@ import io.swagger.v3.oas.models.responses.ApiResponse
 import io.swagger.v3.oas.models.responses.ApiResponses
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import org.poc.objs.core.domain.BoMAllowedEdgeCatalog
-import org.poc.objs.core.domain.BoMSchemaCatalog
+import org.poc.objs.core.domain.InMemoryBoMAllowedEdgeCatalog
+import org.poc.objs.core.domain.InMemoryBoMSchemaCatalog
 import org.poc.objs.sbom.registry.SbomRegistry
 
 class SbomDomainOpenApiCustomizerTest {
 
     @Test
     fun shouldPublishCatalogSchemasAndWirePutRequestBody() {
-        val schemas = BoMSchemaCatalog()
-        val edges = BoMAllowedEdgeCatalog()
+        val schemas = InMemoryBoMSchemaCatalog()
+        val edges = InMemoryBoMAllowedEdgeCatalog()
         SbomRegistry.pack().registerInto(schemas, edges)
 
         val customizer = SbomDomainOpenApiCustomizer(schemas, edges)

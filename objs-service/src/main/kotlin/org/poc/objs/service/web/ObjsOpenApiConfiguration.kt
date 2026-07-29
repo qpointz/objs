@@ -23,4 +23,11 @@ class ObjsOpenApiConfiguration {
             .group("registry")
             .pathsToMatch("/api/v1/objs/registry/**")
             .build()
+
+    @Bean
+    fun objsSeedsApi(): GroupedOpenApi =
+        GroupedOpenApi.builder()
+            .group("seeds")
+            .pathsToMatch("/api/v1/objs/seeds/**")
+            .build()
 }

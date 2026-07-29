@@ -3,6 +3,9 @@ package org.poc.objs.sbom.registry
 import org.poc.objs.core.domain.BoMAllowedEdgeRule
 import org.poc.objs.core.domain.BoMPropertiesPolicy
 import org.poc.objs.core.domain.BoMSchema
+import org.poc.objs.core.domain.BoMSchemaDsl
+import org.poc.objs.core.domain.BoMSchemaNode
+import org.poc.objs.core.domain.BoMSchemaUsage
 import org.poc.objs.core.typed.RegistryPack
 import org.poc.objs.core.typed.TypedEdgeMeta
 import org.poc.objs.sbom.model.ApiType
@@ -55,11 +58,17 @@ object SbomRoles {
 }
 
 object SbomRegistry {
-    private val stringProp = mapOf("type" to "string")
-    private val numberProp = mapOf("type" to "number")
-    private val integerProp = mapOf("type" to "integer")
-    private val arrayOfString = mapOf("type" to "array", "items" to mapOf("type" to "string"))
-    private val objectProp = mapOf("type" to "object")
+    private val stringProp = BoMSchemaDsl.string("Text", "Text value")
+    private val uriProp = BoMSchemaDsl.string("URI", "URI value", format = "uri")
+    private val dateTimeProp = BoMSchemaDsl.string("Date and time", "ISO-8601 timestamp", format = "date-time")
+    private val numberProp = BoMSchemaDsl.number("Number", "Numeric value")
+    private val integerProp = BoMSchemaDsl.integer("Integer", "Whole-number value")
+    private val arrayOfString = BoMSchemaDsl.array(
+        "Text list",
+        "Ordered list of text values",
+        BoMSchemaDsl.string("Text item", "One text value"),
+    )
+    private val objectProp = BoMSchemaDsl.obj("Attributes", "Open attributes object")
 
     private val commonOptional = mapOf(
         "description" to stringProp,
@@ -73,17 +82,22 @@ object SbomRegistry {
         targetType = target,
         propertiesPolicy = BoMPropertiesPolicy.SCHEMA,
         emptyPropertiesAllowed = true,
+        propertiesSchemaType = CanonicalEdgeType.meta.type,
+        propertiesSchemaVersion = SCHEMA_VERSION,
     )
 
     private fun schema(
         type: String,
         required: List<String>,
-        properties: Map<String, Map<String, Any?>>,
+        properties: Map<String, BoMSchemaNode>,
     ): BoMSchema = RegistryPack.objectSchema(
         type = type,
         version = SCHEMA_VERSION,
-        required = required,
-        properties = properties + commonOptional,
+        title = type,
+        description = "Canonical SBOM $type payload",
+        fields = (properties + commonOptional).map { (name, fieldSchema) ->
+            BoMSchemaDsl.field(name, fieldSchema, required = name in required)
+        },
     )
 
     fun canonicalEdgeMeta(role: String, sourceType: String, targetType: String) = TypedEdgeMeta(
@@ -102,12 +116,18 @@ object SbomRegistry {
         val canonicalEdge = RegistryPack.objectSchema(
             type = CanonicalEdgeType.meta.type,
             version = SCHEMA_VERSION,
-            required = emptyList(),
-            properties = mapOf(
-                "createdAt" to stringProp,
-                "source" to stringProp,
-                "confidence" to numberProp,
-                "attributes" to objectProp,
+            title = "Canonical edge",
+            description = "Properties shared by canonical SBOM relationships",
+            usages = setOf(BoMSchemaUsage.EDGE_PROPERTIES),
+            fields = listOf(
+                BoMSchemaDsl.field(
+                    "createdAt",
+                    BoMSchemaDsl.string("Created at", "Relationship creation timestamp", format = "date-time"),
+                    required = false,
+                ),
+                BoMSchemaDsl.field("source", stringProp, required = false),
+                BoMSchemaDsl.field("confidence", numberProp, required = false),
+                BoMSchemaDsl.field("attributes", objectProp, required = false),
             ),
         )
 
@@ -131,7 +151,7 @@ object SbomRegistry {
                     "version" to stringProp,
                     "supplier" to stringProp,
                     "lifecycle" to stringProp,
-                    "homepage" to stringProp,
+                    "homepage" to uriProp,
                 ),
             ),
             schema(
@@ -140,14 +160,14 @@ object SbomRegistry {
                 mapOf(
                     "name" to stringProp,
                     "domain" to stringProp,
-                    "website" to stringProp,
+                    "website" to uriProp,
                     "country" to stringProp,
                 ),
             ),
             schema(
                 LicenseType.meta.type,
                 listOf("name", "spdxId"),
-                mapOf("name" to stringProp, "spdxId" to stringProp, "url" to stringProp),
+                mapOf("name" to stringProp, "spdxId" to stringProp, "url" to uriProp),
             ),
             schema(
                 VulnerabilityType.meta.type,
@@ -174,7 +194,7 @@ object SbomRegistry {
                 listOf("name", "url"),
                 mapOf(
                     "name" to stringProp,
-                    "url" to stringProp,
+                    "url" to uriProp,
                     "revision" to stringProp,
                     "branch" to stringProp,
                 ),
@@ -231,7 +251,7 @@ object SbomRegistry {
                     "name" to stringProp,
                     "status" to stringProp,
                     "replicas" to integerProp,
-                    "deployedAt" to stringProp,
+                    "deployedAt" to dateTimeProp,
                 ),
             ),
             schema(
@@ -262,7 +282,7 @@ object SbomRegistry {
             schema(
                 ServiceType.meta.type,
                 listOf("name"),
-                mapOf("name" to stringProp, "protocol" to stringProp, "endpoint" to stringProp),
+                mapOf("name" to stringProp, "protocol" to stringProp, "endpoint" to uriProp),
             ),
             schema(
                 ApiType.meta.type,

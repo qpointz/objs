@@ -13,6 +13,7 @@ import org.poc.objs.core.domain.BoMGraph
 import org.poc.objs.core.domain.BoMPropertiesPolicy
 import org.poc.objs.core.domain.BoMSchema
 import org.poc.objs.core.domain.BoMSchemaCatalog
+import org.poc.objs.core.domain.BoMSchemaDsl
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.SpringBootConfiguration
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration
@@ -54,12 +55,12 @@ class BoMGraphStoreTest {
         allowed.clear()
         schemas.register(
             BoMSchema(
-                type = "Person",
-                version = "1",
-                schema = mapOf(
-                    "type" to "object",
-                    "required" to listOf("name"),
-                    "properties" to mapOf("name" to mapOf("type" to "string")),
+                "Person",
+                "1",
+                BoMSchemaDsl.obj(
+                    "Person",
+                    "Person payload",
+                    listOf(BoMSchemaDsl.field("name", BoMSchemaDsl.string("Name", "Person name"))),
                 ),
             ),
         )
@@ -110,6 +111,13 @@ class BoMGraphStoreTest {
         val allX = store.selectSubgraphMatchAll(mapOf("item" to "X"))
         assertThat(allX.entities).hasSize(2)
         assertThat(allX.edges).hasSize(1)
+
+        val nonPushable = store.selectSubgraph(
+            org.poc.objs.core.match.BoMAnnotationMatcher { it.annotations["src"] == "ui" },
+        )
+        assertThat(nonPushable.entities).hasSize(1)
+        assertThat(nonPushable.entities.single().id).isEqualTo(neu)
+        assertThat(nonPushable.edges).isEmpty()
     }
 
     @Test

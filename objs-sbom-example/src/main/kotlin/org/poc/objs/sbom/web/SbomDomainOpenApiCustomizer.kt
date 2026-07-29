@@ -148,7 +148,7 @@ class SbomDomainOpenApiCustomizer(
 
         fun jsonSchemaMapToOpenApiSchema(entry: BoMSchema): Schema<*> {
             @Suppress("UNCHECKED_CAST")
-            val schema = Json.mapper().convertValue(entry.schema, Schema::class.java) as Schema<Any>
+            val schema = Json.mapper().convertValue(entry.toJsonSchema(), Schema::class.java) as Schema<Any>
             schema.name = schemaComponentName(entry)
             schema.title = schema.title ?: "${entry.type} (${entry.version})"
             schema.description = listOfNotNull(
