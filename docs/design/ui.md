@@ -29,17 +29,25 @@ The left navigation contains three views:
 
 ## Graph explorer
 
-Graph explorer loads entities and edges selected by annotations.
+Graph explorer loads entities and induced edges through
+`POST /api/v1/objs/graph/query`. Select one matcher mode:
 
-1. Enter a JSON object in **Annotations**, for example:
+- **`anno`** — add/remove Mantine key/value rows. Every pair must match the entity annotation map.
+- **`anno-expr`** — enter one JEXL Boolean expression using annotation keys as direct variables,
+  for example `app == 'payments-api' && appVersion == '2.3.1'`.
+- **chained** — enter a non-empty JSON array of matcher objects. Matchers execute in order, passing
+  each stage's selected entities to the next.
 
-   ```json
-   {
-     "app": "payments-api",
-     "appVersion": "2.3.1"
-   }
-   ```
+The UI sends the selected mode as matcher DSL:
 
+```json
+[
+  { "anno": { "app": "payments-api" } },
+  { "anno-expr": "appVersion == '2.3.1'" }
+]
+```
+
+1. Configure the selected matcher mode.
 2. Select **Exec**.
 3. Select a node or edge on the canvas to inspect it.
 4. Select **Apply layout** to recalculate the graph layout.
@@ -320,7 +328,8 @@ reference, and properties are validated against the current registry.
 
 | Message or condition | Resolution |
 |----------------------|------------|
-| Graph query returns no nodes | Verify the annotation keys and values exist on stored entities |
+| Graph query returns no nodes | Verify `anno` keys/values or `anno-expr` variables exist on stored entities and that chained stages retain results |
+| Matcher query is rejected | Correct the matcher shape: one `anno`/`anno-expr` object or a non-empty JSON array of matcher objects |
 | Schema cannot be loaded | Confirm the selected type and version still exist |
 | Source document is invalid | Correct YAML/JSON syntax before switching to Visual mode or saving |
 | `SCHEMA_DEFINITION_INVALID` | Correct the field named in the lint message |

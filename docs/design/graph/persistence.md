@@ -21,10 +21,23 @@
 
 - Filtered subgraph reads use a dedicated JDBC reader with fetch sizing rather than `findAll()` hydration.
 - JSON columns remain raw strings wrapped in lazy maps; deserialization occurs on first field access or when serializing the final selected subgraph.
-- **Pushable** matchers with supported expressions (annotation equality/conjunction) compile to parameterized PostgreSQL `@>` predicates and select induced edges in SQL.
+- Graph queries enter through `POST /api/v1/objs/graph/query` with JSON/YAML matcher DSL.
+- **Pushable** first matchers with supported expressions (annotation equality/conjunction) compile
+  to parameterized PostgreSQL `@>` predicates.
+- In an ordered matcher chain, only the first matcher may push down. Later matchers filter the
+  retained candidates in memory, and induced edges load once from the final entity set.
 - **Non-pushable** matchers and non-PostgreSQL backends scan raw rows in memory using the same lazy maps.
 
-Local benchmark against ~85,656 entities / ~71,380 edges (`GET /api/v1/objs/graph?appVersion=1.0.0` → 6,001 entities / 5,000 edges, ~3.0 MB JSON):
+Local benchmark against ~85,656 entities / ~71,380 edges selected 6,001 entities / 5,000 edges
+(~3.0 MB JSON) by annotation `appVersion=1.0.0`. It was captured through the former GET transport;
+the equivalent current query is:
+
+```http
+POST /api/v1/objs/graph/query
+Content-Type: application/json
+
+{"anno":{"appVersion":"1.0.0"}}
+```
 
 | Run | Total | TTFB |
 |-----|-------|------|
