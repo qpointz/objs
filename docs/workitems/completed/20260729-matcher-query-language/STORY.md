@@ -2,7 +2,7 @@
 
 **Slug:** `matcher-query-language`  
 **Branch:** `matcher-query-language`  
-**Status:** in-progress  
+**Status:** completed  
 **Backlog:** C-5  
 **Design:** [`docs/design/graph/annotations-and-subgraphs.md`](../../../design/graph/annotations-and-subgraphs.md), [`docs/design/graph/persistence.md`](../../../design/graph/persistence.md), [`docs/design/service/rest-api.md`](../../../design/service/rest-api.md)  
 **Gaps:** [`GAPS.md`](GAPS.md)

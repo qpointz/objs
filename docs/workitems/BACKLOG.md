@@ -19,7 +19,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | C-2 | REST API for entities / edges / subgraphs + registry | feature | done | [`completed/20260728-entity-rest-api/`](completed/20260728-entity-rest-api/STORY.md) |
 | C-3 | Persist central schema catalog (type+version) + allowed-edge rules as PostgreSQL tables | feature | done | [`completed/20260729-graph-config-seeds/`](completed/20260729-graph-config-seeds/STORY.md) Stage 1 |
 | C-4 | Extensible multi-document graph configuration seeds with durable ledger | feature | done | [`completed/20260729-graph-config-seeds/`](completed/20260729-graph-config-seeds/STORY.md) Stage 2 |
-| C-5 | Extensible JSON/YAML matcher DSL with chained annotation and JEXL predicates | feature | in-progress | [`in-progress/matcher-query-language/`](in-progress/matcher-query-language/STORY.md) |
+| C-5 | Extensible JSON/YAML matcher DSL with chained annotation and JEXL predicates | feature | done | [`completed/20260729-matcher-query-language/`](completed/20260729-matcher-query-language/STORY.md) |
 
 ---
 
@@ -37,5 +37,5 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 |--------|------:|
 | backlog | 0 |
 | planned | 0 |
-| in-progress | 1 |
-| done | 5 |
+| in-progress | 0 |
+| done | 6 |
