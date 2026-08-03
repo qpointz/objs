@@ -16,6 +16,8 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`sbom-typed-example`](completed/20260728-sbom-typed-example/STORY.md) — typed toolkit; full canonical ontology (A–D); `/api/v1/example/sbom`; Python bulk seed; graph explorer SPA at `/ui/`.
 - [`graph-config-seeds`](completed/20260729-graph-config-seeds/STORY.md) — PostgreSQL-authoritative catalogs; object-schema DSL and authoring workbench; lazy/pushable graph reads; flat multi-document seed import/export with durable startup ledger; canonical SBOM YAML.
 - [`matcher-query-language`](completed/20260729-matcher-query-language/STORY.md) — extensible JSON/YAML matcher DSL (`anno`, sandboxed JEXL `anno-expr`, ordered chains); first-stage PostgreSQL pushdown; sole `POST /api/v1/objs/graph/query`; graph explorer matcher modes.
+- [`allowed-edge-cardinality`](completed/20260803-allowed-edge-cardinality/STORY.md) — allow-list cardinality `UNSPECIFIED` / `1:1` / `1:*` (domain, Flyway, seeds, REST, schema UI).
+- [`schema-workbench-unify`](completed/20260803-schema-workbench-unify/STORY.md) — unify Schemas workbench; top nav; object-level edge CRUD (draft until save); Visual/Schema/Expert/JSON Schema tabs.
 
 ### In Progress
 
