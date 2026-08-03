@@ -2,7 +2,7 @@
 
 **Story:** [`STORY.md`](STORY.md)  
 **Stage:** 3 — JSON Schema  
-**Status:** planned  
+**Status:** done  
 **Depends on:** WI-001
 
 ## Goal

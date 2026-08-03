@@ -15,8 +15,8 @@ import org.poc.objs.core.domain.BoMSchemaVersioning
 import org.poc.objs.core.seed.CATALOG_SEED_KINDS
 import org.poc.objs.core.seed.CanonicalSeedSerializer
 import org.poc.objs.core.seed.SeedImportException
-import org.poc.objs.core.seed.SeedImportResult
 import org.poc.objs.core.seed.SeedImporter
+import org.poc.objs.core.domain.FullCatalogJsonSchemaExporter
 import org.poc.objs.core.validation.BoMValidationIssue
 import org.poc.objs.core.validation.BoMValidationResult
 import org.springframework.http.HttpHeaders
@@ -44,6 +44,7 @@ class ObjsRegistryController(
     private val edgeRules: BoMAllowedEdgeCatalog,
     private val seedImporter: SeedImporter,
     private val seedSerializer: CanonicalSeedSerializer,
+    private val fullCatalogJsonSchema: FullCatalogJsonSchemaExporter,
 ) {
     @PostMapping(
         "/import",
@@ -79,6 +80,11 @@ class ObjsRegistryController(
                 ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_TYPE, ObjsIoFormats.YAML_MEDIA_TYPE)
                     .body(yaml)
+            }
+            ObjsIoFormats.JSON_SCHEMA -> {
+                ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_TYPE, ObjsIoFormats.JSON_SCHEMA_MEDIA_TYPE)
+                    .body(fullCatalogJsonSchema.export())
             }
             else -> ObjsIoFormats.unknownFormat(format)
         }

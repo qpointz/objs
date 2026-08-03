@@ -8,6 +8,7 @@ import org.poc.objs.core.domain.BoMPropertiesPolicy
 import org.poc.objs.core.domain.BoMSchema
 import org.poc.objs.core.domain.BoMSchemaDsl
 import org.poc.objs.core.domain.BoMSchemaUsage
+import org.poc.objs.core.domain.FullCatalogJsonSchemaExporter
 import org.poc.objs.core.domain.InMemoryBoMAllowedEdgeCatalog
 import org.poc.objs.core.domain.InMemoryBoMSchemaCatalog
 import org.poc.objs.core.persistence.BoMGraphStore
@@ -54,7 +55,15 @@ class ObjsRegistryControllerTest {
             GraphSeedHandler(mock(BoMGraphStore::class.java)),
         )
         mockMvc = MockMvcBuilders
-            .standaloneSetup(ObjsRegistryController(schemas, edgeRules, importer, serializer))
+            .standaloneSetup(
+                ObjsRegistryController(
+                    schemas,
+                    edgeRules,
+                    importer,
+                    serializer,
+                    FullCatalogJsonSchemaExporter(schemas, edgeRules),
+                ),
+            )
             .setControllerAdvice(ObjsRegistryExceptionHandler())
             .setMessageConverters(
                 JacksonJsonHttpMessageConverter(JsonMapper.builder().findAndAddModules().build()),
@@ -488,5 +497,15 @@ class ObjsRegistryControllerTest {
         mockMvc.perform(multipart("/api/v1/objs/registry/import").param("format", "seeds").file(graphFile))
             .andExpect(status().isBadRequest)
             .andExpect(jsonPath("$.documents[0].errors[0].code").value("SEED_KIND_NOT_ALLOWED"))
+    }
+
+    @Test
+    fun shouldExportFullCatalogJsonSchema() {
+        schemas.register(BoMSchema("Person", "1", BoMSchemaDsl.obj("Person", "Person payload")))
+        mockMvc.perform(get("/api/v1/objs/registry/export").param("format", "json-schema"))
+            .andExpect(status().isOk)
+            .andExpect(content().contentTypeCompatibleWith(MediaType.parseMediaType("application/schema+json")))
+            .andExpect(jsonPath("$.['x-objs-export']").value("full-catalog"))
+            .andExpect(jsonPath("$.['\$defs'].Person.type").value("object"))
     }
 }

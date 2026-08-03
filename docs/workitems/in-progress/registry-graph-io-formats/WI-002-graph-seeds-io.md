@@ -24,6 +24,6 @@ Move graph seed I/O to `/api/v1/objs/graph/import|export` with `format=seeds`, a
 
 ## Acceptance
 
-- [ ] Bounded graph export works; unbounded rejected
-- [ ] Graph import rejects catalog kinds
-- [ ] No `/api/v1/objs/seeds/**` routes remain
+- [x] Bounded graph export works; unbounded rejected
+- [x] Graph import rejects catalog kinds
+- [x] No `/api/v1/objs/seeds/**` routes remain
