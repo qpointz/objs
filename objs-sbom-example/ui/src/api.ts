@@ -235,7 +235,7 @@ export async function listEdges(): Promise<BoMAllowedEdgeRule[]> {
 
 /** Catalog-only seed YAML (ObjectSchema + AllowedEdgeRule). */
 export async function exportCatalogSeed(): Promise<string> {
-  const res = await fetch('/api/v1/objs/seeds/export')
+  const res = await fetch('/api/v1/objs/registry/export?format=seeds')
   if (!res.ok) {
     const body = await res.json().catch(() => null)
     throw new Error(typeof body === 'string' ? body : `HTTP ${res.status}`)
@@ -246,7 +246,7 @@ export async function exportCatalogSeed(): Promise<string> {
 export async function importCatalogSeed(file: File): Promise<SeedImportResult> {
   const body = new FormData()
   body.append('file', file)
-  const res = await fetch('/api/v1/objs/seeds/import', { method: 'POST', body })
+  const res = await fetch('/api/v1/objs/registry/import?format=seeds', { method: 'POST', body })
   return parseResponse<SeedImportResult>(res)
 }
 

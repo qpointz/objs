@@ -305,14 +305,31 @@ the catalog.
 | `PUT` | `/api/v1/objs/registry/schemas/{type}/{version}` | Update/create exact version (`contentSchema` + optional `usages`) |
 | `POST` | `/api/v1/objs/registry/schemas/{type}/{version}/lint` | Normalize/lint without persistence |
 | `POST` | `/api/v1/objs/registry/schemas/{type}/versions/next-major` | Create next major version (`4` → `5`, `4.2.1` → `5.0.0`) |
-| `GET` | `/api/v1/objs/registry/schemas/{type}/{version}/json-schema` | Generated JSON Schema |
+| `GET` | `/api/v1/objs/registry/schemas/{type}/{version}/json-schema` | Generated JSON Schema (one type/version) |
+| `GET` | `/api/v1/objs/registry/export?format=json-schema` | Full-catalog JSON Schema (latest ENTITY + relations) |
 | `GET` | `/api/v1/objs/registry/schemas/{type}/{version}/edges` | Relations using an edge-property schema |
 | `PUT` | `/api/v1/objs/registry/schemas/{type}/{version}/edges` | Replace relations using an edge-property schema |
 | `GET` | `/api/v1/objs/registry/types/{type}/edges` | Incoming/outgoing allow-list rules including wildcards |
 | `DELETE` | `/api/v1/objs/registry/schemas/{type}/{version}` | Remove the definition |
+| `POST` | `/api/v1/objs/registry/import?format=seeds` | Catalog seed MERGE |
+| `GET` | `/api/v1/objs/registry/export?format=seeds` | Catalog seed YAML |
 
 `PUT` updates the opened version. `POST .../versions/next-major` never overwrites; it inspects all
 existing versions of the type and creates the next major only.
+
+### Full-catalog JSON Schema
+
+`GET /api/v1/objs/registry/export?format=json-schema` returns one JSON Schema 2020-12 document for
+codegen of an object model:
+
+- `$defs` entry per **ENTITY** type at the **latest** version (lexicographic max among versions);
+- payload fields from the per-schema projection;
+- directed allow-list edges as optional properties on the **source** type:
+  - property name = camelCase(`role` + PascalCase(`targetType`)) (e.g. `containsComponent`);
+  - `1:1` → singular `$ref`; `1:*` and `UNSPECIFIED` → array of `$ref`;
+  - rules with `*` endpoints are omitted;
+- root markers: `x-objs-export: full-catalog`; relation props carry `x-objs-role` /
+  `x-objs-target-type` / `x-objs-cardinality`.
 
 An `EDGE_PROPERTIES` schema owns a property definition and may be referenced by many directed
 allowed-edge rules. Each rule retains its own `(sourceType, role, targetType)` identity and stores

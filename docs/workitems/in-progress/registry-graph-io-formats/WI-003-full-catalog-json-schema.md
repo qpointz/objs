@@ -26,6 +26,6 @@ Export the full ontology as one JSON Schema 2020-12 document suitable for object
 
 ## Acceptance
 
-- [ ] Export includes all ENTITY types at latest version
-- [ ] Relation properties match naming + cardinality rules
-- [ ] Wildcard rules omitted
+- [x] Export includes all ENTITY types at latest version
+- [x] Relation properties match naming + cardinality rules
+- [x] Wildcard rules omitted

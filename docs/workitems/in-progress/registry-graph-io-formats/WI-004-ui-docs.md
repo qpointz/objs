@@ -2,7 +2,7 @@
 
 **Story:** [`STORY.md`](STORY.md)  
 **Stage:** 4 — UI + docs  
-**Status:** planned  
+**Status:** done  
 **Depends on:** WI-002, WI-003
 
 ## Goal
@@ -22,5 +22,5 @@ Point the Schemas overview at the new registry seeds URLs and update design/REST
 
 ## Acceptance
 
-- [ ] Overview Export/Import use `/registry/.../format=seeds`
-- [ ] Design docs describe separated registry vs graph I/O and json-schema export
+- [x] Overview Export/Import use `/registry/.../format=seeds`
+- [x] Design docs describe separated registry vs graph I/O and json-schema export

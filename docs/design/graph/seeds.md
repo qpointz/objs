@@ -45,8 +45,10 @@ Unsupported `apiVersion` or `kind` values fail the whole resource.
   (used by REST export of existing rows).
 - Omission never deletes (`MERGE` only; no `REPLACE` in v1).
 
-The Schemas workbench **Full schema** overview uses catalog-only export (`GET /seeds/export` with no
-filter) and import (`POST /seeds/import`). That UI rejects seed files that contain `Graph` documents.
+The Schemas workbench **Full schema** overview uses catalog-only export
+(`GET /api/v1/objs/registry/export?format=seeds`) and import
+(`POST /api/v1/objs/registry/import?format=seeds`). That UI rejects seed files that contain `Graph`
+documents.
 
 ## Startup loading
 
@@ -70,11 +72,18 @@ objs:
 
 ## REST
 
+Ontology and graph instance I/O are **separated**. Both use a required `format` query param
+(extensible; `seeds` is the portable YAML format).
+
 | Method | Path | Notes |
 |--------|------|-------|
-| `POST` | `/api/v1/objs/seeds/import` | Multipart YAML; same importer; no ledger write |
-| `GET` | `/api/v1/objs/seeds/export` | Catalogs always; Graph when annotation params present |
-| `GET` | `/api/v1/objs/seeds/export/graph` | Requires annotation filter |
+| `POST` | `/api/v1/objs/registry/import?format=seeds` | Multipart YAML; catalog kinds only (`ObjectSchema`, `AllowedEdgeRule`); no ledger write |
+| `GET` | `/api/v1/objs/registry/export?format=seeds` | Catalog YAML only |
+| `GET` | `/api/v1/objs/registry/export?format=json-schema` | Full-catalog JSON Schema 2020-12 (latest ENTITY versions + relation props) |
+| `POST` | `/api/v1/objs/graph/import?format=seeds` | Multipart YAML; `Graph` kind only |
+| `GET` | `/api/v1/objs/graph/export?format=seeds` | Requires annotation filter; never dumps the whole graph |
+
+Former `/api/v1/objs/seeds/**` paths are removed.
 
 ## Extension
 
