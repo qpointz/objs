@@ -21,6 +21,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | C-4 | Extensible multi-document graph configuration seeds with durable ledger | feature | done | [`completed/20260729-graph-config-seeds/`](completed/20260729-graph-config-seeds/STORY.md) Stage 2 |
 | C-5 | Extensible JSON/YAML matcher DSL with chained annotation and JEXL predicates | feature | done | [`completed/20260729-matcher-query-language/`](completed/20260729-matcher-query-language/STORY.md) |
 | C-6 | Allowed-edge cardinality (`UNSPECIFIED` / `1:1` / `1:*`) on edge schema + UI | feature | done | [`completed/20260803-allowed-edge-cardinality/`](completed/20260803-allowed-edge-cardinality/STORY.md) |
+| C-7 | Split registry/graph multi-format import/export + full-catalog JSON Schema | feature | in-progress | [`in-progress/registry-graph-io-formats/`](in-progress/registry-graph-io-formats/STORY.md) |
 
 ---
 
@@ -47,5 +48,5 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 |--------|------:|
 | backlog | 0 |
 | planned | 0 |
-| in-progress | 0 |
+| in-progress | 1 |
 | done | 9 |

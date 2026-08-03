@@ -22,7 +22,7 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 
 ### In Progress
 
-_(none)_
+- [`registry-graph-io-formats`](in-progress/registry-graph-io-formats/STORY.md) — Split ontology vs graph import/export under `/registry` and `/graph` with `format=`; seeds now; full-catalog JSON Schema export.
 
 ### Planned
 
