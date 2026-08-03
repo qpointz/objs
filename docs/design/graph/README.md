@@ -23,7 +23,8 @@ Objs is an **entity store**: independent informational **entities** linked by **
 - **Entity** (`BoMEntity`) — **type + version**, JSON **payload**, **annotations**; optional id (absent → create, present → update).
 - **Edge** (`BoMEdge`) — **source** / **target**, **role**; optional properties per allow-list **properties policy** (`none` = bare edge, `schema` = JSON Schema).
 - **Central schema repo** — `(type, version)` → typed DSL definition; PostgreSQL authoritative, memory cached, JSON Schema generated.
-- **Allowed edges** — `(sourceType, role, targetType)` + properties policy; directed allow-list.
+- Allowed edges: **`(sourceType, role, targetType)`** + properties policy + optional **cardinality**
+  (`UNSPECIFIED` / `1:1` / `1:*`); directed allow-list.
 - **Annotations** — key-value map; matcher base + default **match-all**; subgraph = matched entities + **induced** edges.
 - **Batch write** — entities + edges in one payload; **two-stage** validation (entities vs schema, then edges vs payload∪store).
 - **Persist gate** — create / update / delete; SDK may build invalid graphs in memory.

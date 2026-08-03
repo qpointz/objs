@@ -502,33 +502,33 @@ Common notes for all types:
 
 Normative allow-list for `objs-sbom-example`: every row is registered in `SbomRegistry` (`BoMAllowedEdgeRule` with role = Relationship, source/target = Source/Target).
 
-| Relationship | Source | Target | Meaning |
-|--------------|--------|--------|---------|
-| CONTAINS | Product | Component | Composition |
-| CONTAINS | Product | Artifact | Composition |
-| CONTAINS | Container Image | Container Layer | Composition |
-| CONTAINS | Database | Dataset | Composition |
-| CONTAINS | Source Repository | Source Module | Composition |
-| DEPENDS_ON | Component | Component | Dependency |
-| PRODUCES | Source Module | Artifact | Build |
-| BUILDS | Build | Artifact | Build |
-| BUILDS | Build | Container Image | Build |
-| USES | Build | Component | Build |
-| PACKAGES | Container Image | Artifact | Packaging |
-| BASED_ON | Container Image | Operating System | Packaging |
-| RUNS_ON | Product | Runtime | Runtime |
-| RUNS_ON | Runtime | Operating System | Runtime |
-| DEPLOYS | Deployment | Container Image | Deployment |
-| TARGETS | Deployment | Environment | Deployment |
-| RUNS_ON | Deployment | Host | Deployment |
-| MEMBER_OF | Host | Kubernetes Cluster | Infrastructure |
-| LOCATED_IN | Deployment | Namespace | Infrastructure |
-| IMPLEMENTS | Service | API | Architecture |
-| CALLS | Product | API | Architecture |
-| CONNECTS_TO | Product | Database | Architecture |
-| PROVIDED_BY | Component | Organization | Governance |
-| OWNED_BY | Product | Organization | Governance |
-| LICENSED_UNDER | Component | License | Governance |
-| HAS_VULNERABILITY | Component | Vulnerability | Security |
-| HAS_VULNERABILITY | Container Image | Vulnerability | Security |
-| COMPLIES_WITH | Product | Policy | Compliance |
+| Relationship | Source | Target | Cardinality | Meaning |
+|--------------|--------|--------|-------------|---------|
+| CONTAINS | Product | Component | `1:*` | Composition |
+| CONTAINS | Product | Artifact | `1:*` | Composition |
+| CONTAINS | Container Image | Container Layer | `1:*` | Composition |
+| CONTAINS | Database | Dataset | `1:*` | Composition |
+| CONTAINS | Source Repository | Source Module | `1:*` | Composition |
+| DEPENDS_ON | Component | Component | `1:*` | Dependency |
+| PRODUCES | Source Module | Artifact | `1:*` | Build |
+| BUILDS | Build | Artifact | `1:*` | Build |
+| BUILDS | Build | Container Image | `1:*` | Build |
+| USES | Build | Component | `1:*` | Build |
+| PACKAGES | Container Image | Artifact | `1:*` | Packaging |
+| BASED_ON | Container Image | Operating System | `1:1` | Packaging |
+| RUNS_ON | Product | Runtime | `1:1` | Runtime |
+| RUNS_ON | Runtime | Operating System | `1:1` | Runtime |
+| DEPLOYS | Deployment | Container Image | `1:1` | Deployment |
+| TARGETS | Deployment | Environment | `1:1` | Deployment |
+| RUNS_ON | Deployment | Host | `1:*` | Deployment |
+| MEMBER_OF | Host | Kubernetes Cluster | `1:1` | Infrastructure |
+| LOCATED_IN | Deployment | Namespace | `1:1` | Infrastructure |
+| IMPLEMENTS | Service | API | `1:*` | Architecture |
+| CALLS | Product | API | `1:*` | Architecture |
+| CONNECTS_TO | Product | Database | `1:*` | Architecture |
+| PROVIDED_BY | Component | Organization | `1:1` | Governance |
+| OWNED_BY | Product | Organization | `1:1` | Governance |
+| LICENSED_UNDER | Component | License | `1:*` | Governance |
+| HAS_VULNERABILITY | Component | Vulnerability | `1:*` | Security |
+| HAS_VULNERABILITY | Container Image | Vulnerability | `1:*` | Security |
+| COMPLIES_WITH | Product | Policy | `1:*` | Compliance |

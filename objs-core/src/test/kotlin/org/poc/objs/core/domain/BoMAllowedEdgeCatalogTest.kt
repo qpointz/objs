@@ -47,6 +47,21 @@ class BoMAllowedEdgeCatalogTest {
         val rule = catalog.find("Person", "knows", "Person")
         assertThat(rule!!.propertiesPolicy).isEqualTo(BoMPropertiesPolicy.SCHEMA)
         assertThat(rule.emptyPropertiesAllowed).isFalse()
+        assertThat(rule.cardinality).isEqualTo(BoMEdgeCardinality.UNSPECIFIED)
+    }
+
+    @Test
+    fun shouldRetainCardinalityOnRegister() {
+        catalog.register(
+            BoMAllowedEdgeRule(
+                "Product",
+                "CONTAINS",
+                "Component",
+                cardinality = BoMEdgeCardinality.ONE_TO_MANY,
+            ),
+        )
+        assertThat(catalog.find("Product", "CONTAINS", "Component")!!.cardinality)
+            .isEqualTo(BoMEdgeCardinality.ONE_TO_MANY)
     }
 
     @Test

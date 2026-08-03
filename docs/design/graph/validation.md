@@ -41,7 +41,9 @@ shared by entities and edges; see [object-schema-dsl.md](object-schema-dsl.md).
 - Identity: **`(sourceType, role, targetType)`** (entity types of source/target); each part may be **`*`**
 - Plus **properties policy**: `none` | `schema`; a schema rule carries property-schema
   `type + version` and empty allowed/forbidden
-- **Directed**; role is a **free string**; **no cardinality** limits in this story
+- Plus optional **cardinality** metadata: `UNSPECIFIED` | `1:1` | `1:*` (default `UNSPECIFIED`).
+  Declares singular vs many for source→target; **not** enforced as edge-count limits at persist
+- **Directed**; role is a **free string**
 - Wildcards: e.g. `(* , depends_on , *)` permits that role for any types; most specific match wins
 - Catalog: PostgreSQL-authoritative with an in-memory lookup cache; not in catalog → **deny**
 

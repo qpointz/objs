@@ -1,5 +1,6 @@
 package org.poc.objs.core.typed
 
+import org.poc.objs.core.domain.BoMEdgeCardinality
 import org.poc.objs.core.domain.BoMEntity
 import org.poc.objs.core.domain.BoMPropertiesPolicy
 import java.util.UUID
@@ -81,4 +82,5 @@ data class TypedEdgeMeta(
     val propertiesPolicy: BoMPropertiesPolicy = BoMPropertiesPolicy.NONE,
     val propertiesMeta: EntityTypeMeta? = null,
     val emptyPropertiesAllowed: Boolean = true,
+    val cardinality: BoMEdgeCardinality = BoMEdgeCardinality.UNSPECIFIED,
 )

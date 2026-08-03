@@ -5,6 +5,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.poc.objs.core.domain.BoMAllowedEdgeRule
 import org.poc.objs.core.domain.BoMAllowedEdgeCatalog
+import org.poc.objs.core.domain.BoMEdgeCardinality
 import org.poc.objs.core.domain.BoMPropertiesPolicy
 import org.poc.objs.core.domain.BoMSchema
 import org.poc.objs.core.domain.BoMSchemaCatalog
@@ -171,17 +172,55 @@ class JpaBoMCatalogsIT {
         assertThat(rule.emptyPropertiesAllowed).isFalse()
         assertThat(rule.propertiesSchemaType).isEqualTo("CanonicalEdge")
         assertThat(rule.propertiesSchemaVersion).isEqualTo("1.0.0")
+        assertThat(rule.cardinality).isEqualTo(BoMEdgeCardinality.UNSPECIFIED)
         assertThat(edgeRuleRepo.count()).isEqualTo(1)
+    }
+
+    @Test
+    fun shouldPersistCardinalityWireValues() {
+        edgeCatalog.register(
+            BoMAllowedEdgeRule(
+                "Product",
+                "CONTAINS",
+                "Component",
+                cardinality = BoMEdgeCardinality.ONE_TO_ONE,
+            ),
+        )
+        edgeCatalog.register(
+            BoMAllowedEdgeRule(
+                "Component",
+                "DEPENDS_ON",
+                "Component",
+                cardinality = BoMEdgeCardinality.ONE_TO_MANY,
+            ),
+        )
+        assertThat(edgeCatalog.find("Product", "CONTAINS", "Component")!!.cardinality)
+            .isEqualTo(BoMEdgeCardinality.ONE_TO_ONE)
+        assertThat(edgeCatalog.find("Component", "DEPENDS_ON", "Component")!!.cardinality)
+            .isEqualTo(BoMEdgeCardinality.ONE_TO_MANY)
+        assertThat(edgeRuleRepo.findById(
+            org.poc.objs.core.persistence.BoMAllowedEdgeRuleId("Product", "CONTAINS", "Component"),
+        ).get().cardinality).isEqualTo(BoMEdgeCardinality.ONE_TO_ONE)
     }
 
     @Test
     fun shouldUpsertEdgeRule() {
         edgeCatalog.register(BoMAllowedEdgeRule("A", "r", "B", BoMPropertiesPolicy.NONE, true))
-        edgeCatalog.register(BoMAllowedEdgeRule("A", "r", "B", BoMPropertiesPolicy.SCHEMA, false))
+        edgeCatalog.register(
+            BoMAllowedEdgeRule(
+                "A",
+                "r",
+                "B",
+                BoMPropertiesPolicy.SCHEMA,
+                false,
+                cardinality = BoMEdgeCardinality.ONE_TO_MANY,
+            ),
+        )
 
         val rule = edgeCatalog.find("A", "r", "B")!!
         assertThat(rule.propertiesPolicy).isEqualTo(BoMPropertiesPolicy.SCHEMA)
         assertThat(rule.emptyPropertiesAllowed).isFalse()
+        assertThat(rule.cardinality).isEqualTo(BoMEdgeCardinality.ONE_TO_MANY)
         assertThat(edgeCatalog.all()).hasSize(1)
     }
 

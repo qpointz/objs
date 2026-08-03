@@ -198,11 +198,45 @@ export async function createNextMajorSchema(
   return parseResponse<BoMSchema>(res)
 }
 
+export async function putEdge(rule: {
+  sourceType: string
+  role: string
+  targetType: string
+  propertiesPolicy?: 'NONE' | 'SCHEMA'
+  emptyPropertiesAllowed?: boolean
+  propertiesSchemaType?: string | null
+  propertiesSchemaVersion?: string | null
+  cardinality?: string
+}): Promise<BoMAllowedEdgeRule> {
+  const res = await fetch('/api/v1/objs/registry/edges', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(rule),
+  })
+  return parseResponse<BoMAllowedEdgeRule>(res)
+}
+
+export async function deleteEdge(
+  sourceType: string,
+  role: string,
+  targetType: string,
+): Promise<void> {
+  const params = new URLSearchParams({ sourceType, role, targetType })
+  const res = await fetch(`/api/v1/objs/registry/edges?${params}`, { method: 'DELETE' })
+  if (res.status === 204) return
+  await parseResponse(res)
+}
+
 export function schemaDetailPath(type: string, version: string): string {
   return `/schemas/${encodeURIComponent(type)}/${encodeURIComponent(version)}`
 }
 
+export function schemaCreatePath(kind: 'object' | 'edge'): string {
+  return `/schemas/new?kind=${kind}`
+}
+
+/** @deprecated Use in-place Schemas editing; kept for redirect helpers. */
 export function schemaLinterPath(type: string, version: string, mode: 'edit' | 'create-version' = 'edit'): string {
-  const base = `/schemas/${encodeURIComponent(type)}/${encodeURIComponent(version)}/lint`
+  const base = schemaDetailPath(type, version)
   return mode === 'create-version' ? `${base}?mode=create-version` : base
 }

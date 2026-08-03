@@ -68,9 +68,11 @@ Persistence is the **enforcement** point for payload schema and allowed edges �
 - `bom_graph_entity_schema` stores `(type, version)`, authoritative DSL in `definition_doc`,
   and schema `usages` (`ENTITY` / `EDGE_PROPERTIES`); see [object-schema-dsl.md](object-schema-dsl.md).
 - Generated JSON Schema is not persisted. It is projected from the DSL for validation and tooling.
-- `bom_graph_edge_schema` stores directed allow-list rules, property policies, and nullable
-  `properties_schema_type + properties_schema_version` references. One property schema may be
-  shared by many source–role–target rules.
+- `bom_graph_edge_schema` stores directed allow-list rules, property policies, nullable
+  `properties_schema_type + properties_schema_version` references, and **cardinality**
+  (`UNSPECIFIED` / `1:1` / `1:*`, column default `UNSPECIFIED`). Flyway
+  `V3__bom_edge_cardinality.sql` adds the column. One property schema may be shared by many
+  source–role–target rules.
 - PostgreSQL is authoritative; application memory is a hydrated read cache.
 - Registry writes persist first and then update the cache.
 

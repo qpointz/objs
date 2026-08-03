@@ -1,5 +1,8 @@
 package org.poc.objs.core.domain
 
+import com.fasterxml.jackson.annotation.JsonCreator
+import com.fasterxml.jackson.annotation.JsonValue
+
 /** How a catalog schema is used by the graph model. */
 enum class BoMSchemaUsage {
     /** Entity payload schema (`BoMEntity.type` + `schemaVersion`). */
@@ -51,6 +54,41 @@ enum class BoMPropertiesPolicy {
 }
 
 /**
+ * Declared multiplicity on an allowed-edge rule (source → target via role).
+ *
+ * Schema metadata only — not enforced as an edge-count check at persist.
+ * Wire / YAML / JSON values are [wire], not the Kotlin enum names for `1:1` / `1:*`.
+ */
+enum class BoMEdgeCardinality(val wire: String) {
+    /** No declared multiplicity. */
+    UNSPECIFIED("UNSPECIFIED"),
+
+    /** Singular target. */
+    ONE_TO_ONE("1:1"),
+
+    /** Many targets. */
+    ONE_TO_MANY("1:*"),
+    ;
+
+    val isSingular: Boolean get() = this == ONE_TO_ONE
+
+    val isMany: Boolean get() = this == ONE_TO_MANY
+
+    @JsonValue
+    fun toWire(): String = wire
+
+    companion object {
+        @JvmStatic
+        @JsonCreator
+        fun fromWire(raw: String): BoMEdgeCardinality {
+            val trimmed = raw.trim()
+            return entries.find { it.wire == trimmed || it.name == trimmed }
+                ?: throw IllegalArgumentException("Unknown cardinality: $raw")
+        }
+    }
+}
+
+/**
  * Allowed-edge allow-list entry: directed (sourceType, role, targetType) + properties policy.
  *
  * [sourceType], [role], and [targetType] may be [ANY] (`*`) to match any value in that position.
@@ -67,6 +105,8 @@ data class BoMAllowedEdgeRule(
     val propertiesSchemaType: String? = null,
     /** Property-schema catalog version selected for this relation. */
     val propertiesSchemaVersion: String? = null,
+    /** Declared source→target multiplicity; default [BoMEdgeCardinality.UNSPECIFIED]. */
+    val cardinality: BoMEdgeCardinality = BoMEdgeCardinality.UNSPECIFIED,
 ) {
     companion object {
         /** Wildcard token: matches any type or role in that position. */

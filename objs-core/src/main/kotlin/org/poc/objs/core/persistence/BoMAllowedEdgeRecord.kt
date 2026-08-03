@@ -1,12 +1,14 @@
 package org.poc.objs.core.persistence
 
 import jakarta.persistence.Column
+import jakarta.persistence.Convert
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.IdClass
 import jakarta.persistence.Table
+import org.poc.objs.core.domain.BoMEdgeCardinality
 import org.poc.objs.core.domain.BoMPropertiesPolicy
 import java.io.Serializable
 import java.time.Instant
@@ -46,6 +48,10 @@ class BoMAllowedEdgeRuleRecord(
 
     @Column(name = "properties_schema_version", length = 64)
     var propertiesSchemaVersion: String? = null,
+
+    @Convert(converter = BoMEdgeCardinalityConverter::class)
+    @Column(name = "cardinality", nullable = false, length = 32)
+    var cardinality: BoMEdgeCardinality = BoMEdgeCardinality.UNSPECIFIED,
 
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant = Instant.now(),

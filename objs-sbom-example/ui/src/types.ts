@@ -89,6 +89,8 @@ export type BoMSchema = {
   usages: BoMSchemaUsage[]
 }
 
+export type BoMEdgeCardinality = 'UNSPECIFIED' | '1:1' | '1:*'
+
 export type BoMAllowedEdgeRule = {
   sourceType: string
   role: string
@@ -97,6 +99,7 @@ export type BoMAllowedEdgeRule = {
   emptyPropertiesAllowed: boolean
   propertiesSchemaType?: string | null
   propertiesSchemaVersion?: string | null
+  cardinality?: BoMEdgeCardinality
 }
 
 export type EdgeRelationRequest = {
@@ -104,6 +107,7 @@ export type EdgeRelationRequest = {
   role: string
   targetType: string
   emptyPropertiesAllowed: boolean
+  cardinality?: BoMEdgeCardinality
 }
 
 export type TypeEdgesResponse = {

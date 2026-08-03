@@ -27,8 +27,9 @@ Entity delete removes incident edges (store behaviour).
 | `GET` | `/registry/schemas` | All schemas |
 | `GET` | `/registry/schemas/{type}` | Versions for type |
 | `GET`/`PUT`/`DELETE` | `/registry/schemas/{type}/{version}` | Get / upsert / remove |
-| `GET`/`PUT` | `/registry/edges` | List / upsert edge definition (allow-list) |
+| `GET`/`PUT` | `/registry/edges` | List / upsert edge definition (allow-list); body may include `cardinality` (`UNSPECIFIED` / `1:1` / `1:*`) |
 | `DELETE` | `/registry/edges?sourceType&role&targetType` | Remove exact triple |
+| `GET`/`PUT` | `/registry/schemas/{type}/{version}/edges` | List / replace relations for an edge-property schema (includes `cardinality`) |
 
 ## Seeds
 
@@ -48,5 +49,6 @@ See [`../graph/seeds.md`](../graph/seeds.md).
 
 ## Related
 
-- Catalog persistence / seeds: [`docs/workitems/in-progress/graph-config-seeds/`](../../workitems/in-progress/graph-config-seeds/STORY.md)
-- Catalog persistence: backlog **C-3** / **C-4**
+- Catalog persistence / seeds: [`docs/workitems/completed/20260729-graph-config-seeds/`](../../workitems/completed/20260729-graph-config-seeds/STORY.md)
+- Allowed-edge cardinality: [`docs/design/graph/model.md`](../graph/model.md)
+- Catalog persistence: backlog **C-3** / **C-4** (done); cardinality **C-6**

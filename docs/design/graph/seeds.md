@@ -23,7 +23,23 @@ Unsupported `apiVersion` or `kind` values fail the whole resource.
 ## Identity and MERGE
 
 - Schemas upsert by `(type, version)`.
-- Allowed-edge rules upsert by `(sourceType, role, targetType)`.
+- Allowed-edge rules upsert by `(sourceType, role, targetType)`. Optional `cardinality` wire
+  values: `UNSPECIFIED` (default when omitted), `1:1`, `1:*`. Export always emits `cardinality`.
+
+  Example:
+
+  ```yaml
+  apiVersion: objs/v1
+  kind: AllowedEdgeRule
+  sourceType: Product
+  role: CONTAINS
+  targetType: Component
+  propertiesPolicy: SCHEMA
+  propertiesSchemaType: ContainsEdge
+  propertiesSchemaVersion: "1.0.0"
+  emptyPropertiesAllowed: true
+  cardinality: "1:*"
+  ```
 - Graph entities/edges use stable textual `key` values. Default ids are **UUIDv5** over
   `graphName/entity|edge/key` in the Objs seed namespace. Optional explicit `id` overrides that
   (used by REST export of existing rows).

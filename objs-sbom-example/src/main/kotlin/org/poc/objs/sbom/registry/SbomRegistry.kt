@@ -1,6 +1,7 @@
 package org.poc.objs.sbom.registry
 
 import org.poc.objs.core.domain.BoMAllowedEdgeRule
+import org.poc.objs.core.domain.BoMEdgeCardinality
 import org.poc.objs.core.domain.BoMPropertiesPolicy
 import org.poc.objs.core.domain.BoMSchema
 import org.poc.objs.core.domain.BoMSchemaDsl
@@ -76,7 +77,12 @@ object SbomRegistry {
         "attributes" to objectProp,
     )
 
-    private fun edgeRule(source: String, role: String, target: String) = BoMAllowedEdgeRule(
+    private fun edgeRule(
+        source: String,
+        role: String,
+        target: String,
+        cardinality: BoMEdgeCardinality = BoMEdgeCardinality.ONE_TO_MANY,
+    ) = BoMAllowedEdgeRule(
         sourceType = source,
         role = role,
         targetType = target,
@@ -84,6 +90,7 @@ object SbomRegistry {
         emptyPropertiesAllowed = true,
         propertiesSchemaType = CanonicalEdgeType.meta.type,
         propertiesSchemaVersion = SCHEMA_VERSION,
+        cardinality = cardinality,
     )
 
     private fun schema(
@@ -100,16 +107,27 @@ object SbomRegistry {
         },
     )
 
-    fun canonicalEdgeMeta(role: String, sourceType: String, targetType: String) = TypedEdgeMeta(
+    fun canonicalEdgeMeta(
+        role: String,
+        sourceType: String,
+        targetType: String,
+        cardinality: BoMEdgeCardinality = BoMEdgeCardinality.ONE_TO_MANY,
+    ) = TypedEdgeMeta(
         role = role,
         sourceType = sourceType,
         targetType = targetType,
         propertiesPolicy = BoMPropertiesPolicy.SCHEMA,
         propertiesMeta = CanonicalEdgeType.meta,
         emptyPropertiesAllowed = true,
+        cardinality = cardinality,
     )
 
-    fun dependsOnMeta() = canonicalEdgeMeta(SbomRoles.DEPENDS_ON, "Component", "Component")
+    fun dependsOnMeta() = canonicalEdgeMeta(
+        SbomRoles.DEPENDS_ON,
+        "Component",
+        "Component",
+        BoMEdgeCardinality.ONE_TO_MANY,
+    )
 
     /** Full canonical ontology: all entity schemas + relationship allow-list. */
     fun pack(): RegistryPack {
@@ -310,36 +328,38 @@ object SbomRegistry {
             ),
         )
 
-        // Exact triples from canonical-spec.md relationship table
+        // Exact triples from canonical-spec.md relationship table (+ cardinality)
+        val one = BoMEdgeCardinality.ONE_TO_ONE
+        val many = BoMEdgeCardinality.ONE_TO_MANY
         val edgeRules = listOf(
-            edgeRule("Product", SbomRoles.CONTAINS, "Component"),
-            edgeRule("Product", SbomRoles.CONTAINS, "Artifact"),
-            edgeRule("Container Image", SbomRoles.CONTAINS, "Container Layer"),
-            edgeRule("Database", SbomRoles.CONTAINS, "Dataset"),
-            edgeRule("Source Repository", SbomRoles.CONTAINS, "Source Module"),
-            edgeRule("Component", SbomRoles.DEPENDS_ON, "Component"),
-            edgeRule("Source Module", SbomRoles.PRODUCES, "Artifact"),
-            edgeRule("Build", SbomRoles.BUILDS, "Artifact"),
-            edgeRule("Build", SbomRoles.BUILDS, "Container Image"),
-            edgeRule("Build", SbomRoles.USES, "Component"),
-            edgeRule("Container Image", SbomRoles.PACKAGES, "Artifact"),
-            edgeRule("Container Image", SbomRoles.BASED_ON, "Operating System"),
-            edgeRule("Product", SbomRoles.RUNS_ON, "Runtime"),
-            edgeRule("Runtime", SbomRoles.RUNS_ON, "Operating System"),
-            edgeRule("Deployment", SbomRoles.DEPLOYS, "Container Image"),
-            edgeRule("Deployment", SbomRoles.TARGETS, "Environment"),
-            edgeRule("Deployment", SbomRoles.RUNS_ON, "Host"),
-            edgeRule("Host", SbomRoles.MEMBER_OF, "Kubernetes Cluster"),
-            edgeRule("Deployment", SbomRoles.LOCATED_IN, "Namespace"),
-            edgeRule("Service", SbomRoles.IMPLEMENTS, "API"),
-            edgeRule("Product", SbomRoles.CALLS, "API"),
-            edgeRule("Product", SbomRoles.CONNECTS_TO, "Database"),
-            edgeRule("Component", SbomRoles.PROVIDED_BY, "Organization"),
-            edgeRule("Product", SbomRoles.OWNED_BY, "Organization"),
-            edgeRule("Component", SbomRoles.LICENSED_UNDER, "License"),
-            edgeRule("Component", SbomRoles.HAS_VULNERABILITY, "Vulnerability"),
-            edgeRule("Container Image", SbomRoles.HAS_VULNERABILITY, "Vulnerability"),
-            edgeRule("Product", SbomRoles.COMPLIES_WITH, "Policy"),
+            edgeRule("Product", SbomRoles.CONTAINS, "Component", many),
+            edgeRule("Product", SbomRoles.CONTAINS, "Artifact", many),
+            edgeRule("Container Image", SbomRoles.CONTAINS, "Container Layer", many),
+            edgeRule("Database", SbomRoles.CONTAINS, "Dataset", many),
+            edgeRule("Source Repository", SbomRoles.CONTAINS, "Source Module", many),
+            edgeRule("Component", SbomRoles.DEPENDS_ON, "Component", many),
+            edgeRule("Source Module", SbomRoles.PRODUCES, "Artifact", many),
+            edgeRule("Build", SbomRoles.BUILDS, "Artifact", many),
+            edgeRule("Build", SbomRoles.BUILDS, "Container Image", many),
+            edgeRule("Build", SbomRoles.USES, "Component", many),
+            edgeRule("Container Image", SbomRoles.PACKAGES, "Artifact", many),
+            edgeRule("Container Image", SbomRoles.BASED_ON, "Operating System", one),
+            edgeRule("Product", SbomRoles.RUNS_ON, "Runtime", one),
+            edgeRule("Runtime", SbomRoles.RUNS_ON, "Operating System", one),
+            edgeRule("Deployment", SbomRoles.DEPLOYS, "Container Image", one),
+            edgeRule("Deployment", SbomRoles.TARGETS, "Environment", one),
+            edgeRule("Deployment", SbomRoles.RUNS_ON, "Host", many),
+            edgeRule("Host", SbomRoles.MEMBER_OF, "Kubernetes Cluster", one),
+            edgeRule("Deployment", SbomRoles.LOCATED_IN, "Namespace", one),
+            edgeRule("Service", SbomRoles.IMPLEMENTS, "API", many),
+            edgeRule("Product", SbomRoles.CALLS, "API", many),
+            edgeRule("Product", SbomRoles.CONNECTS_TO, "Database", many),
+            edgeRule("Component", SbomRoles.PROVIDED_BY, "Organization", one),
+            edgeRule("Product", SbomRoles.OWNED_BY, "Organization", one),
+            edgeRule("Component", SbomRoles.LICENSED_UNDER, "License", many),
+            edgeRule("Component", SbomRoles.HAS_VULNERABILITY, "Vulnerability", many),
+            edgeRule("Container Image", SbomRoles.HAS_VULNERABILITY, "Vulnerability", many),
+            edgeRule("Product", SbomRoles.COMPLIES_WITH, "Policy", many),
         )
 
         return RegistryPack(

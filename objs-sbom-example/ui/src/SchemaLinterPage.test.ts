@@ -19,6 +19,7 @@ describe('Schema linter expert document', () => {
           role: 'CONTAINS',
           targetType: 'Component',
           emptyPropertiesAllowed: true,
+          cardinality: '1:1',
         },
       ],
     })
@@ -26,6 +27,7 @@ describe('Schema linter expert document', () => {
     expect(result.ok).toBe(true)
     if (result.ok) {
       expect(result.value.allowedRelations?.[0]?.role).toBe('CONTAINS')
+      expect(result.value.allowedRelations?.[0]?.cardinality).toBe('1:1')
     }
   })
 

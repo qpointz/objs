@@ -2,6 +2,7 @@ package org.poc.objs.core.seed
 
 import org.poc.objs.core.domain.BoMAllowedEdgeCatalog
 import org.poc.objs.core.domain.BoMAllowedEdgeRule
+import org.poc.objs.core.domain.BoMEdgeCardinality
 import org.poc.objs.core.domain.BoMPropertiesPolicy
 import org.springframework.stereotype.Component
 
@@ -45,6 +46,17 @@ class AllowedEdgeRuleSeedHandler(
                 )
             }
         }
+        val cardinality = when (val raw = document.raw["cardinality"]?.toString()?.trim()) {
+            null, "" -> BoMEdgeCardinality.UNSPECIFIED
+            else -> try {
+                BoMEdgeCardinality.fromWire(raw)
+            } catch (_: IllegalArgumentException) {
+                throw SeedDocumentParseException(
+                    document.index,
+                    "Unknown cardinality: $raw",
+                )
+            }
+        }
         val rule = BoMAllowedEdgeRule(
             sourceType = sourceType,
             role = role,
@@ -53,6 +65,7 @@ class AllowedEdgeRuleSeedHandler(
             emptyPropertiesAllowed = emptyAllowed,
             propertiesSchemaType = propertiesSchemaType,
             propertiesSchemaVersion = propertiesSchemaVersion,
+            cardinality = cardinality,
         )
         return ParsedSeedDocument(
             document = document,
@@ -82,6 +95,7 @@ class AllowedEdgeRuleSeedHandler(
             "targetType" to rule.targetType,
             "propertiesPolicy" to rule.propertiesPolicy.name,
             "emptyPropertiesAllowed" to rule.emptyPropertiesAllowed,
+            "cardinality" to rule.cardinality.wire,
         )
         if (rule.propertiesSchemaType != null) {
             document["propertiesSchemaType"] = rule.propertiesSchemaType

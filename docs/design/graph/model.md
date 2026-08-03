@@ -50,11 +50,22 @@ deterministic **UUIDv5** from stable textual keys (see [seeds.md](seeds.md)).
   - **none** — no properties allowed/expected
   - **schema** — properties validated against central schema `(type, version)`; policy also says if **empty** properties are allowed
 - Any component may be **`*`** (wildcard). Example: `(* , depends_on , *)` allows that role between any entity types. Most specific matching rule wins.
-- Rules are **directed**; **role** is a **free string**; **cardinality** unlimited for now.
+- Rules are **directed**; **role** is a **free string**.
+- **Cardinality** (optional metadata on each allow-list rule):
+
+  | Wire / YAML / JSON | Meaning |
+  |--------------------|---------|
+  | `UNSPECIFIED` | Default when omitted; no singular/many declaration |
+  | `1:1` | Singular: one target of that type via the role from a given source |
+  | `1:*` | Many: multiple targets allowed |
+
+  Cardinality is **schema metadata only** for authors and UI (tables, Visual labels
+  `ROLE · 1:1` / `ROLE · 1:*`, role-only when `UNSPECIFIED`). It is **not** enforced as an
+  edge-count check at persist.
 - Persist/audit: not in allow-list → **deny**; then enforce properties policy (and schema when applicable).
 - In-memory construction is unrestricted — see [validation.md](validation.md).
 - Edge table / column design is **TBD** — see [persistence.md](persistence.md).
-- Allowed-edge + schema catalog persistence in PostgreSQL: later (C-3).
+- Allowed-edge + schema catalog persistence in PostgreSQL: see seeds / catalog stories.
 
 ## Naming note
 

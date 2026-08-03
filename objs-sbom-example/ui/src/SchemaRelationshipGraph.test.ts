@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { schemaPropertyRows, schemaRelationshipElements } from './SchemaRelationshipGraph'
+import { allowedEdgeLabel, schemaPropertyRows, schemaRelationshipElements } from './SchemaRelationshipGraph'
 import type { BoMSchema, BoMSchemaNode, TypeEdgesResponse } from './types'
 
 const contentSchema: BoMSchemaNode = {
@@ -53,6 +53,13 @@ describe('SchemaRelationshipGraph', () => {
     ])
   })
 
+  it('formats edge labels with cardinality when specified', () => {
+    expect(allowedEdgeLabel('CONTAINS')).toBe('CONTAINS')
+    expect(allowedEdgeLabel('CONTAINS', 'UNSPECIFIED')).toBe('CONTAINS')
+    expect(allowedEdgeLabel('CONTAINS', '1:1')).toBe('CONTAINS · 1:1')
+    expect(allowedEdgeLabel('DEPENDS_ON', '1:*')).toBe('DEPENDS_ON · 1:*')
+  })
+
   it('builds incoming and outgoing traversal nodes and labelled edges', () => {
     const relationships: TypeEdgesResponse = {
       incoming: [
@@ -62,6 +69,7 @@ describe('SchemaRelationshipGraph', () => {
           targetType: 'Component',
           propertiesPolicy: 'SCHEMA',
           emptyPropertiesAllowed: true,
+          cardinality: '1:1',
         },
       ],
       outgoing: [
@@ -71,6 +79,7 @@ describe('SchemaRelationshipGraph', () => {
           targetType: 'Component',
           propertiesPolicy: 'SCHEMA',
           emptyPropertiesAllowed: true,
+          cardinality: '1:*',
         },
         {
           sourceType: 'Component',
@@ -78,6 +87,7 @@ describe('SchemaRelationshipGraph', () => {
           targetType: 'License',
           propertiesPolicy: 'SCHEMA',
           emptyPropertiesAllowed: true,
+          cardinality: 'UNSPECIFIED',
         },
       ],
     }
@@ -91,8 +101,8 @@ describe('SchemaRelationshipGraph', () => {
       'outgoing:License',
     ])
     expect(elements.edges.map((edge) => edge.label)).toEqual([
-      'CONTAINS',
-      'DEPENDS_ON',
+      'CONTAINS · 1:1',
+      'DEPENDS_ON · 1:*',
       'LICENSED_UNDER',
     ])
   })

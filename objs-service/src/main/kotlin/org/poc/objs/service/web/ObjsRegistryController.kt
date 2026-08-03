@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.poc.objs.core.domain.BoMAllowedEdgeCatalog
 import org.poc.objs.core.domain.BoMAllowedEdgeRule
+import org.poc.objs.core.domain.BoMEdgeCardinality
 import org.poc.objs.core.domain.BoMPropertiesPolicy
 import org.poc.objs.core.domain.BoMSchema
 import org.poc.objs.core.domain.BoMSchemaCatalog
@@ -184,6 +185,7 @@ class ObjsRegistryController(
                 emptyPropertiesAllowed = it.emptyPropertiesAllowed,
                 propertiesSchemaType = type,
                 propertiesSchemaVersion = version,
+                cardinality = it.cardinality ?: BoMEdgeCardinality.UNSPECIFIED,
             )
         }
         val replacementKeys = replacements.map { Triple(it.sourceType, it.role, it.targetType) }.toSet()
@@ -335,6 +337,7 @@ class ObjsRegistryController(
             emptyPropertiesAllowed = body.emptyPropertiesAllowed ?: true,
             propertiesSchemaType = body.propertiesSchemaType,
             propertiesSchemaVersion = body.propertiesSchemaVersion,
+            cardinality = body.cardinality ?: BoMEdgeCardinality.UNSPECIFIED,
         )
         edgeRules.register(rule)
         return rule
@@ -408,6 +411,7 @@ class ObjsRegistryController(
         val emptyPropertiesAllowed: Boolean? = null,
         val propertiesSchemaType: String? = null,
         val propertiesSchemaVersion: String? = null,
+        val cardinality: BoMEdgeCardinality? = null,
     )
 
     data class EdgeRelationRequest(
@@ -415,5 +419,6 @@ class ObjsRegistryController(
         val role: String,
         val targetType: String,
         val emptyPropertiesAllowed: Boolean = true,
+        val cardinality: BoMEdgeCardinality? = null,
     )
 }

@@ -288,7 +288,8 @@ class ObjsRegistryControllerTest {
                       "sourceType":"Person",
                       "role":"MEMBER_OF",
                       "targetType":"Organization",
-                      "emptyPropertiesAllowed":false
+                      "emptyPropertiesAllowed":false,
+                      "cardinality":"1:1"
                     }]
                     """.trimIndent(),
                 ),
@@ -297,6 +298,7 @@ class ObjsRegistryControllerTest {
             .andExpect(jsonPath("$[0].propertiesPolicy").value("SCHEMA"))
             .andExpect(jsonPath("$[0].propertiesSchemaType").value("CanonicalEdge"))
             .andExpect(jsonPath("$[0].propertiesSchemaVersion").value("1"))
+            .andExpect(jsonPath("$[0].cardinality").value("1:1"))
 
         mockMvc.perform(get("/api/v1/objs/registry/schemas/CanonicalEdge/1/edges"))
             .andExpect(status().isOk)
@@ -304,6 +306,7 @@ class ObjsRegistryControllerTest {
             .andExpect(jsonPath("$[0].sourceType").value("Person"))
             .andExpect(jsonPath("$[0].role").value("MEMBER_OF"))
             .andExpect(jsonPath("$[0].targetType").value("Organization"))
+            .andExpect(jsonPath("$[0].cardinality").value("1:1"))
 
         mockMvc.perform(
             put("/api/v1/objs/registry/schemas/CanonicalEdge/1/edges")
@@ -372,15 +375,17 @@ class ObjsRegistryControllerTest {
             put("/api/v1/objs/registry/edges")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
-                    """{"sourceType":"*","role":"depends_on","targetType":"*","propertiesPolicy":"NONE"}""",
+                    """{"sourceType":"*","role":"depends_on","targetType":"*","propertiesPolicy":"NONE","cardinality":"1:*"}""",
                 ),
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.role").value("depends_on"))
+            .andExpect(jsonPath("$.cardinality").value("1:*"))
 
         mockMvc.perform(get("/api/v1/objs/registry/edges"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$[0].propertiesPolicy").value("NONE"))
+            .andExpect(jsonPath("$[0].cardinality").value("1:*"))
 
         mockMvc.perform(
             delete("/api/v1/objs/registry/edges")

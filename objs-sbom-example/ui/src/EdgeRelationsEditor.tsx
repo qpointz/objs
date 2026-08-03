@@ -9,7 +9,13 @@ import {
   Text,
   TextInput,
 } from '@mantine/core'
-import type { EdgeRelationRequest } from './types'
+import type { BoMEdgeCardinality, EdgeRelationRequest } from './types'
+
+const CARDINALITY_OPTIONS: { value: BoMEdgeCardinality; label: string }[] = [
+  { value: 'UNSPECIFIED', label: 'UNSPECIFIED' },
+  { value: '1:1', label: '1:1' },
+  { value: '1:*', label: '1:*' },
+]
 
 export function EdgeRelationsEditor({
   value,
@@ -57,6 +63,7 @@ export function EdgeRelationsEditor({
                 role: 'RELATES_TO',
                 targetType: entityTypes[0] ?? '*',
                 emptyPropertiesAllowed: true,
+                cardinality: 'UNSPECIFIED',
               },
             ])
           }
@@ -97,6 +104,18 @@ export function EdgeRelationsEditor({
                   value={relation.targetType}
                   onChange={(targetType) => update(index, { targetType: targetType ?? '' })}
                   style={{ flex: 1 }}
+                />
+                <Select
+                  label="Cardinality"
+                  allowDeselect={false}
+                  data={CARDINALITY_OPTIONS}
+                  value={relation.cardinality ?? 'UNSPECIFIED'}
+                  onChange={(cardinality) =>
+                    update(index, {
+                      cardinality: (cardinality as BoMEdgeCardinality | null) ?? 'UNSPECIFIED',
+                    })
+                  }
+                  style={{ flex: '0 0 140px' }}
                 />
                 <Checkbox
                   label="Empty properties allowed"

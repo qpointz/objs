@@ -13,8 +13,10 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { useNavigate } from 'react-router-dom'
+import { allowedEdgeKey, type AllowedEdgeRef } from './allowedEdgeRef'
 import type {
   BoMAllowedEdgeRule,
+  BoMEdgeCardinality,
   BoMSchema,
   BoMSchemaField,
   BoMSchemaNode,
@@ -84,6 +86,16 @@ export function schemaPropertyRows(root: BoMSchemaNode): PropertyRow[] {
   const rows: PropertyRow[] = []
   appendFieldRows(rows, root.fields ?? [], 0, 'root')
   return rows
+}
+
+/** Edge label: role only when UNSPECIFIED; otherwise `ROLE · 1:1` / `ROLE · 1:*`. */
+export function allowedEdgeLabel(
+  role: string,
+  cardinality: BoMEdgeCardinality | undefined | null = 'UNSPECIFIED',
+): string {
+  const value = cardinality ?? 'UNSPECIFIED'
+  if (value === 'UNSPECIFIED') return role
+  return `${role} · ${value}`
 }
 
 function SelectedSchemaNode({ data }: NodeProps) {
@@ -247,7 +259,7 @@ export function schemaRelationshipElements(
     ...incomingTypes.map((type, index) => ({
       id: `incoming:${type}`,
       type: 'relatedSchema',
-      position: { x: -COLUMN_GAP, y: relatedY(index, incomingTypes.length) },
+      position: { x: -(COLUMN_GAP + RELATED_WIDTH), y: relatedY(index, incomingTypes.length) },
       data: {
         kind: 'related' as const,
         type,
@@ -258,7 +270,7 @@ export function schemaRelationshipElements(
     ...outgoingTypes.map((type, index) => ({
       id: `outgoing:${type}`,
       type: 'relatedSchema',
-      position: { x: SELECTED_WIDTH + COLUMN_GAP - RELATED_WIDTH, y: relatedY(index, outgoingTypes.length) },
+      position: { x: SELECTED_WIDTH + COLUMN_GAP, y: relatedY(index, outgoingTypes.length) },
       data: {
         kind: 'related' as const,
         type,
@@ -275,25 +287,35 @@ export function schemaRelationshipElements(
       id: `incoming-edge:${index}:${rule.sourceType}:${rule.role}`,
       source: `incoming:${rule.sourceType}`,
       target: 'selected',
-      label: rule.role,
+      label: allowedEdgeLabel(rule.role, rule.cardinality),
       type: 'smoothstep',
       style: edgeStyle,
       markerEnd,
       labelStyle: { fontSize: 10, fontWeight: 700, fill: '#364fc7' },
       labelBgStyle: { fill: '#fff', fillOpacity: 0.92 },
       labelBgPadding: [4, 2] as [number, number],
+      data: {
+        sourceType: rule.sourceType,
+        role: rule.role,
+        targetType: rule.targetType,
+      } satisfies AllowedEdgeRef,
     })),
     ...relationships.outgoing.map((rule, index) => ({
       id: `outgoing-edge:${index}:${rule.targetType}:${rule.role}`,
       source: 'selected',
       target: `outgoing:${rule.targetType}`,
-      label: rule.role,
+      label: allowedEdgeLabel(rule.role, rule.cardinality),
       type: 'smoothstep',
       style: edgeStyle,
       markerEnd,
       labelStyle: { fontSize: 10, fontWeight: 700, fill: '#364fc7' },
       labelBgStyle: { fill: '#fff', fillOpacity: 0.92 },
       labelBgPadding: [4, 2] as [number, number],
+      data: {
+        sourceType: rule.sourceType,
+        role: rule.role,
+        targetType: rule.targetType,
+      } satisfies AllowedEdgeRef,
     })),
   ]
 
@@ -303,33 +325,75 @@ export function schemaRelationshipElements(
 function SchemaRelationshipGraphInner({
   schema,
   relationships,
+  highlightedEdge,
+  onEdgeSelect,
 }: {
   schema: BoMSchema
   relationships: TypeEdgesResponse
+  highlightedEdge?: AllowedEdgeRef | null
+  onEdgeSelect?: (edge: AllowedEdgeRef | null) => void
 }) {
   const navigate = useNavigate()
   const elements = useMemo(
     () => schemaRelationshipElements(schema, relationships),
     [schema, relationships],
   )
+  const highlightKey = highlightedEdge ? allowedEdgeKey(highlightedEdge) : null
+
+  const edges = useMemo(
+    () =>
+      elements.edges.map((edge) => {
+        const ref = edge.data as AllowedEdgeRef | undefined
+        const selected = !!ref && highlightKey === allowedEdgeKey(ref)
+        return {
+          ...edge,
+          selected,
+          style: {
+            ...edge.style,
+            stroke: selected ? '#364fc7' : '#5c7cfa',
+            strokeWidth: selected ? 3 : 1.5,
+          },
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            color: selected ? '#364fc7' : '#5c7cfa',
+            width: 14,
+            height: 14,
+          },
+        }
+      }),
+    [elements.edges, highlightKey],
+  )
 
   return (
     <ReactFlow
       nodes={elements.nodes}
-      edges={elements.edges}
+      edges={edges}
       nodeTypes={nodeTypes}
       fitView
-      fitViewOptions={{ padding: 0.18, maxZoom: 1 }}
+      fitViewOptions={{ padding: 0.22, maxZoom: 1 }}
       minZoom={0.35}
       maxZoom={1.4}
       nodesDraggable={false}
       nodesConnectable={false}
       elementsSelectable
+      edgesFocusable
+      panOnDrag
+      panOnScroll={false}
+      zoomOnScroll={false}
+      zoomOnPinch
+      zoomOnDoubleClick={false}
+      onPaneClick={() => onEdgeSelect?.(null)}
       onNodeClick={(_, node) => {
+        onEdgeSelect?.(null)
         const data = node.data as SchemaGraphNodeData
         if (data.kind === 'related' && data.type !== '*') {
           navigate(`/schemas/${encodeURIComponent(data.type)}`)
         }
+      }}
+      onEdgeClick={(_, edge) => {
+        const ref = edge.data as AllowedEdgeRef | undefined
+        if (!ref) return
+        onEdgeSelect?.(ref)
       }}
       proOptions={{ hideAttribution: true }}
     >
@@ -342,14 +406,23 @@ function SchemaRelationshipGraphInner({
 export function SchemaRelationshipGraph({
   schema,
   relationships,
+  highlightedEdge,
+  onEdgeSelect,
 }: {
   schema: BoMSchema
   relationships: TypeEdgesResponse
+  highlightedEdge?: AllowedEdgeRef | null
+  onEdgeSelect?: (edge: AllowedEdgeRef | null) => void
 }) {
   return (
     <div style={{ height: 560, border: '1px solid var(--mantine-color-default-border)', borderRadius: 6 }}>
       <ReactFlowProvider>
-        <SchemaRelationshipGraphInner schema={schema} relationships={relationships} />
+        <SchemaRelationshipGraphInner
+          schema={schema}
+          relationships={relationships}
+          highlightedEdge={highlightedEdge}
+          onEdgeSelect={onEdgeSelect}
+        />
       </ReactFlowProvider>
     </div>
   )

@@ -73,6 +73,42 @@ class SeedImporterTest {
         assertThat(rules.find("Person", "knows", "Person")).isNotNull
         assertThat(result.appliedByKind()[SEED_KIND_OBJECT_SCHEMA]).isEqualTo(1)
         assertThat(result.appliedByKind()[SEED_KIND_ALLOWED_EDGE_RULE]).isEqualTo(1)
+        assertThat(rules.find("Person", "knows", "Person")!!.cardinality)
+            .isEqualTo(org.poc.objs.core.domain.BoMEdgeCardinality.UNSPECIFIED)
+    }
+
+    @Test
+    fun shouldParseCardinalityOnAllowedEdgeRule() {
+        val yaml = """
+            apiVersion: objs.poc.org/v1
+            kind: AllowedEdgeRule
+            sourceType: Product
+            role: CONTAINS
+            targetType: Component
+            propertiesPolicy: NONE
+            cardinality: "1:*"
+        """.trimIndent()
+
+        val result = importer.importYaml(yaml)
+        assertThat(result.isSuccess).isTrue()
+        assertThat(rules.find("Product", "CONTAINS", "Component")!!.cardinality)
+            .isEqualTo(org.poc.objs.core.domain.BoMEdgeCardinality.ONE_TO_MANY)
+    }
+
+    @Test
+    fun shouldRejectUnknownCardinality() {
+        assertThatThrownBy {
+            importer.importYaml(
+                """
+                apiVersion: objs.poc.org/v1
+                kind: AllowedEdgeRule
+                sourceType: A
+                role: r
+                targetType: B
+                cardinality: "1:0..1"
+                """.trimIndent(),
+            )
+        }.isInstanceOf(SeedImportException::class.java)
     }
 
     @Test
@@ -191,11 +227,14 @@ class SeedImporterTest {
         assertThat(yaml).doesNotContain("spec:")
         assertThat(yaml).contains("type: \"Person\"")
         assertThat(yaml).contains("sourceType: \"Person\"")
+        assertThat(yaml).contains("cardinality: \"UNSPECIFIED\"")
         schemas.clear()
         rules.clear()
         val result = importer.importYaml(yaml)
         assertThat(result.isSuccess).isTrue()
         assertThat(schemas.get("Person", "1")).isNotNull
         assertThat(rules.find("Person", "knows", "Person")).isNotNull
+        assertThat(rules.find("Person", "knows", "Person")!!.cardinality)
+            .isEqualTo(org.poc.objs.core.domain.BoMEdgeCardinality.UNSPECIFIED)
     }
 }

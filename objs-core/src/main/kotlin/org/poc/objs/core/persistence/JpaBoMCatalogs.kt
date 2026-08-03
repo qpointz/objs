@@ -123,6 +123,7 @@ open class JpaBoMAllowedEdgeCatalog(
         record.emptyPropertiesAllowed = rule.emptyPropertiesAllowed
         record.propertiesSchemaType = rule.propertiesSchemaType
         record.propertiesSchemaVersion = rule.propertiesSchemaVersion
+        record.cardinality = rule.cardinality
         record.updatedAt = now
         repository.save(record)
         cache.register(rule)
@@ -186,4 +187,5 @@ fun BoMAllowedEdgeRuleRecord.toDomain() = BoMAllowedEdgeRule(
     emptyPropertiesAllowed = emptyPropertiesAllowed,
     propertiesSchemaType = propertiesSchemaType,
     propertiesSchemaVersion = propertiesSchemaVersion,
+    cardinality = cardinality,
 )
