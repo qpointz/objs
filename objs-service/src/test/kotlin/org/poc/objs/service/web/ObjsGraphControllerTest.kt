@@ -37,7 +37,14 @@ class ObjsGraphControllerTest {
     fun setUp() {
         store = mock(BoMGraphStore::class.java)
         mockMvc = MockMvcBuilders
-            .standaloneSetup(ObjsGraphController(store), ObjsStatusController())
+            .standaloneSetup(
+                ObjsGraphController(
+                    store,
+                    mock(org.poc.objs.core.seed.SeedImporter::class.java),
+                    mock(org.poc.objs.core.seed.CanonicalSeedSerializer::class.java),
+                ),
+                ObjsStatusController(),
+            )
             .setMessageConverters(JacksonJsonHttpMessageConverter(JsonMapper.builder().findAndAddModules().build()))
             .build()
     }
