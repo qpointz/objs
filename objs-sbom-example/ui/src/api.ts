@@ -234,13 +234,28 @@ export async function listEdges(): Promise<BoMAllowedEdgeRule[]> {
 }
 
 /** Catalog-only seed YAML (ObjectSchema + AllowedEdgeRule). */
-export async function exportCatalogSeed(): Promise<string> {
-  const res = await fetch('/api/v1/objs/registry/export?format=seeds')
+export type CatalogExportFormat = 'seeds' | 'json-schema'
+
+export async function exportCatalog(format: CatalogExportFormat): Promise<string> {
+  const res = await fetch(`/api/v1/objs/registry/export?format=${encodeURIComponent(format)}`)
   if (!res.ok) {
     const body = await res.json().catch(() => null)
     throw new Error(typeof body === 'string' ? body : `HTTP ${res.status}`)
   }
-  return res.text()
+  const text = await res.text()
+  if (format === 'json-schema') {
+    try {
+      return JSON.stringify(JSON.parse(text), null, 2)
+    } catch {
+      return text
+    }
+  }
+  return text
+}
+
+/** @deprecated Prefer exportCatalog('seeds') */
+export async function exportCatalogSeed(): Promise<string> {
+  return exportCatalog('seeds')
 }
 
 export async function importCatalogSeed(file: File): Promise<SeedImportResult> {

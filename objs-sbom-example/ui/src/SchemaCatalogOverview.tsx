@@ -1,5 +1,18 @@
-import { memo, useEffect, useMemo, useRef, useState } from 'react'
-import { Alert, Button, Group, Loader, Paper, Stack, Table, Text, Title } from '@mantine/core'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  Alert,
+  Button,
+  Group,
+  Loader,
+  Menu,
+  Paper,
+  SegmentedControl,
+  Stack,
+  Table,
+  Tabs,
+  Text,
+  Title,
+} from '@mantine/core'
 import {
   Background,
   Controls,
@@ -12,10 +25,11 @@ import {
 import '@xyflow/react/dist/style.css'
 import { useNavigate } from 'react-router-dom'
 import {
-  exportCatalogSeed,
+  exportCatalog,
   importCatalogSeed,
   listEdges,
   schemaDetailPath,
+  type CatalogExportFormat,
 } from './api'
 import {
   catalogSeedContainsGraph,
@@ -23,6 +37,7 @@ import {
   type CatalogNodeData,
   type CatalogTypeNode,
 } from './catalogOverviewModel'
+import { SyntaxCodeEditor } from './SyntaxCodeEditor'
 import type { BoMAllowedEdgeRule, BoMSchema, SeedImportResult } from './types'
 
 function CatalogTypeNodeView({ data }: NodeProps) {
@@ -75,22 +90,48 @@ function SchemaCatalogOverviewInner({
   const [ioError, setIoError] = useState<string | null>(null)
   const [importResult, setImportResult] = useState<SeedImportResult | null>(null)
   const [ioBusy, setIoBusy] = useState(false)
+  const [overviewTab, setOverviewTab] = useState<'visual' | 'text'>('visual')
+  const [textFormat, setTextFormat] = useState<CatalogExportFormat>('json-schema')
+  const [textBody, setTextBody] = useState('')
+  const [textBusy, setTextBusy] = useState(false)
+  const [textError, setTextError] = useState<string | null>(null)
+  const [textEpoch, setTextEpoch] = useState(0)
 
   const elements = useMemo(
     () => schemaCatalogElements(entityTypes, rules),
     [entityTypes, rules],
   )
 
-  async function onExport() {
+  const loadTextView = useCallback(async (format: CatalogExportFormat) => {
+    setTextBusy(true)
+    setTextError(null)
+    try {
+      setTextBody(await exportCatalog(format))
+    } catch (e) {
+      setTextBody('')
+      setTextError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setTextBusy(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (overviewTab !== 'text') return
+    void loadTextView(textFormat)
+  }, [overviewTab, textFormat, textEpoch, loadTextView, entityTypes, rules])
+
+  async function onExport(format: CatalogExportFormat) {
     setIoError(null)
     setIoBusy(true)
     try {
-      const yaml = await exportCatalogSeed()
-      const blob = new Blob([yaml], { type: 'application/yaml' })
+      const body = await exportCatalog(format)
+      const blob = new Blob([body], {
+        type: format === 'json-schema' ? 'application/schema+json' : 'application/yaml',
+      })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = 'objs-catalog.yaml'
+      a.download = format === 'json-schema' ? 'objs-catalog.schema.json' : 'objs-catalog.yaml'
       a.click()
       URL.revokeObjectURL(url)
     } catch (e) {
@@ -118,6 +159,7 @@ function SchemaCatalogOverviewInner({
         setIoError('Import finished with errors (MERGE only; nothing was deleted).')
       } else {
         await onImported()
+        setTextEpoch((n) => n + 1)
       }
     } catch (e) {
       setIoError(e instanceof Error ? e.message : String(e))
@@ -137,12 +179,28 @@ function SchemaCatalogOverviewInner({
           </Text>
         </Stack>
         <Group gap="xs">
-          <Button size="sm" variant="light" loading={busy || ioBusy} onClick={() => void onRefresh()}>
+          <Button
+            size="sm"
+            variant="light"
+            loading={busy || ioBusy}
+            onClick={() => {
+              void onRefresh().then(() => setTextEpoch((n) => n + 1))
+            }}
+          >
             Refresh
           </Button>
-          <Button size="sm" variant="light" loading={ioBusy} onClick={() => void onExport()}>
-            Export
-          </Button>
+          <Menu position="bottom-end">
+            <Menu.Target>
+              <Button size="sm" variant="light" loading={ioBusy}>
+                Export
+              </Button>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Label>Format</Menu.Label>
+              <Menu.Item onClick={() => void onExport('seeds')}>Seeds (YAML)</Menu.Item>
+              <Menu.Item onClick={() => void onExport('json-schema')}>JSON Schema</Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
           <Button size="sm" loading={ioBusy} onClick={() => fileRef.current?.click()}>
             Import
           </Button>
@@ -200,43 +258,85 @@ function SchemaCatalogOverviewInner({
         </Paper>
       )}
 
-      <div
-        style={{
-          flex: 1,
-          minWidth: 0,
-          minHeight: 520,
-          height: 560,
-          border: '1px solid var(--mantine-color-default-border)',
-          borderRadius: 6,
-        }}
+      <Tabs
+        value={overviewTab}
+        onChange={(v) => setOverviewTab((v as 'visual' | 'text') ?? 'visual')}
+        style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}
       >
-        <ReactFlow
-          nodes={elements.nodes}
-          edges={elements.edges}
-          nodeTypes={nodeTypes}
-          fitView
-          fitViewOptions={{ padding: 0.18, maxZoom: 1 }}
-          minZoom={0.2}
-          maxZoom={1.4}
-          nodesDraggable={false}
-          nodesConnectable={false}
-          elementsSelectable
-          panOnDrag
-          panOnScroll={false}
-          zoomOnScroll={false}
-          zoomOnPinch
-          onNodeClick={(_, node) => {
-            const data = node.data as CatalogNodeData
-            if (data.kind === 'entity' && data.version) {
-              navigate(schemaDetailPath(data.type, data.version))
-            }
-          }}
-          proOptions={{ hideAttribution: true }}
-        >
-          <Background gap={18} size={1} />
-          <Controls showInteractive={false} />
-        </ReactFlow>
-      </div>
+        <Tabs.List>
+          <Tabs.Tab value="visual">Visual</Tabs.Tab>
+          <Tabs.Tab value="text">Text</Tabs.Tab>
+        </Tabs.List>
+
+        <Tabs.Panel value="visual" pt="sm" style={{ flex: 1, minHeight: 0 }}>
+          <div
+            style={{
+              flex: 1,
+              minWidth: 0,
+              minHeight: 520,
+              height: 560,
+              border: '1px solid var(--mantine-color-default-border)',
+              borderRadius: 6,
+            }}
+          >
+            <ReactFlow
+              nodes={elements.nodes}
+              edges={elements.edges}
+              nodeTypes={nodeTypes}
+              fitView
+              fitViewOptions={{ padding: 0.18, maxZoom: 1 }}
+              minZoom={0.2}
+              maxZoom={1.4}
+              nodesDraggable={false}
+              nodesConnectable={false}
+              elementsSelectable
+              panOnDrag
+              panOnScroll={false}
+              zoomOnScroll={false}
+              zoomOnPinch
+              onNodeClick={(_, node) => {
+                const data = node.data as CatalogNodeData
+                if (data.kind === 'entity' && data.version) {
+                  navigate(schemaDetailPath(data.type, data.version))
+                }
+              }}
+              proOptions={{ hideAttribution: true }}
+            >
+              <Background gap={18} size={1} />
+              <Controls showInteractive={false} />
+            </ReactFlow>
+          </div>
+        </Tabs.Panel>
+
+        <Tabs.Panel value="text" pt="sm" style={{ flex: 1, minHeight: 0 }}>
+          <Stack gap="xs" style={{ height: '100%', minHeight: 0 }}>
+            <Group justify="space-between">
+              <SegmentedControl
+                size="xs"
+                value={textFormat}
+                onChange={(v) => setTextFormat(v as CatalogExportFormat)}
+                data={[
+                  { label: 'JSON Schema', value: 'json-schema' },
+                  { label: 'Seeds', value: 'seeds' },
+                ]}
+              />
+              {textBusy && <Loader size="xs" />}
+            </Group>
+            {textError && (
+              <Alert color="red" title="Text view">
+                {textError}
+              </Alert>
+            )}
+            <SyntaxCodeEditor
+              language={textFormat === 'json-schema' ? 'json' : 'yaml'}
+              readOnly
+              minHeight={520}
+              fillHeight
+              value={textBody}
+            />
+          </Stack>
+        </Tabs.Panel>
+      </Tabs>
     </Stack>
   )
 }

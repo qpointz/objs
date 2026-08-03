@@ -86,9 +86,12 @@ Schemas is a single workbench for browsing and editing catalog types.
 Opening **Schemas** without a type selected shows the **Full schema** overview:
 
 - ontology graph of all **ENTITY** object types and allow-list edges (wildcard `*` as one node);
+- **Visual** / **Text** tabs: Visual shows the ontology graph; Text is a read-only catalog export with
+  a **JSON Schema** / **Seeds** segmented control (same pattern as the type editor JSON/YAML toggle);
 - click a type node (or a row in the type list) to open that type’s latest version;
-- **Export** downloads catalog-only seed YAML (`ObjectSchema` + `AllowedEdgeRule` via
-  `GET /api/v1/objs/registry/export?format=seeds`);
+- **Export** menu downloads either catalog seed YAML
+  (`GET /api/v1/objs/registry/export?format=seeds`) or full-catalog JSON Schema
+  (`…?format=json-schema`);
 - **Import** MERGEs a catalog YAML (`POST /api/v1/objs/registry/import?format=seeds`). Files that
   contain `Graph` documents are rejected. Import never deletes catalog entries.
 - **Refresh** reloads schemas and edges.
