@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useState, type ReactNode } from 'react'
 import { useDebouncedValue } from '@mantine/hooks'
 import { Button, Group, SegmentedControl, Stack, Text } from '@mantine/core'
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml'
@@ -22,12 +22,27 @@ interface JsonYamlEditorProps {
   value: unknown
   rollbackValue?: unknown
   onDraftParsed?: (draft: { valid: boolean; value?: unknown; error?: string }) => void
+  /** When set, Rollback delegates here instead of only resetting editor text. */
+  onRollback?: () => void
   minHeight?: number
   fillHeight?: boolean
+  /** Extra toolbar buttons rendered after Format / Rollback (e.g. Lint). */
+  extraActions?: ReactNode
 }
 
 export const JsonYamlEditor = forwardRef<JsonYamlEditorHandle, JsonYamlEditorProps>(
-  function JsonYamlEditor({ value, rollbackValue, onDraftParsed, minHeight = 360, fillHeight = false }, ref) {
+  function JsonYamlEditor(
+    {
+      value,
+      rollbackValue,
+      onDraftParsed,
+      onRollback,
+      minHeight = 360,
+      fillHeight = false,
+      extraActions,
+    },
+    ref,
+  ) {
     const [format, setFormat] = useState<EditorFormat>('yaml')
     const [text, setText] = useState('')
     const [parseError, setParseError] = useState<string | null>(null)
@@ -88,6 +103,10 @@ export const JsonYamlEditor = forwardRef<JsonYamlEditorHandle, JsonYamlEditorPro
     }
 
     const rollback = () => {
+      if (onRollback) {
+        onRollback()
+        return
+      }
       setText(serializeForFormat(rollbackSource, format))
       setParseError(null)
       onDraftParsed?.({ valid: true, value: rollbackSource })
@@ -112,6 +131,7 @@ export const JsonYamlEditor = forwardRef<JsonYamlEditorHandle, JsonYamlEditorPro
             <Button size="xs" variant="subtle" onClick={rollback}>
               Rollback
             </Button>
+            {extraActions}
           </Group>
         </Group>
         {parseError && (

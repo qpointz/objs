@@ -18,14 +18,15 @@ docker compose -f deploy/local-dev/docker-compose.yml up -d
 ./gradlew :objs-app:run --args="--spring.profiles.active=postgres,sbom"
 ```
 
-The left navigation contains three views:
+The **top header** contains three views (no left app navbar):
 
 | View | Purpose |
 |------|---------|
 | **Graph explorer** | Query and inspect a stored subgraph |
-| **Schema explorer** | Browse entity and edge-property schemas |
-| **Schema linter** | Create, edit, and validate schema DSL definitions |
+| **Schemas** | Browse and edit object/edge schemas (unified workbench) |
 | **Object linter** | Validate a YAML/JSON graph draft without persistence |
+
+Legacy `/ui/linter` URLs redirect into Schemas.
 
 ## Graph explorer
 
@@ -76,7 +77,48 @@ Selecting an edge shows:
 
 When the edge has a property schema, select **Open edge property schema** to inspect it.
 
-## Schema explorer
+## Schemas
+
+Schemas is a single workbench for browsing and editing catalog types.
+
+### Type list
+
+- Flat list of all types with an **O** (object / `ENTITY`) or **E** (edge / `EDGE_PROPERTIES`) pill.
+- Click a type to open its **latest** version.
+- **Create** menu: Create New Object / Create New Edge.
+
+### Content toolbar
+
+- Version selector and **Create version** (next major).
+- **Save update** for the opened version.
+- New drafts use **Create schema**.
+- **Lint** lives on the Expert tab toolbar (with Format / Rollback).
+
+### Editors
+
+Tab order: **Visual**, **Schema**, **Expert**, **JSON Schema**.
+
+- **Visual** — read-only relationship graph of allow-list neighbours.
+- **Schema** — recursive content-schema tree editor.
+- **Expert** — full schema document JSON/YAML; **Format**, **Rollback**, and **Lint**.
+- **JSON Schema** — generated projection.
+
+Unsaved edits show an **Unsaved changes** badge with **Rollback** to the last loaded/saved
+snapshot. Switching type, version, create draft, or leaving Schemas opens a confirmation dialog
+(Stay / Leave). Browser close/reload is also blocked while dirty.
+
+### Allowed edges (objects)
+
+Below the content editors, object schemas show the **Allowed edges** table (inbound then outbound).
+You can **add**, **edit**, and **delete** rules (direction, related type, role, cardinality,
+properties NONE or SCHEMA). Edge edits stay local until **Save update** (with content-schema
+edits); **Rollback** restores both. Editing identity fields (source / role / target) replaces the
+draft rule. Edge-property schemas edit payload DSL only — relations are not authored on the edge
+model.
+
+## Schema explorer (legacy name)
+
+The former Schema explorer / Schema linter split is replaced by **Schemas** above.
 
 Schema explorer lists all persisted schema definitions. Use the tabs above the list to show:
 
@@ -91,12 +133,10 @@ select a version badge to open that exact definition.
 
 An entity schema displays:
 
-- its type, version, and usage;
-- outgoing allowed edges;
-- incoming allowed edges;
-- a visual relationship graph;
-- the authoritative DSL in YAML;
-- the authoritative DSL in JSON;
+- its type and version (kind is shown in the type list as O/E);
+- content editors (**Visual**, **Schema**, **Expert**, **JSON Schema**);
+- an **Allowed edges** table below the editors (incoming first, then outgoing), with direction icons
+  (`IconArrowNarrowLeftDashed` / `IconArrowNarrowRightDashed`);
 - generated JSON Schema 2020-12.
 
 Source and target types in allowed-edge tables link to their schema definitions. Wildcard `*`
@@ -108,7 +148,7 @@ entities on the right.
 
 ### Visual schema graph
 
-Open the **Visual** tab for a condensed UML-like view:
+Open the **Visual** tab for a condensed UML-like relationship view:
 
 - the selected entity is the detailed center block;
 - its fields are listed as `name : TYPE`, with `*` marking required fields;
@@ -116,7 +156,8 @@ Open the **Visual** tab for a condensed UML-like view:
 - arrays show their item type, for example `ARRAY<STRING>`;
 - incoming entity types appear on the left;
 - outgoing entity types appear on the right;
-- arrows show direction and are labelled with the allowed-edge role.
+- arrows show direction and are labelled with the allowed-edge role and cardinality
+  (`ROLE · 1:1` / `ROLE · 1:*`; role only when `UNSPECIFIED`).
 
 Related entities are intentionally shown as compact name-only blocks. Select one to navigate to
 that entity's latest registered schema, then continue traversing its relationships. `Any type (*)`
@@ -132,9 +173,9 @@ Existing versions are not implicitly changed when creating a version.
 
 ## Schema linter
 
-Schema linter supports two synchronized editing modes:
+Schema linter supports two synchronized editing modes (now under Schemas as **Schema** / **Expert**):
 
-- **Visual** — recursive schema tree and field/node editor;
+- **Schema** — recursive schema tree and field/node editor;
 - **Expert JSON/YAML** — direct editing of the complete schema document.
 
 The schema header contains:
@@ -162,6 +203,7 @@ For each relation select:
 | **Source entity** | Allowed source type, or `Any type (*)` |
 | **Role** | Directed relationship role such as `DEPENDS_ON` |
 | **Target entity** | Allowed target type, or `Any type (*)` |
+| **Cardinality** | `UNSPECIFIED`, `1:1` (singular), or `1:*` (many); default `UNSPECIFIED` |
 | **Empty properties allowed** | Whether an edge may omit the property object |
 
 Use **Add relation** to associate another source–role–target triple with the same property schema.
@@ -202,8 +244,9 @@ For example, changing a node to `ARRAY` creates a string item definition that ca
 Expert mode supports YAML and JSON and exposes the complete authoring document:
 
 - **Format** reformats the current document.
-- **Rollback** restores the snapshot captured when Expert mode was opened.
-- Switching back to Visual mode parses the current document. Invalid source remains in Expert mode
+- **Rollback** restores the last loaded or saved schema snapshot (also available next to
+  **Unsaved changes** outside Expert mode).
+- Switching back to Schema mode parses the current document. Invalid source remains in Expert mode
   and shows an error.
 
 An entity schema document has this shape:
@@ -331,7 +374,7 @@ reference, and properties are validated against the current registry.
 | Graph query returns no nodes | Verify `anno` keys/values or `anno-expr` variables exist on stored entities and that chained stages retain results |
 | Matcher query is rejected | Correct the matcher shape: one `anno`/`anno-expr` object or a non-empty JSON array of matcher objects |
 | Schema cannot be loaded | Confirm the selected type and version still exist |
-| Source document is invalid | Correct YAML/JSON syntax before switching to Visual mode or saving |
+| Source document is invalid | Correct YAML/JSON syntax before switching to Schema mode or saving |
 | `SCHEMA_DEFINITION_INVALID` | Correct the field named in the lint message |
 | Title, description, or field name is blank | Supply a nonblank value |
 | Duplicate object field or enum value | Rename or remove the duplicate |

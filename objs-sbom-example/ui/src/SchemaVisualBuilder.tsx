@@ -62,46 +62,59 @@ function TreeRows({
   selection,
   onSelect,
   onChange,
+  showHeader = true,
 }: {
   node: BoMSchemaNode
   path: SchemaPath
   selection: Selection | null
   onSelect: (selection: Selection) => void
   onChange: (next: BoMSchemaNode) => void
+  /** When false, omit type/title header (used under a field row that already shows name + type). */
+  showHeader?: boolean
 }) {
   const selected = selection?.kind === 'node' && pathKey(selection.path) === pathKey(path)
+  const fieldCount = node.fields?.length ?? 0
+
+  function moveField(index: number, direction: -1 | 1) {
+    const target = index + direction
+    if (target < 0 || target >= fieldCount) return
+    onChange(moveFieldAt(node, [], index, direction))
+    onSelect({ kind: 'field', path, fieldIndex: target })
+  }
 
   return (
     <Stack gap={2}>
-      <Group
-        gap="xs"
-        wrap="nowrap"
-        p={4}
-        style={{
-          background: selected ? 'var(--mantine-color-blue-light)' : undefined,
-          borderRadius: 4,
-          cursor: 'pointer',
-        }}
-        onClick={() => onSelect({ kind: 'node', path })}
-      >
-        <Badge size="xs">{node.type}</Badge>
-        <Text size="sm" style={{ flex: 1 }}>
-          {node.title}
-        </Text>
-        {node.type === 'OBJECT' && (
-          <ActionIcon
-            size="sm"
-            variant="subtle"
-            onClick={(e) => {
-              e.stopPropagation()
-              onChange(addFieldAt(node, [], `field${(node.fields?.length ?? 0) + 1}`))
-            }}
-            title="Add field"
-          >
-            +
-          </ActionIcon>
-        )}
-      </Group>
+      {showHeader && (
+        <Group
+          gap="xs"
+          wrap="nowrap"
+          p={4}
+          style={{
+            background: selected ? 'var(--mantine-color-blue-light)' : undefined,
+            borderRadius: 4,
+            cursor: 'pointer',
+          }}
+          onClick={() => onSelect({ kind: 'node', path })}
+        >
+          <Badge size="xs">{node.type}</Badge>
+          <Text size="sm" style={{ flex: 1 }}>
+            {node.title}
+          </Text>
+          {node.type === 'OBJECT' && (
+            <ActionIcon
+              size="sm"
+              variant="subtle"
+              onClick={(e) => {
+                e.stopPropagation()
+                onChange(addFieldAt(node, [], `field${(node.fields?.length ?? 0) + 1}`))
+              }}
+              title="Add field"
+            >
+              +
+            </ActionIcon>
+          )}
+        </Group>
+      )}
 
       {node.type === 'OBJECT' &&
         (node.fields ?? []).map((field, index) => {
@@ -109,8 +122,9 @@ function TreeRows({
             selection?.kind === 'field' &&
             pathKey(selection.path) === pathKey(path) &&
             selection.fieldIndex === index
+          const nested = field.schema.type === 'OBJECT' || field.schema.type === 'ARRAY'
           return (
-            <Stack key={`${field.name}-${index}`} gap={2} ml="md">
+            <Stack key={`${pathKey(path)}:${field.name}:${index}`} gap={2} ml="md">
               <Group
                 gap="xs"
                 wrap="nowrap"
@@ -122,7 +136,7 @@ function TreeRows({
                 }}
                 onClick={() => onSelect({ kind: 'field', path, fieldIndex: index })}
               >
-                <Text size="sm" fw={600} style={{ flex: 1 }}>
+                <Text size="sm" fw={600} style={{ flex: 1 }} truncate>
                   {field.name}
                   {field.required === false ? '' : ' *'}
                 </Text>
@@ -134,7 +148,7 @@ function TreeRows({
                   variant="subtle"
                   onClick={(e) => {
                     e.stopPropagation()
-                    onChange(moveFieldAt(node, [], index, -1))
+                    moveField(index, -1)
                   }}
                 >
                   ↑
@@ -144,7 +158,7 @@ function TreeRows({
                   variant="subtle"
                   onClick={(e) => {
                     e.stopPropagation()
-                    onChange(moveFieldAt(node, [], index, 1))
+                    moveField(index, 1)
                   }}
                 >
                   ↓
@@ -156,18 +170,22 @@ function TreeRows({
                   onClick={(e) => {
                     e.stopPropagation()
                     onChange(removeFieldAt(node, [], index))
+                    if (fieldSelected) onSelect({ kind: 'node', path })
                   }}
                 >
                   ×
                 </ActionIcon>
               </Group>
-              <TreeRows
-                node={field.schema}
-                path={[...path, index]}
-                selection={selection}
-                onSelect={onSelect}
-                onChange={(child) => onChange(updateNodeAt(node, [index], () => child))}
-              />
+              {nested && (
+                <TreeRows
+                  node={field.schema}
+                  path={[...path, index]}
+                  selection={selection}
+                  onSelect={onSelect}
+                  onChange={(child) => onChange(updateNodeAt(node, [index], () => child))}
+                  showHeader={false}
+                />
+              )}
             </Stack>
           )
         })}
@@ -177,13 +195,35 @@ function TreeRows({
           <Text size="xs" c="dimmed">
             items
           </Text>
-          <TreeRows
-            node={node.items}
-            path={[...path, 'items']}
-            selection={selection}
-            onSelect={onSelect}
-            onChange={(child) => onChange({ ...node, items: child })}
-          />
+          {node.items.type === 'OBJECT' || node.items.type === 'ARRAY' ? (
+            <TreeRows
+              node={node.items}
+              path={[...path, 'items']}
+              selection={selection}
+              onSelect={onSelect}
+              onChange={(child) => onChange({ ...node, items: child })}
+              showHeader={false}
+            />
+          ) : (
+            <Group
+              gap="xs"
+              wrap="nowrap"
+              p={4}
+              style={{
+                background:
+                  selection?.kind === 'node' && pathKey(selection.path) === pathKey([...path, 'items'])
+                    ? 'var(--mantine-color-blue-light)'
+                    : undefined,
+                borderRadius: 4,
+                cursor: 'pointer',
+              }}
+              onClick={() => onSelect({ kind: 'node', path: [...path, 'items'] })}
+            >
+              <Badge size="xs" variant="outline">
+                {node.items.type}
+              </Badge>
+            </Group>
+          )}
         </Stack>
       )}
     </Stack>
@@ -193,26 +233,34 @@ function TreeRows({
 function NodeFields({
   node,
   onChange,
+  hideTitle = false,
+  hideType = false,
 }: {
   node: BoMSchemaNode
   onChange: (next: BoMSchemaNode) => void
+  hideTitle?: boolean
+  hideType?: boolean
 }) {
   return (
     <>
-      <Select
-        label="Type"
-        data={TYPE_OPTIONS}
-        value={node.type}
-        onChange={(value) => {
-          if (!value) return
-          onChange(defaultNodeForType(value as BoMSchemaType))
-        }}
-      />
-      <TextInput
-        label="Title"
-        value={node.title}
-        onChange={(e) => onChange({ ...node, title: e.currentTarget.value })}
-      />
+      {!hideType && (
+        <Select
+          label="Type"
+          data={TYPE_OPTIONS}
+          value={node.type}
+          onChange={(value) => {
+            if (!value) return
+            onChange(defaultNodeForType(value as BoMSchemaType))
+          }}
+        />
+      )}
+      {!hideTitle && (
+        <TextInput
+          label="Title"
+          value={node.title}
+          onChange={(e) => onChange({ ...node, title: e.currentTarget.value })}
+        />
+      )}
       <Textarea
         label="Description"
         autosize
@@ -307,18 +355,34 @@ function Inspector({
     return (
       <Stack gap="sm">
         <Title order={5}>Field</Title>
-        <TextInput
-          label="Name"
-          value={field.name}
-          onChange={(e) =>
-            onChange(
-              updateFieldAt(root, selection.path, selection.fieldIndex, (f) => ({
-                ...f,
-                name: e.currentTarget.value,
-              })),
-            )
-          }
-        />
+        <Group grow align="flex-end" preventGrowOverflow={false}>
+          <TextInput
+            label="Name"
+            value={field.name}
+            onChange={(e) =>
+              onChange(
+                updateFieldAt(root, selection.path, selection.fieldIndex, (f) => ({
+                  ...f,
+                  name: e.currentTarget.value,
+                })),
+              )
+            }
+          />
+          <Select
+            label="Type"
+            data={TYPE_OPTIONS}
+            value={field.schema.type}
+            onChange={(value) => {
+              if (!value) return
+              onChange(
+                updateFieldAt(root, selection.path, selection.fieldIndex, (f) => ({
+                  ...f,
+                  schema: defaultNodeForType(value as BoMSchemaType),
+                })),
+              )
+            }}
+          />
+        </Group>
         <Checkbox
           label="Required"
           checked={field.required !== false}
@@ -333,6 +397,8 @@ function Inspector({
         />
         <NodeFields
           node={field.schema}
+          hideTitle
+          hideType
           onChange={(schema) =>
             onChange(
               updateFieldAt(root, selection.path, selection.fieldIndex, (f) => ({
