@@ -21,7 +21,7 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 
 ### In Progress
 
-_(none)_
+- [`schemas-catalog-overview`](in-progress/schemas-catalog-overview/STORY.md) — Schemas entry overview: full ontology graph + catalog seed import/export.
 
 ### Planned
 

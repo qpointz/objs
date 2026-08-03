@@ -29,7 +29,7 @@ Unsupported `apiVersion` or `kind` values fail the whole resource.
   Example:
 
   ```yaml
-  apiVersion: objs/v1
+  apiVersion: objs.poc.org/v1
   kind: AllowedEdgeRule
   sourceType: Product
   role: CONTAINS
@@ -44,6 +44,9 @@ Unsupported `apiVersion` or `kind` values fail the whole resource.
   `graphName/entity|edge/key` in the Objs seed namespace. Optional explicit `id` overrides that
   (used by REST export of existing rows).
 - Omission never deletes (`MERGE` only; no `REPLACE` in v1).
+
+The Schemas workbench **Full schema** overview uses catalog-only export (`GET /seeds/export` with no
+filter) and import (`POST /seeds/import`). That UI rejects seed files that contain `Graph` documents.
 
 ## Startup loading
 

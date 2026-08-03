@@ -33,6 +33,7 @@ import {
 } from './api'
 import { JsonYamlEditor, type JsonYamlEditorHandle } from './JsonYamlEditor'
 import { ObjectEdgesEditor } from './ObjectEdgesEditor'
+import { SchemaCatalogOverview } from './SchemaCatalogOverview'
 import { parseSchemaExpertDocument, type SchemaExpertDocument } from './SchemaLinterPage'
 import {
   allowedEdgeKey,
@@ -554,20 +555,27 @@ export function SchemaExplorerPage() {
         </Stack>
       </Paper>
 
-      <Paper withBorder p="md" style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
-        <ScrollArea h="100%">
-          {error && (
-            <Alert color="red" title="Error" mb="md">
-              {error}
-            </Alert>
-          )}
-          {detailLoading && <Loader size="sm" />}
+      <Paper withBorder p="md" style={{ flex: 1, minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        {error && (
+          <Alert color="red" title="Error" mb="md">
+            {error}
+          </Alert>
+        )}
+        {detailLoading && <Loader size="sm" />}
 
-          {!selectedType && !detailLoading && (
-            <Text c="dimmed">Select a schema type, or create a new Object / Edge.</Text>
-          )}
+        {!selectedType && !detailLoading && (
+          <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+            <SchemaCatalogOverview
+              schemas={schemas}
+              onCatalogChanged={async () => {
+                await reloadSchemas()
+              }}
+            />
+          </div>
+        )}
 
-          {(isNewDraft || (selected && !detailLoading)) && (
+        {(isNewDraft || (selected && !detailLoading)) && (
+          <ScrollArea style={{ flex: 1 }} h="100%">
             <Stack gap="md">
               <Group justify="space-between" align="flex-start">
                 <Stack gap={6} style={{ flex: 1, minWidth: 0 }}>
@@ -600,6 +608,13 @@ export function SchemaExplorerPage() {
                     </Group>
                   ) : (
                     <Group gap="xs">
+                      <Button
+                        size="compact-xs"
+                        variant="subtle"
+                        onClick={() => requestNavigate('/schemas')}
+                      >
+                        Full schema
+                      </Button>
                       <Title order={3}>{typeName}</Title>
                       {hasUnsavedChanges && (
                         <>
@@ -804,8 +819,8 @@ export function SchemaExplorerPage() {
                 />
               )}
             </Stack>
-          )}
-        </ScrollArea>
+          </ScrollArea>
+        )}
       </Paper>
 
       <Modal

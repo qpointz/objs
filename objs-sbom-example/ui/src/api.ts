@@ -9,6 +9,7 @@ import type {
   GraphValidationResult,
   SchemaDefinitionRequest,
   SchemaLintResponse,
+  SeedImportResult,
   TypeEdgesResponse,
 } from './types'
 import { colorForType, nodeLabel } from './color'
@@ -225,6 +226,28 @@ export async function deleteEdge(
   const res = await fetch(`/api/v1/objs/registry/edges?${params}`, { method: 'DELETE' })
   if (res.status === 204) return
   await parseResponse(res)
+}
+
+export async function listEdges(): Promise<BoMAllowedEdgeRule[]> {
+  const res = await fetch('/api/v1/objs/registry/edges')
+  return parseResponse<BoMAllowedEdgeRule[]>(res)
+}
+
+/** Catalog-only seed YAML (ObjectSchema + AllowedEdgeRule). */
+export async function exportCatalogSeed(): Promise<string> {
+  const res = await fetch('/api/v1/objs/seeds/export')
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new Error(typeof body === 'string' ? body : `HTTP ${res.status}`)
+  }
+  return res.text()
+}
+
+export async function importCatalogSeed(file: File): Promise<SeedImportResult> {
+  const body = new FormData()
+  body.append('file', file)
+  const res = await fetch('/api/v1/objs/seeds/import', { method: 'POST', body })
+  return parseResponse<SeedImportResult>(res)
 }
 
 export function schemaDetailPath(type: string, version: string): string {

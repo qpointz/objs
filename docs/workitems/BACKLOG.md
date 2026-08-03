@@ -29,6 +29,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | # | Item | Type | Status | Source |
 |---|------|------|--------|--------|
 | U-1 | Unify Schema explorer + linter; object-level edges; top nav | feature | done | [`completed/20260803-schema-workbench-unify/`](completed/20260803-schema-workbench-unify/STORY.md) |
+| U-2 | Schemas full-catalog overview + seed import/export | feature | in-progress | [`in-progress/schemas-catalog-overview/`](in-progress/schemas-catalog-overview/STORY.md) |
 
 ---
 
@@ -46,5 +47,5 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 |--------|------:|
 | backlog | 0 |
 | planned | 0 |
-| in-progress | 0 |
+| in-progress | 1 |
 | done | 8 |

@@ -138,3 +138,19 @@ export type GraphValidationResult = {
   isValid?: boolean
   valid?: boolean
 }
+
+export type SeedDocumentResult = {
+  index: number
+  kind?: string | null
+  apiVersion?: string | null
+  identity?: string | null
+  applied: boolean
+  skipped: boolean
+  errors: BoMValidationIssue[]
+  warnings: string[]
+}
+
+export type SeedImportResult = {
+  documents: SeedDocumentResult[]
+  warnings: string[]
+}

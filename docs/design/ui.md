@@ -81,13 +81,29 @@ When the edge has a property schema, select **Open edge property schema** to ins
 
 Schemas is a single workbench for browsing and editing catalog types.
 
+### Full schema (overview)
+
+Opening **Schemas** without a type selected shows the **Full schema** overview:
+
+- ontology graph of all **ENTITY** object types and allow-list edges (wildcard `*` as one node);
+- click a type node (or a row in the type list) to open that type’s latest version;
+- **Export** downloads catalog-only seed YAML (`ObjectSchema` + `AllowedEdgeRule` via
+  `GET /api/v1/objs/seeds/export`);
+- **Import** MERGEs a catalog YAML (`POST /api/v1/objs/seeds/import`). Files that contain `Graph`
+  documents are rejected. Import never deletes catalog entries.
+- **Refresh** reloads schemas and edges.
+
+Edge-property schemas appear in the type list (**E**) but are not nodes on the overview graph.
+
 ### Type list
 
 - Flat list of all types with an **O** (object / `ENTITY`) or **E** (edge / `EDGE_PROPERTIES`) pill.
 - Click a type to open its **latest** version.
 - **Create** menu: Create New Object / Create New Edge.
 
-### Content toolbar
+### Type detail
+
+From a type, **Full schema** returns to the overview. The detail toolbar includes:
 
 - Version selector and **Create version** (next major).
 - **Save update** for the opened version.
@@ -98,7 +114,7 @@ Schemas is a single workbench for browsing and editing catalog types.
 
 Tab order: **Visual**, **Schema**, **Expert**, **JSON Schema**.
 
-- **Visual** — read-only relationship graph of allow-list neighbours.
+- **Visual** — read-only relationship graph of allow-list neighbours (ego view for the selected type).
 - **Schema** — recursive content-schema tree editor.
 - **Expert** — full schema document JSON/YAML; **Format**, **Rollback**, and **Lint**.
 - **JSON Schema** — generated projection.
