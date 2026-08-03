@@ -18,10 +18,11 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`matcher-query-language`](completed/20260729-matcher-query-language/STORY.md) — extensible JSON/YAML matcher DSL (`anno`, sandboxed JEXL `anno-expr`, ordered chains); first-stage PostgreSQL pushdown; sole `POST /api/v1/objs/graph/query`; graph explorer matcher modes.
 - [`allowed-edge-cardinality`](completed/20260803-allowed-edge-cardinality/STORY.md) — allow-list cardinality `UNSPECIFIED` / `1:1` / `1:*` (domain, Flyway, seeds, REST, schema UI).
 - [`schema-workbench-unify`](completed/20260803-schema-workbench-unify/STORY.md) — unify Schemas workbench; top nav; object-level edge CRUD (draft until save); Visual/Schema/Expert/JSON Schema tabs.
+- [`schemas-catalog-overview`](completed/20260803-schemas-catalog-overview/STORY.md) — Schemas entry overview: full ontology graph (dagre) + catalog seed import/export.
 
 ### In Progress
 
-- [`schemas-catalog-overview`](in-progress/schemas-catalog-overview/STORY.md) — Schemas entry overview: full ontology graph + catalog seed import/export.
+_(none)_
 
 ### Planned
 

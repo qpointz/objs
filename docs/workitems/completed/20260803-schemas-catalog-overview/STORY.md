@@ -2,10 +2,10 @@
 
 **Slug:** `schemas-catalog-overview`  
 **Branch:** `schemas-catalog-overview`  
-**Status:** in-progress  
+**Status:** completed  
 **Backlog:** U-2  
 **Design:** [`docs/design/ui.md`](../../../design/ui.md), [`docs/design/graph/seeds.md`](../../../design/graph/seeds.md)  
-**Depends on:** [`schema-workbench-unify`](../../completed/20260803-schema-workbench-unify/STORY.md)
+**Depends on:** [`schema-workbench-unify`](../20260803-schema-workbench-unify/STORY.md)
 
 ## Goal
 
