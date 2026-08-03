@@ -2,7 +2,7 @@
 
 **Story:** [`STORY.md`](STORY.md)  
 **Stage:** 1 — Registry seeds  
-**Status:** planned  
+**Status:** done  
 **Depends on:** WI-000
 
 ## Goal
@@ -25,6 +25,6 @@ Add ontology seed I/O under `/api/v1/objs/registry/import` and `/export` with `f
 
 ## Acceptance
 
-- [ ] Registry export returns ObjectSchema + AllowedEdgeRule only
-- [ ] Registry import rejects Graph documents
-- [ ] `format` other than `seeds` → 400
+- [x] Registry export returns ObjectSchema + AllowedEdgeRule only
+- [x] Registry import rejects Graph documents
+- [x] `format` other than `seeds` → 400

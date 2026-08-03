@@ -12,9 +12,16 @@ import org.poc.objs.core.domain.BoMSchemaDefinitionException
 import org.poc.objs.core.domain.BoMSchemaNode
 import org.poc.objs.core.domain.BoMSchemaUsage
 import org.poc.objs.core.domain.BoMSchemaVersioning
+import org.poc.objs.core.seed.CATALOG_SEED_KINDS
+import org.poc.objs.core.seed.CanonicalSeedSerializer
+import org.poc.objs.core.seed.SeedImportException
+import org.poc.objs.core.seed.SeedImportResult
+import org.poc.objs.core.seed.SeedImporter
 import org.poc.objs.core.validation.BoMValidationIssue
 import org.poc.objs.core.validation.BoMValidationResult
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -24,7 +31,9 @@ import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.RequestPart
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.multipart.MultipartFile
 
 /** Persistent object-schema and edge-rule registry under `/api/v1/objs/registry`. */
 @RestController
@@ -33,7 +42,48 @@ import org.springframework.web.bind.annotation.RestController
 class ObjsRegistryController(
     private val schemas: BoMSchemaCatalog,
     private val edgeRules: BoMAllowedEdgeCatalog,
+    private val seedImporter: SeedImporter,
+    private val seedSerializer: CanonicalSeedSerializer,
 ) {
+    @PostMapping(
+        "/import",
+        consumes = [MediaType.MULTIPART_FORM_DATA_VALUE],
+        produces = [MediaType.APPLICATION_JSON_VALUE],
+    )
+    @Operation(summary = "Import ontology seed documents (MERGE, transactional)")
+    fun importRegistry(
+        @RequestParam format: String,
+        @RequestPart("file") file: MultipartFile,
+    ): ResponseEntity<Any> {
+        if (format != ObjsIoFormats.SEEDS) {
+            return ObjsIoFormats.unknownFormat(format)
+        }
+        val yaml = file.bytes.toString(Charsets.UTF_8)
+        return try {
+            ResponseEntity.ok(seedImporter.importYaml(yaml, CATALOG_SEED_KINDS))
+        } catch (ex: SeedImportException) {
+            ResponseEntity.badRequest().body(ex.result)
+        }
+    }
+
+    @GetMapping("/export")
+    @Operation(summary = "Export ontology catalogs in the requested format")
+    fun exportRegistry(@RequestParam format: String): ResponseEntity<Any> {
+        return when (format) {
+            ObjsIoFormats.SEEDS -> {
+                val yaml = seedSerializer.serializeCatalogs(
+                    includeSchemas = true,
+                    includeEdgeRules = true,
+                    graphs = emptyList(),
+                )
+                ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_TYPE, ObjsIoFormats.YAML_MEDIA_TYPE)
+                    .body(yaml)
+            }
+            else -> ObjsIoFormats.unknownFormat(format)
+        }
+    }
+
     @GetMapping("/types")
     @Operation(summary = "List distinct schema type names")
     fun types(@RequestParam(required = false) usage: BoMSchemaUsage?): Set<String> {

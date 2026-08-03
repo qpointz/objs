@@ -8,6 +8,12 @@ const val SEED_KIND_OBJECT_SCHEMA = "ObjectSchema"
 const val SEED_KIND_ALLOWED_EDGE_RULE = "AllowedEdgeRule"
 const val SEED_KIND_GRAPH = "Graph"
 
+/** Catalog (ontology) kinds for registry seed I/O. */
+val CATALOG_SEED_KINDS: Set<String> = setOf(SEED_KIND_OBJECT_SCHEMA, SEED_KIND_ALLOWED_EDGE_RULE)
+
+/** Graph instance kinds for graph seed I/O. */
+val GRAPH_SEED_KINDS: Set<String> = setOf(SEED_KIND_GRAPH)
+
 /** Parsed flat multi-document seed before kind-specific validation. */
 data class SeedRawDocument(
     val index: Int,

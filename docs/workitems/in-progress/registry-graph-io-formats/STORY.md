@@ -42,7 +42,7 @@ Support `format=seeds` now; add **full-catalog JSON Schema** export on registry 
 ## Work Items
 
 - [x] WI-000 — Story scaffolding (`WI-000-story-scaffold.md`)
-- [ ] WI-001 — Registry seeds import/export (`WI-001-registry-seeds-io.md`)
+- [x] WI-001 — Registry seeds import/export (`WI-001-registry-seeds-io.md`)
 - [ ] WI-002 — Graph seeds import/export; remove `/seeds/**` (`WI-002-graph-seeds-io.md`)
 - [ ] WI-003 — Full-catalog JSON Schema export (`WI-003-full-catalog-json-schema.md`)
 - [ ] WI-004 — UI paths + design docs (`WI-004-ui-docs.md`)

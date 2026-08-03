@@ -201,6 +201,37 @@ class SeedImporterTest {
     }
 
     @Test
+    fun shouldRejectKind_whenNotAllowedForEndpoint() {
+        assertThatThrownBy {
+            importer.importYaml(
+                """
+                apiVersion: objs.poc.org/v1
+                kind: Graph
+                name: demo
+                entities: []
+                edges: []
+                """.trimIndent(),
+                CATALOG_SEED_KINDS,
+            )
+        }.isInstanceOf(SeedImportException::class.java)
+
+        try {
+            importer.importYaml(
+                """
+                apiVersion: objs.poc.org/v1
+                kind: Graph
+                name: demo
+                entities: []
+                edges: []
+                """.trimIndent(),
+                CATALOG_SEED_KINDS,
+            )
+        } catch (ex: SeedImportException) {
+            assertThat(ex.result.allErrors().map { it.code }).contains("SEED_KIND_NOT_ALLOWED")
+        }
+    }
+
+    @Test
     fun shouldRoundTripSchemaAndRuleKinds() {
         schemas.register(
             BoMSchema(

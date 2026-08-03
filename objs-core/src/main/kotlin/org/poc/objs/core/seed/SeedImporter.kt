@@ -20,14 +20,18 @@ class SeedImporter(
         handlers.associateBy { it.kind }
 
     @Transactional
-    fun importYaml(yaml: String): SeedImportResult = importDocuments(SeedYaml.parseDocuments(yaml))
+    fun importYaml(yaml: String, allowedKinds: Set<String>? = null): SeedImportResult =
+        importDocuments(SeedYaml.parseDocuments(yaml), allowedKinds)
 
     @Transactional
-    fun importYaml(stream: InputStream): SeedImportResult =
-        importYaml(stream.bufferedReader().use { it.readText() })
+    fun importYaml(stream: InputStream, allowedKinds: Set<String>? = null): SeedImportResult =
+        importYaml(stream.bufferedReader().use { it.readText() }, allowedKinds)
 
     @Transactional
-    fun importDocuments(rawDocuments: List<SeedRawDocument>): SeedImportResult {
+    fun importDocuments(
+        rawDocuments: List<SeedRawDocument>,
+        allowedKinds: Set<String>? = null,
+    ): SeedImportResult {
         if (rawDocuments.isEmpty()) {
             return SeedImportResult(warnings = listOf("No YAML documents found"))
         }
@@ -39,6 +43,21 @@ class SeedImporter(
             val envelopeError = validateEnvelope(doc)
             if (envelopeError != null) {
                 failures += envelopeError
+                continue
+            }
+            if (allowedKinds != null && doc.kind !in allowedKinds) {
+                failures += SeedDocumentResult(
+                    index = doc.index,
+                    kind = doc.kind,
+                    apiVersion = doc.apiVersion,
+                    errors = listOf(
+                        BoMValidationIssue(
+                            "SEED_KIND_NOT_ALLOWED",
+                            "Seed kind '${doc.kind}' is not allowed for this endpoint",
+                            path = "document[${doc.index}].kind",
+                        ),
+                    ),
+                )
                 continue
             }
             val handler = handlersByKind[doc.kind]

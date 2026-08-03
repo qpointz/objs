@@ -2,6 +2,7 @@ package org.poc.objs.service.web
 
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.mockito.Mockito.mock
 import org.poc.objs.core.domain.BoMAllowedEdgeRule
 import org.poc.objs.core.domain.BoMPropertiesPolicy
 import org.poc.objs.core.domain.BoMSchema
@@ -9,17 +10,28 @@ import org.poc.objs.core.domain.BoMSchemaDsl
 import org.poc.objs.core.domain.BoMSchemaUsage
 import org.poc.objs.core.domain.InMemoryBoMAllowedEdgeCatalog
 import org.poc.objs.core.domain.InMemoryBoMSchemaCatalog
+import org.poc.objs.core.persistence.BoMGraphStore
+import org.poc.objs.core.seed.AllowedEdgeRuleSeedHandler
+import org.poc.objs.core.seed.CanonicalSeedSerializer
+import org.poc.objs.core.seed.GraphSeedHandler
+import org.poc.objs.core.seed.ObjectSchemaSeedHandler
+import org.poc.objs.core.seed.SeedImporter
 import org.springframework.http.MediaType
+import org.springframework.http.converter.StringHttpMessageConverter
 import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter
+import org.springframework.mock.web.MockMultipartFile
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import tools.jackson.databind.json.JsonMapper
+import java.nio.charset.StandardCharsets
 
 class ObjsRegistryControllerTest {
 
@@ -31,10 +43,23 @@ class ObjsRegistryControllerTest {
     fun setUp() {
         schemas = InMemoryBoMSchemaCatalog()
         edgeRules = InMemoryBoMAllowedEdgeCatalog()
+        val objectHandler = ObjectSchemaSeedHandler(schemas)
+        val ruleHandler = AllowedEdgeRuleSeedHandler(edgeRules)
+        val importer = SeedImporter(listOf(objectHandler, ruleHandler))
+        val serializer = CanonicalSeedSerializer(
+            schemas,
+            edgeRules,
+            objectHandler,
+            ruleHandler,
+            GraphSeedHandler(mock(BoMGraphStore::class.java)),
+        )
         mockMvc = MockMvcBuilders
-            .standaloneSetup(ObjsRegistryController(schemas, edgeRules))
+            .standaloneSetup(ObjsRegistryController(schemas, edgeRules, importer, serializer))
             .setControllerAdvice(ObjsRegistryExceptionHandler())
-            .setMessageConverters(JacksonJsonHttpMessageConverter(JsonMapper.builder().findAndAddModules().build()))
+            .setMessageConverters(
+                JacksonJsonHttpMessageConverter(JsonMapper.builder().findAndAddModules().build()),
+                StringHttpMessageConverter(StandardCharsets.UTF_8),
+            )
             .build()
     }
 
@@ -411,5 +436,57 @@ class ObjsRegistryControllerTest {
         mockMvc.perform(get("/api/v1/objs/registry/schemas/Person"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.length()").value(2))
+    }
+
+    @Test
+    fun shouldExportCatalogSeeds() {
+        schemas.register(BoMSchema("Person", "1", BoMSchemaDsl.obj("Person", "Person payload")))
+        mockMvc.perform(get("/api/v1/objs/registry/export").param("format", "seeds"))
+            .andExpect(status().isOk)
+            .andExpect(content().contentTypeCompatibleWith(MediaType.parseMediaType("application/yaml")))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("ObjectSchema")))
+    }
+
+    @Test
+    fun shouldRejectUnknownExportFormat() {
+        mockMvc.perform(get("/api/v1/objs/registry/export").param("format", "protobuf"))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.issues[0].code").value("IO_FORMAT_UNSUPPORTED"))
+    }
+
+    @Test
+    fun shouldImportCatalogSeeds_andRejectGraphKind() {
+        val catalog = """
+            apiVersion: objs.poc.org/v1
+            kind: ObjectSchema
+            type: Person
+            version: "1"
+            contentSchema:
+              type: OBJECT
+              title: Person
+              description: Person payload
+              fields: []
+        """.trimIndent()
+        val file = MockMultipartFile(
+            "file",
+            "seed.yaml",
+            "application/yaml",
+            catalog.toByteArray(),
+        )
+        mockMvc.perform(multipart("/api/v1/objs/registry/import").param("format", "seeds").file(file))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.documents[0].applied").value(true))
+
+        val graph = """
+            apiVersion: objs.poc.org/v1
+            kind: Graph
+            name: demo
+            entities: []
+            edges: []
+        """.trimIndent()
+        val graphFile = MockMultipartFile("file", "g.yaml", "application/yaml", graph.toByteArray())
+        mockMvc.perform(multipart("/api/v1/objs/registry/import").param("format", "seeds").file(graphFile))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.documents[0].errors[0].code").value("SEED_KIND_NOT_ALLOWED"))
     }
 }
