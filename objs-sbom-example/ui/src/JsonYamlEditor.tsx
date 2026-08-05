@@ -16,6 +16,7 @@ function serializeForFormat(value: unknown, format: EditorFormat): string {
 
 export type JsonYamlEditorHandle = {
   getParsedForSubmit: () => { ok: true; value: unknown } | { ok: false; error: string }
+  formatDocument: () => void
 }
 
 interface JsonYamlEditorProps {
@@ -28,6 +29,13 @@ interface JsonYamlEditorProps {
   fillHeight?: boolean
   /** Extra toolbar buttons rendered after Format / Rollback (e.g. Lint). */
   extraActions?: ReactNode
+  /** Controlled format; omit to manage format internally. */
+  format?: EditorFormat
+  onFormatChange?: (format: EditorFormat) => void
+  /** Hide the built-in YAML/JSON toggle when the parent owns that control. */
+  hideFormatToggle?: boolean
+  /** Hide the entire Format / Rollback toolbar (parent renders those actions). */
+  hideToolbar?: boolean
 }
 
 export const JsonYamlEditor = forwardRef<JsonYamlEditorHandle, JsonYamlEditorProps>(
@@ -40,10 +48,19 @@ export const JsonYamlEditor = forwardRef<JsonYamlEditorHandle, JsonYamlEditorPro
       minHeight = 360,
       fillHeight = false,
       extraActions,
+      format: formatProp,
+      onFormatChange,
+      hideFormatToggle = false,
+      hideToolbar = false,
     },
     ref,
   ) {
-    const [format, setFormat] = useState<EditorFormat>('yaml')
+    const [uncontrolledFormat, setUncontrolledFormat] = useState<EditorFormat>('yaml')
+    const format = formatProp ?? uncontrolledFormat
+    const setFormat = (next: EditorFormat) => {
+      if (formatProp === undefined) setUncontrolledFormat(next)
+      onFormatChange?.(next)
+    }
     const [text, setText] = useState('')
     const [parseError, setParseError] = useState<string | null>(null)
 
@@ -54,6 +71,18 @@ export const JsonYamlEditor = forwardRef<JsonYamlEditorHandle, JsonYamlEditorPro
     useEffect(() => {
       setText(format === 'json' ? jsonText : yamlText)
     }, [format, jsonText, yamlText])
+
+    const formatDocument = () => {
+      try {
+        if (format === 'json') {
+          setText(JSON.stringify(JSON.parse(text), null, 2))
+        } else {
+          setText(stringifyYaml(parseYaml(text), { lineWidth: 100 }))
+        }
+      } catch {
+        // keep parseError from live validation
+      }
+    }
 
     useImperativeHandle(
       ref,
@@ -70,6 +99,7 @@ export const JsonYamlEditor = forwardRef<JsonYamlEditorHandle, JsonYamlEditorPro
             }
           }
         },
+        formatDocument,
       }),
       [format, text],
     )
@@ -90,18 +120,6 @@ export const JsonYamlEditor = forwardRef<JsonYamlEditorHandle, JsonYamlEditorPro
       }
     }, [format, onDraftParsed, debouncedText])
 
-    const formatDocument = () => {
-      try {
-        if (format === 'json') {
-          setText(JSON.stringify(JSON.parse(text), null, 2))
-        } else {
-          setText(stringifyYaml(parseYaml(text), { lineWidth: 100 }))
-        }
-      } catch {
-        // keep parseError from live validation
-      }
-    }
-
     const rollback = () => {
       if (onRollback) {
         onRollback()
@@ -112,30 +130,46 @@ export const JsonYamlEditor = forwardRef<JsonYamlEditorHandle, JsonYamlEditorPro
       onDraftParsed?.({ valid: true, value: rollbackSource })
     }
 
+    const showToolbar = !hideToolbar
+
     return (
-      <Stack gap="xs" style={{ flex: fillHeight ? 1 : undefined, minHeight: fillHeight ? minHeight : undefined }}>
-        <Group justify="space-between">
-          <SegmentedControl
-            size="xs"
-            value={format}
-            onChange={(v) => setFormat(v as EditorFormat)}
-            data={[
-              { label: 'YAML', value: 'yaml' },
-              { label: 'JSON', value: 'json' },
-            ]}
-          />
-          <Group gap="xs">
-            <Button size="xs" variant="light" onClick={formatDocument}>
-              Format
-            </Button>
-            <Button size="xs" variant="subtle" onClick={rollback}>
-              Rollback
-            </Button>
-            {extraActions}
+      <Stack
+        gap="xs"
+        style={{
+          flex: fillHeight ? 1 : undefined,
+          minHeight: fillHeight ? 0 : undefined,
+          height: fillHeight ? '100%' : undefined,
+        }}
+      >
+        {showToolbar && (
+          <Group
+            justify={hideFormatToggle ? 'flex-end' : 'space-between'}
+            style={{ flexShrink: 0 }}
+          >
+            {!hideFormatToggle && (
+              <SegmentedControl
+                size="xs"
+                value={format}
+                onChange={(v) => setFormat(v as EditorFormat)}
+                data={[
+                  { label: 'YAML', value: 'yaml' },
+                  { label: 'JSON', value: 'json' },
+                ]}
+              />
+            )}
+            <Group gap="xs">
+              <Button size="xs" variant="light" onClick={formatDocument}>
+                Format
+              </Button>
+              <Button size="xs" variant="subtle" onClick={rollback}>
+                Rollback
+              </Button>
+              {extraActions}
+            </Group>
           </Group>
-        </Group>
+        )}
         {parseError && (
-          <Text size="xs" c="red">
+          <Text size="xs" c="red" style={{ flexShrink: 0 }}>
             {parseError}
           </Text>
         )}

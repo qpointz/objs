@@ -31,6 +31,7 @@ export type GraphNode = {
   annotations: Record<string, string>
   x?: number
   y?: number
+  draftStatus?: 'new' | 'modified' | 'deleted' | 'unchanged'
 }
 
 export type GraphLink = {
@@ -41,6 +42,7 @@ export type GraphLink = {
   type: string | null
   schemaVersion: string | null
   properties: Record<string, unknown>
+  draftStatus?: 'new' | 'modified' | 'deleted' | 'unchanged'
 }
 
 export type GraphSelection =

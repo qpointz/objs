@@ -1,93 +1,142 @@
-import { useCallback, useRef, useState } from 'react'
-import { Alert, Badge, Button, Code, Group, Paper, Stack, Text, Title } from '@mantine/core'
-import { Link } from 'react-router-dom'
-import { validateGraphDraft } from './api'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  Alert,
+  Badge,
+  Button,
+  Code,
+  Collapse,
+  Group,
+  Modal,
+  Paper,
+  Stack,
+  Tabs,
+  Text,
+  Title,
+} from '@mantine/core'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { mutationShapeError, normalizeGraphMutation } from './graphDraft'
+import { putGraphMutation, queryGraph, validateGraphMutation } from './api'
 import { JsonYamlEditor, type JsonYamlEditorHandle } from './JsonYamlEditor'
-import type { GraphValidationResult } from './types'
+import { MatcherLoadPanel } from './MatcherLoadPanel'
+import { NewUuidButton } from './NewUuidButton'
+import { ObjectLinterVisualPanel } from './ObjectLinterVisualPanel'
+import type { GraphSelection, GraphValidationResult } from './types'
+import { useGraphDraft } from './useGraphDraft'
 
-const EXAMPLE_GRAPH = {
-  entities: [
-    {
-      id: '11111111-1111-4111-8111-111111111111',
-      type: 'Product',
-      schemaVersion: '1.0.0',
-      payload: {
-        name: 'Payments API',
-        version: '2.3.1',
-      },
-      annotations: {
-        app: 'payments-api',
-        appVersion: '2.3.1',
-      },
-    },
-    {
-      id: '22222222-2222-4222-8222-222222222222',
-      type: 'Component',
-      schemaVersion: '1.0.0',
-      payload: {
-        name: 'payment-core',
-        version: '2.3.1',
-        ecosystem: 'maven',
-        kind: 'library',
-      },
-      annotations: {
-        app: 'payments-api',
-        appVersion: '2.3.1',
-      },
-    },
-  ],
-  edges: [
-    {
-      id: '33333333-3333-4333-8333-333333333333',
-      source: '11111111-1111-4111-8111-111111111111',
-      target: '22222222-2222-4222-8222-222222222222',
-      role: 'CONTAINS',
-      type: 'CanonicalEdge',
-      schemaVersion: '1.0.0',
-      properties: {},
-    },
-  ],
-}
+export { graphShapeError, mutationShapeError } from './graphDraft'
 
-export function graphShapeError(value: unknown): string | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return 'Graph document must be an object'
-  }
-  const graph = value as Record<string, unknown>
-  if (!Array.isArray(graph.entities)) return 'Graph document must contain an entities array'
-  if (!Array.isArray(graph.edges)) return 'Graph document must contain an edges array'
-  return null
+type ObjectLinterNavState = {
+  matcher?: unknown
 }
 
 export function ObjectLinterPage() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const {
+    document,
+    pendingDeleteCount,
+    mutationBody,
+    emptyMutation,
+    state,
+    applyParsedMutation,
+    resetToRollback,
+    clearDraft,
+    loadSubgraph,
+    upsertEntity,
+    upsertEdge,
+    removeEntity,
+    removeEdge,
+    markApplied,
+    canvasDocument,
+    restoreDeletedEntity,
+    restoreDeletedEdge,
+    revertEntityChanges,
+    revertEdgeChanges,
+  } = useGraphDraft()
+
   const editorRef = useRef<JsonYamlEditorHandle>(null)
+  const [tab, setTab] = useState<'visual' | 'text'>('visual')
+  const [textError, setTextError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [loadBusy, setLoadBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<GraphValidationResult | null>(null)
-  const onDraftParsed = useCallback(() => {
-    setError(null)
-    setResult(null)
-  }, [])
+  const [selection, setSelection] = useState<GraphSelection | null>(null)
+  const [loadOpen, setLoadOpen] = useState(false)
+  const [loadConfirmOpen, setLoadConfirmOpen] = useState(false)
+  const [pendingMatcher, setPendingMatcher] = useState<unknown>(null)
+  const [activeMatcher, setActiveMatcher] = useState<unknown | null>(null)
 
-  async function validate() {
+  const onDraftParsed = useCallback(
+    (parsed: { valid: boolean; value?: unknown; error?: string }) => {
+      // Text editor stays mounted under the Visual tab; ignore its sync while Visual is active
+      // so a stale YAML round-trip cannot resurrect cascaded soft-deleted edges.
+      if (tab !== 'text') return
+      setResult(null)
+      if (!parsed.valid) {
+        setTextError(parsed.error ?? 'Invalid mutation')
+        return
+      }
+      const shape = mutationShapeError(parsed.value)
+      if (shape) {
+        setTextError(shape)
+        return
+      }
+      const err = applyParsedMutation(parsed.value)
+      if (err) {
+        setTextError(err)
+        return
+      }
+      setTextError(null)
+    },
+    [applyParsedMutation, tab],
+  )
+
+  function trySwitchTab(next: string | null) {
+    if (!next || next === tab) return
+    if (next === 'visual' && textError) {
+      setError('Fix YAML/JSON before switching to Visual (last good draft is preserved).')
+      return
+    }
+    setError(null)
+    setTab(next as 'visual' | 'text')
+  }
+
+  async function syncTextIntoDraft(): Promise<{ body: typeof mutationBody } | null> {
+    if (tab !== 'text') return { body: mutationBody }
     const parsed = editorRef.current?.getParsedForSubmit()
     if (!parsed?.ok) {
-      setError(parsed?.error ?? 'Invalid graph document')
+      setError(parsed?.error ?? 'Invalid mutation')
       setResult(null)
-      return
+      return null
     }
-    const shapeError = graphShapeError(parsed.value)
-    if (shapeError) {
-      setError(shapeError)
+    const shapeErr = mutationShapeError(parsed.value)
+    if (shapeErr) {
+      setError(shapeErr)
       setResult(null)
-      return
+      return null
     }
+    const normalized = normalizeGraphMutation(parsed.value)
+    if (!normalized) {
+      setError('Invalid mutation')
+      return null
+    }
+    const err = applyParsedMutation(parsed.value)
+    if (err) {
+      setError(err)
+      return null
+    }
+    return { body: normalized }
+  }
 
+  async function validate() {
+    const synced = await syncTextIntoDraft()
+    if (!synced) return
     setBusy(true)
     setError(null)
     setResult(null)
     try {
-      setResult(await validateGraphDraft(parsed.value))
+      setResult(await validateGraphMutation(synced.body))
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -95,58 +144,226 @@ export function ObjectLinterPage() {
     }
   }
 
+  async function apply() {
+    const synced = await syncTextIntoDraft()
+    if (!synced) return
+    setBusy(true)
+    setError(null)
+    setResult(null)
+    try {
+      const validation = await validateGraphMutation(synced.body)
+      setResult(validation)
+      if (validation.issues.length > 0) {
+        setError('Fix validation issues before Apply')
+        return
+      }
+      await putGraphMutation(synced.body)
+      markApplied()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function doLoad(matcherBody: unknown) {
+    setLoadBusy(true)
+    setError(null)
+    try {
+      const subgraph = await queryGraph(matcherBody)
+      loadSubgraph(subgraph)
+      setSelection(null)
+      setResult(null)
+      setActiveMatcher(matcherBody)
+      setLoadOpen(false)
+      setLoadConfirmOpen(false)
+      setPendingMatcher(null)
+      setTab('visual')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setLoadBusy(false)
+    }
+  }
+
+  async function onLoadRequest(matcherBody: unknown) {
+    if (document.entities.length > 0 || document.edges.length > 0 || pendingDeleteCount > 0) {
+      setPendingMatcher(matcherBody)
+      setLoadConfirmOpen(true)
+      return
+    }
+    await doLoad(matcherBody)
+  }
+
+  const onLoadRequestRef = useRef(onLoadRequest)
+  onLoadRequestRef.current = onLoadRequest
+
+  useEffect(() => {
+    const navState = location.state as ObjectLinterNavState | null
+    if (navState == null || typeof navState !== 'object' || !('matcher' in navState)) return
+    if (navState.matcher === undefined) return
+    const matcher = navState.matcher
+    setActiveMatcher(matcher)
+    setLoadOpen(false)
+    navigate('.', { replace: true, state: null })
+    void onLoadRequestRef.current(matcher)
+  }, [location.state, navigate])
+
   const valid = result != null && result.issues.length === 0
 
   return (
-    <Stack gap="md" style={{ flex: 1, minHeight: 0 }}>
-      <Group justify="space-between" align="flex-start">
+    <Stack gap="sm" style={{ flex: 1, minHeight: 0, height: '100%' }}>
+      <Group justify="space-between" align="flex-start" style={{ flexShrink: 0 }}>
         <div>
           <Title order={3}>Object linter</Title>
           <Text size="sm" c="dimmed">
-            Author a complete graph batch as YAML or JSON and validate it against registered entity
-            schemas and allowed edge relations. Validation never persists data.
+            Load an optional subgraph, manipulate the draft visually or as YAML/JSON, then Validate
+            or Apply (transactional upsert + delete).
           </Text>
         </div>
         <Group>
-          <Button variant="default" component={Link} to="/schemas">
+          <Button variant="default" component={Link} to="/model">
             Browse schemas
           </Button>
-          <Button loading={busy} onClick={validate}>
-            Validate graph
+          <Button variant="light" onClick={() => setLoadOpen((v) => !v)}>
+            {loadOpen ? 'Hide load' : 'Load…'}
+          </Button>
+          <Button variant="default" onClick={resetToRollback}>
+            Reset
+          </Button>
+          <Button
+            variant="default"
+            color="red"
+            onClick={() => {
+              clearDraft()
+              setSelection(null)
+              setResult(null)
+            }}
+          >
+            Clear
+          </Button>
+          <Button loading={busy} variant="light" onClick={() => void validate()}>
+            Validate
+          </Button>
+          <Button loading={busy} onClick={() => void apply()}>
+            Apply
           </Button>
         </Group>
       </Group>
 
-      <Alert color="blue" title="Graph references">
-        Entities without IDs can be validated when they are not referenced by an edge. For a
-        connected draft, assign UUIDs and use those values in edge <Code>source</Code> and{' '}
-        <Code>target</Code>.
-      </Alert>
+      <Collapse in={loadOpen}>
+        <Paper withBorder p="md">
+          <MatcherLoadPanel
+            loading={loadBusy}
+            matcher={activeMatcher}
+            onLoad={onLoadRequest}
+          />
+        </Paper>
+      </Collapse>
 
-      <Paper withBorder p="sm">
-        <JsonYamlEditor
-          ref={editorRef}
-          value={EXAMPLE_GRAPH}
-          rollbackValue={EXAMPLE_GRAPH}
-          minHeight={520}
-          onDraftParsed={onDraftParsed}
-        />
-      </Paper>
+      <Tabs
+        value={tab}
+        onChange={trySwitchTab}
+        style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}
+      >
+        <Group justify="space-between" align="center" gap="sm" wrap="nowrap" style={{ flexShrink: 0 }}>
+          <Tabs.List style={{ flex: 1 }}>
+            <Tabs.Tab value="visual">Visual</Tabs.Tab>
+            <Tabs.Tab value="text">Text</Tabs.Tab>
+          </Tabs.List>
+          <Group gap={6} wrap="nowrap">
+            {mutationBody.upsert.entities.length + mutationBody.upsert.edges.length > 0 && (
+              <Badge color="blue" variant="light" size="sm">
+                {mutationBody.upsert.entities.length + mutationBody.upsert.edges.length} upsert
+                {mutationBody.upsert.entities.length + mutationBody.upsert.edges.length === 1
+                  ? ''
+                  : 's'}
+              </Badge>
+            )}
+            {pendingDeleteCount > 0 && (
+              <Badge color="orange" variant="filled" size="sm">
+                {pendingDeleteCount} pending delete{pendingDeleteCount === 1 ? '' : 's'}
+              </Badge>
+            )}
+            <Badge variant="light" size="sm">
+              {canvasDocument.entities.length} on canvas
+            </Badge>
+          </Group>
+        </Group>
+
+        <Tabs.Panel
+          value="visual"
+          pt="sm"
+          style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}
+        >
+          <ObjectLinterVisualPanel
+            draftState={state}
+            canvasDocument={canvasDocument}
+            selection={selection}
+            onSelect={setSelection}
+            onUpsertEntity={upsertEntity}
+            onUpsertEdge={upsertEdge}
+            onRemoveEntity={removeEntity}
+            onRemoveEdge={removeEdge}
+            onRestoreDeletedEntity={restoreDeletedEntity}
+            onRestoreDeletedEdge={restoreDeletedEdge}
+            onRevertEntityChanges={revertEntityChanges}
+            onRevertEdgeChanges={revertEdgeChanges}
+          />
+        </Tabs.Panel>
+
+        <Tabs.Panel
+          value="text"
+          pt="sm"
+          style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}
+        >
+          <Paper
+            withBorder
+            p="sm"
+            style={{
+              flex: 1,
+              minHeight: 0,
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+          >
+            <JsonYamlEditor
+              ref={editorRef}
+              value={mutationBody}
+              rollbackValue={emptyMutation}
+              minHeight={240}
+              fillHeight
+              onDraftParsed={onDraftParsed}
+              onRollback={() => {
+                resetToRollback()
+                setTextError(null)
+                setResult(null)
+              }}
+              extraActions={<NewUuidButton />}
+            />
+          </Paper>
+          {textError && (
+            <Alert mt="sm" color="orange" title="Text parse error" style={{ flexShrink: 0 }}>
+              {textError}
+            </Alert>
+          )}
+        </Tabs.Panel>
+      </Tabs>
 
       {error && (
-        <Alert color="red" title="Cannot validate">
+        <Alert color="red" title="Error" style={{ flexShrink: 0 }}>
           {error}
         </Alert>
       )}
 
       {result && (
-        <Paper withBorder p="md">
+        <Paper withBorder p="md" style={{ flexShrink: 0, maxHeight: 220, overflow: 'auto' }}>
           <Group mb="sm">
             <Text fw={700}>Validation result</Text>
             <Badge color={valid ? 'green' : 'red'}>{valid ? 'valid' : 'invalid'}</Badge>
           </Group>
           {valid ? (
-            <Text size="sm">The graph conforms to the registered schemas and edge rules.</Text>
+            <Text size="sm">The mutation conforms to the registered schemas and edge rules.</Text>
           ) : (
             <Stack gap="xs">
               {result.issues.map((issue, index) => (
@@ -163,6 +380,40 @@ export function ObjectLinterPage() {
           )}
         </Paper>
       )}
+
+      <Modal
+        opened={loadConfirmOpen}
+        onClose={() => {
+          setLoadConfirmOpen(false)
+          setPendingMatcher(null)
+        }}
+        title="Replace draft?"
+      >
+        <Stack>
+          <Text size="sm">
+            Loading replaces the current draft and pending deletes. Continue?
+          </Text>
+          <Group justify="flex-end">
+            <Button
+              variant="default"
+              onClick={() => {
+                setLoadConfirmOpen(false)
+                setPendingMatcher(null)
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              loading={loadBusy}
+              onClick={() => {
+                if (pendingMatcher != null) void doLoad(pendingMatcher)
+              }}
+            >
+              Replace
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Stack>
   )
 }

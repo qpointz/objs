@@ -1,6 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
 import {
-  ActionIcon,
   Alert,
   Badge,
   Button,
@@ -9,39 +8,28 @@ import {
   Menu,
   Paper,
   ScrollArea,
-  SegmentedControl,
   Stack,
   Text,
-  Textarea,
-  TextInput,
   Title,
   Anchor,
 } from '@mantine/core'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   GraphCanvas,
   type GraphCanvasHandle,
   type GraphLayout,
+  type GraphNodePositions,
 } from './GraphCanvas'
 import { queryGraph, schemaDetailPath, toGraphData } from './api'
 import { colorForType } from './color'
+import {
+  MatcherQueryForm,
+  type MatcherQueryFormHandle,
+} from './MatcherQueryForm'
 import type { GraphLink, GraphNode, GraphSelection } from './types'
 
-type MatcherMode = 'anno' | 'anno-expr' | 'chained'
-
-type AnnoRow = { key: string; value: string }
-
-const DEFAULT_ANNO_ROWS: AnnoRow[] = [
-  { key: 'app', value: 'payments-api' },
-  { key: 'appVersion', value: '2.3.1' },
-]
-
-const DEFAULT_EXPR = "app == 'payments-api' && appVersion == '2.3.1'"
-
-const DEFAULT_CHAINED = `[
-  { "anno": { "app": "payments-api" } },
-  { "anno-expr": "appVersion == '2.3.1'" }
-]`
+const GRAPH_MATCHER_STORAGE_KEY = 'objs.ui.graphExplorer.matcher'
+const GRAPH_SESSION_STORAGE_KEY = 'objs.ui.graphExplorer.session'
 
 const GRAPH_LAYOUTS: { value: GraphLayout; label: string }[] = [
   { value: 'TB', label: 'Top to bottom' },
@@ -50,18 +38,84 @@ const GRAPH_LAYOUTS: { value: GraphLayout; label: string }[] = [
   { value: 'RL', label: 'Right to left' },
 ]
 
+type StoredGraphSession = {
+  nodes: GraphNode[]
+  links: GraphLink[]
+  layout: GraphLayout
+}
+
+function loadStoredGraphMatcher(): unknown | null {
+  try {
+    const raw = localStorage.getItem(GRAPH_MATCHER_STORAGE_KEY)
+    if (!raw) return null
+    return JSON.parse(raw) as unknown
+  } catch {
+    return null
+  }
+}
+
+function saveStoredGraphMatcher(body: unknown) {
+  try {
+    localStorage.setItem(GRAPH_MATCHER_STORAGE_KEY, JSON.stringify(body))
+  } catch {
+    // ignore quota / private mode
+  }
+}
+
+function loadStoredGraphSession(): StoredGraphSession | null {
+  try {
+    const raw = localStorage.getItem(GRAPH_SESSION_STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as Partial<StoredGraphSession>
+    if (!Array.isArray(parsed.nodes) || !Array.isArray(parsed.links)) return null
+    const layout =
+      parsed.layout === 'TB' ||
+      parsed.layout === 'LR' ||
+      parsed.layout === 'BT' ||
+      parsed.layout === 'RL'
+        ? parsed.layout
+        : 'TB'
+    return { nodes: parsed.nodes, links: parsed.links, layout }
+  } catch {
+    return null
+  }
+}
+
+function saveStoredGraphSession(session: StoredGraphSession) {
+  try {
+    localStorage.setItem(GRAPH_SESSION_STORAGE_KEY, JSON.stringify(session))
+  } catch {
+    // ignore quota / private mode
+  }
+}
+
+function clearStoredGraphSession() {
+  try {
+    localStorage.removeItem(GRAPH_SESSION_STORAGE_KEY)
+  } catch {
+    // ignore
+  }
+}
+
 export function GraphExplorerPage() {
+  const navigate = useNavigate()
   const graphRef = useRef<GraphCanvasHandle>(null)
-  const [mode, setMode] = useState<MatcherMode>('anno')
-  const [annoRows, setAnnoRows] = useState<AnnoRow[]>(DEFAULT_ANNO_ROWS)
-  const [exprText, setExprText] = useState(DEFAULT_EXPR)
-  const [chainedText, setChainedText] = useState(DEFAULT_CHAINED)
+  const matcherRef = useRef<MatcherQueryFormHandle>(null)
+  const [storedMatcher] = useState(() => loadStoredGraphMatcher())
+  const [storedSession] = useState(() => loadStoredGraphSession())
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [nodes, setNodes] = useState<GraphNode[]>([])
-  const [links, setLinks] = useState<GraphLink[]>([])
+  const [formError, setFormError] = useState<string | null>(null)
+  const [nodes, setNodes] = useState<GraphNode[]>(() => storedSession?.nodes ?? [])
+  const [links, setLinks] = useState<GraphLink[]>(() => storedSession?.links ?? [])
   const [selection, setSelection] = useState<GraphSelection | null>(null)
-  const [layout, setLayout] = useState<GraphLayout>('TB')
+  const [layout, setLayout] = useState<GraphLayout>(() => storedSession?.layout ?? 'TB')
+  const [lastMatcher, setLastMatcher] = useState<unknown>(() => storedMatcher)
+  const [canvasEpoch, setCanvasEpoch] = useState(0)
+  const linksRef = useRef(links)
+  linksRef.current = links
+  const layoutRef = useRef(layout)
+  layoutRef.current = layout
 
   const types = useMemo(() => {
     const set = new Map<string, string>()
@@ -71,55 +125,80 @@ export function GraphExplorerPage() {
     return [...set.entries()].sort(([a], [b]) => a.localeCompare(b))
   }, [nodes])
 
-  function buildMatcherBody(): unknown {
-    if (mode === 'anno') {
-      const filter: Record<string, string> = {}
-      for (const row of annoRows) {
-        const key = row.key.trim()
-        if (!key) continue
-        filter[key] = row.value
-      }
-      if (Object.keys(filter).length === 0) {
-        throw new Error('Provide at least one annotation key/value')
-      }
-      return { anno: filter }
+  function persistSession(
+    nextNodes: GraphNode[],
+    nextLinks: GraphLink[],
+    nextLayout: GraphLayout,
+  ) {
+    if (nextNodes.length === 0 && nextLinks.length === 0) {
+      clearStoredGraphSession()
+      return
     }
-    if (mode === 'anno-expr') {
-      const expression = exprText.trim()
-      if (!expression) {
-        throw new Error('Provide a non-blank anno-expr expression')
-      }
-      return { 'anno-expr': expression }
-    }
-    let parsed: unknown
-    try {
-      parsed = JSON.parse(chainedText)
-    } catch {
-      throw new Error('Chained matcher must be valid JSON')
-    }
-    if (!Array.isArray(parsed) || parsed.length === 0) {
-      throw new Error('Chained matcher must be a non-empty JSON array')
-    }
-    return parsed
+    saveStoredGraphSession({ nodes: nextNodes, links: nextLinks, layout: nextLayout })
+  }
+
+  function onPositionsChange(positions: GraphNodePositions) {
+    setNodes((prev) => {
+      const next = prev.map((n) => {
+        const p = positions[n.id]
+        return p ? { ...n, x: p.x, y: p.y } : n
+      })
+      persistSession(next, linksRef.current, layoutRef.current)
+      return next
+    })
   }
 
   async function onExec() {
     setLoading(true)
     setError(null)
+    setFormError(null)
     setSelection(null)
     try {
-      const body = buildMatcherBody()
+      const body = matcherRef.current?.build()
+      if (body === undefined) {
+        throw new Error('Matcher form is not ready')
+      }
       const subgraph = await queryGraph(body)
       const graph = toGraphData(subgraph)
+      // Drop prior canvas coordinates so Exec starts from a fresh layout.
       setNodes(graph.nodes)
       setLinks(graph.links)
+      setLastMatcher(body)
+      saveStoredGraphMatcher(body)
+      clearStoredGraphSession()
+      persistSession(graph.nodes, graph.links, layout)
+      setCanvasEpoch((n) => n + 1)
     } catch (e) {
       setNodes([])
       setLinks([])
-      setError(e instanceof Error ? e.message : String(e))
+      clearStoredGraphSession()
+      const message = e instanceof Error ? e.message : String(e)
+      if (
+        message.includes('annotation') ||
+        message.includes('anno-expr') ||
+        message.includes('Chained') ||
+        message.includes('JSON') ||
+        message.includes('Matcher form') ||
+        message.includes('Provide')
+      ) {
+        setFormError(message)
+      } else {
+        setError(message)
+      }
     } finally {
       setLoading(false)
     }
+  }
+
+  function onEditInLinter() {
+    if (lastMatcher == null) return
+    navigate('/composer', { state: { matcher: lastMatcher } })
+  }
+
+  function changeLayout(next: GraphLayout) {
+    setLayout(next)
+    layoutRef.current = next
+    graphRef.current?.applyLayout(next)
   }
 
   return (
@@ -132,9 +211,13 @@ export function GraphExplorerPage() {
             explorer.
           </Text>
         </div>
-        <Group>
-          <Button onClick={onExec} loading={loading}>
-            Exec
+        <Group gap="xs">
+          <Button
+            variant="light"
+            disabled={lastMatcher == null}
+            onClick={onEditInLinter}
+          >
+            Edit in linter
           </Button>
           <Group gap={0}>
             <Button
@@ -170,7 +253,7 @@ export function GraphExplorerPage() {
                       if (option.value === layout) {
                         graphRef.current?.applyLayout()
                       } else {
-                        setLayout(option.value)
+                        changeLayout(option.value)
                       }
                     }}
                   >
@@ -184,83 +267,19 @@ export function GraphExplorerPage() {
         </Group>
       </Group>
 
-      <SegmentedControl
-        value={mode}
-        onChange={(value) => setMode(value as MatcherMode)}
-        data={[
-          { label: 'anno', value: 'anno' },
-          { label: 'anno-expr', value: 'anno-expr' },
-          { label: 'chained', value: 'chained' },
-        ]}
-      />
-
-      {mode === 'anno' && (
-        <Stack gap="xs">
-          {annoRows.map((row, index) => (
-            <Group key={index} align="flex-end" wrap="nowrap">
-              <TextInput
-                label={index === 0 ? 'Key' : undefined}
-                value={row.key}
-                onChange={(e) => {
-                  const next = [...annoRows]
-                  next[index] = { ...next[index], key: e.currentTarget.value }
-                  setAnnoRows(next)
-                }}
-                style={{ flex: 1 }}
-              />
-              <TextInput
-                label={index === 0 ? 'Value' : undefined}
-                value={row.value}
-                onChange={(e) => {
-                  const next = [...annoRows]
-                  next[index] = { ...next[index], value: e.currentTarget.value }
-                  setAnnoRows(next)
-                }}
-                style={{ flex: 1 }}
-              />
-              <ActionIcon
-                variant="subtle"
-                color="red"
-                aria-label="Remove annotation row"
-                onClick={() => setAnnoRows(annoRows.filter((_, i) => i !== index))}
-                disabled={annoRows.length <= 1}
-              >
-                ×
-              </ActionIcon>
-            </Group>
-          ))}
-          <Button
-            variant="light"
-            size="xs"
-            w="fit-content"
-            onClick={() => setAnnoRows([...annoRows, { key: '', value: '' }])}
-          >
-            Add key/value
-          </Button>
-        </Stack>
-      )}
-
-      {mode === 'anno-expr' && (
-        <TextInput
-          label="Expression"
-          description="Direct annotation variables, e.g. app == 'payments-api'"
-          value={exprText}
-          onChange={(e) => setExprText(e.currentTarget.value)}
-          styles={{ input: { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' } }}
+      <Paper withBorder p="sm">
+        <MatcherQueryForm
+          ref={matcherRef}
+          emptyDefaults
+          matcher={storedMatcher}
+          error={formError}
+          action={
+            <Button size="xs" onClick={() => void onExec()} loading={loading}>
+              Exec
+            </Button>
+          }
         />
-      )}
-
-      {mode === 'chained' && (
-        <Textarea
-          label="Chained matchers (JSON array)"
-          autosize
-          minRows={4}
-          maxRows={10}
-          value={chainedText}
-          onChange={(e) => setChainedText(e.currentTarget.value)}
-          styles={{ input: { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' } }}
-        />
-      )}
+      </Paper>
 
       {error && (
         <Alert color="red" title="Query failed">
@@ -277,7 +296,7 @@ export function GraphExplorerPage() {
             <Badge
               key={type}
               component={Link}
-              to={`/schemas/${encodeURIComponent(type)}`}
+              to={`/model/${encodeURIComponent(type)}`}
               color="gray"
               variant="outline"
               leftSection={<span style={{ color }}>●</span>}
@@ -297,12 +316,15 @@ export function GraphExplorerPage() {
             </Text>
           ) : (
             <GraphCanvas
+              key={canvasEpoch}
               ref={graphRef}
               nodes={nodes}
               links={links}
               selection={selection}
               onSelect={setSelection}
               layout={layout}
+              autoLayoutOnDataChange={false}
+              onPositionsChange={onPositionsChange}
             />
           )}
         </Paper>

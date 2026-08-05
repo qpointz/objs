@@ -99,7 +99,39 @@ export async function validateGraphDraft(graph: unknown): Promise<GraphValidatio
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(graph),
   })
-  return parseResponse<GraphValidationResult>(res)
+  const body = await res.json().catch(() => null)
+  if (!res.ok) {
+    const issues = body?.issues
+    if (Array.isArray(issues) && issues.length > 0) {
+      return body as GraphValidationResult
+    }
+    throw new Error(typeof body === 'string' ? body : `HTTP ${res.status}`)
+  }
+  return body as GraphValidationResult
+}
+
+export type GraphMutationBody = {
+  upsert: {
+    entities: unknown
+    edges: unknown
+  }
+  delete: {
+    entities: string[]
+    edges: string[]
+  }
+}
+
+export async function validateGraphMutation(mutation: GraphMutationBody): Promise<GraphValidationResult> {
+  return validateGraphDraft(mutation)
+}
+
+export async function putGraphMutation(mutation: GraphMutationBody): Promise<BoMSubgraph> {
+  const res = await fetch('/api/v1/objs/graph', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(mutation),
+  })
+  return parseResponse<BoMSubgraph>(res)
 }
 
 export async function listSchemas(usage?: BoMSchemaUsage): Promise<BoMSchema[]> {
@@ -228,6 +260,23 @@ export async function deleteEdge(
   await parseResponse(res)
 }
 
+export async function deleteSchemaVersion(type: string, version: string): Promise<void> {
+  const res = await fetch(
+    `/api/v1/objs/registry/schemas/${encodeURIComponent(type)}/${encodeURIComponent(version)}`,
+    { method: 'DELETE' },
+  )
+  if (res.status === 204) return
+  await parseResponse(res)
+}
+
+export async function deleteSchemaType(type: string): Promise<void> {
+  const res = await fetch(`/api/v1/objs/registry/schemas/${encodeURIComponent(type)}`, {
+    method: 'DELETE',
+  })
+  if (res.status === 204) return
+  await parseResponse(res)
+}
+
 export async function listEdges(): Promise<BoMAllowedEdgeRule[]> {
   const res = await fetch('/api/v1/objs/registry/edges')
   return parseResponse<BoMAllowedEdgeRule[]>(res)
@@ -266,11 +315,11 @@ export async function importCatalogSeed(file: File): Promise<SeedImportResult> {
 }
 
 export function schemaDetailPath(type: string, version: string): string {
-  return `/schemas/${encodeURIComponent(type)}/${encodeURIComponent(version)}`
+  return `/model/${encodeURIComponent(type)}/${encodeURIComponent(version)}`
 }
 
 export function schemaCreatePath(kind: 'object' | 'edge'): string {
-  return `/schemas/new?kind=${kind}`
+  return `/model/new?kind=${kind}`
 }
 
 /** @deprecated Use in-place Schemas editing; kept for redirect helpers. */

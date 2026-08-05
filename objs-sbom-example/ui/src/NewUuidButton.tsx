@@ -16,7 +16,7 @@ export function NewUuidButton() {
       color: copied ? 'teal' : 'blue',
       title: copied ? 'New UUID copied to clipboard' : 'New UUID',
       message: <Code>{uuid}</Code>,
-      autoClose: 8000,
+      autoClose: 3000,
     })
   }
 
