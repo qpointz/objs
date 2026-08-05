@@ -305,6 +305,7 @@ the catalog.
 | `PUT` | `/api/v1/objs/registry/schemas/{type}/{version}` | Update/create exact version (`contentSchema` + optional `usages`) |
 | `POST` | `/api/v1/objs/registry/schemas/{type}/{version}/lint` | Normalize/lint without persistence |
 | `POST` | `/api/v1/objs/registry/schemas/{type}/versions/next-major` | Create next major version (`4` → `5`, `4.2.1` → `5.0.0`) |
+| `DELETE` | `/api/v1/objs/registry/schemas/{type}` | Remove all versions + incident allow-list rules |
 | `GET` | `/api/v1/objs/registry/schemas/{type}/{version}/json-schema` | Generated JSON Schema (one type/version) |
 | `GET` | `/api/v1/objs/registry/export?format=json-schema` | Full-catalog JSON Schema (latest ENTITY + relations) |
 | `GET` | `/api/v1/objs/registry/schemas/{type}/{version}/edges` | Relations using an edge-property schema |

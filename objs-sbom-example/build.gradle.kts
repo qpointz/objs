@@ -54,29 +54,33 @@ testing {
 }
 
 // --- Graph explorer SPA (objs-sbom-example/ui) ---
-// Node/npm Exec + Copy are marked incompatible with configuration cache.
-val uiDirFile = file("ui")
-val uiPackageJsonFile = file("ui/package.json")
-val uiLockFile = file("ui/package-lock.json")
-val uiDistFile = file("ui/dist")
-val isWindows = System.getProperty("os.name").lowercase().contains("windows")
-val npmCmd = if (isWindows) "npm.cmd" else "npm"
-fun skipUiBuild(): Boolean = findProperty("skipUi")?.toString()?.toBoolean() == true
+// Exec/Sync UI tasks declare incompatibility; still avoid capturing Project script objects.
+val uiDir = layout.projectDirectory.dir("ui")
+val uiPackageJson = uiDir.file("package.json")
+val uiLockFile = uiDir.file("package-lock.json")
+val uiDistDir = uiDir.dir("dist")
+val npmCmd =
+    providers.systemProperty("os.name").map { os ->
+        if (os.lowercase().contains("windows")) "npm.cmd" else "npm"
+    }.orElse("npm")
+val skipUi = providers.gradleProperty("skipUi").map { it.toBoolean() }.orElse(false)
 
 val npmInstallUi by tasks.registering(Exec::class) {
     group = "ui"
     description = "npm install for graph explorer SPA"
     notCompatibleWithConfigurationCache("npm UI install uses local Node toolchain")
-    workingDir = uiDirFile
-    inputs.file(uiPackageJsonFile)
-    if (uiLockFile.exists()) {
+    workingDir = uiDir.asFile
+    inputs.file(uiPackageJson)
+    if (uiLockFile.asFile.exists()) {
         inputs.file(uiLockFile)
-        commandLine(npmCmd, "ci")
+        commandLine(npmCmd.get(), "ci")
     } else {
-        commandLine(npmCmd, "install")
+        commandLine(npmCmd.get(), "install")
     }
-    outputs.dir(file("ui/node_modules"))
-    onlyIf { !skipUiBuild() && uiPackageJsonFile.exists() }
+    outputs.dir(uiDir.dir("node_modules"))
+    onlyIf {
+        !skipUi.get() && uiPackageJson.asFile.exists()
+    }
 }
 
 val npmBuildUi by tasks.registering(Exec::class) {
@@ -84,15 +88,17 @@ val npmBuildUi by tasks.registering(Exec::class) {
     description = "vite build graph explorer SPA"
     notCompatibleWithConfigurationCache("npm UI build uses local Node toolchain")
     dependsOn(npmInstallUi)
-    workingDir = uiDirFile
-    inputs.dir(file("ui/src"))
-    inputs.file(uiPackageJsonFile)
-    inputs.file(file("ui/vite.config.ts"))
-    inputs.file(file("ui/index.html"))
-    inputs.file(file("ui/tsconfig.json"))
-    outputs.dir(uiDistFile)
-    commandLine(npmCmd, "run", "build")
-    onlyIf { !skipUiBuild() && uiPackageJsonFile.exists() }
+    workingDir = uiDir.asFile
+    inputs.dir(uiDir.dir("src"))
+    inputs.file(uiPackageJson)
+    inputs.file(uiDir.file("vite.config.ts"))
+    inputs.file(uiDir.file("index.html"))
+    inputs.file(uiDir.file("tsconfig.json"))
+    outputs.dir(uiDistDir)
+    commandLine(npmCmd.get(), "run", "build")
+    onlyIf {
+        !skipUi.get() && uiPackageJson.asFile.exists()
+    }
 }
 
 val syncUiStatic by tasks.registering(Sync::class) {
@@ -100,9 +106,11 @@ val syncUiStatic by tasks.registering(Sync::class) {
     description = "Copy SPA dist into classpath static/ui"
     notCompatibleWithConfigurationCache("SPA static sync tied to npm UI build")
     dependsOn(npmBuildUi)
-    from(uiDistFile)
+    from(uiDistDir)
     into(layout.buildDirectory.dir("resources/main/static/ui"))
-    onlyIf { !skipUiBuild() && uiPackageJsonFile.exists() }
+    onlyIf {
+        !skipUi.get() && uiPackageJson.asFile.exists()
+    }
 }
 
 tasks.named<ProcessResources>("processResources") {

@@ -42,7 +42,7 @@ export function parseSchemaExpertDocument(
       version: doc.version,
       usages: doc.usages,
       contentSchema: doc.contentSchema,
-      allowedRelations: doc.allowedRelations ?? [],
+      ...(doc.allowedRelations != null ? { allowedRelations: doc.allowedRelations } : {}),
     },
   }
 }
@@ -55,7 +55,7 @@ export function SchemaLinterPage() {
   const version = params.version ? decodeURIComponent(params.version) : undefined
   const mode = searchParams.get('mode')
   if (!type || !version) {
-    return <Navigate to="/schemas/new?kind=object" replace />
+    return <Navigate to="/model/new?kind=object" replace />
   }
   const target = schemaDetailPath(type, version)
   return <Navigate to={mode === 'create-version' ? `${target}?mode=create-version` : target} replace />

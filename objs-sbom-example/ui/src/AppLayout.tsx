@@ -1,28 +1,45 @@
-import { AppShell, Group, Text, Title, UnstyledButton } from '@mantine/core'
+import { AppShell, Group, Text, UnstyledButton } from '@mantine/core'
+import {
+  IconAffiliate,
+  IconPencilCode,
+  IconSchema,
+  IconTournament,
+} from '@tabler/icons-react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
-import { NewUuidButton } from './NewUuidButton'
+import type { ReactNode } from 'react'
 
-function HeaderNavLink({ to, label }: { to: string; label: string }) {
+function HeaderNavLink({
+  to,
+  label,
+  icon,
+}: {
+  to: string
+  label: string
+  icon: ReactNode
+}) {
   const location = useLocation()
   const active =
-    to === '/schemas'
-      ? location.pathname.startsWith('/schemas')
-      : location.pathname === to || location.pathname.startsWith(`${to}/`)
+    location.pathname === to || location.pathname.startsWith(`${to}/`)
 
   return (
     <UnstyledButton
       component={Link}
       to={to}
-      px="sm"
-      py={6}
+      px="md"
+      py={7}
       style={{
-        borderRadius: 6,
-        fontWeight: active ? 700 : 500,
+        borderRadius: 8,
+        fontSize: 14,
+        fontWeight: active ? 650 : 600,
+        letterSpacing: '0.01em',
         background: active ? 'var(--mantine-color-blue-light)' : 'transparent',
-        color: active ? 'var(--mantine-color-blue-filled)' : 'inherit',
+        color: active ? 'var(--mantine-color-blue-filled)' : 'var(--mantine-color-text)',
       }}
     >
-      {label}
+      <Group gap={8} wrap="nowrap">
+        {icon}
+        <span>{label}</span>
+      </Group>
     </UnstyledButton>
   )
 }
@@ -34,34 +51,73 @@ export function AppLayout() {
       padding="md"
       styles={{
         main: {
-          height: '100vh',
+          // Mantine Main already pads for the fixed header; keep a viewport-locked shell
+          // so pages can use flex + overflow without growing the document.
+          height: '100dvh',
+          maxHeight: '100dvh',
+          minHeight: 0,
           display: 'flex',
           flexDirection: 'column',
-          minHeight: 0,
+          overflow: 'hidden',
         },
       }}
     >
       <AppShell.Header>
-        <Group h="100%" px="md" justify="space-between">
-          <Group gap="lg">
-            <Group gap="xs">
-              <Title order={4}>Objs</Title>
-              <Text size="sm" c="dimmed">
-                SBOM workbench
-              </Text>
-            </Group>
-            <Group gap={4}>
-              <HeaderNavLink to="/graph" label="Graph explorer" />
-              <HeaderNavLink to="/schemas" label="Schemas" />
-              <HeaderNavLink to="/object-linter" label="Object linter" />
-            </Group>
+        <Group h="100%" px="md" justify="space-between" wrap="nowrap">
+          <Group gap={8} wrap="nowrap" style={{ flexShrink: 0 }}>
+            <IconTournament
+              size={20}
+              stroke={1.5}
+              color="var(--mantine-color-dimmed)"
+              aria-hidden
+            />
+            <Text size="xs" c="dimmed" fw={500} tt="uppercase" style={{ letterSpacing: '0.06em' }}>
+              Workbench
+            </Text>
           </Group>
-          <NewUuidButton />
+
+          <Group
+            gap={2}
+            wrap="nowrap"
+            p={4}
+            style={{
+              borderRadius: 10,
+              background: 'var(--mantine-color-default-hover)',
+              border: '1px solid var(--mantine-color-default-border)',
+            }}
+          >
+            <HeaderNavLink
+              to="/explorer"
+              label="Explorer"
+              icon={<IconAffiliate size={16} stroke={1.75} />}
+            />
+            <HeaderNavLink
+              to="/composer"
+              label="Composer"
+              icon={<IconPencilCode size={16} stroke={1.75} />}
+            />
+            <HeaderNavLink
+              to="/model"
+              label="Schema"
+              icon={<IconSchema size={16} stroke={1.75} />}
+            />
+          </Group>
         </Group>
       </AppShell.Header>
 
       <AppShell.Main>
-        <Outlet />
+        <div
+          style={{
+            flex: 1,
+            minHeight: 0,
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          }}
+        >
+          <Outlet />
+        </div>
       </AppShell.Main>
     </AppShell>
   )

@@ -48,7 +48,7 @@ const CARDINALITY_OPTIONS: { value: BoMEdgeCardinality; label: string }[] = [
 function TypeLink({ type }: { type: string }) {
   if (type === '*') return <>*</>
   return (
-    <Anchor component={Link} to={`/schemas/${encodeURIComponent(type)}`}>
+    <Anchor component={Link} to={`/model/${encodeURIComponent(type)}`}>
       {type}
     </Anchor>
   )
@@ -203,10 +203,6 @@ export function ObjectEdgesEditor({
 
   return (
     <Stack gap="xs">
-      <Group justify="space-between">
-        <Text fw={600}>Allowed edges</Text>
-      </Group>
-
       {rows.length === 0 ? (
         <Text size="sm" c="dimmed">
           No inbound or outbound rules for this object yet.

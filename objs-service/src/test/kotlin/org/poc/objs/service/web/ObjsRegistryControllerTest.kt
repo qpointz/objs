@@ -1,5 +1,6 @@
 package org.poc.objs.service.web
 
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
@@ -400,6 +401,44 @@ class ObjsRegistryControllerTest {
         mockMvc.perform(delete("/api/v1/objs/registry/schemas/Person/1"))
             .andExpect(status().isNoContent)
         mockMvc.perform(delete("/api/v1/objs/registry/schemas/Person/1"))
+            .andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun shouldDeleteSchemaType_andIncidentEdges() {
+        schemas.register(BoMSchema("Person", "1", BoMSchemaDsl.obj("Person", "Person payload")))
+        schemas.register(BoMSchema("Person", "2", BoMSchemaDsl.obj("Person", "Person payload v2")))
+        schemas.register(BoMSchema("Org", "1", BoMSchemaDsl.obj("Org", "Org payload")))
+        edgeRules.register(
+            BoMAllowedEdgeRule(
+                sourceType = "Person",
+                role = "works_for",
+                targetType = "Org",
+            ),
+        )
+        edgeRules.register(
+            BoMAllowedEdgeRule(
+                sourceType = "Org",
+                role = "employs",
+                targetType = "Person",
+            ),
+        )
+        edgeRules.register(
+            BoMAllowedEdgeRule(
+                sourceType = "Org",
+                role = "owns",
+                targetType = "Org",
+            ),
+        )
+
+        mockMvc.perform(delete("/api/v1/objs/registry/schemas/Person"))
+            .andExpect(status().isNoContent)
+
+        assertThat(schemas.listByType("Person")).isEmpty()
+        assertThat(schemas.listByType("Org")).hasSize(1)
+        assertThat(edgeRules.all().map { it.role }).containsExactly("owns")
+
+        mockMvc.perform(delete("/api/v1/objs/registry/schemas/Person"))
             .andExpect(status().isNotFound)
     }
 

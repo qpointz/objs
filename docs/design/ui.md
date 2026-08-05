@@ -8,7 +8,7 @@ and authoring object-schema DSL definitions.
 Start `objs-app`, then open:
 
 ```text
-http://localhost:8080/ui/
+http://localhost:8080/workbench/
 ```
 
 For PostgreSQL:
@@ -18,25 +18,27 @@ docker compose -f deploy/local-dev/docker-compose.yml up -d
 ./gradlew :objs-app:run --args="--spring.profiles.active=postgres,sbom"
 ```
 
-The **top header** contains three views (no left app navbar):
+The **top header** shows a subtle **Workbench** brand (`IconTournament`) and three views:
 
-| View | Purpose |
-|------|---------|
-| **Graph explorer** | Query and inspect a stored subgraph |
-| **Schemas** | Browse and edit object/edge schemas (unified workbench) |
-| **Object linter** | Validate a YAML/JSON graph draft without persistence |
+| View | Path | Purpose |
+|------|------|---------|
+| **Explorer** | `/workbench/explorer` | Query and inspect a stored subgraph |
+| **Composer** | `/workbench/composer` | Draft workspace: load, Visual/Text edit, Validate / Apply mutation |
+| **Schema** | `/workbench/model` | Browse and edit object/edge schemas |
 
-Legacy `/ui/linter` URLs redirect into Schemas.
+Legacy `/ui/**` URLs redirect into `/workbench/**` (e.g. `/ui/graph` → `/workbench/explorer`).
 
 ## Graph explorer
 
 Graph explorer loads entities and induced edges through
-`POST /api/v1/objs/graph/query`. Select one matcher mode:
+`POST /api/v1/objs/graph/query`. Matcher controls are shared with Object linter
+(`MatcherQueryForm`): a compact **Matcher** select (`anno` / `anno-expr` / `chained`) plus mode
+fields, with **Exec** on the same row.
 
-- **`anno`** — add/remove Mantine key/value rows. Every pair must match the entity annotation map.
-- **`anno-expr`** — enter one JEXL Boolean expression using annotation keys as direct variables,
+- **`anno`** — key/value rows. Every pair must match the entity annotation map.
+- **`anno-expr`** — one JEXL Boolean expression using annotation keys as variables,
   for example `app == 'payments-api' && appVersion == '2.3.1'`.
-- **chained** — enter a non-empty JSON array of matcher objects. Matchers execute in order, passing
+- **chained** — non-empty JSON array of matcher objects. Matchers execute in order, passing
   each stage's selected entities to the next.
 
 The UI sends the selected mode as matcher DSL:
@@ -48,10 +50,17 @@ The UI sends the selected mode as matcher DSL:
 ]
 ```
 
-1. Configure the selected matcher mode.
+1. Configure the matcher.
 2. Select **Exec**.
 3. Select a node or edge on the canvas to inspect it.
 4. Select **Apply layout** to recalculate the graph layout.
+5. After a successful query, **Edit in linter** opens Object linter and loads the same matcher into
+   the draft (reuses the Load overwrite confirm when a draft already exists).
+
+The last successful matcher is kept in `localStorage` (`objs.ui.graphExplorer.matcher`). The last
+executed graph, layout direction, and node positions (after drag or Apply layout) are kept in
+`objs.ui.graphExplorer.session` so navigating away (e.g. to Schemas) and back restores the canvas.
+A new **Exec** replaces that session; a failed **Exec** clears it.
 
 The result summary shows the number of nodes and edges. Entity-type badges above the graph open
 that type in Schema explorer.
@@ -89,6 +98,10 @@ Opening **Schemas** without a type selected shows the **Full schema** overview:
 - **Visual** / **Text** tabs: Visual shows the ontology graph; Text is a read-only catalog export with
   a **JSON Schema** / **Seeds** segmented control (same pattern as the type editor JSON/YAML toggle);
 - click a type node (or a row in the type list) to open that type’s latest version;
+- nodes are draggable; positions and layout direction are kept in `localStorage`
+  (`objs.ui.fullSchema.layout`) and restored on return (new types still use auto layout until moved);
+- **Apply layout** (with direction menu: TB / LR / BT / RL) re-runs automatic layout and clears
+  saved node positions;
 - **Export** menu downloads either catalog seed YAML
   (`GET /api/v1/objs/registry/export?format=seeds`) or full-catalog JSON Schema
   (`…?format=json-schema`);
@@ -108,32 +121,36 @@ Edge-property schemas appear in the type list (**E**) but are not nodes on the o
 
 From a type, **Full schema** returns to the overview. The detail toolbar includes:
 
-- Version selector and **Create version** (next major).
-- **Save update** for the opened version.
+- Version selector, **Create version** (dialog: base version + new version), and **Delete**
+  split button (**Delete version** / **Delete schema**).
+- **Save** for the opened version.
 - New drafts use **Create schema**.
-- **Lint** lives on the Expert tab toolbar (with Format / Rollback).
+- **Lint** lives on the Schema tab (Editor, YAML, and JSON sub-views).
 
 ### Editors
 
-Tab order: **Visual**, **Schema**, **Expert**, **JSON Schema**.
+Tab order: **Visual**, **Schema**, **Edges** (objects).
 
 - **Visual** — read-only relationship graph of allow-list neighbours (ego view for the selected type).
-- **Schema** — recursive content-schema tree editor.
-- **Expert** — full schema document JSON/YAML; **Format**, **Rollback**, and **Lint**.
-- **JSON Schema** — generated projection.
+- **Schema** — consolidated content editor with sub-views:
+  - **Editor** — recursive content-schema tree editor
+  - **YAML** / **JSON** — full schema document text editor; **Format**, **Rollback**, **Lint**, and
+    **New UUID** (toast auto-hides after 3s)
+  - **JSON Schema** — generated projection (read-only; existing schemas only)
+- **Edges** — allowed inbound/outbound edge rules for object schemas (add, edit, delete).
 
 Unsaved edits show an **Unsaved changes** badge with **Rollback** to the last loaded/saved
 snapshot. Switching type, version, create draft, or leaving Schemas opens a confirmation dialog
 (Stay / Leave). Browser close/reload is also blocked while dirty.
 
-### Allowed edges (objects)
+### Edges (objects)
 
-Below the content editors, object schemas show the **Allowed edges** table (inbound then outbound).
+Object schemas include an **Edges** tab with the allowed-edges table (inbound then outbound).
 You can **add**, **edit**, and **delete** rules (direction, related type, role, cardinality,
-properties NONE or SCHEMA). Edge edits stay local until **Save update** (with content-schema
+properties NONE or SCHEMA). Edge edits stay local until **Save** (with content-schema
 edits); **Rollback** restores both. Editing identity fields (source / role / target) replaces the
-draft rule. Edge-property schemas edit payload DSL only — relations are not authored on the edge
-model.
+draft rule. Edge-property schemas edit payload DSL only — relations are authored on the object
+Edges tab, not on the edge schema.
 
 ## Schema explorer (legacy name)
 
@@ -153,10 +170,11 @@ select a version badge to open that exact definition.
 An entity schema displays:
 
 - its type and version (kind is shown in the type list as O/E);
-- content editors (**Visual**, **Schema**, **Expert**, **JSON Schema**);
-- an **Allowed edges** table below the editors (incoming first, then outgoing), with direction icons
-  (`IconArrowNarrowLeftDashed` / `IconArrowNarrowRightDashed`);
-- generated JSON Schema 2020-12.
+- content editors (**Visual**, **Schema**, **Edges**);
+- generated JSON Schema 2020-12 under Schema → **JSON Schema**.
+
+The **Edges** tab lists allowed inbound then outbound rules, with direction icons
+(`IconArrowNarrowLeftDashed` / `IconArrowNarrowRightDashed`).
 
 Source and target types in allowed-edge tables link to their schema definitions. Wildcard `*`
 means the rule applies to every entity type in that position.
@@ -184,7 +202,7 @@ represents a wildcard rule and is not navigable.
 
 ### Edit or create a version
 
-- **Edit / lint** opens the selected version in Schema linter. **Save update** replaces that same
+- **Edit / lint** opens the selected version in Schema linter. **Save** replaces that same
   version.
 - **Create version** opens the selected definition as the starting point for a new major version.
 
@@ -192,10 +210,11 @@ Existing versions are not implicitly changed when creating a version.
 
 ## Schema linter
 
-Schema linter supports two synchronized editing modes (now under Schemas as **Schema** / **Expert**):
+Schema authoring is under Schemas → **Schema**, with synchronized sub-views:
 
-- **Schema** — recursive schema tree and field/node editor;
-- **Expert JSON/YAML** — direct editing of the complete schema document.
+- **Editor** — recursive schema tree and field/node editor;
+- **YAML** / **JSON** — direct editing of the complete schema document;
+- **JSON Schema** — read-only generated projection.
 
 The schema header contains:
 
@@ -258,15 +277,15 @@ Arrays expose their item schema recursively. Strings support known formats such 
 Changing a node's type replaces its type-specific configuration with a valid starter definition.
 For example, changing a node to `ARRAY` creates a string item definition that can then be edited.
 
-### Expert JSON/YAML mode
+### YAML / JSON mode
 
-Expert mode supports YAML and JSON and exposes the complete authoring document:
+YAML and JSON sub-views expose the complete authoring document:
 
 - **Format** reformats the current document.
 - **Rollback** restores the last loaded or saved schema snapshot (also available next to
-  **Unsaved changes** outside Expert mode).
-- Switching back to Schema mode parses the current document. Invalid source remains in Expert mode
-  and shows an error.
+  **Unsaved changes**).
+- Switching back to **Editor** (or leaving the Schema tab) parses the current document. Invalid
+  source stays in the text view and shows an error.
 
 An entity schema document has this shape:
 
@@ -281,18 +300,12 @@ contentSchema:
   fields: []
 ```
 
-For an edge-property schema, use `usages: [EDGE_PROPERTIES]` and include its relations:
+For an edge-property schema, use `usages: [EDGE_PROPERTIES]` and the same `contentSchema` shape.
+Allowed edge rules are managed on the object **Edges** tab (and registry edge endpoints), not in
+the YAML/JSON document.
 
-```yaml
-allowedRelations:
-  - sourceType: Product
-    role: CONTAINS
-    targetType: Component
-    emptyPropertiesAllowed: true
-```
-
-For a new draft, type, version, usages, content definition, and allowed relations can all be edited
-directly. When editing an existing schema, expert mode requires type and version to remain equal to
+For a new draft, type, version, usages, and content definition can all be edited directly.
+When editing an existing schema, the text document requires type and version to remain equal to
 the opened catalog entry; use **Create version** for a new version.
 
 ### Lint
@@ -306,9 +319,9 @@ Select **Lint** to validate without saving. The server:
 A successful result shows **valid**, the normalized definition, and generated JSON Schema. An
 invalid result shows an issue code and message. Lint never persists changes.
 
-### Save update
+### Save
 
-When an existing version is opened, **Save update** validates and replaces that exact
+When an existing version is opened, **Save** validates and replaces that exact
 `(type, version)` catalog entry.
 
 Use this only when correcting or intentionally revising the published version. Existing entities
@@ -327,64 +340,85 @@ The initial version is created exactly as entered.
 
 ### Create version
 
-From an existing schema, **Create version** opens a draft. After editing it, select
-**Save new version** to create the next major version based on all versions currently registered
-for that type:
+From an existing schema, **Create version** opens a dialog:
 
-- `1`, `2`, `4` creates `5`;
-- `1.0.0`, `2.3.1`, `4.2.0` creates `5.0.0`.
+- **Base version** — any existing version for the type (default: currently selected). Seeds the
+  draft’s initial content.
+- **New version** — the version string to create (default: next major after the latest registered
+  version for that type, e.g. `4` → `5`, `4.2.1` → `5.0.0`).
 
-Minor and patch increment workflows are not implemented. Existing versions are never overwritten
-by this action. For an edge-property schema, cloned relations are moved to the new schema version
-because each source–role–target rule has one active property-schema reference.
+Confirm enters a local **draft** (**Unsaved changes**). Nothing is persisted until **Save**,
+which calls `PUT .../schemas/{type}/{newVersion}` with the authored body. Existing versions are
+never overwritten (`409` if the version already exists). **Rollback** discards the draft and
+returns to the base version.
+
+### Delete
+
+On an existing schema detail:
+
+- **Delete version** — removes the opened version (`DELETE .../schemas/{type}/{version}`). Confirm
+  by typing the version string. Navigates to another remaining version, or Full schema if none.
+- **Delete schema** — removes all versions of the type and allow-list edges where the type is
+  source or target (`DELETE .../schemas/{type}`). Confirm by typing the type name. Returns to Full
+  schema.
 
 ## Object linter
 
-Object linter validates a complete graph batch without writing entities or edges to the database.
-It calls `POST /api/v1/objs/graph/validate`, which always returns a validation result and does not
-persist the submitted graph.
+Object linter is a **graph draft workspace**: optionally load a stored subgraph, manipulate it
+visually or as YAML/JSON, then **Validate** or **Apply**.
 
-The global **New UUID** action in the workbench header is available from every view. It generates a
-UUID, copies it to the clipboard, and displays the value in a notification for use in schemas,
-entity or edge IDs, and other authored content.
+| Action | API |
+|--------|-----|
+| Load | `POST /api/v1/objs/graph/query` (matcher DSL: `anno` / `anno-expr` / chained) |
+| Validate | `POST /api/v1/objs/graph/validate` with `BoMGraphMutation` |
+| Apply | `PUT /api/v1/objs/graph` with the same mutation body (`upsert` + `delete`) |
+
+**New UUID** (clipboard + toast, auto-hides after 3s) sits on the Text tab toolbar next to Format /
+Rollback.
+
+### Tabs
+
+| Tab | Role |
+|-----|------|
+| **Visual** | React Flow canvas with inline side panel; toolbar: add / create linked / connect (Ctrl+click two nodes) / delete / layout; edit form only for a single selection |
+| **Text** | YAML/JSON of the **mutation only** (`upsert.entities` / `upsert.edges` + `delete.entities` / `delete.edges` ids). Unchanged loaded objects stay on Visual but are omitted from Text until edited, created, or deleted. |
+
+Invalid Text blocks switching to Visual; the last good draft is preserved.
+
+### Load / pending deletes
+
+1. Open **Load…** and choose a matcher (same compact `MatcherQueryForm` as Graph explorer).
+2. Confirm replace when the draft is non-empty.
+3. Loaded entity/edge ids become the **baseline**. Removals from the draft become **pending deletes** for Validate/Apply.
+4. After Load with no edits, Text is an empty mutation; Visual still shows the loaded graph.
+5. Graph explorer **Edit in linter** navigates here with the last successful matcher and triggers the same Load path.
+6. On the Visual canvas, draft status icons appear on object headers: **+** new, **pencil** modified, **−** deleted.
+7. Deleting a **new** (non-baseline) object/edge removes it from the canvas. Deleting a **loaded** object/edge soft-deletes it: it stays visible and marked deleted until Apply, and can be undone (restore) or have modifications reverted from the side panel.
+8. **Reset** restores the last load/rollback snapshot; **Clear** empties the draft.
+
+Optional **Copy annotations from source** when creating a linked object.
+
+### Validate and Apply
 
 1. Open **Object linter**.
-2. Choose YAML or JSON in the source editor.
-3. Define `entities` and `edges`.
-4. Select **Validate graph**.
+2. Optionally Load a subgraph, or start from an empty draft in Visual/Text.
+3. Select **Validate** (dry-run mutation) or **Apply** (persist mutation).
 
-The result reports **valid** or lists each issue with its code, message, and graph path.
+Apply clears pending deletes and refreshes the baseline on success.
 
 ```yaml
-entities:
-  - id: 11111111-1111-4111-8111-111111111111
-    type: Product
-    schemaVersion: 1.0.0
-    payload:
-      name: Payments API
-      version: 2.3.1
-    annotations: {}
-  - id: 22222222-2222-4222-8222-222222222222
-    type: Component
-    schemaVersion: 1.0.0
-    payload:
-      name: payment-core
-      version: 2.3.1
-      ecosystem: maven
-      kind: library
-    annotations: {}
-edges:
-  - source: 11111111-1111-4111-8111-111111111111
-    target: 22222222-2222-4222-8222-222222222222
-    role: CONTAINS
-    type: CanonicalEdge
-    schemaVersion: 1.0.0
-    properties: {}
+upsert:
+  entities: []   # creates / updates only
+  edges: []
+delete:
+  entities: []   # loaded entity ids
+  edges: []      # loaded edge ids
 ```
 
-Entities that are referenced by draft edges need explicit UUIDs. Entities without IDs can be
-validated when no draft edge references them. Edge source/target types, role, property-schema
-reference, and properties are validated against the current registry.
+Loaded baseline objects appear in Text only after they are modified, newly created, or listed under `delete`. Validate/Apply send this same `BoMGraphMutation` envelope.
+
+Entities that are referenced by mutation edges need explicit UUIDs. Edge source/target types, role,
+property-schema reference, and properties are validated against the current registry.
 
 ## Common errors
 
@@ -410,6 +444,6 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173/ui/`. Vite proxies `/api` requests to
+Open `http://localhost:5173/workbench/`. Vite proxies `/api` requests to
 `http://localhost:8080`, so `objs-app` must also be running.
 

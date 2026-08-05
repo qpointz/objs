@@ -2,25 +2,31 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert,
   Badge,
+  Breadcrumbs,
   Button,
+  Code,
   Group,
   Loader,
   Menu,
   Modal,
   Paper,
   ScrollArea,
+  SegmentedControl,
   Select,
   Stack,
   Tabs,
   Text,
   TextInput,
   Title,
+  Tooltip,
   UnstyledButton,
 } from '@mantine/core'
+import { IconSchema } from '@tabler/icons-react'
 import { useBlocker, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
-  createNextMajorSchema,
   deleteEdge,
+  deleteSchemaType,
+  deleteSchemaVersion,
   getJsonSchema,
   getSchema,
   getTypeEdges,
@@ -45,8 +51,9 @@ import {
 } from './allowedEdgeRef'
 import { SchemaRelationshipGraph } from './SchemaRelationshipGraph'
 import { SchemaVisualBuilder } from './SchemaVisualBuilder'
-import { emptyObjectSchema } from './schemaDsl'
+import { emptyObjectSchema, type EditorFormat } from './schemaDsl'
 import { SyntaxCodeEditor } from './SyntaxCodeEditor'
+import { NewUuidButton } from './NewUuidButton'
 import type {
   BoMAllowedEdgeRule,
   BoMSchema,
@@ -58,6 +65,32 @@ import type {
 
 function latestVersion(versions: string[]): string {
   return [...versions].sort().at(-1) ?? '1.0.0'
+}
+
+/** Mirrors BoMSchemaVersioning.nextMajor for draft preview. */
+function nextMajorVersion(existingVersions: string[]): string {
+  if (existingVersions.length === 0) return '1.0.0'
+  const versionPattern = /^(\d+)(?:\.(\d+))?(?:\.(\d+))?(?:[-+].*)?$/
+  const parsed = existingVersions
+    .map((raw) => {
+      const match = versionPattern.exec(raw.trim())
+      if (!match) return null
+      const major = Number.parseInt(match[1]!, 10)
+      if (!Number.isFinite(major)) return null
+      const dotted = Boolean(match[2] || match[3])
+      return { major, dotted }
+    })
+    .filter((row): row is { major: number; dotted: boolean } => row != null)
+  if (parsed.length === 0) {
+    throw new Error(`Cannot compute next major version from: ${existingVersions.join(', ')}`)
+  }
+  const maxMajor = Math.max(...parsed.map((row) => row.major))
+  const dotted = parsed.some((row) => row.dotted)
+  return dotted ? `${maxMajor + 1}.0.0` : `${maxMajor + 1}`
+}
+
+function isValidSchemaVersion(raw: string): boolean {
+  return /^(\d+)(?:\.(\d+))?(?:\.(\d+))?(?:[-+].*)?$/.test(raw.trim())
 }
 
 function primaryKind(usages: BoMSchemaUsage[]): 'object' | 'edge' {
@@ -78,11 +111,24 @@ function expertDoc(
   usages: BoMSchemaUsage[],
   contentSchema: BoMSchemaNode,
 ): SchemaExpertDocument {
-  return { type, version, usages, contentSchema, allowedRelations: [] }
+  return { type, version, usages, contentSchema }
 }
 
 function cloneDoc(doc: SchemaExpertDocument): SchemaExpertDocument {
   return JSON.parse(JSON.stringify(doc)) as SchemaExpertDocument
+}
+
+const schemaTabPanelStyle = {
+  position: 'absolute',
+  inset: 0,
+  overflow: 'auto',
+  paddingTop: 'var(--mantine-spacing-sm)',
+} as const
+
+type SchemaView = 'editor' | 'yaml' | 'json' | 'json-schema'
+
+function isTextSchemaView(view: SchemaView): view is 'yaml' | 'json' {
+  return view === 'yaml' || view === 'json'
 }
 
 export function SchemaExplorerPage() {
@@ -94,6 +140,7 @@ export function SchemaExplorerPage() {
   const isNewDraft = selectedType === 'new'
   const createKind = (searchParams.get('kind') === 'edge' ? 'edge' : 'object') as 'object' | 'edge'
   const createVersionMode = searchParams.get('mode') === 'create-version'
+  const draftNewVersionParam = searchParams.get('newVersion')
 
   const editorRef = useRef<JsonYamlEditorHandle>(null)
   const [search, setSearch] = useState('')
@@ -104,12 +151,15 @@ export function SchemaExplorerPage() {
   const [baselineEdgeRules, setBaselineEdgeRules] = useState<BoMAllowedEdgeRule[]>([])
   const [highlightedEdge, setHighlightedEdge] = useState<AllowedEdgeRef | null>(null)
   const loadedDetailKeyRef = useRef<string | null>(null)
+  /** Skip detail fetches/errors while leaving a deleted type for Full schema. */
+  const leavingDetailRef = useRef(false)
   const [loading, setLoading] = useState(true)
   const [detailLoading, setDetailLoading] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lint, setLint] = useState<SchemaLintResponse | null>(null)
-  const [editorMode, setEditorMode] = useState<'visual' | 'schema' | 'expert' | 'json-schema'>('visual')
+  const [editorMode, setEditorMode] = useState<'visual' | 'schema' | 'edges'>('visual')
+  const [schemaView, setSchemaView] = useState<SchemaView>('editor')
   const [dirty, setDirty] = useState(false)
   const [expertDirty, setExpertDirty] = useState(false)
 
@@ -123,6 +173,16 @@ export function SchemaExplorerPage() {
   const [baseline, setBaseline] = useState<SchemaExpertDocument>(() =>
     cloneDoc(expertDoc('NewType', '1.0.0', ['ENTITY'], emptyObjectSchema())),
   )
+
+  const [createVersionOpen, setCreateVersionOpen] = useState(false)
+  const [createBaseVersion, setCreateBaseVersion] = useState('')
+  const [createNewVersion, setCreateNewVersion] = useState('')
+  const [createVersionBusy, setCreateVersionBusy] = useState(false)
+
+  const [deleteVersionOpen, setDeleteVersionOpen] = useState(false)
+  const [deleteSchemaOpen, setDeleteSchemaOpen] = useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [deleteBusy, setDeleteBusy] = useState(false)
 
   const hasUnsavedChanges = dirty || expertDirty
   const unsavedRef = useRef(false)
@@ -153,6 +213,9 @@ export function SchemaExplorerPage() {
     setHighlightedEdge(null)
     setLint(null)
     markClean()
+    if (createVersionMode && selectedType && selectedVersion) {
+      navigate(schemaDetailPath(selectedType, selectedVersion))
+    }
   }
 
   function requestNavigate(to: string) {
@@ -167,7 +230,9 @@ export function SchemaExplorerPage() {
   const detailKey = isNewDraft
     ? `new:${createKind}`
     : selectedType && selectedVersion
-      ? `${selectedType}@${selectedVersion}`
+      ? `${selectedType}@${selectedVersion}${
+          createVersionMode ? `:create-version:${draftNewVersionParam ?? ''}` : ''
+        }`
       : selectedType
         ? `${selectedType}@pending`
         : null
@@ -253,16 +318,23 @@ export function SchemaExplorerPage() {
       setLint(null)
       setDetailLoading(false)
       setEditorMode('schema')
+      setSchemaView('editor')
       markClean()
       loadedDetailKeyRef.current = detailKey
       return
     }
 
     if (!selectedType) {
+      leavingDetailRef.current = false
       setSelected(null)
       setJsonSchema(null)
       setEdgeRules(null)
+      setError(null)
       loadedDetailKeyRef.current = null
+      return
+    }
+
+    if (leavingDetailRef.current) {
       return
     }
 
@@ -271,6 +343,11 @@ export function SchemaExplorerPage() {
       setError(null)
       try {
         const versions = schemas.filter((s) => s.type === selectedType).map((s) => s.version)
+        if (selectedVersion && versions.length === 0) {
+          // Type removed from catalog (e.g. Delete schema) — return to overview quietly.
+          navigate('/model', { replace: true })
+          return
+        }
         const versionToOpen = selectedVersion ?? latestVersion(versions)
         if (!selectedVersion && versions.length > 0) {
           navigate(schemaDetailPath(selectedType, versionToOpen), { replace: true })
@@ -298,11 +375,9 @@ export function SchemaExplorerPage() {
         const rules = uniqueEdgeRules(typeEdges)
         setSelected(schema)
         setTypeName(schema.type)
-        setVersion(schema.version)
         setUsages(schema.usages)
         setContentSchema(schema.contentSchema)
         const doc = expertDoc(schema.type, schema.version, schema.usages, schema.contentSchema)
-        setExpertSnapshot(doc)
         setEdgeRules(cloneEdgeRules(rules))
         captureBaseline(doc, rules)
         setJsonSchema(projection)
@@ -310,11 +385,33 @@ export function SchemaExplorerPage() {
         if (contextChanged) {
           setHighlightedEdge(null)
           setEditorMode('visual')
+          setSchemaView('editor')
         }
-        markClean()
+        if (createVersionMode) {
+          try {
+            const next =
+              draftNewVersionParam && draftNewVersionParam.trim()
+                ? draftNewVersionParam.trim()
+                : nextMajorVersion(versions)
+            setVersion(next)
+            setExpertSnapshot(expertDoc(schema.type, next, schema.usages, schema.contentSchema))
+            setDirty(true)
+            setExpertDirty(false)
+          } catch (e) {
+            setVersion(schema.version)
+            setExpertSnapshot(doc)
+            markClean()
+            setError(e instanceof Error ? e.message : String(e))
+            navigate(schemaDetailPath(schema.type, schema.version), { replace: true })
+          }
+        } else {
+          setVersion(schema.version)
+          setExpertSnapshot(doc)
+          markClean()
+        }
         loadedDetailKeyRef.current = detailKey
       } catch (e) {
-        if (!cancelled) {
+        if (!cancelled && !leavingDetailRef.current) {
           setSelected(null)
           setError(e instanceof Error ? e.message : String(e))
         }
@@ -325,7 +422,17 @@ export function SchemaExplorerPage() {
     return () => {
       cancelled = true
     }
-  }, [selectedType, selectedVersion, schemas, navigate, isNewDraft, createKind, detailKey])
+  }, [
+    selectedType,
+    selectedVersion,
+    schemas,
+    navigate,
+    isNewDraft,
+    createKind,
+    detailKey,
+    createVersionMode,
+    draftNewVersionParam,
+  ])
 
   const grouped = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -372,27 +479,53 @@ export function SchemaExplorerPage() {
     [schemas, selected, selectedType],
   )
 
+  function flushExpertEditor(): SchemaExpertDocument | null {
+    const parsed = editorRef.current?.getParsedForSubmit()
+    if (parsed && !parsed.ok) {
+      setError(parsed.error)
+      return null
+    }
+    if (!parsed?.ok) {
+      setError('Expert document is empty or invalid')
+      return null
+    }
+    const document = parseSchemaExpertDocument(parsed.value)
+    if (!document.ok) {
+      setError(document.error)
+      return null
+    }
+    if (!isNewDraft && (document.value.type !== typeName || document.value.version !== version)) {
+      setError('Type and version cannot change while editing an existing schema')
+      return null
+    }
+    setTypeName(document.value.type)
+    setVersion(document.value.version)
+    setUsages(document.value.usages)
+    setContentSchema(document.value.contentSchema)
+    setExpertSnapshot(document.value)
+    setDirty(JSON.stringify(cloneDoc(document.value)) !== JSON.stringify(baseline))
+    setExpertDirty(false)
+    setError(null)
+    return document.value
+  }
+
+  function switchSchemaView(next: SchemaView) {
+    if (next === schemaView) return
+    if (next === 'json-schema' && isNewDraft) return
+
+    if (isTextSchemaView(schemaView)) {
+      if (!flushExpertEditor()) return
+    }
+    if (isTextSchemaView(next) && !isTextSchemaView(schemaView)) {
+      setExpertSnapshot(expertDoc(typeName, version, usages, contentSchema))
+      setExpertDirty(false)
+    }
+    setSchemaView(next)
+  }
+
   function currentDocument(): SchemaExpertDocument | null {
-    if (editorMode === 'expert') {
-      const parsed = editorRef.current?.getParsedForSubmit()
-      if (parsed && !parsed.ok) {
-        setError(parsed.error)
-        return null
-      }
-      if (!parsed?.ok) {
-        setError('Expert document is empty or invalid')
-        return null
-      }
-      const document = parseSchemaExpertDocument(parsed.value)
-      if (!document.ok) {
-        setError(document.error)
-        return null
-      }
-      if (!isNewDraft && (document.value.type !== typeName || document.value.version !== version)) {
-        setError('Type and version cannot change while editing an existing schema')
-        return null
-      }
-      return document.value
+    if (editorMode === 'schema' && isTextSchemaView(schemaView)) {
+      return flushExpertEditor()
     }
     return expertDoc(typeName, version, usages, contentSchema)
   }
@@ -457,21 +590,114 @@ export function SchemaExplorerPage() {
     }
   }
 
-  async function onCreateSchemaOrVersion() {
+  function onStartCreateVersion() {
+    if (!selectedType || !selectedVersion || isNewDraft) return
+    if (editorMode === 'schema' && isTextSchemaView(schemaView)) {
+      if (!flushExpertEditor()) return
+    }
+    const versions = schemas.filter((s) => s.type === selectedType).map((s) => s.version)
+    setCreateBaseVersion(selectedVersion)
+    try {
+      setCreateNewVersion(nextMajorVersion(versions))
+    } catch {
+      setCreateNewVersion('')
+    }
+    setCreateVersionOpen(true)
+  }
+
+  async function confirmCreateVersion() {
+    if (!selectedType || !createBaseVersion || !createNewVersion.trim()) return
+    const next = createNewVersion.trim()
+    const versions = schemas.filter((s) => s.type === selectedType).map((s) => s.version)
+    if (!isValidSchemaVersion(next)) {
+      setError('New version must be a numeric version (e.g. 5 or 5.0.0)')
+      return
+    }
+    if (versions.includes(next)) {
+      setError(`Version ${next} already exists for ${selectedType}`)
+      return
+    }
+    setCreateVersionBusy(true)
+    setError(null)
+    try {
+      // Ensure base content is fetchable before entering draft mode.
+      await getSchema(selectedType, createBaseVersion)
+      setCreateVersionOpen(false)
+      navigate(
+        `${schemaDetailPath(selectedType, createBaseVersion)}?mode=create-version&newVersion=${encodeURIComponent(next)}`,
+      )
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setCreateVersionBusy(false)
+    }
+  }
+
+  async function confirmDeleteVersion() {
+    if (!selectedType || !selectedVersion) return
+    if (deleteConfirmText !== selectedVersion) return
+    setDeleteBusy(true)
+    setError(null)
+    try {
+      await deleteSchemaVersion(selectedType, selectedVersion)
+      setDeleteVersionOpen(false)
+      setDeleteConfirmText('')
+      markClean()
+      const list = await reloadSchemas()
+      const remaining = list.filter((s) => s.type === selectedType).map((s) => s.version)
+      if (remaining.length === 0) {
+        leavingDetailRef.current = true
+        loadedDetailKeyRef.current = null
+        setSelected(null)
+        setEdgeRules(null)
+        setError(null)
+        navigate('/model', { replace: true })
+      } else {
+        navigate(schemaDetailPath(selectedType, latestVersion(remaining)), { replace: true })
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setDeleteBusy(false)
+    }
+  }
+
+  async function confirmDeleteSchema() {
+    if (!selectedType) return
+    if (deleteConfirmText !== selectedType) return
+    setDeleteBusy(true)
+    setError(null)
+    try {
+      await deleteSchemaType(selectedType)
+      setDeleteSchemaOpen(false)
+      setDeleteConfirmText('')
+      markClean()
+      leavingDetailRef.current = true
+      loadedDetailKeyRef.current = null
+      setSelected(null)
+      setEdgeRules(null)
+      setError(null)
+      // Navigate first so the detail effect does not re-fetch the deleted type.
+      navigate('/model', { replace: true })
+      await reloadSchemas()
+    } catch (e) {
+      leavingDetailRef.current = false
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setDeleteBusy(false)
+    }
+  }
+
+  async function onCreateSchema() {
     const document = currentDocument()
     if (!document) return
     setBusy(true)
     setError(null)
     try {
-      const created = isNewDraft
-        ? await updateSchema(document.type, document.version || '1.0.0', {
-            contentSchema: document.contentSchema,
-            usages: document.usages,
-          })
-        : await createNextMajorSchema(document.type, {
-            contentSchema: document.contentSchema,
-            usages: document.usages,
-          })
+      const created = await updateSchema(document.type, document.version || '1.0.0', {
+        contentSchema: document.contentSchema,
+        usages: document.usages,
+      })
       await reloadSchemas()
       captureBaseline(
         expertDoc(created.type, created.version, created.usages, created.contentSchema),
@@ -488,39 +714,89 @@ export function SchemaExplorerPage() {
   }
 
   return (
-    <Group align="stretch" grow preventGrowOverflow={false} style={{ flex: 1, minHeight: 0 }} gap="sm">
-      <Paper withBorder p="sm" style={{ flex: '0 0 240px', maxWidth: 260, overflow: 'hidden' }}>
-        <Stack gap="xs" style={{ height: '100%' }}>
-          <Group justify="space-between" wrap="nowrap">
-            <Title order={5}>Schemas</Title>
-            <Menu position="bottom-end">
-              <Menu.Target>
-                <Button size="compact-xs">Create</Button>
-              </Menu.Target>
-              <Menu.Dropdown>
-                <Menu.Item
-                  onClick={() => requestNavigate(schemaCreatePath('object'))}
-                >
-                  Create New Object
-                </Menu.Item>
-                <Menu.Item
-                  onClick={() => requestNavigate(schemaCreatePath('edge'))}
-                >
-                  Create New Edge
-                </Menu.Item>
-              </Menu.Dropdown>
-            </Menu>
-          </Group>
-          <TextInput
-            size="xs"
-            placeholder="Search types"
-            value={search}
-            onChange={(e) => setSearch(e.currentTarget.value)}
-          />
-          {loading ? (
-            <Loader size="sm" />
-          ) : (
-            <ScrollArea style={{ flex: 1 }}>
+    <div
+      style={{
+        flex: 1,
+        minHeight: 0,
+        height: '100%',
+        display: 'flex',
+        gap: 'var(--mantine-spacing-sm)',
+        overflow: 'hidden',
+      }}
+    >
+      <Paper
+        withBorder
+        p="sm"
+        style={{
+          flex: '0 0 240px',
+          width: 240,
+          maxWidth: 260,
+          minHeight: 0,
+          height: '100%',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        <Group justify="space-between" wrap="nowrap" style={{ flexShrink: 0 }} mb="xs">
+          <Title order={5}>Schemas</Title>
+          <Menu position="bottom-end" withinPortal>
+            <Menu.Target>
+              <UnstyledButton
+                aria-label="Create object or edge"
+                style={{ display: 'inline-flex', borderRadius: 'var(--mantine-radius-default)' }}
+              >
+                <Group gap={0}>
+                  <Button
+                    size="compact-xs"
+                    component="span"
+                    style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0, pointerEvents: 'none' }}
+                  >
+                    Create
+                  </Button>
+                  <Button
+                    size="compact-xs"
+                    component="span"
+                    px={6}
+                    style={{
+                      borderTopLeftRadius: 0,
+                      borderBottomLeftRadius: 0,
+                      borderLeft: '1px solid var(--mantine-color-default-border)',
+                      pointerEvents: 'none',
+                    }}
+                  >
+                    ▾
+                  </Button>
+                </Group>
+              </UnstyledButton>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Item onClick={() => requestNavigate(schemaCreatePath('object'))}>
+                Object
+              </Menu.Item>
+              <Menu.Item onClick={() => requestNavigate(schemaCreatePath('edge'))}>
+                Edge
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
+        </Group>
+        <TextInput
+          size="xs"
+          placeholder="Search types"
+          value={search}
+          onChange={(e) => setSearch(e.currentTarget.value)}
+          mb="xs"
+          style={{ flexShrink: 0 }}
+        />
+        {loading ? (
+          <Loader size="sm" />
+        ) : (
+          <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+            <ScrollArea
+              type="auto"
+              offsetScrollbars
+              style={{ position: 'absolute', inset: 0 }}
+            >
               <Stack gap={2}>
                 {grouped.map((entry) => {
                   const active = selectedType === entry.type
@@ -551,168 +827,309 @@ export function SchemaExplorerPage() {
                 })}
               </Stack>
             </ScrollArea>
-          )}
-        </Stack>
+          </div>
+        )}
       </Paper>
 
-      <Paper withBorder p="md" style={{ flex: 1, minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <Paper
+        withBorder
+        p="md"
+        style={{
+          flex: 1,
+          minWidth: 0,
+          minHeight: 0,
+          height: '100%',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
         {error && (
-          <Alert color="red" title="Error" mb="md">
+          <Alert color="red" title="Error" mb="md" style={{ flexShrink: 0 }}>
             {error}
           </Alert>
         )}
         {detailLoading && <Loader size="sm" />}
 
         {!selectedType && !detailLoading && (
-          <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
-            <SchemaCatalogOverview
-              schemas={schemas}
-              onCatalogChanged={async () => {
-                await reloadSchemas()
+          <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
               }}
-            />
+            >
+              <SchemaCatalogOverview
+                schemas={schemas}
+                onCatalogChanged={async () => {
+                  await reloadSchemas()
+                }}
+              />
+            </div>
           </div>
         )}
 
         {(isNewDraft || (selected && !detailLoading)) && (
-          <ScrollArea style={{ flex: 1 }} h="100%">
-            <Stack gap="md">
-              <Group justify="space-between" align="flex-start">
-                <Stack gap={6} style={{ flex: 1, minWidth: 0 }}>
-                  {isNewDraft ? (
-                    <Group align="flex-end">
-                      <TextInput
-                        label="Type"
-                        value={typeName}
-                        onChange={(e) => {
-                          setTypeName(e.currentTarget.value)
-                          setDirty(true)
-                        }}
-                        style={{ flex: 1 }}
-                      />
-                      <TextInput
-                        label="Version"
-                        value={version}
-                        onChange={(e) => {
-                          setVersion(e.currentTarget.value)
-                          setDirty(true)
-                        }}
-                        w={120}
-                      />
-                      <Badge variant="light">{createKind === 'edge' ? 'EDGE' : 'OBJECT'}</Badge>
-                      {hasUnsavedChanges && (
+          <div
+            style={{
+              flex: 1,
+              minHeight: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 'var(--mantine-spacing-md)',
+              overflow: 'hidden',
+            }}
+          >
+            <Group justify="space-between" align="flex-start" style={{ flexShrink: 0 }}>
+              <Stack gap={6} style={{ flex: 1, minWidth: 0 }}>
+                {isNewDraft ? (
+                  <Group align="flex-end">
+                    <TextInput
+                      label="Type"
+                      value={typeName}
+                      onChange={(e) => {
+                        setTypeName(e.currentTarget.value)
+                        setDirty(true)
+                      }}
+                      style={{ flex: 1 }}
+                    />
+                    <TextInput
+                      label="Version"
+                      value={version}
+                      onChange={(e) => {
+                        setVersion(e.currentTarget.value)
+                        setDirty(true)
+                      }}
+                      w={120}
+                    />
+                    <Badge variant="light">{createKind === 'edge' ? 'EDGE' : 'OBJECT'}</Badge>
+                    {hasUnsavedChanges && (
+                      <Button size="compact-xs" variant="subtle" onClick={rollbackUnsaved}>
+                        Rollback
+                      </Button>
+                    )}
+                  </Group>
+                ) : (
+                  <Group gap="sm" wrap="wrap">
+                    <Breadcrumbs
+                      separator="/"
+                      separatorMargin="xs"
+                      styles={{
+                        root: { alignItems: 'center', flexWrap: 'wrap' },
+                        breadcrumb: { lineHeight: 1.2 },
+                      }}
+                    >
+                      <Tooltip label="Full schema">
+                        <UnstyledButton
+                          onClick={() => requestNavigate('/model')}
+                          aria-label="Full schema"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            color: 'var(--mantine-color-dimmed)',
+                          }}
+                        >
+                          <IconSchema size={22} stroke={1.75} />
+                        </UnstyledButton>
+                      </Tooltip>
+                      <Group gap={8} wrap="nowrap" align="center">
+                        <Title order={3} style={{ lineHeight: 1.2 }}>
+                          {typeName}
+                        </Title>
+                        <Badge size="xs" variant="filled" color="gray">
+                          {version}
+                        </Badge>
+                        {createVersionMode && (
+                          <Badge size="xs" variant="filled" color="violet">
+                            draft
+                          </Badge>
+                        )}
+                        {!createVersionMode &&
+                          typeVersions.includes(version) &&
+                          version === latestVersion(typeVersions) && (
+                            <Badge size="xs" variant="filled" color="teal">
+                              latest
+                            </Badge>
+                          )}
+                      </Group>
+                    </Breadcrumbs>
+                    {hasUnsavedChanges && (
+                      <>
+                        <Badge color="yellow" variant="filled">
+                          Unsaved changes
+                        </Badge>
                         <Button size="compact-xs" variant="subtle" onClick={rollbackUnsaved}>
                           Rollback
                         </Button>
-                      )}
-                    </Group>
-                  ) : (
-                    <Group gap="xs">
-                      <Button
-                        size="compact-xs"
-                        variant="subtle"
-                        onClick={() => requestNavigate('/schemas')}
-                      >
-                        Full schema
-                      </Button>
-                      <Title order={3}>{typeName}</Title>
-                      {hasUnsavedChanges && (
-                        <>
-                          <Badge color="yellow" variant="filled">
-                            Unsaved changes
-                          </Badge>
-                          <Button size="compact-xs" variant="subtle" onClick={rollbackUnsaved}>
-                            Rollback
-                          </Button>
-                        </>
-                      )}
-                    </Group>
-                  )}
-                </Stack>
+                      </>
+                    )}
+                  </Group>
+                )}
+              </Stack>
 
-                <Group>
-                  {!isNewDraft && (
-                    <>
-                      <Select
-                        size="sm"
-                        w={130}
-                        allowDeselect={false}
-                        data={typeVersions.map((v) => ({ value: v, label: v }))}
-                        value={version}
-                        onChange={(v) => {
-                          if (v && selectedType) requestNavigate(schemaDetailPath(selectedType, v))
-                        }}
-                      />
-                      <Button
-                        size="sm"
-                        variant="light"
-                        loading={busy}
-                        onClick={() => void onCreateSchemaOrVersion()}
-                      >
+              <Group>
+                {!isNewDraft && (
+                  <>
+                    <Select
+                      size="sm"
+                      w={150}
+                      allowDeselect={false}
+                      data={[
+                        ...typeVersions.map((v) => ({ value: v, label: v })),
+                        ...(createVersionMode && !typeVersions.includes(version)
+                          ? [{ value: version, label: `${version} (draft)` }]
+                          : []),
+                      ]}
+                      value={version}
+                      onChange={(v) => {
+                        if (!v || !selectedType) return
+                        if (createVersionMode && v === version) return
+                        requestNavigate(schemaDetailPath(selectedType, v))
+                      }}
+                    />
+                    {!createVersionMode && (
+                      <Button size="sm" variant="light" onClick={onStartCreateVersion}>
                         Create version
                       </Button>
-                    </>
-                  )}
-                  {!isNewDraft && !createVersionMode && (
-                    <Button
-                      loading={busy}
-                      disabled={!hasUnsavedChanges}
-                      onClick={() => void onSaveUpdate()}
-                    >
-                      Save update
-                    </Button>
-                  )}
-                  {isNewDraft && (
-                    <Button loading={busy} onClick={() => void onCreateSchemaOrVersion()}>
-                      Create schema
-                    </Button>
-                  )}
-                </Group>
+                    )}
+                  </>
+                )}
+                {!isNewDraft && (
+                  <Button
+                    loading={busy}
+                    disabled={!hasUnsavedChanges}
+                    onClick={() => void onSaveUpdate()}
+                  >
+                    Save
+                  </Button>
+                )}
+                {!isNewDraft && !createVersionMode && (
+                  <Menu position="bottom-end" withinPortal>
+                    <Menu.Target>
+                      <UnstyledButton
+                        aria-label="Delete version or schema"
+                        disabled={busy || deleteBusy}
+                        style={{
+                          display: 'inline-flex',
+                          borderRadius: 'var(--mantine-radius-default)',
+                          opacity: busy || deleteBusy ? 0.6 : 1,
+                        }}
+                      >
+                        <Group gap={0}>
+                          <Button
+                            size="sm"
+                            variant="light"
+                            color="red"
+                            component="span"
+                            style={{
+                              borderTopRightRadius: 0,
+                              borderBottomRightRadius: 0,
+                              pointerEvents: 'none',
+                            }}
+                          >
+                            Delete
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="light"
+                            color="red"
+                            component="span"
+                            px="xs"
+                            style={{
+                              borderTopLeftRadius: 0,
+                              borderBottomLeftRadius: 0,
+                              borderLeft: '1px solid var(--mantine-color-default-border)',
+                              pointerEvents: 'none',
+                            }}
+                          >
+                            ▾
+                          </Button>
+                        </Group>
+                      </UnstyledButton>
+                    </Menu.Target>
+                    <Menu.Dropdown>
+                      <Menu.Item
+                        color="red"
+                        onClick={() => {
+                          setDeleteConfirmText('')
+                          setDeleteVersionOpen(true)
+                        }}
+                      >
+                        Version
+                      </Menu.Item>
+                      <Menu.Item
+                        color="red"
+                        onClick={() => {
+                          setDeleteConfirmText('')
+                          setDeleteSchemaOpen(true)
+                        }}
+                      >
+                        Schema
+                      </Menu.Item>
+                    </Menu.Dropdown>
+                  </Menu>
+                )}
+                {isNewDraft && (
+                  <Button loading={busy} onClick={() => void onCreateSchema()}>
+                    Create schema
+                  </Button>
+                )}
               </Group>
+            </Group>
 
-              <Tabs
-                value={editorMode}
-                onChange={(v) => {
-                  const next = (v as typeof editorMode) ?? 'visual'
-                  if (next === 'expert' && editorMode !== 'expert') {
-                    setExpertSnapshot(expertDoc(typeName, version, usages, contentSchema))
-                    setExpertDirty(false)
-                  }
-                  if (editorMode === 'expert' && next !== 'expert') {
-                    const parsed = editorRef.current?.getParsedForSubmit()
-                    if (parsed && !parsed.ok) {
-                      setError(parsed.error)
-                      return
-                    }
-                    if (parsed?.ok) {
-                      const document = parseSchemaExpertDocument(parsed.value)
-                      if (!document.ok) {
-                        setError(document.error)
-                        return
-                      }
-                      setTypeName(document.value.type)
-                      setVersion(document.value.version)
-                      setUsages(document.value.usages)
-                      setContentSchema(document.value.contentSchema)
-                      setExpertSnapshot(document.value)
-                      setDirty(
-                        JSON.stringify(cloneDoc(document.value)) !== JSON.stringify(baseline),
-                      )
-                      setExpertDirty(false)
-                    }
-                  }
-                  setEditorMode(next)
-                }}
-              >
-                <Tabs.List>
-                  {!isNewDraft && <Tabs.Tab value="visual">Visual</Tabs.Tab>}
-                  <Tabs.Tab value="schema">Schema</Tabs.Tab>
-                  <Tabs.Tab value="expert">Expert</Tabs.Tab>
-                  {!isNewDraft && <Tabs.Tab value="json-schema">JSON Schema</Tabs.Tab>}
-                </Tabs.List>
+            <Tabs
+              value={editorMode}
+              style={{
+                flex: 1,
+                minHeight: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+              }}
+              onChange={(v) => {
+                const next = (v as typeof editorMode) ?? 'visual'
+                if (
+                  editorMode === 'schema' &&
+                  next !== 'schema' &&
+                  isTextSchemaView(schemaView)
+                ) {
+                  if (!flushExpertEditor()) return
+                }
+                if (
+                  next === 'schema' &&
+                  editorMode !== 'schema' &&
+                  isTextSchemaView(schemaView)
+                ) {
+                  setExpertSnapshot(expertDoc(typeName, version, usages, contentSchema))
+                  setExpertDirty(false)
+                }
+                setEditorMode(next)
+              }}
+            >
+              <Tabs.List style={{ flexShrink: 0 }}>
+                {!isNewDraft && <Tabs.Tab value="visual">Visual</Tabs.Tab>}
+                <Tabs.Tab value="schema">Schema</Tabs.Tab>
+                {!isNewDraft && usages.includes('ENTITY') && (
+                  <Tabs.Tab value="edges">Edges</Tabs.Tab>
+                )}
+              </Tabs.List>
 
+              <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
                 {!isNewDraft && selected && (
-                  <Tabs.Panel value="visual" pt="sm">
+                  <Tabs.Panel
+                    value="visual"
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      paddingTop: 'var(--mantine-spacing-sm)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      overflow: 'hidden',
+                    }}
+                  >
                     <SchemaRelationshipGraph
                       schema={{
                         ...selected,
@@ -722,104 +1139,189 @@ export function SchemaExplorerPage() {
                       relationships={edges ?? { incoming: [], outgoing: [] }}
                       highlightedEdge={highlightedEdge}
                       onEdgeSelect={setHighlightedEdge}
+                      fillHeight
                     />
                   </Tabs.Panel>
                 )}
-                <Tabs.Panel value="schema" pt="sm">
-                  <SchemaVisualBuilder
-                    value={contentSchema}
-                    onChange={(next) => {
-                      setContentSchema(next)
-                      setDirty(true)
+                <Tabs.Panel
+                  value="schema"
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    paddingTop: 'var(--mantine-spacing-sm)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow:
+                      isTextSchemaView(schemaView) || schemaView === 'json-schema'
+                        ? 'hidden'
+                        : 'auto',
+                  }}
+                >
+                  <Stack
+                    gap="sm"
+                    style={{
+                      flex: 1,
+                      minHeight: 0,
+                      height: '100%',
                     }}
-                  />
-                </Tabs.Panel>
-                <Tabs.Panel value="expert" pt="sm">
-                  <Stack gap="sm">
-                    {lint && (
+                  >
+                    <Group justify="space-between" wrap="wrap" style={{ flexShrink: 0 }}>
+                      <SegmentedControl
+                        size="xs"
+                        value={schemaView}
+                        onChange={(v) => switchSchemaView(v as SchemaView)}
+                        data={[
+                          { label: 'Editor', value: 'editor' },
+                          { label: 'YAML', value: 'yaml' },
+                          { label: 'JSON', value: 'json' },
+                          ...(!isNewDraft
+                            ? [{ label: 'JSON Schema', value: 'json-schema' }]
+                            : []),
+                        ]}
+                      />
+                      <Group gap="xs">
+                        {isTextSchemaView(schemaView) && (
+                          <Button
+                            size="xs"
+                            variant="light"
+                            onClick={() => editorRef.current?.formatDocument()}
+                          >
+                            Format
+                          </Button>
+                        )}
+                        <Button
+                          size="xs"
+                          variant="subtle"
+                          disabled={!hasUnsavedChanges}
+                          onClick={rollbackUnsaved}
+                        >
+                          Rollback
+                        </Button>
+                        {schemaView !== 'json-schema' && (
+                          <Button
+                            size="xs"
+                            variant="light"
+                            loading={busy}
+                            onClick={() => void runLint()}
+                          >
+                            Lint
+                          </Button>
+                        )}
+                        {isTextSchemaView(schemaView) && <NewUuidButton />}
+                      </Group>
+                    </Group>
+                    {lint && schemaView !== 'json-schema' && (
                       <Alert
                         color={lint.valid ? 'green' : 'red'}
                         title={lint.valid ? 'Valid' : 'Invalid'}
+                        style={{ flexShrink: 0 }}
                       >
                         {lint.issues.length === 0
                           ? 'No issues'
                           : lint.issues.map((i) => i.message).join('; ')}
                       </Alert>
                     )}
-                    <JsonYamlEditor
-                      ref={editorRef}
-                      value={expertSnapshot}
-                      rollbackValue={baseline}
-                      onRollback={rollbackUnsaved}
-                      extraActions={
-                        <Button size="xs" variant="light" loading={busy} onClick={() => void runLint()}>
-                          Lint
-                        </Button>
-                      }
-                      onDraftParsed={(draft) => {
-                        if (!draft.valid || draft.value === undefined) {
-                          setExpertDirty(true)
-                          return
-                        }
-                        const document = parseSchemaExpertDocument(draft.value)
-                        if (!document.ok) {
-                          setExpertDirty(true)
-                          return
-                        }
-                        setExpertDirty(
-                          JSON.stringify(cloneDoc(document.value)) !== JSON.stringify(baseline),
-                        )
-                      }}
-                    />
+                    {schemaView === 'editor' && (
+                      <SchemaVisualBuilder
+                        value={contentSchema}
+                        onChange={(next) => {
+                          setContentSchema(next)
+                          setDirty(true)
+                        }}
+                      />
+                    )}
+                    {isTextSchemaView(schemaView) && (
+                      <div
+                        style={{
+                          flex: 1,
+                          minHeight: 0,
+                          display: 'flex',
+                          flexDirection: 'column',
+                        }}
+                      >
+                        <JsonYamlEditor
+                          ref={editorRef}
+                          value={expertSnapshot}
+                          format={schemaView as EditorFormat}
+                          hideFormatToggle
+                          hideToolbar
+                          fillHeight
+                          onDraftParsed={(draft) => {
+                            if (!draft.valid || draft.value === undefined) {
+                              setExpertDirty(true)
+                              return
+                            }
+                            const document = parseSchemaExpertDocument(draft.value)
+                            if (!document.ok) {
+                              setExpertDirty(true)
+                              return
+                            }
+                            setExpertDirty(
+                              JSON.stringify(cloneDoc(document.value)) !==
+                                JSON.stringify(baseline),
+                            )
+                          }}
+                        />
+                      </div>
+                    )}
+                    {schemaView === 'json-schema' && !isNewDraft && (
+                      <div
+                        style={{
+                          flex: 1,
+                          minHeight: 0,
+                          display: 'flex',
+                          flexDirection: 'column',
+                        }}
+                      >
+                        <SyntaxCodeEditor
+                          language="json"
+                          readOnly
+                          fillHeight
+                          minHeight={240}
+                          value={jsonSchema ? JSON.stringify(jsonSchema, null, 2) : ''}
+                        />
+                      </div>
+                    )}
                   </Stack>
                 </Tabs.Panel>
-                {!isNewDraft && (
-                  <Tabs.Panel value="json-schema" pt="sm">
-                    <SyntaxCodeEditor
-                      language="json"
-                      readOnly
-                      minHeight={420}
-                      value={jsonSchema ? JSON.stringify(jsonSchema, null, 2) : ''}
+                {!isNewDraft && usages.includes('ENTITY') && edges && (
+                  <Tabs.Panel value="edges" style={schemaTabPanelStyle}>
+                    <ObjectEdgesEditor
+                      selectedType={selectedType!}
+                      incoming={edges.incoming}
+                      outgoing={edges.outgoing}
+                      entityTypes={entityTypes}
+                      edgeSchemaOptions={edgeSchemaOptions}
+                      busy={busy}
+                      highlightedEdge={highlightedEdge}
+                      onCreate={async (rule) => {
+                        setEdgeRules((prev) => [...(prev ?? []), rule])
+                        setDirty(true)
+                        setHighlightedEdge(rule)
+                      }}
+                      onUpdate={async (previous, next) => {
+                        setEdgeRules((prev) => {
+                          const without = (prev ?? []).filter(
+                            (rule) => allowedEdgeKey(rule) !== allowedEdgeKey(previous),
+                          )
+                          return [...without, next]
+                        })
+                        setDirty(true)
+                        setHighlightedEdge(next)
+                      }}
+                      onDelete={async (rule) => {
+                        setEdgeRules((prev) =>
+                          (prev ?? []).filter((row) => allowedEdgeKey(row) !== allowedEdgeKey(rule)),
+                        )
+                        setDirty(true)
+                        setHighlightedEdge(null)
+                      }}
                     />
                   </Tabs.Panel>
                 )}
-              </Tabs>
-
-              {!isNewDraft && usages.includes('ENTITY') && edges && (
-                <ObjectEdgesEditor
-                  selectedType={selectedType!}
-                  incoming={edges.incoming}
-                  outgoing={edges.outgoing}
-                  entityTypes={entityTypes}
-                  edgeSchemaOptions={edgeSchemaOptions}
-                  busy={busy}
-                  highlightedEdge={highlightedEdge}
-                  onCreate={async (rule) => {
-                    setEdgeRules((prev) => [...(prev ?? []), rule])
-                    setDirty(true)
-                    setHighlightedEdge(rule)
-                  }}
-                  onUpdate={async (previous, next) => {
-                    setEdgeRules((prev) => {
-                      const without = (prev ?? []).filter(
-                        (rule) => allowedEdgeKey(rule) !== allowedEdgeKey(previous),
-                      )
-                      return [...without, next]
-                    })
-                    setDirty(true)
-                    setHighlightedEdge(next)
-                  }}
-                  onDelete={async (rule) => {
-                    setEdgeRules((prev) =>
-                      (prev ?? []).filter((row) => allowedEdgeKey(row) !== allowedEdgeKey(rule)),
-                    )
-                    setDirty(true)
-                    setHighlightedEdge(null)
-                  }}
-                />
-              )}
-            </Stack>
-          </ScrollArea>
+              </div>
+            </Tabs>
+          </div>
         )}
       </Paper>
 
@@ -841,6 +1343,136 @@ export function SchemaExplorerPage() {
           </Button>
         </Group>
       </Modal>
-    </Group>
+
+      <Modal
+        opened={createVersionOpen}
+        onClose={() => setCreateVersionOpen(false)}
+        title="Create version"
+        centered
+      >
+        <Stack gap="sm">
+          <Text size="sm" c="dimmed">
+            Choose a base version for initial content, then set the new version identifier.
+          </Text>
+          <Select
+            label="Base version"
+            data={typeVersions.map((v) => ({ value: v, label: v }))}
+            value={createBaseVersion}
+            allowDeselect={false}
+            onChange={(v) => {
+              if (v) setCreateBaseVersion(v)
+            }}
+          />
+          <TextInput
+            label="New version"
+            value={createNewVersion}
+            onChange={(e) => setCreateNewVersion(e.currentTarget.value)}
+            placeholder="e.g. 5.0.0"
+          />
+          <Group justify="flex-end" mt="xs">
+            <Button variant="default" onClick={() => setCreateVersionOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              loading={createVersionBusy}
+              disabled={
+                !createBaseVersion ||
+                !createNewVersion.trim() ||
+                !isValidSchemaVersion(createNewVersion) ||
+                typeVersions.includes(createNewVersion.trim())
+              }
+              onClick={() => void confirmCreateVersion()}
+            >
+              Create draft
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      <Modal
+        opened={deleteVersionOpen}
+        onClose={() => {
+          setDeleteVersionOpen(false)
+          setDeleteConfirmText('')
+        }}
+        title="Delete version"
+        centered
+      >
+        <Stack gap="sm">
+          <Text size="sm">
+            Permanently delete <Text span fw={700}>{typeName}@{selectedVersion}</Text>. Type the
+            version <Code>{selectedVersion}</Code> to confirm.
+          </Text>
+          <TextInput
+            label="Confirm version"
+            value={deleteConfirmText}
+            onChange={(e) => setDeleteConfirmText(e.currentTarget.value)}
+            placeholder={selectedVersion}
+          />
+          <Group justify="flex-end">
+            <Button
+              variant="default"
+              onClick={() => {
+                setDeleteVersionOpen(false)
+                setDeleteConfirmText('')
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              color="red"
+              loading={deleteBusy}
+              disabled={deleteConfirmText !== selectedVersion}
+              onClick={() => void confirmDeleteVersion()}
+            >
+              Delete version
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      <Modal
+        opened={deleteSchemaOpen}
+        onClose={() => {
+          setDeleteSchemaOpen(false)
+          setDeleteConfirmText('')
+        }}
+        title="Delete schema"
+        centered
+      >
+        <Stack gap="sm">
+          <Text size="sm">
+            Permanently delete type <Text span fw={700}>{typeName}</Text> including all versions and
+            allow-list edges where it is source or target. Type the name <Code>{typeName}</Code> to
+            confirm.
+          </Text>
+          <TextInput
+            label="Confirm type name"
+            value={deleteConfirmText}
+            onChange={(e) => setDeleteConfirmText(e.currentTarget.value)}
+            placeholder={typeName}
+          />
+          <Group justify="flex-end">
+            <Button
+              variant="default"
+              onClick={() => {
+                setDeleteSchemaOpen(false)
+                setDeleteConfirmText('')
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              color="red"
+              loading={deleteBusy}
+              disabled={deleteConfirmText !== typeName}
+              onClick={() => void confirmDeleteSchema()}
+            >
+              Delete schema
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+    </div>
   )
 }

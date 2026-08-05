@@ -182,24 +182,22 @@ val bom = sbomService.getSbom("payments-api", "2.3.1")
 | Module | Contents |
 |--------|----------|
 | `objs-core` | Typed toolkit (`TypedEntity`, `GraphBuilder`, `RegistryPack`, …) |
-| `objs-sbom-example` | Full canonical types (A–D), annotation vocabulary, `SbomService`, registry pack, **`/api/v1/example/sbom` REST**, graph explorer SPA at **`/ui/`** |
+| `objs-sbom-example` | Full canonical types (A–D), annotation vocabulary, `SbomService`, registry pack, **`/api/v1/example/sbom` REST**, workbench SPA at **`/workbench/`** |
 | `objs-app` | Depends on example module for demo; ontology + optional demo graph via shared seed pipeline |
 
 ### Workbench SPA
 
-Open **`http://localhost:8080/ui/`** (packaged with the example module). Routes:
+Open **`http://localhost:8080/workbench/`** (packaged with the example module). Routes:
 See the user-level [`Objs UI manual`](../ui.md) for complete operating instructions.
 
 | Path | View |
 |------|------|
-| `/ui/graph` | Graph explorer — annotation query, canvas, selection inspector |
-| `/ui/schemas` | Schema explorer — entity / edge-property catalogs, allowed edges, DSL + JSON Schema |
-| `/ui/linter` | Schema linter — visual tree + YAML/JSON source, server lint, create/update versions |
-| `/ui/object-linter` | Object linter — dry-run graph validation from YAML/JSON |
+| `/workbench/explorer` | Explorer — annotation query, canvas, selection inspector |
+| `/workbench/model` | Schema — entity / edge-property catalogs, allowed edges, DSL + JSON Schema |
+| `/workbench/composer` | Composer — draft graph mutation (Visual/Text), Validate / Apply |
 
-Graph explorer type badges and selection links open the matching schema in Schema explorer.
-Schema explorer **Edit / lint** updates the opened version; **Create version** increments the highest
-major across that type (`4` → `5`, `4.2.1` → `5.0.0`).
+Legacy `/ui/**` redirects into `/workbench/**`. Explorer type badges open Schema; **Create version**
+uses a base-version + new-version dialog and saves via `PUT` to the exact version.
 
 Dev: `cd objs-sbom-example/ui && npm install && npm run dev` (Vite proxies `/api` → `:8080`).  
 Build: Gradle builds the UI into `static/ui/` unless `-PskipUi=true`.

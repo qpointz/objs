@@ -20,6 +20,10 @@ import {
   Position,
   ReactFlow,
   ReactFlowProvider,
+  useEdgesState,
+  useNodesState,
+  useReactFlow,
+  type Node,
   type NodeProps,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
@@ -34,13 +38,103 @@ import {
 import {
   catalogSeedContainsGraph,
   schemaCatalogElements,
+  type CatalogLayout,
   type CatalogNodeData,
   type CatalogTypeNode,
 } from './catalogOverviewModel'
 import { SyntaxCodeEditor } from './SyntaxCodeEditor'
 import type { BoMAllowedEdgeRule, BoMSchema, SeedImportResult } from './types'
 
-function CatalogTypeNodeView({ data }: NodeProps) {
+const FULL_SCHEMA_LAYOUT_KEY = 'objs.ui.fullSchema.layout'
+
+const CATALOG_LAYOUTS: { value: CatalogLayout; label: string }[] = [
+  { value: 'TB', label: 'Top to bottom' },
+  { value: 'LR', label: 'Left to right' },
+  { value: 'BT', label: 'Bottom to top' },
+  { value: 'RL', label: 'Right to left' },
+]
+
+type StoredCatalogLayout = {
+  direction: CatalogLayout
+  positions: Record<string, { x: number; y: number }>
+}
+
+function isCatalogLayout(value: unknown): value is CatalogLayout {
+  return value === 'TB' || value === 'LR' || value === 'BT' || value === 'RL'
+}
+
+function loadCatalogLayout(): StoredCatalogLayout {
+  try {
+    const raw = localStorage.getItem(FULL_SCHEMA_LAYOUT_KEY)
+    if (!raw) return { direction: 'LR', positions: {} }
+    const parsed = JSON.parse(raw) as unknown
+    // Legacy: bare id → {x,y} map
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && !('direction' in parsed)) {
+      const positions: StoredCatalogLayout['positions'] = {}
+      for (const [id, pos] of Object.entries(parsed as Record<string, unknown>)) {
+        if (
+          pos &&
+          typeof pos === 'object' &&
+          typeof (pos as { x?: unknown }).x === 'number' &&
+          typeof (pos as { y?: unknown }).y === 'number'
+        ) {
+          positions[id] = { x: (pos as { x: number }).x, y: (pos as { y: number }).y }
+        }
+      }
+      return { direction: 'LR', positions }
+    }
+    const session = parsed as Partial<StoredCatalogLayout>
+    const direction = isCatalogLayout(session.direction) ? session.direction : 'LR'
+    const positions: StoredCatalogLayout['positions'] = {}
+    if (session.positions && typeof session.positions === 'object') {
+      for (const [id, pos] of Object.entries(session.positions)) {
+        if (
+          pos &&
+          typeof pos === 'object' &&
+          typeof pos.x === 'number' &&
+          typeof pos.y === 'number'
+        ) {
+          positions[id] = { x: pos.x, y: pos.y }
+        }
+      }
+    }
+    return { direction, positions }
+  } catch {
+    return { direction: 'LR', positions: {} }
+  }
+}
+
+function saveCatalogLayout(session: StoredCatalogLayout) {
+  try {
+    localStorage.setItem(FULL_SCHEMA_LAYOUT_KEY, JSON.stringify(session))
+  } catch {
+    // ignore quota / private mode
+  }
+}
+
+function saveCatalogPositions(nodes: Node[], direction: CatalogLayout) {
+  saveCatalogLayout({
+    direction,
+    positions: Object.fromEntries(nodes.map((n) => [n.id, { x: n.position.x, y: n.position.y }])),
+  })
+}
+
+function clearCatalogPositions(direction: CatalogLayout) {
+  saveCatalogLayout({ direction, positions: {} })
+}
+
+function applyCatalogPositions(
+  nodes: Node[],
+  stored: Record<string, { x: number; y: number }>,
+): Node[] {
+  if (Object.keys(stored).length === 0) return nodes
+  return nodes.map((n) => {
+    const pos = stored[n.id]
+    return pos ? { ...n, position: { x: pos.x, y: pos.y } } : n
+  })
+}
+
+function CatalogTypeNodeView({ data, sourcePosition, targetPosition }: NodeProps) {
   const node = data as CatalogNodeData
   const wildcard = node.kind === 'wildcard'
   return (
@@ -57,8 +151,16 @@ function CatalogTypeNodeView({ data }: NodeProps) {
         cursor: wildcard ? 'default' : 'pointer',
       }}
     >
-      <Handle type="target" position={Position.Left} style={{ background: '#1971c2' }} />
-      <Handle type="source" position={Position.Right} style={{ background: '#1971c2' }} />
+      <Handle
+        type="target"
+        position={targetPosition ?? Position.Left}
+        style={{ background: '#1971c2' }}
+      />
+      <Handle
+        type="source"
+        position={sourcePosition ?? Position.Right}
+        style={{ background: '#1971c2' }}
+      />
       <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.65 }}>
         {wildcard ? 'ANY TYPE' : 'OBJECT'}
       </div>
@@ -86,6 +188,7 @@ function SchemaCatalogOverviewInner({
   onImported: () => Promise<void>
 }) {
   const navigate = useNavigate()
+  const { fitView } = useReactFlow()
   const fileRef = useRef<HTMLInputElement>(null)
   const [ioError, setIoError] = useState<string | null>(null)
   const [importResult, setImportResult] = useState<SeedImportResult | null>(null)
@@ -96,10 +199,44 @@ function SchemaCatalogOverviewInner({
   const [textBusy, setTextBusy] = useState(false)
   const [textError, setTextError] = useState<string | null>(null)
   const [textEpoch, setTextEpoch] = useState(0)
+  const fittedOnceRef = useRef(false)
+  const [storedSession] = useState(() => loadCatalogLayout())
+  const [layout, setLayout] = useState<CatalogLayout>(() => storedSession.direction)
+  const layoutRef = useRef(layout)
+  layoutRef.current = layout
 
-  const elements = useMemo(
-    () => schemaCatalogElements(entityTypes, rules),
-    [entityTypes, rules],
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
+  const [edges, setEdges, onEdgesChange] = useEdgesState([])
+
+  useEffect(() => {
+    const session = loadCatalogLayout()
+    const next = schemaCatalogElements(entityTypes, rules, session.direction)
+    const laidOut = applyCatalogPositions(next.nodes, session.positions)
+    setLayout(session.direction)
+    setNodes(laidOut)
+    setEdges(next.edges)
+    const restored = laidOut.some((n) => session.positions[n.id] != null)
+    if (!fittedOnceRef.current || !restored) {
+      fittedOnceRef.current = true
+      requestAnimationFrame(() => fitView({ padding: 0.18, maxZoom: 1, duration: 200 }))
+    }
+  }, [entityTypes, rules, setNodes, setEdges, fitView])
+
+  const persistLayout = useCallback((rfNodes: Node[]) => {
+    saveCatalogPositions(rfNodes, layoutRef.current)
+  }, [])
+
+  const applyLayout = useCallback(
+    (nextLayout: CatalogLayout = layout) => {
+      clearCatalogPositions(nextLayout)
+      setLayout(nextLayout)
+      layoutRef.current = nextLayout
+      const next = schemaCatalogElements(entityTypes, rules, nextLayout)
+      setNodes(next.nodes)
+      setEdges(next.edges)
+      requestAnimationFrame(() => fitView({ padding: 0.18, maxZoom: 1, duration: 300 }))
+    },
+    [entityTypes, rules, layout, setNodes, setEdges, fitView],
   )
 
   const loadTextView = useCallback(async (format: CatalogExportFormat) => {
@@ -169,8 +306,8 @@ function SchemaCatalogOverviewInner({
   }
 
   return (
-    <Stack gap="sm" style={{ height: '100%', minHeight: 0 }}>
-      <Group justify="space-between" align="flex-start">
+    <Stack gap="sm" style={{ height: '100%', minHeight: 0, flex: 1 }}>
+      <Group justify="space-between" align="flex-start" style={{ flexShrink: 0 }}>
         <Stack gap={2}>
           <Title order={3}>Full schema</Title>
           <Text size="sm" c="dimmed">
@@ -179,6 +316,47 @@ function SchemaCatalogOverviewInner({
           </Text>
         </Stack>
         <Group gap="xs">
+          <Group gap={0}>
+            <Button
+              size="sm"
+              variant="light"
+              disabled={nodes.length === 0}
+              onClick={() => applyLayout()}
+              style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
+            >
+              Apply layout
+            </Button>
+            <Menu position="bottom-end" withinPortal>
+              <Menu.Target>
+                <Button
+                  size="sm"
+                  variant="light"
+                  disabled={nodes.length === 0}
+                  aria-label="Choose catalog layout"
+                  px="xs"
+                  style={{
+                    borderTopLeftRadius: 0,
+                    borderBottomLeftRadius: 0,
+                    borderLeft: '1px solid var(--mantine-color-default-border)',
+                  }}
+                >
+                  ▾
+                </Button>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Label>Layout direction</Menu.Label>
+                {CATALOG_LAYOUTS.map((option) => (
+                  <Menu.Item
+                    key={option.value}
+                    onClick={() => applyLayout(option.value)}
+                  >
+                    {option.value === layout ? '✓ ' : ''}
+                    {option.label}
+                  </Menu.Item>
+                ))}
+              </Menu.Dropdown>
+            </Menu>
+          </Group>
           <Button
             size="sm"
             variant="light"
@@ -219,13 +397,13 @@ function SchemaCatalogOverviewInner({
       </Group>
 
       {ioError && (
-        <Alert color="red" title="Catalog I/O">
+        <Alert color="red" title="Catalog I/O" style={{ flexShrink: 0 }}>
           {ioError}
         </Alert>
       )}
 
       {importResult && (
-        <Paper withBorder p="sm">
+        <Paper withBorder p="sm" style={{ flexShrink: 0, maxHeight: 220, overflow: 'auto' }}>
           <Text size="sm" fw={600} mb="xs">
             Import result
           </Text>
@@ -261,39 +439,57 @@ function SchemaCatalogOverviewInner({
       <Tabs
         value={overviewTab}
         onChange={(v) => setOverviewTab((v as 'visual' | 'text') ?? 'visual')}
-        style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}
+        style={{
+          flex: 1,
+          minHeight: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+        }}
       >
-        <Tabs.List>
+        <Tabs.List style={{ flexShrink: 0 }}>
           <Tabs.Tab value="visual">Visual</Tabs.Tab>
           <Tabs.Tab value="text">Text</Tabs.Tab>
         </Tabs.List>
 
-        <Tabs.Panel value="visual" pt="sm" style={{ flex: 1, minHeight: 0 }}>
+        <Tabs.Panel
+          value="visual"
+          pt="sm"
+          style={{
+            flex: 1,
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          }}
+        >
           <div
             style={{
               flex: 1,
-              minWidth: 0,
-              minHeight: 520,
-              height: 560,
+              minHeight: 0,
+              height: '100%',
               border: '1px solid var(--mantine-color-default-border)',
               borderRadius: 6,
+              overflow: 'hidden',
             }}
           >
             <ReactFlow
-              nodes={elements.nodes}
-              edges={elements.edges}
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
               nodeTypes={nodeTypes}
-              fitView
               fitViewOptions={{ padding: 0.18, maxZoom: 1 }}
               minZoom={0.2}
               maxZoom={1.4}
-              nodesDraggable={false}
+              nodesDraggable
               nodesConnectable={false}
               elementsSelectable
               panOnDrag
               panOnScroll={false}
               zoomOnScroll={false}
               zoomOnPinch
+              onNodeDragStop={(_event, _node, dragged) => persistLayout(dragged)}
               onNodeClick={(_, node) => {
                 const data = node.data as CatalogNodeData
                 if (data.kind === 'entity' && data.version) {
@@ -308,9 +504,19 @@ function SchemaCatalogOverviewInner({
           </div>
         </Tabs.Panel>
 
-        <Tabs.Panel value="text" pt="sm" style={{ flex: 1, minHeight: 0 }}>
-          <Stack gap="xs" style={{ height: '100%', minHeight: 0 }}>
-            <Group justify="space-between">
+        <Tabs.Panel
+          value="text"
+          pt="sm"
+          style={{
+            flex: 1,
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          }}
+        >
+          <Stack gap="xs" style={{ flex: 1, minHeight: 0, height: '100%' }}>
+            <Group justify="space-between" style={{ flexShrink: 0 }}>
               <SegmentedControl
                 size="xs"
                 value={textFormat}
@@ -323,17 +529,26 @@ function SchemaCatalogOverviewInner({
               {textBusy && <Loader size="xs" />}
             </Group>
             {textError && (
-              <Alert color="red" title="Text view">
+              <Alert color="red" title="Text view" style={{ flexShrink: 0 }}>
                 {textError}
               </Alert>
             )}
-            <SyntaxCodeEditor
-              language={textFormat === 'json-schema' ? 'json' : 'yaml'}
-              readOnly
-              minHeight={520}
-              fillHeight
-              value={textBody}
-            />
+            <div
+              style={{
+                flex: 1,
+                minHeight: 0,
+                display: 'flex',
+                flexDirection: 'column',
+              }}
+            >
+              <SyntaxCodeEditor
+                language={textFormat === 'json-schema' ? 'json' : 'yaml'}
+                readOnly
+                minHeight={240}
+                fillHeight
+                value={textBody}
+              />
+            </div>
           </Stack>
         </Tabs.Panel>
       </Tabs>
@@ -390,27 +605,29 @@ export function SchemaCatalogOverview({
   }
 
   return (
-    <Stack gap="sm" style={{ height: '100%' }}>
+    <Stack gap="sm" style={{ height: '100%', minHeight: 0, flex: 1 }}>
       {error && (
-        <Alert color="red" title="Failed to load edges">
+        <Alert color="red" title="Failed to load edges" style={{ flexShrink: 0 }}>
           {error}
         </Alert>
       )}
-      <ReactFlowProvider>
-        <SchemaCatalogOverviewInner
-          entityTypes={entityTypes}
-          rules={rules ?? []}
-          busy={loading}
-          onRefresh={async () => {
-            await onCatalogChanged()
-            await reloadRules()
-          }}
-          onImported={async () => {
-            await onCatalogChanged()
-            await reloadRules()
-          }}
-        />
-      </ReactFlowProvider>
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        <ReactFlowProvider>
+          <SchemaCatalogOverviewInner
+            entityTypes={entityTypes}
+            rules={rules ?? []}
+            busy={loading}
+            onRefresh={async () => {
+              await onCatalogChanged()
+              await reloadRules()
+            }}
+            onImported={async () => {
+              await onCatalogChanged()
+              await reloadRules()
+            }}
+          />
+        </ReactFlowProvider>
+      </div>
     </Stack>
   )
 }

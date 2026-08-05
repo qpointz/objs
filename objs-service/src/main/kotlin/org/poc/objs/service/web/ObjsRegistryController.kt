@@ -340,9 +340,39 @@ class ObjsRegistryController(
         }
     }
 
+    @DeleteMapping("/schemas/{type}")
+    @Operation(
+        summary = "Remove all versions of a schema type and incident allow-list rules",
+        description = "Deletes every version of {type}, plus edge rules where the type is source or " +
+            "target (including wildcards that match), and rules that reference the type as a " +
+            "properties schema.",
+    )
+    fun deleteSchemaType(@PathVariable type: String): ResponseEntity<Any> {
+        val versions = schemas.listByType(type)
+        if (versions.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                BoMValidationResult.of(
+                    BoMValidationIssue("SCHEMA_TYPE_NOT_FOUND", "No schema versions for type=$type"),
+                ),
+            )
+        }
+        val rulesToRemove = edgeRules.all().filter { rule ->
+            matchesType(rule.sourceType, type) ||
+                matchesType(rule.targetType, type) ||
+                rule.propertiesSchemaType == type
+        }
+        for (rule in rulesToRemove) {
+            edgeRules.remove(rule.sourceType, rule.role, rule.targetType)
+        }
+        for (schema in versions) {
+            schemas.remove(schema.type, schema.version)
+        }
+        return ResponseEntity.noContent().build()
+    }
+
     @DeleteMapping("/schemas/{type}/{version}")
     @Operation(summary = "Remove a schema version")
-    fun deleteSchema(
+    fun deleteSchemaVersion(
         @PathVariable type: String,
         @PathVariable version: String,
     ): ResponseEntity<Any> {

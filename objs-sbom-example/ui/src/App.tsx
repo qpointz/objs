@@ -1,24 +1,41 @@
-import { Navigate, Route, createBrowserRouter, createRoutesFromElements, RouterProvider } from 'react-router-dom'
+import { Navigate, Route, createBrowserRouter, createRoutesFromElements, RouterProvider, useParams } from 'react-router-dom'
 import { AppLayout } from './AppLayout'
 import { GraphExplorerPage } from './GraphExplorerPage'
 import { ObjectLinterPage } from './ObjectLinterPage'
 import { SchemaExplorerPage } from './SchemaExplorerPage'
 import { SchemaLinterPage } from './SchemaLinterPage'
 
+function RedirectSchemasType() {
+  const { type } = useParams()
+  return <Navigate to={`/model/${type ?? ''}`} replace />
+}
+
+function RedirectSchemasTypeVersion() {
+  const { type, version } = useParams()
+  return <Navigate to={`/model/${type ?? ''}/${version ?? ''}`} replace />
+}
+
 const router = createBrowserRouter(
   createRoutesFromElements(
     <Route element={<AppLayout />}>
-      <Route index element={<Navigate to="/graph" replace />} />
-      <Route path="graph" element={<GraphExplorerPage />} />
-      <Route path="object-linter" element={<ObjectLinterPage />} />
+      <Route index element={<Navigate to="/explorer" replace />} />
+      <Route path="explorer" element={<GraphExplorerPage />} />
+      <Route path="composer" element={<ObjectLinterPage />} />
+      <Route path="model" element={<SchemaExplorerPage />} />
+      <Route path="model/:type" element={<SchemaExplorerPage />} />
+      <Route path="model/:type/:version" element={<SchemaExplorerPage />} />
+
+      {/* Legacy paths under /workbench */}
+      <Route path="graph" element={<Navigate to="/explorer" replace />} />
+      <Route path="object-linter" element={<Navigate to="/composer" replace />} />
       <Route path="linter" element={<SchemaLinterPage />} />
       <Route path="schemas/:type/:version/lint" element={<SchemaLinterPage />} />
-      <Route path="schemas" element={<SchemaExplorerPage />} />
-      <Route path="schemas/:type" element={<SchemaExplorerPage />} />
-      <Route path="schemas/:type/:version" element={<SchemaExplorerPage />} />
+      <Route path="schemas" element={<Navigate to="/model" replace />} />
+      <Route path="schemas/:type" element={<RedirectSchemasType />} />
+      <Route path="schemas/:type/:version" element={<RedirectSchemasTypeVersion />} />
     </Route>,
   ),
-  { basename: '/ui' },
+  { basename: '/workbench' },
 )
 
 export default function App() {

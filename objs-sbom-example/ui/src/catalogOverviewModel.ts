@@ -17,19 +17,41 @@ export type CatalogNodeData = {
   version?: string
 }
 
+/** Dagre rank direction for the full-schema ontology graph. */
+export type CatalogLayout = 'TB' | 'LR' | 'BT' | 'RL'
+
 const NODE_WIDTH = 168
 const NODE_HEIGHT = 64
 
-/** Build React Flow elements for the full-catalog ontology graph (dagre LR, orthogonal edges). */
+function handlePositions(layout: CatalogLayout): {
+  sourcePosition: Position
+  targetPosition: Position
+} {
+  switch (layout) {
+    case 'TB':
+      return { sourcePosition: Position.Bottom, targetPosition: Position.Top }
+    case 'BT':
+      return { sourcePosition: Position.Top, targetPosition: Position.Bottom }
+    case 'RL':
+      return { sourcePosition: Position.Left, targetPosition: Position.Right }
+    case 'LR':
+    default:
+      return { sourcePosition: Position.Right, targetPosition: Position.Left }
+  }
+}
+
+/** Build React Flow elements for the full-catalog ontology graph (dagre + orthogonal edges). */
 export function schemaCatalogElements(
   entityTypes: CatalogTypeNode[],
   rules: BoMAllowedEdgeRule[],
+  layout: CatalogLayout = 'LR',
 ): { nodes: Node[]; edges: Edge[] } {
   const needsWildcard = rules.some((r) => r.sourceType === '*' || r.targetType === '*')
   const sorted = [...entityTypes].sort((a, b) => a.type.localeCompare(b.type))
   const typesForLayout = needsWildcard
     ? [...sorted, { type: '*', version: '' }]
     : sorted
+  const { sourcePosition, targetPosition } = handlePositions(layout)
 
   const baseNodes: Node[] = typesForLayout.map((entry) => {
     const isWild = entry.type === '*'
@@ -37,8 +59,8 @@ export function schemaCatalogElements(
       id: `type:${entry.type}`,
       type: 'catalogType',
       position: { x: 0, y: 0 },
-      sourcePosition: Position.Right,
-      targetPosition: Position.Left,
+      sourcePosition,
+      targetPosition,
       data: {
         kind: isWild ? 'wildcard' : 'entity',
         type: entry.type,
@@ -70,7 +92,7 @@ export function schemaCatalogElements(
 
   const g = new dagre.graphlib.Graph({ multigraph: true }).setDefaultEdgeLabel(() => ({}))
   g.setGraph({
-    rankdir: 'LR',
+    rankdir: layout,
     nodesep: 56,
     ranksep: 100,
     edgesep: 28,

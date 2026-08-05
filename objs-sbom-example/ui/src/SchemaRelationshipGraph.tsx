@@ -387,7 +387,7 @@ function SchemaRelationshipGraphInner({
         onEdgeSelect?.(null)
         const data = node.data as SchemaGraphNodeData
         if (data.kind === 'related' && data.type !== '*') {
-          navigate(`/schemas/${encodeURIComponent(data.type)}`)
+          navigate(`/model/${encodeURIComponent(data.type)}`)
         }
       }}
       onEdgeClick={(_, edge) => {
@@ -408,14 +408,25 @@ export function SchemaRelationshipGraph({
   relationships,
   highlightedEdge,
   onEdgeSelect,
+  fillHeight = false,
 }: {
   schema: BoMSchema
   relationships: TypeEdgesResponse
   highlightedEdge?: AllowedEdgeRef | null
   onEdgeSelect?: (edge: AllowedEdgeRef | null) => void
+  fillHeight?: boolean
 }) {
   return (
-    <div style={{ height: 560, border: '1px solid var(--mantine-color-default-border)', borderRadius: 6 }}>
+    <div
+      style={{
+        height: fillHeight ? '100%' : 560,
+        minHeight: fillHeight ? 240 : undefined,
+        flex: fillHeight ? 1 : undefined,
+        border: '1px solid var(--mantine-color-default-border)',
+        borderRadius: 6,
+        overflow: 'hidden',
+      }}
+    >
       <ReactFlowProvider>
         <SchemaRelationshipGraphInner
           schema={schema}
