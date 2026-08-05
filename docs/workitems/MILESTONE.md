@@ -21,6 +21,7 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`schemas-catalog-overview`](completed/20260803-schemas-catalog-overview/STORY.md) — Schemas entry overview: full ontology graph (dagre) + catalog seed import/export.
 - [`registry-graph-io-formats`](completed/20260805-registry-graph-io-formats/STORY.md) — Split ontology vs graph import/export under `/registry` and `/graph` with `format=`; seeds now; full-catalog JSON Schema export.
 - [`object-linter-visual`](completed/20260805-object-linter-visual/STORY.md) — Object linter Visual/Text draft workspace; matcher load; schema forms; graph mutate (upsert + delete) Validate/Apply; workbench routes and schema polish.
+- [`graph-candidate-sources`](completed/20260805-graph-candidate-sources/STORY.md) — Workbench SPA in `:objs-service`; candidate-source query plan (`anno` / lowerable `anno-expr` incl. OR); bound edges; lazy candidate JSON; Postgres JSONB + GIN; Explorer/Composer exec stats and `qid` selection history (DSL frozen; no API pagination/caps).
 
 ### In Progress
 
