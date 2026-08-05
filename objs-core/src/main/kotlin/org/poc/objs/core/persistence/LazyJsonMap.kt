@@ -20,6 +20,28 @@ class LazyJsonMap<V>(
 
     fun rawJsonOrNull(): String? = rawJson
 
+    /**
+     * Equality check for string-valued JSON object entries without building the full [MutableMap]
+     * when still unparsed. Still counts as one Jackson read (tree), not a no-op.
+     */
+    fun stringEntriesContainAll(expected: Map<String, String>): Boolean {
+        if (expected.isEmpty()) {
+            return true
+        }
+        parsed?.let { map ->
+            return expected.all { (key, value) -> map[key] == value }
+        }
+        if (rawJson.isNullOrBlank()) {
+            return false
+        }
+        parseCount++
+        val tree = PayloadMapper.mapper.readTree(rawJson)
+        return expected.all { (key, value) ->
+            val node = tree.get(key) ?: return@all false
+            node.isValueNode && node.asString() == value
+        }
+    }
+
     private fun materialize(): MutableMap<String, V> {
         parsed?.let { return it }
         parseCount++

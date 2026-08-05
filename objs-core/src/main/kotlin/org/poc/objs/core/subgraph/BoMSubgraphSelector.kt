@@ -3,8 +3,11 @@ package org.poc.objs.core.subgraph
 import org.poc.objs.core.domain.BoMGraph
 import org.poc.objs.core.domain.BoMSubgraph
 import org.poc.objs.core.match.BoMAnnotationMatcher
+import org.poc.objs.core.match.BoMCandidateSource
+import org.poc.objs.core.match.BoMChainedMatcher
 import org.poc.objs.core.match.BoMEdgeDomainCandidate
 import org.poc.objs.core.match.BoMEntityDomainCandidate
+import org.poc.objs.core.match.BoMInMemoryAllEntitiesSource
 import org.poc.objs.core.match.BoMMatcher
 import org.poc.objs.core.match.MatchAllAnnotationMatcher
 import org.poc.objs.core.match.asBoMMatcher
@@ -16,9 +19,12 @@ import java.util.UUID
  */
 object BoMSubgraphSelector {
     fun select(graph: BoMGraph, matcher: BoMMatcher): BoMSubgraph {
-        val entities = graph.entities
-            .map { BoMEntityDomainCandidate(it) }
-            .filter { matcher.matches(it) }
+        val stages = flattenStages(matcher)
+        val all = graph.entities.map { BoMEntityDomainCandidate(it) }
+        val source: BoMCandidateSource = BoMInMemoryAllEntitiesSource(all)
+        // In-memory path has no SQL backend; always all-entities + filters (including stage 0).
+        val entities = source.collect { }
+            .filter { candidate -> stages.all { stage -> stage.matches(candidate) } }
             .map { it.toDomain() }
         val ids: Set<UUID> = entities.mapNotNull { it.id }.toSet()
         val edges = graph.edges
@@ -33,4 +39,10 @@ object BoMSubgraphSelector {
 
     fun selectMatchAll(graph: BoMGraph, filter: Map<String, String>): BoMSubgraph =
         select(graph, MatchAllAnnotationMatcher(filter))
+
+    private fun flattenStages(matcher: BoMMatcher): List<BoMMatcher> =
+        when (matcher) {
+            is BoMChainedMatcher -> matcher.matchers.flatMap(::flattenStages)
+            else -> listOf(matcher)
+        }
 }

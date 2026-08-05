@@ -75,6 +75,6 @@ deterministic **UUIDv5** from stable textual keys (see [seeds.md](seeds.md)).
 | Edge / relation | `BoMEdge` |
 | Schema catalog entry | `BoMSchema` — type + version + authoritative `BoMSchemaNode` DSL |
 | Annotations map | Prefer plain key-value on `BoMEntity` |
-| Annotation matcher | `BoMMatcher` / `BoMPushableMatcher` / `BoMNonPushableMatcher`; default match-all is pushable |
+| Annotation matcher | `BoMMatcher` / `BoMSourceCapableMatcher`; DSL `anno` (`MatchAllAnnotationMatcher`) is source-capable on Postgres |
 
 Annotation type name may still avoid `java.lang.annotation` clash if a dedicated class is introduced.

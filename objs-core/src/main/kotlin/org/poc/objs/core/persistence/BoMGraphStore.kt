@@ -146,14 +146,13 @@ class BoMGraphStore(
                 edgeRepository.deleteById(id)
             }
         }
-        for (id in mutation.delete.entities.distinct()) {
-            if (!entityRepository.existsById(id)) {
-                continue
-            }
-            edgeRepository.findAll().filter { it.sourceId == id || it.targetId == id }
-                .forEach { edgeRepository.delete(it) }
-            entityRepository.deleteById(id)
+        val entityIds = mutation.delete.entities.distinct().filter { entityRepository.existsById(it) }
+        if (entityIds.isEmpty()) {
+            return
         }
+        edgeRepository.findBySourceIdInOrTargetIdIn(entityIds, entityIds)
+            .forEach { edgeRepository.delete(it) }
+        entityIds.forEach { entityRepository.deleteById(it) }
     }
 
     private fun applyUpserts(graph: BoMGraph) {

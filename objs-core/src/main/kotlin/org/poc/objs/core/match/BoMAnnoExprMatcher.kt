@@ -69,15 +69,42 @@ object BoMAnnoExprEngine {
 }
 
 /**
- * Non-pushable annotation expression matcher backed by the shared JEXL engine.
+ * Annotation expression matcher (DSL `anno-expr`) backed by the shared JEXL engine.
  *
  * Each annotation map entry is bound as a top-level variable, for example:
  * `version == '1.0.0' && app == 'aapp-lala'`.
+ *
+ * Execution:
+ * - If the JEXL AST lowers to equality with `&&` / `||`, [toCandidateSource] may return a Postgres
+ *   JSONB `@>` source (single map or OR of maps after DNF).
+ * - If it cannot be converted to SQL ([sqlContainmentDisjuncts] is null), or the backend
+ *   rejects the source, executors switch to **local eval mode**: all-entities scan +
+ *   [matches] (JEXL) via [BoMEntitySelectionPlan].
  */
 class BoMAnnoExprMatcher(
     val expression: String,
     private val compiled: JexlExpression = BoMAnnoExprEngine.compile(expression),
-) : BoMNonPushableMatcher() {
+) : BoMMatcher, BoMSourceCapableMatcher {
+
+    /**
+     * DNF containment maps for SQL pushdown; null means local JEXL evaluation only.
+     */
+    val sqlContainmentDisjuncts: List<Map<String, String>>? =
+        BoMAnnoExprLowerer.toContainmentDisjuncts(compiled)
+
+    /** Single-map convenience when there is exactly one disjunct (match-all shape). */
+    val sqlContainmentFilter: Map<String, String>?
+        get() = sqlContainmentDisjuncts?.singleOrNull()
+
+    /** True when the expression cannot be converted to a containment SQL source. */
+    val localEvalOnly: Boolean
+        get() = sqlContainmentDisjuncts == null
+
+    override fun toCandidateSource(backend: BoMEntityCandidateBackend): BoMCandidateSource? {
+        val disjuncts = sqlContainmentDisjuncts ?: return null
+        return backend.annotationContainmentAnySource(disjuncts)
+    }
+
     override fun matches(candidate: BoMEntityMatchCandidate): Boolean {
         val vars = LinkedHashMap<String, Any?>(candidate.annotations.size)
         candidate.annotations.forEach { (key, value) -> vars[key] = value }

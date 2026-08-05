@@ -13,7 +13,7 @@ Entity SDK + validation + JPA/Flyway persistence for the entity store.
 |---------|-------|----------------|
 | `org.poc.objs.core` | `ObjsCore` | Module marker |
 | `…domain` | `BoMEntity`, `BoMEdge`, `BoMGraph`, `BoMSubgraph`, `BoMSchema*`, `BoAllowedEdge*` | In-memory domain + catalogs |
-| `…match` | `BoMMatcher`, `BoMPushableMatcher`, `BoMNonPushableMatcher`, `MatchAllAnnotationMatcher`, `BoMMatchExpression` | Annotation matching strategies |
+| `…match` | `BoMMatcher`, `BoMSourceCapableMatcher`, `BoMCandidateSource`, `MatchAllAnnotationMatcher`, `BoMMatchExpression` | Annotation matching + candidate sources |
 | `…subgraph` | `BoMSubgraphSelector` | Induced subgraph selection |
 | `…validation` | `BoMValidator`, `BoMPersistGate`, `BoMValidationResult` | Schema + allow-list; two-stage persist gate |
 | `…persistence` | `BoMEntityRecord`, `BoMEdgeRecord`, repos, `BoMGraphStore`, autoconfig | JPA + Flyway + store facade |

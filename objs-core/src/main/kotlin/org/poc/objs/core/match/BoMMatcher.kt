@@ -3,8 +3,8 @@ package org.poc.objs.core.match
 import org.poc.objs.core.domain.BoMEntity
 
 /**
- * Common matching contract. Stores route [BoMPushableMatcher] through SQL when possible and
- * scan every other matcher via raw/lazy candidates.
+ * Common matching contract. Executors resolve a [BoMCandidateSource] from a
+ * [BoMSourceCapableMatcher] when possible, otherwise scan all entities and apply [matches].
  */
 interface BoMMatcher {
     fun matches(candidate: BoMEntityMatchCandidate): Boolean
@@ -18,30 +18,22 @@ interface BoMMatcher {
 }
 
 /**
- * Pushable matcher: exposes a structured [expression] that stores may compile to SQL.
- * Expression evaluation remains available for semantic parity and non-SQL backends.
- */
-abstract class BoMPushableMatcher : BoMMatcher {
-    abstract val expression: BoMMatchExpression
-
-    override fun matches(candidate: BoMEntityMatchCandidate): Boolean =
-        expression.matches(candidate)
-}
-
-/**
- * Non-pushable matcher: always evaluated in memory against lightweight candidates.
- */
-abstract class BoMNonPushableMatcher : BoMMatcher
-
-/**
- * Compatibility adapter for existing [BoMAnnotationMatcher] lambdas/custom implementations.
- * Adapters are treated as non-pushable scans.
+ * Adapter for legacy [BoMAnnotationMatcher] lambdas. Always filter-only (no SQL source).
+ * Uses candidate annotations directly; payload is not required for selection matching.
  */
 class BoMAnnotationMatcherAdapter(
     private val matcher: BoMAnnotationMatcher,
-) : BoMNonPushableMatcher() {
+) : BoMMatcher {
     override fun matches(candidate: BoMEntityMatchCandidate): Boolean =
-        matcher.matches(candidate.toDomain())
+        matcher.matches(
+            org.poc.objs.core.domain.BoMEntity(
+                id = candidate.id,
+                type = candidate.type,
+                schemaVersion = candidate.schemaVersion,
+                annotations = candidate.annotations,
+                payload = mutableMapOf(),
+            ),
+        )
 }
 
 fun BoMAnnotationMatcher.asBoMMatcher(): BoMMatcher = when (this) {

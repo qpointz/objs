@@ -48,6 +48,30 @@ class BoMSubgraphSelectorTest {
     }
 
     @Test
+    fun shouldApplyChainedAnnoThenAnnoExprAsFilters() {
+        val a = UUID.randomUUID()
+        val b = UUID.randomUUID()
+        val graph = BoMGraph(
+            entities = mutableListOf(
+                BoMEntity(id = a, type = "T", schemaVersion = "1", annotations = mutableMapOf("app" to "x", "env" to "prod")),
+                BoMEntity(id = b, type = "T", schemaVersion = "1", annotations = mutableMapOf("app" to "x", "env" to "dev")),
+            ),
+            edges = mutableListOf(),
+        )
+        val dsl = org.poc.objs.core.match.BoMMatcherDsl.create()
+        val matcher = dsl.decode(
+            """
+            - anno:
+                app: x
+            - anno-expr: "env == 'prod'"
+            """.trimIndent(),
+            org.poc.objs.core.match.BoMMatcherFormat.YAML,
+        )
+        val sub = BoMSubgraphSelector.select(graph, matcher)
+        assertThat(sub.entities.map { it.id }).containsExactly(a)
+    }
+
+    @Test
     fun shouldExcludeEdgeWhenOnlyOneEndpointMatches() {
         val a = UUID.randomUUID()
         val b = UUID.randomUUID()

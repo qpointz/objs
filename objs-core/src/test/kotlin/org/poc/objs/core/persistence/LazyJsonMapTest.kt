@@ -34,7 +34,12 @@ class LazyJsonMapTest {
     }
 
     @Test
-    fun shouldTreatNullPropertiesAsAbsent() {
-        assertThat(LazyJsonMap.properties(null)).isNull()
+    fun shouldCheckStringEntriesWithoutFullMapMaterialize() {
+        val map = LazyJsonMap.annotations("""{"app":"payments","appVersion":"1.0.0"}""")
+        assertThat(map.stringEntriesContainAll(mapOf("app" to "payments"))).isTrue()
+        assertThat(map.wasParsed).isFalse()
+        assertThat(map.parseInvocations).isEqualTo(1)
+        assertThat(map.stringEntriesContainAll(mapOf("app" to "other"))).isFalse()
+        assertThat(map.parseInvocations).isEqualTo(2)
     }
 }

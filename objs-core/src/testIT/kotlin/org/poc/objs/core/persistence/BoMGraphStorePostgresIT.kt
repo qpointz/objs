@@ -17,6 +17,7 @@ import org.springframework.boot.SpringBootConfiguration
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
 import org.springframework.context.annotation.Import
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.testcontainers.containers.PostgreSQLContainer
@@ -56,6 +57,9 @@ class BoMGraphStorePostgresIT {
 
     @Autowired
     lateinit var store: BoMGraphStore
+
+    @Autowired
+    lateinit var jdbc: JdbcTemplate
 
     @Autowired
     lateinit var schemas: BoMSchemaCatalog
@@ -122,15 +126,28 @@ class BoMGraphStorePostgresIT {
         assertThat(testSubgraph.entities.map { it.id }).containsExactlyInAnyOrder(a, b)
         assertThat(testSubgraph.edges).hasSize(1)
 
-        val nonPushable = store.selectSubgraph(
+        val filterOnly = store.selectSubgraph(
             org.poc.objs.core.match.BoMAnnotationMatcher { entity ->
                 entity.annotations["team"] == "core"
             },
         )
-        assertThat(nonPushable.entities.map { it.id }).containsExactlyInAnyOrder(a, c)
-        assertThat(nonPushable.edges).hasSize(1)
-        assertThat(nonPushable.edges.single().source).isEqualTo(a)
-        assertThat(nonPushable.edges.single().target).isEqualTo(c)
+        assertThat(filterOnly.entities.map { it.id }).containsExactlyInAnyOrder(a, c)
+        assertThat(filterOnly.edges).hasSize(1)
+        assertThat(filterOnly.edges.single().source).isEqualTo(a)
+        assertThat(filterOnly.edges.single().target).isEqualTo(c)
+    }
+
+    @Test
+    fun shouldHaveAnnotationsGinIndex_afterJsonbMigration() {
+        val count = jdbc.queryForObject(
+            """
+            SELECT COUNT(*) FROM pg_indexes
+            WHERE tablename = 'bom_graph_entity'
+              AND indexname = 'idx_bom_graph_entity_annotations_gin'
+            """.trimIndent(),
+            Int::class.java,
+        )
+        assertThat(count).isEqualTo(1)
     }
 
     @Test

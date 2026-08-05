@@ -8,10 +8,9 @@ import java.util.UUID
 class BoMMatcherHierarchyTest {
 
     @Test
-    fun shouldExposePushableMatchAllExpression() {
+    fun shouldExposeSourceCapableMatchAllForPostgres() {
         val matcher = MatchAllAnnotationMatcher(mapOf("app" to "payments", "appVersion" to "1.0.0"))
-        assertThat(matcher).isInstanceOf(BoMPushableMatcher::class.java)
-        assertThat(matcher).isNotInstanceOf(BoMAnnotationMatcher::class.java)
+        assertThat(matcher).isInstanceOf(BoMSourceCapableMatcher::class.java)
         assertThat(matcher.expression).isEqualTo(
             BoMMatchExpression.And(
                 listOf(
@@ -20,6 +19,25 @@ class BoMMatcherHierarchyTest {
                 ),
             ),
         )
+        val backend = object : BoMEntityCandidateBackend {
+            override val isPostgres: Boolean = true
+            override fun allEntitiesSource(): BoMCandidateSource = BoMCandidateSource { emptyList() }
+            override fun annotationContainmentAnySource(disjuncts: List<Map<String, String>>): BoMCandidateSource? {
+                assertThat(disjuncts).hasSize(1)
+                assertThat(disjuncts.single())
+                    .containsEntry("app", "payments")
+                    .containsEntry("appVersion", "1.0.0")
+                return BoMCandidateSource { emptyList() }
+            }
+        }
+        assertThat(matcher.toCandidateSource(backend)).isNotNull()
+        val h2 = object : BoMEntityCandidateBackend {
+            override val isPostgres: Boolean = false
+            override fun allEntitiesSource(): BoMCandidateSource = BoMCandidateSource { emptyList() }
+            override fun annotationContainmentAnySource(disjuncts: List<Map<String, String>>): BoMCandidateSource? =
+                null
+        }
+        assertThat(matcher.toCandidateSource(h2)).isNull()
     }
 
     @Test
@@ -38,11 +56,11 @@ class BoMMatcherHierarchyTest {
     }
 
     @Test
-    fun shouldAdaptLegacyAnnotationMatchersAsNonPushable() {
+    fun shouldAdaptLegacyAnnotationMatchersAsFilterOnly() {
         val legacy = BoMAnnotationMatcher { it.annotations["env"] == "prod" }
         val adapted = legacy.asBoMMatcher()
-        assertThat(adapted).isInstanceOf(BoMNonPushableMatcher::class.java)
-        assertThat(adapted).isNotInstanceOf(BoMPushableMatcher::class.java)
+        assertThat(adapted).isInstanceOf(BoMAnnotationMatcherAdapter::class.java)
+        assertThat(adapted).isNotInstanceOf(BoMSourceCapableMatcher::class.java)
 
         val prod = BoMEntity(
             type = "Person",

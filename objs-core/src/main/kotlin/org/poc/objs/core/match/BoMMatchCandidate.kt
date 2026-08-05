@@ -15,6 +15,13 @@ interface BoMEntityMatchCandidate {
     val annotations: MutableMap<String, String>
     val payload: MutableMap<String, Any?>
 
+    /**
+     * True when every [filter] entry is present with equal value.
+     * Default walks [annotations]; raw-backed candidates may avoid full map materialization.
+     */
+    fun annotationsMatchAll(filter: Map<String, String>): Boolean =
+        filter.all { (key, value) -> annotations[key] == value }
+
     fun toDomain(): BoMEntity = BoMEntity(
         id = id,
         type = type,

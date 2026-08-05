@@ -115,12 +115,12 @@ class BoMGraphStoreTest {
         assertThat(allX.entities).hasSize(2)
         assertThat(allX.edges).hasSize(1)
 
-        val nonPushable = store.selectSubgraph(
+        val filterOnly = store.selectSubgraph(
             org.poc.objs.core.match.BoMAnnotationMatcher { it.annotations["src"] == "ui" },
         )
-        assertThat(nonPushable.entities).hasSize(1)
-        assertThat(nonPushable.entities.single().id).isEqualTo(neu)
-        assertThat(nonPushable.edges).isEmpty()
+        assertThat(filterOnly.entities).hasSize(1)
+        assertThat(filterOnly.entities.single().id).isEqualTo(neu)
+        assertThat(filterOnly.edges).isEmpty()
     }
 
     @Test
