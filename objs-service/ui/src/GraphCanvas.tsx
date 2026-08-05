@@ -49,6 +49,8 @@ export type GraphLayout = 'TB' | 'LR' | 'BT' | 'RL'
 
 export type GraphCanvasHandle = {
   applyLayout: (layout?: GraphLayout) => void
+  /** Pan/zoom so [nodeId] is centered in the viewport. */
+  focusNode: (nodeId: string) => void
 }
 
 function entitiesHavePositions(entities: GraphNode[]): boolean {
@@ -255,7 +257,7 @@ function GraphCanvasInner(
   }: Props,
   ref: React.Ref<GraphCanvasHandle>,
 ) {
-  const { fitView } = useReactFlow()
+  const { fitView, setCenter, getZoom } = useReactFlow()
   const initial = useMemo(
     () => toFlowElements(entities, links, selection),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -364,7 +366,21 @@ function GraphCanvasInner(
     [edges, emitPositions, fitView, layout, setNodes],
   )
 
-  useImperativeHandle(ref, () => ({ applyLayout }), [applyLayout])
+  const focusNode = useCallback(
+    (nodeId: string) => {
+      const node = nodesRef.current.find((n) => n.id === nodeId)
+      if (!node) return
+      const width = node.measured?.width ?? NODE_W
+      const height = node.measured?.height ?? NODE_H
+      const x = node.position.x + width / 2
+      const y = node.position.y + height / 2
+      const zoom = Math.max(getZoom(), 0.85)
+      setCenter(x, y, { zoom, duration: 400 })
+    },
+    [getZoom, setCenter],
+  )
+
+  useImperativeHandle(ref, () => ({ applyLayout, focusNode }), [applyLayout, focusNode])
 
   return (
     <ReactFlow

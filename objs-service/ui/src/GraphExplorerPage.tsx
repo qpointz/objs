@@ -1,10 +1,11 @@
-import { useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert,
   Badge,
   Button,
   Code,
   Group,
+  Loader,
   Menu,
   Paper,
   ScrollArea,
@@ -26,7 +27,9 @@ import {
   MatcherQueryForm,
   type MatcherQueryFormHandle,
 } from './MatcherQueryForm'
-import type { GraphLink, GraphNode, GraphSelection } from './types'
+import type { QueryExecStats } from './queryExecStats'
+import type { GraphLink, GraphNode } from './types'
+import { newGraphQueryId, useGraphSelectionHistory } from './useGraphSelectionHistory'
 
 const GRAPH_MATCHER_STORAGE_KEY = 'objs.ui.graphExplorer.matcher'
 const GRAPH_SESSION_STORAGE_KEY = 'objs.ui.graphExplorer.session'
@@ -42,6 +45,7 @@ type StoredGraphSession = {
   nodes: GraphNode[]
   links: GraphLink[]
   layout: GraphLayout
+  queryId?: string
 }
 
 function loadStoredGraphMatcher(): unknown | null {
@@ -75,10 +79,26 @@ function loadStoredGraphSession(): StoredGraphSession | null {
       parsed.layout === 'RL'
         ? parsed.layout
         : 'TB'
-    return { nodes: parsed.nodes, links: parsed.links, layout }
+    const queryId =
+      typeof parsed.queryId === 'string' && parsed.queryId.length > 0 ? parsed.queryId : undefined
+    return { nodes: parsed.nodes, links: parsed.links, layout, queryId }
   } catch {
     return null
   }
+}
+
+function initialExplorerQueryId(session: StoredGraphSession | null): string | null {
+  try {
+    const fromUrl = new URLSearchParams(window.location.search).get('qid')
+    if (fromUrl) return fromUrl
+  } catch {
+    // ignore
+  }
+  if (session?.queryId) return session.queryId
+  if (session && (session.nodes.length > 0 || session.links.length > 0)) {
+    return newGraphQueryId()
+  }
+  return null
 }
 
 function saveStoredGraphSession(session: StoredGraphSession) {
@@ -106,9 +126,9 @@ export function GraphExplorerPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
+  const [execStats, setExecStats] = useState<QueryExecStats | null>(null)
   const [nodes, setNodes] = useState<GraphNode[]>(() => storedSession?.nodes ?? [])
   const [links, setLinks] = useState<GraphLink[]>(() => storedSession?.links ?? [])
-  const [selection, setSelection] = useState<GraphSelection | null>(null)
   const [layout, setLayout] = useState<GraphLayout>(() => storedSession?.layout ?? 'TB')
   const [lastMatcher, setLastMatcher] = useState<unknown>(() => storedMatcher)
   const [canvasEpoch, setCanvasEpoch] = useState(0)
@@ -116,6 +136,20 @@ export function GraphExplorerPage() {
   linksRef.current = links
   const layoutRef = useRef(layout)
   layoutRef.current = layout
+  const queryIdRef = useRef<string | null>(null)
+
+  const [initialQueryId] = useState(() => initialExplorerQueryId(storedSession))
+  const onFocusNode = useCallback((nodeId: string) => {
+    graphRef.current?.focusNode(nodeId)
+  }, [])
+
+  const { selection, select, beginQueryResult, queryId } = useGraphSelectionHistory({
+    nodes,
+    links,
+    onFocusNode,
+    initialQueryId,
+  })
+  queryIdRef.current = queryId
 
   const types = useMemo(() => {
     const set = new Map<string, string>()
@@ -129,13 +163,28 @@ export function GraphExplorerPage() {
     nextNodes: GraphNode[],
     nextLinks: GraphLink[],
     nextLayout: GraphLayout,
+    nextQueryId: string | null = queryIdRef.current,
   ) {
     if (nextNodes.length === 0 && nextLinks.length === 0) {
       clearStoredGraphSession()
       return
     }
-    saveStoredGraphSession({ nodes: nextNodes, links: nextLinks, layout: nextLayout })
+    saveStoredGraphSession({
+      nodes: nextNodes,
+      links: nextLinks,
+      layout: nextLayout,
+      ...(nextQueryId ? { queryId: nextQueryId } : {}),
+    })
   }
+
+  useEffect(() => {
+    if (!queryId) return
+    if (nodes.length === 0 && links.length === 0) return
+    persistSession(nodes, links, layout, queryId)
+    // Seed session with qid only; positions persist via onPositionsChange.
+    // Intentionally omit nodes/links/layout deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryId])
 
   function onPositionsChange(positions: GraphNodePositions) {
     setNodes((prev) => {
@@ -152,25 +201,33 @@ export function GraphExplorerPage() {
     setLoading(true)
     setError(null)
     setFormError(null)
-    setSelection(null)
     try {
       const body = matcherRef.current?.build()
       if (body === undefined) {
         throw new Error('Matcher form is not ready')
       }
+      const started = performance.now()
       const subgraph = await queryGraph(body)
+      const durationMs = performance.now() - started
       const graph = toGraphData(subgraph)
+      const qid = beginQueryResult()
+      setExecStats({
+        durationMs,
+        nodes: graph.nodes.length,
+        edges: graph.links.length,
+      })
       // Drop prior canvas coordinates so Exec starts from a fresh layout.
       setNodes(graph.nodes)
       setLinks(graph.links)
       setLastMatcher(body)
       saveStoredGraphMatcher(body)
       clearStoredGraphSession()
-      persistSession(graph.nodes, graph.links, layout)
+      persistSession(graph.nodes, graph.links, layout, qid)
       setCanvasEpoch((n) => n + 1)
     } catch (e) {
       setNodes([])
       setLinks([])
+      setExecStats(null)
       clearStoredGraphSession()
       const message = e instanceof Error ? e.message : String(e)
       if (
@@ -199,6 +256,18 @@ export function GraphExplorerPage() {
     setLayout(next)
     layoutRef.current = next
     graphRef.current?.applyLayout(next)
+  }
+
+  function selectNodeFromCanvas(nodeId: string) {
+    const node = nodes.find((n) => n.id === nodeId)
+    if (!node) return
+    select({ kind: 'node', node })
+    requestAnimationFrame(() => graphRef.current?.focusNode(nodeId))
+  }
+
+  function endpointLabel(nodeId: string): string {
+    const node = nodes.find((n) => n.id === nodeId)
+    return node ? `${node.name} (${node.type})` : nodeId
   }
 
   return (
@@ -273,6 +342,7 @@ export function GraphExplorerPage() {
           emptyDefaults
           matcher={storedMatcher}
           error={formError}
+          stats={execStats}
           action={
             <Button size="xs" onClick={() => void onExec()} loading={loading}>
               Exec
@@ -310,6 +380,24 @@ export function GraphExplorerPage() {
 
       <Group align="stretch" grow preventGrowOverflow={false} style={{ flex: 1, minHeight: 0 }} gap="md">
         <Paper withBorder style={{ flex: 2, minHeight: 280, overflow: 'hidden', position: 'relative' }}>
+          {loading && (
+            <Stack
+              align="center"
+              justify="center"
+              gap="sm"
+              style={{
+                position: 'absolute',
+                inset: 0,
+                zIndex: 5,
+                background: 'color-mix(in srgb, var(--mantine-color-body) 82%, transparent)',
+              }}
+            >
+              <Loader size="md" />
+              <Text size="sm" c="dimmed">
+                Fetching subgraph…
+              </Text>
+            </Stack>
+          )}
           {nodes.length === 0 && !loading ? (
             <Text c="dimmed" p="md">
               Press Exec to load a subgraph.
@@ -321,7 +409,7 @@ export function GraphExplorerPage() {
               nodes={nodes}
               links={links}
               selection={selection}
-              onSelect={setSelection}
+              onSelect={select}
               layout={layout}
               autoLayoutOnDataChange={false}
               onPositionsChange={onPositionsChange}
@@ -422,6 +510,43 @@ export function GraphExplorerPage() {
                 <Text size="xs" c="dimmed" style={{ wordBreak: 'break-all' }}>
                   id: {selection.edge.id}
                 </Text>
+                <div>
+                  <Text fw={600} size="sm" mb={4}>
+                    endpoints
+                  </Text>
+                  <Stack gap={4}>
+                    <Group gap={6} wrap="nowrap" align="flex-start">
+                      <Text size="sm" fw={600} style={{ flexShrink: 0 }}>
+                        source:
+                      </Text>
+                      <Anchor
+                        component="button"
+                        type="button"
+                        size="sm"
+                        ta="left"
+                        style={{ wordBreak: 'break-all' }}
+                        onClick={() => selectNodeFromCanvas(selection.edge.source)}
+                      >
+                        {endpointLabel(selection.edge.source)}
+                      </Anchor>
+                    </Group>
+                    <Group gap={6} wrap="nowrap" align="flex-start">
+                      <Text size="sm" fw={600} style={{ flexShrink: 0 }}>
+                        target:
+                      </Text>
+                      <Anchor
+                        component="button"
+                        type="button"
+                        size="sm"
+                        ta="left"
+                        style={{ wordBreak: 'break-all' }}
+                        onClick={() => selectNodeFromCanvas(selection.edge.target)}
+                      >
+                        {endpointLabel(selection.edge.target)}
+                      </Anchor>
+                    </Group>
+                  </Stack>
+                </div>
                 <div>
                   <Text fw={600} size="sm" mb={4}>
                     edge JSON

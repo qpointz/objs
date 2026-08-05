@@ -1,4 +1,4 @@
-package org.poc.objs.sbom.web
+package org.poc.objs.service.web
 
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.context.annotation.Configuration
@@ -14,10 +14,10 @@ import org.springframework.web.servlet.view.RedirectView
 import java.io.IOException
 
 /**
- * Serves the workbench SPA from classpath static/ui at /workbench/.
+ * Serves the workbench SPA from classpath `static/ui` at `/workbench/`.
  */
 @Configuration
-class SbomUiWebConfiguration : WebMvcConfigurer {
+class ObjsWorkbenchUiConfiguration : WebMvcConfigurer {
     override fun addViewControllers(registry: ViewControllerRegistry) {
         registry.addRedirectViewController("/workbench", "/workbench/")
         registry.addViewController("/workbench/").setViewName("forward:/workbench/index.html")
@@ -41,9 +41,9 @@ class SbomUiWebConfiguration : WebMvcConfigurer {
     }
 }
 
-/** Redirect legacy /ui bookmarks into /workbench. */
+/** Redirect legacy `/ui` bookmarks into `/workbench`. */
 @Controller
-class LegacyUiRedirectController {
+class LegacyWorkbenchUiRedirectController {
     @GetMapping("/ui", "/ui/**")
     fun redirect(request: HttpServletRequest): RedirectView {
         val suffix = request.requestURI.removePrefix(request.contextPath).removePrefix("/ui")

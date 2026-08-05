@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import {
   Alert,
+  Anchor,
   Badge,
   Button,
   Checkbox,
@@ -68,6 +69,10 @@ type Props = {
   onRevertEdgeChanges: (id: string) => void
 }
 
+export type ObjectLinterVisualPanelHandle = {
+  focusNode: (nodeId: string) => void
+}
+
 function latestEntitySchemas(schemas: BoMSchema[]): BoMSchema[] {
   const byType = new Map<string, BoMSchema>()
   for (const schema of schemas.filter((s) => s.usages.includes('ENTITY'))) {
@@ -79,20 +84,24 @@ function latestEntitySchemas(schemas: BoMSchema[]): BoMSchema[] {
   return [...byType.values()].sort((a, b) => a.type.localeCompare(b.type))
 }
 
-export function ObjectLinterVisualPanel({
-  draftState,
-  canvasDocument,
-  selection,
-  onSelect,
-  onUpsertEntity,
-  onUpsertEdge,
-  onRemoveEntity,
-  onRemoveEdge,
-  onRestoreDeletedEntity,
-  onRestoreDeletedEdge,
-  onRevertEntityChanges,
-  onRevertEdgeChanges,
-}: Props) {
+export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle, Props>(
+  function ObjectLinterVisualPanel(
+    {
+      draftState,
+      canvasDocument,
+      selection,
+      onSelect,
+      onUpsertEntity,
+      onUpsertEdge,
+      onRemoveEntity,
+      onRemoveEdge,
+      onRestoreDeletedEntity,
+      onRestoreDeletedEdge,
+      onRevertEntityChanges,
+      onRevertEdgeChanges,
+    },
+    ref,
+  ) {
   const document = canvasDocument
   const liveDocument = draftState.document
   const graphView = useMemo(() => {
@@ -109,6 +118,15 @@ export function ObjectLinterVisualPanel({
     }
   }, [canvasDocument, draftState])
   const graphRef = useRef<GraphCanvasHandle>(null)
+  useImperativeHandle(
+    ref,
+    () => ({
+      focusNode: (nodeId: string) => {
+        graphRef.current?.focusNode(nodeId)
+      },
+    }),
+    [],
+  )
   const [layout, setLayout] = useState<GraphLayout>('TB')
   const [schemas, setSchemas] = useState<BoMSchema[]>([])
   const [schemasError, setSchemasError] = useState<string | null>(null)
@@ -136,6 +154,15 @@ export function ObjectLinterVisualPanel({
       return next.length === prev.length ? prev : next
     })
   }, [document.entities])
+
+  // Sync pair highlight when selection is restored from browser history.
+  useEffect(() => {
+    if (selection?.kind === 'node') {
+      setPairIds((prev) => (prev.includes(selection.node.id) ? prev : [selection.node.id]))
+      return
+    }
+    setPairIds((prev) => (prev.length === 0 ? prev : []))
+  }, [selection])
 
   const pairIdsRef = useRef(pairIds)
   pairIdsRef.current = pairIds
@@ -173,6 +200,22 @@ export function ObjectLinterVisualPanel({
     },
     [onSelect],
   )
+
+  const selectAndFocusEntity = useCallback(
+    (entityId: string) => {
+      const entity = document.entities.find((e) => e.id === entityId)
+      if (!entity) return
+      selectEntityAlone(entity)
+      requestAnimationFrame(() => graphRef.current?.focusNode(entityId))
+    },
+    [document.entities, selectEntityAlone],
+  )
+
+  function endpointLabel(entityId: string): string {
+    const entity = document.entities.find((e) => e.id === entityId)
+    if (!entity) return entityId
+    return `${nodeLabel(entity.payload, entity.id)} (${entity.type})`
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -697,7 +740,42 @@ export function ObjectLinterVisualPanel({
                     )}
                   </Group>
                   <Text size="xs" c="dimmed">
-                    {selectedEdge.source} —{selectedEdge.role}→ {selectedEdge.target}
+                    endpoints
+                  </Text>
+                  <Stack gap={2}>
+                    <Group gap={6} wrap="nowrap" align="flex-start">
+                      <Text size="xs" fw={600} style={{ flexShrink: 0 }}>
+                        source:
+                      </Text>
+                      <Anchor
+                        component="button"
+                        type="button"
+                        size="xs"
+                        ta="left"
+                        style={{ wordBreak: 'break-all' }}
+                        onClick={() => selectAndFocusEntity(selectedEdge.source)}
+                      >
+                        {endpointLabel(selectedEdge.source)}
+                      </Anchor>
+                    </Group>
+                    <Group gap={6} wrap="nowrap" align="flex-start">
+                      <Text size="xs" fw={600} style={{ flexShrink: 0 }}>
+                        target:
+                      </Text>
+                      <Anchor
+                        component="button"
+                        type="button"
+                        size="xs"
+                        ta="left"
+                        style={{ wordBreak: 'break-all' }}
+                        onClick={() => selectAndFocusEntity(selectedEdge.target)}
+                      >
+                        {endpointLabel(selectedEdge.target)}
+                      </Anchor>
+                    </Group>
+                  </Stack>
+                  <Text size="xs" c="dimmed">
+                    role: {selectedEdge.role}
                   </Text>
                   {selectedEdge.id && edgeStatus(draftState, selectedEdge.id) === 'deleted' ? (
                     <Button
@@ -827,7 +905,8 @@ export function ObjectLinterVisualPanel({
       </Modal>
     </Stack>
   )
-}
+  },
+)
 
 function ruleKey(rule: BoMAllowedEdgeRule): string {
   return `${rule.sourceType}|${rule.role}|${rule.targetType}`

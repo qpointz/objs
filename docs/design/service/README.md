@@ -10,18 +10,20 @@ Publishable Spring library that exposes:
 - **REST** controllers for the objs HTTP API (`/graph`, `/registry`, `/status`)
 - **Boot autoconfiguration** so a consuming application can pick up objs beans by classpath
 - **SpringDoc** OpenAPI annotations + grouped API beans (UI also on `:objs-app`)
+- **Workbench SPA** sources under `objs-service/ui/`, built into `classpath:/static/ui/` and served at `/workbench/` (`ObjsWorkbenchUiConfiguration`; legacy `/ui/**` redirects)
 
-Depends on `:objs-core`. Runnable assembly: [`../platform/overview.md`](../platform/overview.md) / `:objs-app`. Domain: [`../graph/`](../graph/README.md).
+Depends on `:objs-core`. Runnable assembly: [`../platform/overview.md`](../platform/overview.md) / `:objs-app`. Domain: [`../graph/`](../graph/README.md). Operator UI: [`../ui.md`](../ui.md).
 
 **Normative endpoint tables:** [`rest-api.md`](rest-api.md).
 
 ## Current surface
 
-| Area | Controllers |
+| Area | Controllers / config |
 |------|-------------|
 | Status | `ObjsStatusController` |
 | Graph | `ObjsGraphController` |
 | Registry | `ObjsRegistryController` |
+| Workbench SPA | `ObjsWorkbenchUiConfiguration`, `LegacyWorkbenchUiRedirectController` |
 | OpenAPI | `ObjsOpenApiConfiguration` (`GroupedOpenApi` graph / registry) |
 
 `testIT` suite is registered (ready for broader wiring tests).

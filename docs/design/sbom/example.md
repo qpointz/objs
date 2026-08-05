@@ -182,12 +182,13 @@ val bom = sbomService.getSbom("payments-api", "2.3.1")
 | Module | Contents |
 |--------|----------|
 | `objs-core` | Typed toolkit (`TypedEntity`, `GraphBuilder`, `RegistryPack`, …) |
-| `objs-sbom-example` | Full canonical types (A–D), annotation vocabulary, `SbomService`, registry pack, **`/api/v1/example/sbom` REST**, workbench SPA at **`/workbench/`** |
+| `objs-service` | Foundation REST + Boot autoconfig + **workbench SPA** at **`/workbench/`** |
+| `objs-sbom-example` | Full canonical types (A–D), annotation vocabulary, `SbomService`, registry pack, **`/api/v1/example/sbom` REST** |
 | `objs-app` | Depends on example module for demo; ontology + optional demo graph via shared seed pipeline |
 
 ### Workbench SPA
 
-Open **`http://localhost:8080/workbench/`** (packaged with the example module). Routes:
+Open **`http://localhost:8080/workbench/`** (packaged with `:objs-service`). Routes:
 See the user-level [`Objs UI manual`](../ui.md) for complete operating instructions.
 
 | Path | View |
@@ -199,8 +200,8 @@ See the user-level [`Objs UI manual`](../ui.md) for complete operating instructi
 Legacy `/ui/**` redirects into `/workbench/**`. Explorer type badges open Schema; **Create version**
 uses a base-version + new-version dialog and saves via `PUT` to the exact version.
 
-Dev: `cd objs-sbom-example/ui && npm install && npm run dev` (Vite proxies `/api` → `:8080`).  
-Build: Gradle builds the UI into `static/ui/` unless `-PskipUi=true`.
+Dev: `cd objs-service/ui && npm install && npm run dev` (Vite proxies `/api` → `:8080`).  
+Build: Gradle `:objs-service` builds the UI into `static/ui/` unless `-PskipUi=true`. The SPA does not require `:objs-sbom-example`.
 
 ### Python client script
 

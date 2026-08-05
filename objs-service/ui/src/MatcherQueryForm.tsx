@@ -17,6 +17,7 @@ import {
   TextInput,
 } from '@mantine/core'
 import { IconPlus, IconTrash } from '@tabler/icons-react'
+import { formatQueryExecStats, type QueryExecStats } from './queryExecStats'
 
 export type MatcherMode = 'anno' | 'anno-expr' | 'chained'
 export type AnnoRow = { key: string; value: string }
@@ -130,6 +131,8 @@ export type MatcherQueryFormHandle = {
 type MatcherQueryFormProps = {
   /** Rendered on the same row as the mode selector (e.g. Exec / Load). */
   action?: ReactNode
+  /** Last successful query wall time + retrieved counts (API only). */
+  stats?: QueryExecStats | null
   error?: string | null
   /** When set, hydrates mode + fields from this matcher body. */
   matcher?: unknown | null
@@ -138,7 +141,7 @@ type MatcherQueryFormProps = {
 }
 
 export const MatcherQueryForm = forwardRef<MatcherQueryFormHandle, MatcherQueryFormProps>(
-  function MatcherQueryForm({ action, error, matcher, emptyDefaults = false }, ref) {
+  function MatcherQueryForm({ action, stats, error, matcher, emptyDefaults = false }, ref) {
     const [mode, setMode] = useState<MatcherMode>('anno')
     const [annoRows, setAnnoRows] = useState<AnnoRow[]>(() =>
       emptyDefaults
@@ -184,6 +187,11 @@ export const MatcherQueryForm = forwardRef<MatcherQueryFormHandle, MatcherQueryF
             onChange={(v) => setMode((v as MatcherMode) ?? 'anno')}
           />
           {action}
+          {stats != null && (
+            <Text size="xs" c="dimmed" style={{ flexShrink: 0 }}>
+              {formatQueryExecStats(stats)}
+            </Text>
+          )}
         </Group>
 
         {mode === 'anno' && (

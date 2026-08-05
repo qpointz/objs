@@ -51,19 +51,25 @@ The UI sends the selected mode as matcher DSL:
 ```
 
 1. Configure the matcher.
-2. Select **Exec**.
-3. Select a node or edge on the canvas to inspect it.
+2. Select **Exec** (shows a loading overlay while the query runs).
+3. Select a node or edge on the canvas to inspect it. Edge source/target links jump to that node.
 4. Select **Apply layout** to recalculate the graph layout.
 5. After a successful query, **Edit in linter** opens Object linter and loads the same matcher into
    the draft (reuses the Load overwrite confirm when a draft already exists).
 
 The last successful matcher is kept in `localStorage` (`objs.ui.graphExplorer.matcher`). The last
-executed graph, layout direction, and node positions (after drag or Apply layout) are kept in
+executed graph, layout direction, node positions, and query id are kept in
 `objs.ui.graphExplorer.session` so navigating away (e.g. to Schemas) and back restores the canvas.
 A new **Exec** replaces that session; a failed **Exec** clears it.
 
-The result summary shows the number of nodes and edges. Entity-type badges above the graph open
-that type in Schema explorer.
+After **Exec**, the matcher row shows wall-clock query time plus node/edge counts.
+
+### Selection history
+
+Node and edge selection is stored in the URL (`?qid=<uuid>&node=<id>` or `&edge=<id>`). Each
+successful **Exec** mints a new `qid` (also persisted in the session). Browser **Back** / **Forward**
+restores selection only when the URL `qid` matches the current result set; otherwise the inspector
+clears. Entity-type badges above the graph open that type in Schema explorer.
 
 ### Inspect a node
 
@@ -392,9 +398,11 @@ Invalid Text blocks switching to Visual; the last good draft is preserved.
 3. Loaded entity/edge ids become the **baseline**. Removals from the draft become **pending deletes** for Validate/Apply.
 4. After Load with no edits, Text is an empty mutation; Visual still shows the loaded graph.
 5. Graph explorer **Edit in linter** navigates here with the last successful matcher and triggers the same Load path.
-6. On the Visual canvas, draft status icons appear on object headers: **+** new, **pencil** modified, **−** deleted.
-7. Deleting a **new** (non-baseline) object/edge removes it from the canvas. Deleting a **loaded** object/edge soft-deletes it: it stays visible and marked deleted until Apply, and can be undone (restore) or have modifications reverted from the side panel.
-8. **Reset** restores the last load/rollback snapshot; **Clear** empties the draft.
+6. Successful Load shows query wall time and counts; selection uses the same `qid` + `node`/`edge`
+   URL history as Explorer (scoped to that Load).
+7. On the Visual canvas, draft status icons appear on object headers: **+** new, **pencil** modified, **−** deleted.
+8. Deleting a **new** (non-baseline) object/edge removes it from the canvas. Deleting a **loaded** object/edge soft-deletes it: it stays visible and marked deleted until Apply, and can be undone (restore) or have modifications reverted from the side panel.
+9. **Reset** restores the last load/rollback snapshot; **Clear** empties the draft.
 
 Optional **Copy annotations from source** when creating a linked object.
 
@@ -439,11 +447,15 @@ property-schema reference, and properties are validated against the current regi
 To run the UI separately with live reload:
 
 ```powershell
-Set-Location objs-sbom-example/ui
+Set-Location objs-service/ui
 npm install
 npm run dev
 ```
 
 Open `http://localhost:5173/workbench/`. Vite proxies `/api` requests to
 `http://localhost:8080`, so `objs-app` must also be running.
+
+Packaged builds: Gradle `:objs-service` runs `npm run build` and syncs dist into
+`classpath:/static/ui/` (skip with `-PskipUi=true`). The SPA is served by
+`:objs-service` at `/workbench/` and does **not** require `:objs-sbom-example`.
 

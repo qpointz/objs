@@ -23,6 +23,7 @@ import {
   useEdgesState,
   useNodesState,
   useReactFlow,
+  type Edge,
   type Node,
   type NodeProps,
 } from '@xyflow/react'
@@ -206,7 +207,7 @@ function SchemaCatalogOverviewInner({
   layoutRef.current = layout
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
-  const [edges, setEdges, onEdgesChange] = useEdgesState([])
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
 
   useEffect(() => {
     const session = loadCatalogLayout()

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert,
   Badge,
@@ -6,6 +6,7 @@ import {
   Code,
   Collapse,
   Group,
+  Loader,
   Modal,
   Paper,
   Stack,
@@ -15,13 +16,18 @@ import {
 } from '@mantine/core'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { mutationShapeError, normalizeGraphMutation } from './graphDraft'
-import { putGraphMutation, queryGraph, validateGraphMutation } from './api'
+import { putGraphMutation, queryGraph, toGraphData, validateGraphMutation } from './api'
 import { JsonYamlEditor, type JsonYamlEditorHandle } from './JsonYamlEditor'
 import { MatcherLoadPanel } from './MatcherLoadPanel'
 import { NewUuidButton } from './NewUuidButton'
-import { ObjectLinterVisualPanel } from './ObjectLinterVisualPanel'
-import type { GraphSelection, GraphValidationResult } from './types'
+import {
+  ObjectLinterVisualPanel,
+  type ObjectLinterVisualPanelHandle,
+} from './ObjectLinterVisualPanel'
+import type { QueryExecStats } from './queryExecStats'
+import type { GraphValidationResult } from './types'
 import { useGraphDraft } from './useGraphDraft'
+import { useGraphSelectionHistory } from './useGraphSelectionHistory'
 
 export { graphShapeError, mutationShapeError } from './graphDraft'
 
@@ -55,17 +61,28 @@ export function ObjectLinterPage() {
   } = useGraphDraft()
 
   const editorRef = useRef<JsonYamlEditorHandle>(null)
+  const visualRef = useRef<ObjectLinterVisualPanelHandle>(null)
   const [tab, setTab] = useState<'visual' | 'text'>('visual')
   const [textError, setTextError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [loadBusy, setLoadBusy] = useState(false)
+  const [loadStats, setLoadStats] = useState<QueryExecStats | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<GraphValidationResult | null>(null)
-  const [selection, setSelection] = useState<GraphSelection | null>(null)
   const [loadOpen, setLoadOpen] = useState(false)
   const [loadConfirmOpen, setLoadConfirmOpen] = useState(false)
   const [pendingMatcher, setPendingMatcher] = useState<unknown>(null)
   const [activeMatcher, setActiveMatcher] = useState<unknown | null>(null)
+
+  const graphView = useMemo(() => toGraphData(canvasDocument), [canvasDocument])
+  const onFocusNode = useCallback((nodeId: string) => {
+    visualRef.current?.focusNode(nodeId)
+  }, [])
+  const { selection, select, beginQueryResult, clearQuery } = useGraphSelectionHistory({
+    nodes: graphView.nodes,
+    links: graphView.links,
+    onFocusNode,
+  })
 
   const onDraftParsed = useCallback(
     (parsed: { valid: boolean; value?: unknown; error?: string }) => {
@@ -170,9 +187,16 @@ export function ObjectLinterPage() {
     setLoadBusy(true)
     setError(null)
     try {
+      const started = performance.now()
       const subgraph = await queryGraph(matcherBody)
+      const durationMs = performance.now() - started
+      setLoadStats({
+        durationMs,
+        nodes: subgraph.entities?.length ?? 0,
+        edges: subgraph.edges?.length ?? 0,
+      })
       loadSubgraph(subgraph)
-      setSelection(null)
+      beginQueryResult()
       setResult(null)
       setActiveMatcher(matcherBody)
       setLoadOpen(false)
@@ -180,6 +204,7 @@ export function ObjectLinterPage() {
       setPendingMatcher(null)
       setTab('visual')
     } catch (e) {
+      setLoadStats(null)
       setError(e instanceof Error ? e.message : String(e))
     } finally {
       setLoadBusy(false)
@@ -236,7 +261,7 @@ export function ObjectLinterPage() {
             color="red"
             onClick={() => {
               clearDraft()
-              setSelection(null)
+              clearQuery()
               setResult(null)
             }}
           >
@@ -256,6 +281,7 @@ export function ObjectLinterPage() {
           <MatcherLoadPanel
             loading={loadBusy}
             matcher={activeMatcher}
+            stats={loadStats}
             onLoad={onLoadRequest}
           />
         </Paper>
@@ -264,8 +290,26 @@ export function ObjectLinterPage() {
       <Tabs
         value={tab}
         onChange={trySwitchTab}
-        style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}
+        style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', position: 'relative' }}
       >
+        {loadBusy && (
+          <Stack
+            align="center"
+            justify="center"
+            gap="sm"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 20,
+              background: 'color-mix(in srgb, var(--mantine-color-body) 82%, transparent)',
+            }}
+          >
+            <Loader size="md" />
+            <Text size="sm" c="dimmed">
+              Fetching subgraph…
+            </Text>
+          </Stack>
+        )}
         <Group justify="space-between" align="center" gap="sm" wrap="nowrap" style={{ flexShrink: 0 }}>
           <Tabs.List style={{ flex: 1 }}>
             <Tabs.Tab value="visual">Visual</Tabs.Tab>
@@ -297,10 +341,11 @@ export function ObjectLinterPage() {
           style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}
         >
           <ObjectLinterVisualPanel
+            ref={visualRef}
             draftState={state}
             canvasDocument={canvasDocument}
             selection={selection}
-            onSelect={setSelection}
+            onSelect={select}
             onUpsertEntity={upsertEntity}
             onUpsertEdge={upsertEdge}
             onRemoveEntity={removeEntity}
