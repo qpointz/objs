@@ -2,7 +2,7 @@
 
 **Slug:** `registry-graph-io-formats`  
 **Branch:** `registry-graph-io-formats`  
-**Status:** in-progress  
+**Status:** completed  
 **Backlog:** C-7  
 **Design:** [`docs/design/graph/seeds.md`](../../../design/graph/seeds.md), [`docs/design/service/rest-api.md`](../../../design/service/rest-api.md), [`docs/design/graph/object-schema-dsl.md`](../../../design/graph/object-schema-dsl.md)  
 **Depends on:** [`schemas-catalog-overview`](../../completed/20260803-schemas-catalog-overview/STORY.md)
