@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.servlet.http.HttpServletRequest
 import org.poc.objs.core.domain.BoMGraph
+import org.poc.objs.core.domain.BoMGraphMutation
 import org.poc.objs.core.domain.BoMSubgraph
 import org.poc.objs.core.match.BoMMatcherDsl
 import org.poc.objs.core.match.BoMMatcherFormat
@@ -51,27 +52,39 @@ class ObjsGraphController(
     private val matcherDsl: BoMMatcherDsl = BoMMatcherDsl.create(),
 ) {
     @PutMapping("/graph")
-    @Operation(summary = "Upsert a graph batch (entities + edges)")
+    @Operation(
+        summary = "Mutate a graph batch (upsert entities/edges and/or delete by id)",
+        description = "Body is BoMGraphMutation: `{ upsert: { entities, edges }, delete: { entities, edges } }` " +
+            "where delete lists are ids. Empty delete = upsert-only. Deletes and upserts run in one transaction.",
+    )
     @ApiResponses(
-        ApiResponse(responseCode = "200", description = "Persisted graph with ids assigned"),
+        ApiResponse(
+            responseCode = "200",
+            description = "Persisted upsert graph with ids assigned (delete lists not echoed)",
+            content = [Content(schema = Schema(implementation = BoMGraph::class))],
+        ),
         ApiResponse(
             responseCode = "400",
             description = "Validation failed",
             content = [Content(schema = Schema(implementation = BoMValidationResult::class))],
         ),
     )
-    fun putGraph(@RequestBody graph: BoMGraph): ResponseEntity<Any> {
-        val result = store.write(graph)
+    fun putGraph(@RequestBody mutation: BoMGraphMutation): ResponseEntity<Any> {
+        val result = store.mutate(mutation)
         if (!result.isValid) {
             return ResponseEntity.badRequest().body(result)
         }
-        return ResponseEntity.ok(graph)
+        return ResponseEntity.ok(mutation.graph())
     }
 
     @PostMapping("/graph/validate")
-    @Operation(summary = "Dry-run validate a graph batch (no persist)")
+    @Operation(
+        summary = "Dry-run validate a graph mutation (no persist)",
+        description = "Accepts the same BoMGraphMutation body as PUT (upserts and optional deletes).",
+    )
     @ApiResponse(responseCode = "200", description = "Validation result (may be invalid)")
-    fun validateGraph(@RequestBody graph: BoMGraph): BoMValidationResult = store.validate(graph)
+    fun validateGraph(@RequestBody mutation: BoMGraphMutation): BoMValidationResult =
+        store.validateMutation(mutation)
 
     @PostMapping(
         "/graph/import",
@@ -190,7 +203,11 @@ class ObjsGraphController(
     }
 
     @DeleteMapping("/graph")
-    @Operation(summary = "Batch delete entities and/or edges")
+    @Operation(
+        summary = "Batch delete entities and/or edges",
+        description = "Deprecated shim: prefer PUT /graph with delete.entities / delete.edges.",
+        deprecated = true,
+    )
     @ApiResponses(
         ApiResponse(responseCode = "204", description = "Deleted"),
         ApiResponse(responseCode = "400", description = "Empty delete or other validation error"),

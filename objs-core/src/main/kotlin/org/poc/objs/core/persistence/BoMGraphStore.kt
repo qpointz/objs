@@ -4,6 +4,9 @@ import jakarta.persistence.EntityManager
 import org.poc.objs.core.domain.BoMEdge
 import org.poc.objs.core.domain.BoMEntity
 import org.poc.objs.core.domain.BoMGraph
+import org.poc.objs.core.domain.BoMGraphDelete
+import org.poc.objs.core.domain.BoMGraphMutation
+import org.poc.objs.core.domain.BoMGraphUpsert
 import org.poc.objs.core.domain.BoMSubgraph
 import org.poc.objs.core.match.BoMAnnotationMatcher
 import org.poc.objs.core.match.BoMMatcher
@@ -40,13 +43,120 @@ class BoMGraphStore(
      * Batch upsert. On success, [graph] is mutated in place with all entity/edge ids assigned (G-R5).
      */
     @Transactional
-    fun write(graph: BoMGraph): BoMValidationResult {
-        val g = gate()
-        val result = g.validateWrite(graph)
+    fun write(graph: BoMGraph): BoMValidationResult =
+        mutate(BoMGraphMutation(upsert = BoMGraphUpsert(entities = graph.entities, edges = graph.edges)))
+
+    /** Dry-run write validation (may assign temporary ids on [graph] via the persist gate). */
+    @Transactional(readOnly = true)
+    fun validate(graph: BoMGraph): BoMValidationResult =
+        validateMutation(BoMGraphMutation(upsert = BoMGraphUpsert(entities = graph.entities, edges = graph.edges)))
+
+    /**
+     * Transactional mutate: validate projected state, then explicit edge deletes,
+     * entity deletes (cascade incident edges), then upserts.
+     *
+     * Same id in delete and upsert: upsert wins in the final store state.
+     */
+    @Transactional
+    fun mutate(mutation: BoMGraphMutation): BoMValidationResult {
+        val result = validateMutation(mutation)
         if (!result.isValid) {
             return result
         }
-        // ids already prepared inside validateWrite
+        applyDeletes(mutation)
+        applyUpserts(mutation.graph())
+        return BoMValidationResult.ok()
+    }
+
+    /**
+     * Dry-run mutation validation (may assign temporary ids on upsert entities/edges).
+     * Edge endpoint lookup ignores entities scheduled for delete unless also upserted.
+     */
+    @Transactional(readOnly = true)
+    fun validateMutation(mutation: BoMGraphMutation): BoMValidationResult {
+        val g = gate()
+        val issues = mutableListOf<BoMValidationIssue>()
+        for (id in mutation.delete.edges.distinct()) {
+            issues.addAll(g.validateDeleteEdge(id).issues)
+        }
+        for (id in mutation.delete.entities.distinct()) {
+            issues.addAll(g.validateDeleteEntity(id).issues)
+        }
+        if (issues.isNotEmpty()) {
+            return BoMValidationResult.of(issues)
+        }
+        if (!mutation.hasUpserts()) {
+            return BoMValidationResult.ok()
+        }
+        val graph = mutation.graph()
+        val stage1 = validator.validateEntities(graph.entities)
+        if (!stage1.isValid) {
+            return stage1
+        }
+        g.prepareIds(graph)
+        val deleted = mutation.delete.entities.toSet()
+        val projectedStore = BoMEntityTypeLookup { id ->
+            if (id in deleted) {
+                null
+            } else {
+                entityRepository.findById(id).map { it.type }.orElse(null)
+            }
+        }
+        val lookup = validator.combinedLookup(graph.entities, projectedStore)
+        return validator.validateEdges(graph.edges, lookup)
+    }
+
+    @Transactional
+    fun deleteEntity(id: UUID): BoMValidationResult =
+        mutate(BoMGraphMutation(delete = BoMGraphDelete(entities = mutableListOf(id))))
+
+    @Transactional
+    fun deleteEdge(id: UUID): BoMValidationResult =
+        mutate(BoMGraphMutation(delete = BoMGraphDelete(edges = mutableListOf(id))))
+
+    /**
+     * All-or-nothing batch delete (G-R3/G-R4). Thin shim over [mutate].
+     */
+    @Transactional
+    fun delete(
+        entityIds: Collection<UUID> = emptyList(),
+        edgeIds: Collection<UUID> = emptyList(),
+    ): BoMValidationResult {
+        if (entityIds.isEmpty() && edgeIds.isEmpty()) {
+            return BoMValidationResult.of(
+                BoMValidationIssue(
+                    code = "DELETE_EMPTY",
+                    message = "At least one entityId or edgeId is required",
+                ),
+            )
+        }
+        return mutate(
+            BoMGraphMutation(
+                delete = BoMGraphDelete(
+                    entities = entityIds.toMutableList(),
+                    edges = edgeIds.toMutableList(),
+                ),
+            ),
+        )
+    }
+
+    private fun applyDeletes(mutation: BoMGraphMutation) {
+        for (id in mutation.delete.edges.distinct()) {
+            if (edgeRepository.existsById(id)) {
+                edgeRepository.deleteById(id)
+            }
+        }
+        for (id in mutation.delete.entities.distinct()) {
+            if (!entityRepository.existsById(id)) {
+                continue
+            }
+            edgeRepository.findAll().filter { it.sourceId == id || it.targetId == id }
+                .forEach { edgeRepository.delete(it) }
+            entityRepository.deleteById(id)
+        }
+    }
+
+    private fun applyUpserts(graph: BoMGraph) {
         for (entity in graph.entities) {
             val id = requireNotNull(entity.id)
             val record = entityRepository.findById(id).orElseGet { BoMEntityRecord(id = id) }
@@ -67,68 +177,6 @@ class BoMGraphStore(
             record.properties = edge.properties?.toMutableMap()
             edgeRepository.save(record)
         }
-        return BoMValidationResult.ok()
-    }
-
-    /** Dry-run write validation (may assign temporary ids on [graph] via the persist gate). */
-    @Transactional(readOnly = true)
-    fun validate(graph: BoMGraph): BoMValidationResult = gate().validateWrite(graph)
-
-    @Transactional
-    fun deleteEntity(id: UUID): BoMValidationResult {
-        val result = gate().validateDeleteEntity(id)
-        if (!result.isValid) return result
-        edgeRepository.findAll().filter { it.sourceId == id || it.targetId == id }
-            .forEach { edgeRepository.delete(it) }
-        entityRepository.deleteById(id)
-        return BoMValidationResult.ok()
-    }
-
-    @Transactional
-    fun deleteEdge(id: UUID): BoMValidationResult {
-        val result = gate().validateDeleteEdge(id)
-        if (!result.isValid) return result
-        edgeRepository.deleteById(id)
-        return BoMValidationResult.ok()
-    }
-
-    /**
-     * All-or-nothing batch delete (G-R3/G-R4). Validates every id first; then deletes
-     * requested edges, then entities (entity delete also removes incident edges).
-     */
-    @Transactional
-    fun delete(
-        entityIds: Collection<UUID> = emptyList(),
-        edgeIds: Collection<UUID> = emptyList(),
-    ): BoMValidationResult {
-        if (entityIds.isEmpty() && edgeIds.isEmpty()) {
-            return BoMValidationResult.of(
-                BoMValidationIssue(
-                    code = "DELETE_EMPTY",
-                    message = "At least one entityId or edgeId is required",
-                ),
-            )
-        }
-        val issues = mutableListOf<BoMValidationIssue>()
-        val g = gate()
-        for (id in edgeIds) {
-            issues.addAll(g.validateDeleteEdge(id).issues)
-        }
-        for (id in entityIds) {
-            issues.addAll(g.validateDeleteEntity(id).issues)
-        }
-        if (issues.isNotEmpty()) {
-            return BoMValidationResult.of(issues)
-        }
-        for (id in edgeIds) {
-            edgeRepository.deleteById(id)
-        }
-        for (id in entityIds) {
-            edgeRepository.findAll().filter { it.sourceId == id || it.targetId == id }
-                .forEach { edgeRepository.delete(it) }
-            entityRepository.deleteById(id)
-        }
-        return BoMValidationResult.ok()
     }
 
     @Transactional(readOnly = true)

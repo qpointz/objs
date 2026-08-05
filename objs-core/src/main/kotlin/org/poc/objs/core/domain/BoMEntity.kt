@@ -40,6 +40,44 @@ data class BoMGraph(
     fun entityById(id: UUID): BoMEntity? = entities.find { it.id == id }
 }
 
+/**
+ * Upsert half of a [BoMGraphMutation].
+ */
+data class BoMGraphUpsert(
+    val entities: MutableList<BoMEntity> = mutableListOf(),
+    val edges: MutableList<BoMEdge> = mutableListOf(),
+)
+
+/**
+ * Delete half of a [BoMGraphMutation] — entity/edge **ids** only.
+ */
+data class BoMGraphDelete(
+    val entities: MutableList<UUID> = mutableListOf(),
+    val edges: MutableList<UUID> = mutableListOf(),
+)
+
+/**
+ * Transactional graph mutation: [upsert] entities/edges and/or [delete] by id.
+ *
+ * Distinct from [BoMGraph] so seeds and upsert-only callers stay MERGE-shaped
+ * (omission never deletes). Empty [delete] lists = upsert-only.
+ *
+ * JSON shape:
+ * ```
+ * { "upsert": { "entities": [], "edges": [] }, "delete": { "entities": [], "edges": [] } }
+ * ```
+ */
+data class BoMGraphMutation(
+    val upsert: BoMGraphUpsert = BoMGraphUpsert(),
+    val delete: BoMGraphDelete = BoMGraphDelete(),
+) {
+    fun graph(): BoMGraph = BoMGraph(upsert.entities, upsert.edges)
+
+    fun hasDeletes(): Boolean = delete.entities.isNotEmpty() || delete.edges.isNotEmpty()
+
+    fun hasUpserts(): Boolean = upsert.entities.isNotEmpty() || upsert.edges.isNotEmpty()
+}
+
 /** Result of annotation-based subgraph selection (induced edges). */
 data class BoMSubgraph(
     val entities: List<BoMEntity>,

@@ -18,10 +18,10 @@ Same policy applies for the **entity SDK** save path. REST (later stories) uses 
 | Case | Rule |
 |------|------|
 | Entity/edge **without id** | **Create** — generate **`UUID.randomUUID()`** at persist |
-| Entity/edge **with id** | **Update** — id must already exist in the store; else **reject** |
-| **Delete** | Explicit API; requires id (not inferred from a create/update payload) |
+| Entity/edge **with id** | **Update** if id exists, else **create** with client-supplied id (batch-friendly) |
+| **Delete** | Explicit ids on `BoMGraphMutation.delete.entities` / `delete.edges` or deprecated `DELETE /graph`; never inferred from omission |
 
-Batch subgraph payloads may **mix** creates and updates.
+Batch subgraph payloads may **mix** creates, updates, and deletes in one `BoMGraphMutation`.
 
 ## What is validated
 
@@ -58,7 +58,8 @@ shared by entities and edges; see [object-schema-dsl.md](object-schema-dsl.md).
 - Single-entity / single-edge writes use the same rules (stage 1 and/or 2 as applicable).
 - **Delete**: must still pass the gate — e.g. edge delete allowed only if the `(sourceType, role, targetType)` rule exists (allow-list); entity delete as defined by the same persist-boundary API (reject if gate fails). Exact delete checks beyond “same gate applies” follow allow-list / referential integrity chosen in WI-005.
 - Does **not** run on pure in-memory SDK construction.
-- Prefer **transactional all-or-nothing** for a batch subgraph write (confirm in WI-005).
+- Prefer **transactional all-or-nothing** for a batch subgraph write / mutation.
+- **`BoMGraphMutation`:** validate deletes + upserts against **projected** store state (deleted entity ids are invisible to edge lookup unless also present in the upsert payload); then apply explicit edge deletes, entity deletes (cascade incident edges), then upserts.
 
 ### 2. Basic / audit validation (non-blocking)
 

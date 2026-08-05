@@ -10,6 +10,9 @@ import org.poc.objs.core.domain.BoMAllowedEdgeRule
 import org.poc.objs.core.domain.BoMEdge
 import org.poc.objs.core.domain.BoMEntity
 import org.poc.objs.core.domain.BoMGraph
+import org.poc.objs.core.domain.BoMGraphDelete
+import org.poc.objs.core.domain.BoMGraphMutation
+import org.poc.objs.core.domain.BoMGraphUpsert
 import org.poc.objs.core.domain.BoMPropertiesPolicy
 import org.poc.objs.core.domain.BoMSchema
 import org.poc.objs.core.domain.BoMSchemaCatalog
@@ -193,5 +196,105 @@ class BoMGraphStoreTest {
     @Test
     fun shouldRejectEmptyBatchDelete() {
         assertThat(store.delete().isValid).isFalse()
+    }
+
+    @Test
+    fun shouldMutate_upsertAndDeleteInOneTransaction() {
+        val keep = UUID.randomUUID()
+        val remove = UUID.randomUUID()
+        val neu = UUID.randomUUID()
+        assertThat(
+            store.write(
+                BoMGraph(
+                    entities = mutableListOf(
+                        BoMEntity(id = keep, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "Keep")),
+                        BoMEntity(id = remove, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "Remove")),
+                    ),
+                    edges = mutableListOf(
+                        BoMEdge(source = keep, target = remove, role = "knows"),
+                    ),
+                ),
+            ).isValid,
+        ).isTrue()
+        val oldEdgeId = store.loadAll().edges.single().id!!
+
+        val mutation = BoMGraphMutation(
+            upsert = BoMGraphUpsert(
+                entities = mutableListOf(
+                    BoMEntity(id = neu, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "New")),
+                ),
+                edges = mutableListOf(
+                    BoMEdge(source = keep, target = neu, role = "knows"),
+                ),
+            ),
+            delete = BoMGraphDelete(
+                entities = mutableListOf(remove),
+                edges = mutableListOf(oldEdgeId),
+            ),
+        )
+        assertThat(store.mutate(mutation).isValid).isTrue()
+
+        val loaded = store.loadAll()
+        assertThat(loaded.entities.map { it.id }).containsExactlyInAnyOrder(keep, neu)
+        assertThat(loaded.edges).hasSize(1)
+        assertThat(loaded.edges.single().target).isEqualTo(neu)
+        assertThat(loaded.edges.none { it.id == oldEdgeId }).isTrue()
+    }
+
+    @Test
+    fun shouldValidateMutation_rejectEdgeToDeletedEntity() {
+        val a = UUID.randomUUID()
+        val b = UUID.randomUUID()
+        assertThat(
+            store.write(
+                BoMGraph(
+                    entities = mutableListOf(
+                        BoMEntity(id = a, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "A")),
+                        BoMEntity(id = b, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "B")),
+                    ),
+                ),
+            ).isValid,
+        ).isTrue()
+
+        val result = store.validateMutation(
+            BoMGraphMutation(
+                upsert = BoMGraphUpsert(
+                    edges = mutableListOf(BoMEdge(source = a, target = b, role = "knows")),
+                ),
+                delete = BoMGraphDelete(entities = mutableListOf(b)),
+            ),
+        )
+        assertThat(result.isValid).isFalse()
+        assertThat(store.loadAll().entities).hasSize(2)
+        assertThat(store.loadAll().edges).isEmpty()
+    }
+
+    @Test
+    fun shouldValidateMutation_allowEdgeWhenDeletedEntityAlsoUpserted() {
+        val a = UUID.randomUUID()
+        val b = UUID.randomUUID()
+        assertThat(
+            store.write(
+                BoMGraph(
+                    entities = mutableListOf(
+                        BoMEntity(id = a, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "A")),
+                        BoMEntity(id = b, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "B")),
+                    ),
+                ),
+            ).isValid,
+        ).isTrue()
+
+        val result = store.validateMutation(
+            BoMGraphMutation(
+                upsert = BoMGraphUpsert(
+                    entities = mutableListOf(
+                        BoMEntity(id = b, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "B2")),
+                    ),
+                    edges = mutableListOf(BoMEdge(source = a, target = b, role = "knows")),
+                ),
+                delete = BoMGraphDelete(entities = mutableListOf(b)),
+            ),
+        )
+        assertThat(result.isValid).isTrue()
     }
 }

@@ -6,7 +6,7 @@ import org.mockito.ArgumentMatchers.anyList
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
-import org.poc.objs.core.domain.BoMGraph
+import org.poc.objs.core.domain.BoMGraphMutation
 import org.poc.objs.core.domain.BoMSubgraph
 import org.poc.objs.core.match.BoMMatcher
 import org.poc.objs.core.persistence.BoMGraphStore
@@ -58,10 +58,10 @@ class ObjsGraphControllerTest {
 
     @Test
     fun shouldPutGraph_whenValid() {
-        given(store.write(anyObj())).willAnswer { inv ->
-            val g = inv.getArgument<BoMGraph>(0)
-            if (g.entities.isNotEmpty() && g.entities[0].id == null) {
-                g.entities[0].id = UUID.randomUUID()
+        given(store.mutate(anyObj())).willAnswer { inv ->
+            val m = inv.getArgument<BoMGraphMutation>(0)
+            if (m.upsert.entities.isNotEmpty() && m.upsert.entities[0].id == null) {
+                m.upsert.entities[0].id = UUID.randomUUID()
             }
             BoMValidationResult.ok()
         }
@@ -69,21 +69,47 @@ class ObjsGraphControllerTest {
         mockMvc.perform(
             put("/api/v1/objs/graph")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"entities":[{"type":"Person","schemaVersion":"1","payload":{"name":"A"}}],"edges":[]}"""),
+                .content(
+                    """{"upsert":{"entities":[{"type":"Person","schemaVersion":"1","payload":{"name":"A"}}],"edges":[]},"delete":{"entities":[],"edges":[]}}""",
+                ),
         )
             .andExpect(status().isOk)
     }
 
     @Test
+    fun shouldPutGraphMutation_withDeletes() {
+        val deleteId = UUID.randomUUID()
+        given(store.mutate(anyObj())).willReturn(BoMValidationResult.ok())
+
+        mockMvc.perform(
+            put("/api/v1/objs/graph")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "upsert":{"entities":[],"edges":[]},
+                      "delete":{"entities":["$deleteId"],"edges":[]}
+                    }
+                    """.trimIndent(),
+                ),
+        )
+            .andExpect(status().isOk)
+
+        verify(store).mutate(anyObj())
+    }
+
+    @Test
     fun shouldRejectPutGraph_whenInvalid() {
-        given(store.write(anyObj())).willReturn(
+        given(store.mutate(anyObj())).willReturn(
             BoMValidationResult.of(BoMValidationIssue("SCHEMA_VIOLATION", "bad")),
         )
 
         mockMvc.perform(
             put("/api/v1/objs/graph")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"entities":[{"type":"Person","schemaVersion":"1","payload":{}}],"edges":[]}"""),
+                .content(
+                    """{"upsert":{"entities":[{"type":"Person","schemaVersion":"1","payload":{}}],"edges":[]},"delete":{"entities":[],"edges":[]}}""",
+                ),
         )
             .andExpect(status().isBadRequest)
             .andExpect(jsonPath("$.issues[0].code").value("SCHEMA_VIOLATION"))
@@ -91,14 +117,14 @@ class ObjsGraphControllerTest {
 
     @Test
     fun shouldValidateGraph_returning200() {
-        given(store.validate(anyObj())).willReturn(
+        given(store.validateMutation(anyObj())).willReturn(
             BoMValidationResult.of(BoMValidationIssue("SCHEMA_VIOLATION", "bad")),
         )
 
         mockMvc.perform(
             post("/api/v1/objs/graph/validate")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"entities":[],"edges":[]}"""),
+                .content("""{"upsert":{"entities":[],"edges":[]},"delete":{"entities":[],"edges":[]}}"""),
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.issues[0].code").value("SCHEMA_VIOLATION"))
