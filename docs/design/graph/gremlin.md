@@ -146,7 +146,10 @@ Ontology and `:objs-sbom-example` code are unchanged by this feature: traverse i
 stored graph. Demo path: run `:objs-app` with the **sbom** profile (seeded canonical graph), then
 Query / traverse REST with a matcher such as `{ "anno": { "app": "app-00001" } }`.
 
+Ready-to-run scripts (Product↔Database, Service/Policy tables, paths): [`gremlin-examples.md`](gremlin-examples.md).
+
 ## Related
 
+- Example scripts: [`gremlin-examples.md`](gremlin-examples.md)
 - Matchers / induced subgraphs: [`annotations-and-subgraphs.md`](annotations-and-subgraphs.md)
 - Story: [`../../workitems/completed/20260806-gremlin-subgraph-traversal/STORY.md`](../../workitems/completed/20260806-gremlin-subgraph-traversal/STORY.md)

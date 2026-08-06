@@ -16,6 +16,7 @@ Objs is an **entity store**: independent informational **entities** linked by **
 | [object-schema-dsl.md](object-schema-dsl.md) | Authoritative recursive schema DSL and JSON Schema projection |
 | [annotations-and-subgraphs.md](annotations-and-subgraphs.md) | Annotations, matchers, induced subgraphs |
 | [gremlin.md](gremlin.md) | Matcher → TinkerGraph → gremlin-lang → `BoMGremlinResult` |
+| [gremlin-examples.md](gremlin-examples.md) | Sample gremlin-lang scripts (vertices, tables, SBOM roles) |
 | [validation.md](validation.md) | Persist gate, batch two-stage validation, create/update by id |
 | [persistence.md](persistence.md) | PostgreSQL, JSONB, Flyway, H2 tests |
 
