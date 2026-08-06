@@ -3,12 +3,14 @@ import { Box, useMantineColorScheme } from '@mantine/core'
 import CodeMirror from '@uiw/react-codemirror'
 import { json, jsonParseLinter } from '@codemirror/lang-json'
 import { yaml } from '@codemirror/lang-yaml'
+import { StreamLanguage } from '@codemirror/language'
+import { groovy } from '@codemirror/legacy-modes/mode/groovy'
 import { linter, lintGutter } from '@codemirror/lint'
 
 export interface SyntaxCodeEditorProps {
   value: string
   onChange?: (value: string) => void
-  language: 'json' | 'yaml'
+  language: 'json' | 'yaml' | 'groovy'
   minHeight?: number
   fillHeight?: boolean
   readOnly?: boolean
@@ -37,7 +39,12 @@ export function SyntaxCodeEditor({
   const { colorScheme } = useMantineColorScheme()
 
   const extensions = useMemo(() => {
-    const lang = language === 'json' ? json() : yaml()
+    const lang =
+      language === 'json'
+        ? json()
+        : language === 'yaml'
+          ? yaml()
+          : StreamLanguage.define(groovy)
     if (readOnly || language !== 'json') {
       return [lang]
     }

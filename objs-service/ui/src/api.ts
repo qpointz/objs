@@ -57,9 +57,72 @@ async function parseResponse<T>(res: Response): Promise<T> {
     if (Array.isArray(issues) && issues.length > 0) {
       throw new Error(issues.map((i: { message?: string }) => i.message ?? JSON.stringify(i)).join('; '))
     }
-    throw new Error(typeof body === 'string' ? body : `HTTP ${res.status}`)
+    if (body != null && typeof body === 'object' && typeof (body as { error?: unknown }).error === 'string') {
+      throw new Error((body as { error: string }).error)
+    }
+    if (typeof body === 'string' && body.length > 0) {
+      throw new Error(body)
+    }
+    throw new Error(`HTTP ${res.status}`)
   }
   return body as T
+}
+
+export type BoMGremlinTable = {
+  columns: string[]
+  rows: unknown[][]
+}
+
+export type BoMGremlinViews = {
+  graph?: BoMSubgraph | null
+  table?: BoMGremlinTable | null
+  scalar?: unknown
+}
+
+export type BoMGremlinGraphStats = {
+  entities: number
+  edges: number
+}
+
+export type BoMGremlinMeta = {
+  strategy: string
+  language: string
+  subgraph1Stats: BoMGremlinGraphStats
+  subgraph2Stats?: BoMGremlinGraphStats | null
+  resultCount: number
+  durationMs: number
+}
+
+export type BoMGremlinItem = {
+  kind: string
+  value: unknown
+}
+
+export type BoMGremlinResult = {
+  primary: string
+  items: BoMGremlinItem[]
+  subgraph?: BoMSubgraph | null
+  views: BoMGremlinViews
+  meta: BoMGremlinMeta
+}
+
+export type TraverseGremlinRequest = {
+  matcher: unknown
+  script: string
+  strategy?: string
+  traversalOptions?: {
+    timeoutSeconds?: number
+    language?: string
+  }
+}
+
+export async function traverseGremlin(body: TraverseGremlinRequest): Promise<BoMGremlinResult> {
+  const res = await fetch('/api/v1/objs/graph/traverse/gremlin', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  return parseResponse<BoMGremlinResult>(res)
 }
 
 export async function queryGraph(matcherBody: unknown): Promise<BoMSubgraph> {

@@ -247,9 +247,14 @@ export function GraphExplorerPage() {
     }
   }
 
-  function onEditInLinter() {
+  function onOpenInComposer() {
     if (lastMatcher == null) return
     navigate('/composer', { state: { matcher: lastMatcher } })
+  }
+
+  function onOpenInQuery() {
+    if (lastMatcher == null) return
+    navigate('/query', { state: { matcher: lastMatcher } })
   }
 
   function changeLayout(next: GraphLayout) {
@@ -281,13 +286,36 @@ export function GraphExplorerPage() {
           </Text>
         </div>
         <Group gap="xs">
-          <Button
-            variant="light"
-            disabled={lastMatcher == null}
-            onClick={onEditInLinter}
-          >
-            Edit in linter
-          </Button>
+          <Menu shadow="md" width={160} position="bottom-end" withinPortal>
+            <Menu.Target>
+              <Group gap={0} wrap="nowrap" style={{ display: 'inline-flex' }}>
+                <Button
+                  variant="light"
+                  disabled={lastMatcher == null}
+                  style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
+                >
+                  Open in…
+                </Button>
+                <Button
+                  variant="light"
+                  disabled={lastMatcher == null}
+                  aria-label="Open in destination"
+                  px="xs"
+                  style={{
+                    borderTopLeftRadius: 0,
+                    borderBottomLeftRadius: 0,
+                    borderLeft: '1px solid var(--mantine-color-default-border)',
+                  }}
+                >
+                  ▾
+                </Button>
+              </Group>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Item onClick={onOpenInComposer}>Composer</Menu.Item>
+              <Menu.Item onClick={onOpenInQuery}>Query</Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
           <Group gap={0}>
             <Button
               variant="light"
