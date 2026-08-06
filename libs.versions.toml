@@ -12,6 +12,7 @@ flyway = "11.7.2"
 testcontainers = "1.21.1"
 springDoc = "3.0.3"
 commonsJexl = "3.5.0"
+tinkerpop = "4.0.0-beta.3"
 
 [libraries]
 lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
@@ -58,6 +59,10 @@ springdoc-openapi-starter-webmvc-ui = { module = "org.springdoc:springdoc-openap
 
 kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin" }
 kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }
+
+gremlin-core = { module = "org.apache.tinkerpop:gremlin-core", version.ref = "tinkerpop" }
+tinkergraph-gremlin = { module = "org.apache.tinkerpop:tinkergraph-gremlin", version.ref = "tinkerpop" }
+gremlin-language = { module = "org.apache.tinkerpop:gremlin-language", version.ref = "tinkerpop" }
 
 [bundles]
 jackson = ["jackson-databind", "jackson-dataformat-yaml", "jackson-module-kotlin"]

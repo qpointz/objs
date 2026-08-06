@@ -23,7 +23,7 @@ subprojects {
     plugins.withId("java") {
         extensions.configure<JavaPluginExtension> {
             toolchain {
-                languageVersion.set(JavaLanguageVersion.of(24))
+                languageVersion.set(JavaLanguageVersion.of(21))
             }
         }
 
@@ -40,7 +40,7 @@ subprojects {
         }
         extensions.configure<JavaPluginExtension> {
             toolchain {
-                languageVersion.set(JavaLanguageVersion.of(24))
+                languageVersion.set(JavaLanguageVersion.of(21))
             }
         }
     }
@@ -62,6 +62,8 @@ tasks.register("test") {
         ":objs-core:test",
         ":objs-service:test",
         ":objs-sbom-example:test",
+        ":objs-gremlin-core:test",
+        ":objs-gremlin-service:test",
     )
 }
 

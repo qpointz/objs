@@ -3,6 +3,8 @@ rootProject.name = "objs"
 include(":objs-core")
 include(":objs-service")
 include(":objs-sbom-example")
+include(":objs-gremlin-core")
+include(":objs-gremlin-service")
 include(":objs-app")
 
 dependencyResolutionManagement {
