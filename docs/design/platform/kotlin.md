@@ -5,7 +5,7 @@
 | Item | Choice |
 |------|--------|
 | Language | Kotlin 2.2.x |
-| JVM toolchain | **24** (Kotlin does not yet target JDK 25; Java toolchain aligned to 24) |
+| JVM toolchain | **21** |
 | Plugins | `kotlin.jvm`, `kotlin.spring`, `kotlin.jpa` |
 | JSON Schema | `com.networknt:json-schema-validator` (Jackson 2 tree via shared ObjectMapper) |
 | UUID | `java.util.UUID.randomUUID()` |

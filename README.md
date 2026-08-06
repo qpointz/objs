@@ -10,7 +10,7 @@ Entity/graph application (PoC). Multi-module Gradle **Kotlin** project.
 | `objs-service` | `objs-service/` | Spring REST + Boot autoconfiguration (library) |
 | `objs-app` | `objs-app/` | Runnable assembly |
 
-**Group / packages:** `org.poc.objs` · **JVM toolchain:** 24 (Kotlin) · **Spring Boot:** 4.x
+**Group / packages:** `org.poc.objs` · **JVM toolchain:** 21 (Kotlin) · **Spring Boot:** 4.x
 
 Domain design: [`docs/design/graph/`](docs/design/graph/README.md).  
 Story: [`docs/workitems/completed/20260728-entity-graph-foundation/`](docs/workitems/completed/20260728-entity-graph-foundation/STORY.md).
