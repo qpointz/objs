@@ -116,6 +116,7 @@ function edgeStyle(selected: boolean): Edge['style'] {
 function styleForDraftEdge(
   draftStatus: GraphLink['draftStatus'],
   selected: boolean,
+  dimmed = false,
 ): Pick<Edge<EdgeData>, 'style' | 'labelStyle' | 'markerEnd' | 'animated'> {
   const deleted = draftStatus === 'deleted'
   const modified = draftStatus === 'modified'
@@ -136,13 +137,14 @@ function styleForDraftEdge(
       stroke,
       strokeWidth: selected ? 4 : deleted || modified || isNew ? 3 : 2,
       strokeDasharray: deleted ? '6 4' : undefined,
-      opacity: deleted ? 0.7 : 1,
+      opacity: dimmed ? 0.25 : deleted ? 0.7 : 1,
     },
     labelStyle: {
       fontSize: 10,
       fill: selected ? EDGE_SELECTED : deleted ? '#fa5252' : '#212529',
       fontWeight: 700,
       textDecoration: deleted ? 'line-through' : undefined,
+      opacity: dimmed ? 0.25 : 1,
     },
     markerEnd: {
       type: MarkerType.ArrowClosed,
@@ -188,7 +190,7 @@ function toFlowElements(
         data: { edge: l },
         labelBgStyle: { fill: '#fff', fillOpacity: 0.95 },
         labelBgPadding: [4, 2] as [number, number],
-        ...styleForDraftEdge(l.draftStatus, selected),
+        ...styleForDraftEdge(l.draftStatus, selected, l.dimmed === true),
       }
     })
 
@@ -342,10 +344,11 @@ function GraphCanvasInner(
       curr.map((e) => {
         const selected = e.id === selectedEdgeId
         const draftStatus = (e.data as EdgeData | undefined)?.edge?.draftStatus
+        const dimmed = (e.data as EdgeData | undefined)?.edge?.dimmed === true
         return {
           ...e,
           selected,
-          ...styleForDraftEdge(draftStatus, selected),
+          ...styleForDraftEdge(draftStatus, selected, dimmed),
         }
       }),
     )

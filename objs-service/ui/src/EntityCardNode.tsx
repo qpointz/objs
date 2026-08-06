@@ -57,6 +57,7 @@ function StatusPill({ status }: { status: GraphNode['draftStatus'] }) {
 function EntityCardNodeComponent({ data }: NodeProps) {
   const { entity, selected } = data as EntityCardData
   const deleted = entity.draftStatus === 'deleted'
+  const dimmed = entity.dimmed === true
   const borderColor = deleted ? '#fa5252' : selected ? '#228be6' : entity.color
 
   return (
@@ -68,7 +69,7 @@ function EntityCardNodeComponent({ data }: NodeProps) {
         background: deleted ? '#fff5f5' : '#fff',
         overflow: 'hidden',
         fontFamily: 'system-ui, sans-serif',
-        opacity: deleted ? 0.72 : 1,
+        opacity: dimmed ? 0.25 : deleted ? 0.72 : 1,
         boxShadow: selected
           ? '0 0 0 3px rgba(34, 139, 230, 0.35)'
           : '0 1px 3px rgba(0,0,0,0.12)',

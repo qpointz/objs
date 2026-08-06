@@ -13,6 +13,7 @@ import {
   ScrollArea,
   Select,
   Stack,
+  Switch,
   Tabs,
   Text,
 } from '@mantine/core'
@@ -31,6 +32,7 @@ import type {
   BoMEdge,
   BoMEntity,
   BoMSchema,
+  GraphLink,
   GraphNode,
   GraphSelection,
 } from './types'
@@ -41,6 +43,34 @@ const GRAPH_LAYOUTS: { value: GraphLayout; label: string }[] = [
   { value: 'LR', label: 'Left to right' },
   { value: 'RL', label: 'Right to left' },
 ]
+
+function isChangedStatus(status: GraphNode['draftStatus'] | GraphLink['draftStatus']): boolean {
+  return status === 'new' || status === 'modified' || status === 'deleted'
+}
+
+/** When changes-only is on, dim unchanged nodes/edges but keep them for stable layout. */
+export function applyChangesOnlyDimming(
+  nodes: GraphNode[],
+  links: GraphLink[],
+  changesOnly: boolean,
+): { nodes: GraphNode[]; links: GraphLink[] } {
+  if (!changesOnly) {
+    return {
+      nodes: nodes.map((n) => (n.dimmed ? { ...n, dimmed: false } : n)),
+      links: links.map((l) => (l.dimmed ? { ...l, dimmed: false } : l)),
+    }
+  }
+  return {
+    nodes: nodes.map((n) => ({
+      ...n,
+      dimmed: !isChangedStatus(n.draftStatus),
+    })),
+    links: links.map((l) => ({
+      ...l,
+      dimmed: !isChangedStatus(l.draftStatus),
+    })),
+  }
+}
 
 function entityToGraphNode(entity: BoMEntity): GraphNode {
   return {
@@ -117,6 +147,11 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
       })),
     }
   }, [canvasDocument, draftState])
+  const [changesOnly, setChangesOnly] = useState(false)
+  const displayGraph = useMemo(
+    () => applyChangesOnlyDimming(graphView.nodes, graphView.links, changesOnly),
+    [changesOnly, graphView],
+  )
   const graphRef = useRef<GraphCanvasHandle>(null)
   useImperativeHandle(
     ref,
@@ -451,7 +486,8 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
 
   return (
     <Stack gap="sm" style={{ flex: 1, minHeight: 0, height: '100%' }}>
-      <Group style={{ flexShrink: 0 }}>
+      <Group justify="space-between" align="center" wrap="wrap" style={{ flexShrink: 0 }}>
+        <Group gap="xs" wrap="wrap">
         <Button size="xs" onClick={() => setAddOpen(true)}>
           Add object
         </Button>
@@ -491,7 +527,7 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
           <Button
             size="xs"
             variant="light"
-            disabled={graphView.nodes.length === 0}
+            disabled={displayGraph.nodes.length === 0}
             onClick={() => graphRef.current?.applyLayout(layout)}
             style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
           >
@@ -502,7 +538,7 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
               <Button
                 size="xs"
                 variant="light"
-                disabled={graphView.nodes.length === 0}
+                disabled={displayGraph.nodes.length === 0}
                 aria-label="Choose graph layout"
                 px="xs"
                 style={{
@@ -540,6 +576,13 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
             2 selected (Ctrl+click to adjust)
           </Text>
         )}
+        </Group>
+        <Switch
+          size="xs"
+          label="Changes only"
+          checked={changesOnly}
+          onChange={(e) => setChangesOnly(e.currentTarget.checked)}
+        />
       </Group>
 
       {schemasError && (
@@ -553,7 +596,7 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
           withBorder
           style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden', position: 'relative' }}
         >
-          {graphView.nodes.length === 0 ? (
+          {displayGraph.nodes.length === 0 ? (
             <Stack p="md" gap="xs">
               <Text size="sm" c="dimmed">
                 Draft has no entities. Use Add object or Load a subgraph.
@@ -562,8 +605,8 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
           ) : (
             <GraphCanvas
               ref={graphRef}
-              nodes={graphView.nodes}
-              links={graphView.links}
+              nodes={displayGraph.nodes}
+              links={displayGraph.links}
               selection={selection}
               onSelect={handleSelect}
               layout={layout}

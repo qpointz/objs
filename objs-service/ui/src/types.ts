@@ -32,6 +32,8 @@ export type GraphNode = {
   x?: number
   y?: number
   draftStatus?: 'new' | 'modified' | 'deleted' | 'unchanged'
+  /** Dimmed in Composer “Changes only” mode (unchanged items stay visible for stable layout). */
+  dimmed?: boolean
 }
 
 export type GraphLink = {
@@ -43,6 +45,8 @@ export type GraphLink = {
   schemaVersion: string | null
   properties: Record<string, unknown>
   draftStatus?: 'new' | 'modified' | 'deleted' | 'unchanged'
+  /** Dimmed in Composer “Changes only” mode. */
+  dimmed?: boolean
 }
 
 export type GraphSelection =
