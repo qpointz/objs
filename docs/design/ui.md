@@ -18,12 +18,14 @@ docker compose -f deploy/local-dev/docker-compose.yml up -d
 ./gradlew :objs-app:run --args="--spring.profiles.active=postgres,sbom"
 ```
 
-The **top header** shows a subtle **Workbench** brand (`IconTournament`) and three views:
+The **top header** shows **Workbench** (links home), then the view switcher, and a compact
+dark/light toggle on the right:
 
 | View | Path | Purpose |
 |------|------|---------|
 | **Explorer** | `/workbench/explorer` | Query and inspect a stored subgraph |
 | **Composer** | `/workbench/composer` | Draft workspace: load, Visual/Text edit, Validate / Apply mutation |
+| **Query** | `/workbench/query` | Tabs Query (script) / Matcher / Options; Exec → traverse API; Structured / Raw results |
 | **Schema** | `/workbench/model` | Browse and edit object/edge schemas |
 
 Legacy `/ui/**` URLs redirect into `/workbench/**` (e.g. `/ui/graph` → `/workbench/explorer`).
@@ -54,8 +56,8 @@ The UI sends the selected mode as matcher DSL:
 2. Select **Exec** (shows a loading overlay while the query runs).
 3. Select a node or edge on the canvas to inspect it. Edge source/target links jump to that node.
 4. Select **Apply layout** to recalculate the graph layout.
-5. After a successful query, **Edit in linter** opens Object linter and loads the same matcher into
-   the draft (reuses the Load overwrite confirm when a draft already exists).
+5. After a successful query, **Open in…** (split control) opens a menu: **Composer** loads the same
+   matcher into Object linter; **Query** opens the Query view with the same matcher.
 
 The last successful matcher is kept in `localStorage` (`objs.ui.graphExplorer.matcher`). The last
 executed graph, layout direction, node positions, and query id are kept in
@@ -91,6 +93,25 @@ Selecting an edge shows:
 - edge properties.
 
 When the edge has a property schema, select **Open edge property schema** to inspect it.
+
+## Query
+
+Query runs a **gremlin-lang** script against the subgraph selected by a matcher
+(`POST /api/v1/objs/graph/traverse/gremlin`). See [`graph/gremlin.md`](graph/gremlin.md).
+
+1. Open `/workbench/query` (or **Open in… → Query** from Explorer).
+2. Top tabs:
+   - **Query** — script editor only (Groovy highlighting; wire language remains `gremlin-lang`).
+   - **Matcher** — shared `MatcherQueryForm` (same modes as Explorer / Composer).
+   - **Options** — eval timeout (`traversalOptions.timeoutSeconds`, default 60).
+3. Drag the horizontal splitter to enlarge the top pane when the script is long.
+4. **Exec** — runs matcher → materialize → script; shows duration / subgraph stats.
+5. Result tabs:
+   - **Structured** — tactical view: graph canvas when `subgraph` is present, else table / scalar /
+     short fallback. Demo-grade; not a final result UX.
+   - **Raw** — pretty-printed full `BoMGremlinResult` JSON.
+
+Script and matcher (and top-pane height) persist in `localStorage` under `objs.ui.query.*`.
 
 ## Schemas
 

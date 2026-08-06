@@ -37,6 +37,13 @@ An organisation tracks dependencies and related metadata for **many applications
 
 The foundation stays domain-agnostic. The **concrete app** maps this domain onto typed payloads + annotations + allow-listed edges, persists via the foundation, fetches by application (and optionally version), and exposes `/api/v1/example/sbom`.
 
+### Gremlin / Query smoke
+
+`:objs-sbom-example` ontology and APIs are unchanged by Gremlin. When `:objs-app` runs with the
+**sbom** profile (demo graph seeded), use workbench **Query** or
+`POST /api/v1/objs/graph/traverse/gremlin` with a matcher such as `{ "anno": { "app": "app-00001" } }`
+and scripts like `g.V().hasLabel('Service', 'Policy')`. Design: [`../graph/gremlin.md`](../graph/gremlin.md).
+
 ---
 
 ## Architecture

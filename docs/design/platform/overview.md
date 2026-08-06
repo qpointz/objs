@@ -18,8 +18,8 @@ See [`../graph/README.md`](../graph/README.md).
 
 | Concern | Choice |
 |---------|--------|
-| Language | Java |
-| JDK | Toolchain **25** |
+| Language | Kotlin |
+| JDK | Toolchain **21** |
 | Build | Gradle **9.4** (Kotlin DSL), multi-module |
 | Versions | Root [`VERSION`](../../../VERSION) file; override `-PprojectVersion=` |
 | Catalog | Root [`libs.versions.toml`](../../../libs.versions.toml) |
@@ -37,20 +37,32 @@ group/version/toolchain live in the root [`build.gradle.kts`](../../../build.gra
 ```mermaid
 flowchart LR
   app[objs-app]
+  gsvc[objs-gremlin-service]
+  gcore[objs-gremlin-core]
   service[objs-service]
+  sbom[objs-sbom-example]
   core[objs-core]
   app -->|implementation| service
+  app -->|implementation| gsvc
+  app -->|implementation| sbom
+  gsvc --> gcore
+  gsvc --> service
+  gcore --> core
   service -->|api| core
+  sbom --> core
   core -->|JPA / JSON| db[(H2 local / PostgreSQL)]
 ```
 
 | Module | Gradle path | Responsibility |
 |--------|-------------|----------------|
 | **objs-core** | `:objs-core` | Entity SDK, core types, **JPA / PostgreSQL persistence** |
-| **objs-service** | `:objs-service` | Spring **REST** + Boot **autoconfiguration** (library) |
+| **objs-service** | `:objs-service` | Spring **REST** + Boot **autoconfiguration** + workbench SPA |
+| **objs-gremlin-core** | `:objs-gremlin-core` | BoM → TinkerGraph materialization + gremlin-lang eval |
+| **objs-gremlin-service** | `:objs-gremlin-service` | Gremlin traverse REST + Boot autoconfig |
+| **objs-sbom-example** | `:objs-sbom-example` | Canonical SBOM ontology + example API |
 | **objs-app** | `:objs-app` | Runnable assembly — see [`app.md`](app.md) |
 
-Dependency rule: `objs-app` → `objs-service` → `objs-core`. Core must not depend on service/app.
+Dependency rule: Gremlin and service libraries depend on core; app wires service + gremlin-service + example. Core must not depend on service/app/gremlin.
 
 ## Process alignment with Mill
 
