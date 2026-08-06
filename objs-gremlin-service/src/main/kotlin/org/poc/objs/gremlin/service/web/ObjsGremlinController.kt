@@ -1,0 +1,126 @@
+package org.poc.objs.gremlin.service.web
+
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.media.Content
+import io.swagger.v3.oas.annotations.media.Schema
+import io.swagger.v3.oas.annotations.responses.ApiResponse
+import io.swagger.v3.oas.annotations.responses.ApiResponses
+import io.swagger.v3.oas.annotations.tags.Tag
+import org.poc.objs.core.match.BoMMatcherDsl
+import org.poc.objs.core.persistence.BoMGraphStore
+import org.poc.objs.core.validation.BoMValidationException
+import org.poc.objs.core.validation.BoMValidationResult
+import org.poc.objs.gremlin.core.BoMGremlinEngine
+import org.poc.objs.gremlin.core.BoMGremlinEvalException
+import org.poc.objs.gremlin.core.BoMGremlinItem
+import org.poc.objs.gremlin.core.BoMGremlinResult
+import org.poc.objs.gremlin.core.materialize.EnvelopeMaterializationStrategy
+import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RestController
+
+/**
+ * Matcher → subgraph1 (Explorer parity) → gremlin-lang traversal → projected result.
+ */
+@RestController
+@RequestMapping("/api/v1/objs")
+@Tag(name = "traverse")
+class ObjsGremlinController(
+    private val store: BoMGraphStore,
+    private val engine: BoMGremlinEngine,
+    private val matcherDsl: BoMMatcherDsl = BoMMatcherDsl.create(),
+) {
+    @PostMapping("/graph/traverse/gremlin")
+    @Operation(
+        summary = "Select subgraph by matcher DSL, then evaluate gremlin-lang",
+        description = "Body requires `matcher` (same DSL as POST /graph/query: anno, anno-expr, chained) " +
+            "and `script`. Backend selects the induced subgraph, materializes it, runs the script, " +
+            "and returns a projected BoMGremlinResult.",
+    )
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "Projected Gremlin result",
+            content = [Content(schema = Schema(implementation = BoMGremlinResult::class))],
+        ),
+        ApiResponse(
+            responseCode = "400",
+            description = "Invalid matcher, script, options, or evaluation failure",
+            content = [Content(schema = Schema(implementation = BoMValidationResult::class))],
+        ),
+    )
+    fun traverse(@RequestBody body: BoMGremlinTraverseRequest): ResponseEntity<Any> {
+        if (body.script.isBlank()) {
+            return ResponseEntity.badRequest().body(mapOf("error" to "script must not be blank"))
+        }
+        val matcher = try {
+            matcherDsl.decodeNode(body.matcher, "$.matcher")
+        } catch (ex: BoMValidationException) {
+            return ResponseEntity.badRequest().body(ex.result)
+        }
+        return try {
+            val result = engine.selectAndEval(
+                store = store,
+                matcher = matcher,
+                script = body.script,
+                bindings = body.bindings,
+                strategy = body.strategy ?: EnvelopeMaterializationStrategy.NAME,
+                options = body.traversalOptions,
+            )
+            ResponseEntity.ok(result.toApiMap())
+        } catch (ex: BoMGremlinEvalException) {
+            ResponseEntity.badRequest().body(mapOf("error" to (ex.message ?: "evaluation failed")))
+        } catch (ex: IllegalArgumentException) {
+            ResponseEntity.badRequest().body(mapOf("error" to (ex.message ?: "bad request")))
+        }
+    }
+}
+
+/** Jackson-friendly map shape matching STORY envelope (kind-tagged items). */
+internal fun BoMGremlinResult.toApiMap(): Map<String, Any?> =
+    linkedMapOf(
+        "primary" to primary,
+        "items" to items.map { it.toApiMap() },
+        "subgraph" to subgraph,
+        "views" to linkedMapOf(
+            "graph" to views.graph,
+            "table" to views.table?.let {
+                linkedMapOf("columns" to it.columns, "rows" to it.rows)
+            },
+            "scalar" to views.scalar,
+        ),
+        "meta" to linkedMapOf(
+            "strategy" to meta.strategy,
+            "language" to meta.language,
+            "subgraph1Stats" to linkedMapOf(
+                "entities" to meta.subgraph1Stats.entities,
+                "edges" to meta.subgraph1Stats.edges,
+            ),
+            "subgraph2Stats" to meta.subgraph2Stats?.let {
+                linkedMapOf("entities" to it.entities, "edges" to it.edges)
+            },
+            "resultCount" to meta.resultCount,
+            "durationMs" to meta.durationMs,
+        ),
+    )
+
+private fun BoMGremlinItem.toApiMap(): Map<String, Any?> =
+    when (this) {
+        is BoMGremlinItem.Vertex -> linkedMapOf("kind" to kind, "value" to value)
+        is BoMGremlinItem.Edge -> linkedMapOf("kind" to kind, "value" to value)
+        is BoMGremlinItem.Path -> linkedMapOf(
+            "kind" to kind,
+            "value" to linkedMapOf(
+                "labels" to value.labels,
+                "objects" to value.objects.map { it.toApiMap() },
+            ),
+        )
+        is BoMGremlinItem.MapValue -> linkedMapOf("kind" to kind, "value" to value)
+        is BoMGremlinItem.Scalar -> linkedMapOf("kind" to kind, "value" to value)
+        is BoMGremlinItem.ListValue -> linkedMapOf(
+            "kind" to kind,
+            "value" to value.map { it.toApiMap() },
+        )
+    }

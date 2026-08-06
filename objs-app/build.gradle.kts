@@ -16,6 +16,7 @@ dependencyManagement {
 dependencies {
     implementation(project(":objs-service"))
     implementation(project(":objs-sbom-example"))
+    implementation(project(":objs-gremlin-service"))
     implementation(libs.kotlin.stdlib)
     implementation(libs.kotlin.reflect)
     implementation(libs.springdoc.openapi.starter.webmvc.ui)
@@ -25,7 +26,7 @@ dependencies {
 }
 
 kotlin {
-    jvmToolchain(24)
+    jvmToolchain(21)
     compilerOptions {
         freeCompilerArgs.add("-Xjsr305=strict")
     }
