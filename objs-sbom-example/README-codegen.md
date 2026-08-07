@@ -7,8 +7,9 @@
 | Path | Role |
 |------|------|
 | [`src/jsonschema/sbom-catalog-linked.schema.json`](src/jsonschema/sbom-catalog-linked.schema.json) | Linked full-catalog schema (committed; input to the plugin) |
-| [`src/jsonschema/types/*.json`](src/jsonschema/types/) | Payload-only per-type schemas (Wave*-shaped; no relation props) |
 | `build/generated/sources/jsonschema2pojo/` | Generated Java under `org.poc.objs.sbom.generated` |
+
+`exportSbomJsonSchema` can also write payload-only per-type schemas under `src/jsonschema/types/` (not committed; Wave*-shaped, no relation props).
 
 Linked schema includes outbound + inbound relation props (e.g. `Database.containsDataset`, `Dataset.containsFromDatabase`) for object-model codegen.
 
@@ -30,7 +31,7 @@ Hand-written Kotlin `*Payload` / `*Type` helpers remain the TypedEntity source o
 
 Generated linked types are a **superset** (payload fields + graph navigation). Migrating off Wave* means:
 
-1. Point `TypedEntity` / builders at generated Java classes (or payload-only generation from `types/*.json`).
+1. Point `TypedEntity` / builders at generated Java classes (or payload-only generation from regenerated `types/*.json`).
 2. Decide how relation fields map — they are **not** stored inside entity payloads today; strip or `@JsonIgnore` them when writing to the graph, or treat generated types as DTOs outside TypedEntity.
 3. Keep thin Kotlin `EntityTypeMeta` facades if useful.
 
