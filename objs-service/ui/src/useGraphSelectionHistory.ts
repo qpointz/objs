@@ -63,6 +63,8 @@ type Options = {
 /**
  * Graph selection backed by URL search params + a query id.
  * Back/Forward restores selection only when `qid` matches the current result set.
+ * Without a query id (blank Composer draft), selection is local React state and must
+ * survive graph updates (payload/annotation edits).
  */
 export function useGraphSelectionHistory({
   nodes,
@@ -130,7 +132,13 @@ export function useGraphSelectionHistory({
     const urlQid = searchParams.get(QID)
     const currentQid = queryIdRef.current
 
-    if (!urlQid || !currentQid || urlQid !== currentQid) {
+    // Blank draft (no qid): keep local selection across node/link identity changes
+    // (payload/annotation edits must not clear the edit form).
+    if (!currentQid) {
+      return
+    }
+
+    if (!urlQid || urlQid !== currentQid) {
       if (selectionRef.current != null) {
         setSelection(null)
       }

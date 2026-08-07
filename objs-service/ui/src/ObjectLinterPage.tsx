@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert,
   Badge,
+  Box,
   Button,
   Code,
   Collapse,
@@ -10,6 +11,7 @@ import {
   Modal,
   Paper,
   Stack,
+  Table,
   Tabs,
   Text,
   Title,
@@ -25,9 +27,14 @@ import {
   type ObjectLinterVisualPanelHandle,
 } from './ObjectLinterVisualPanel'
 import type { QueryExecStats } from './queryExecStats'
-import type { GraphValidationResult } from './types'
+import type { BoMValidationIssue, GraphValidationResult } from './types'
 import { useGraphDraft } from './useGraphDraft'
 import { useGraphSelectionHistory } from './useGraphSelectionHistory'
+import {
+  edgeIdsFromValidationIssues,
+  entityIdsFromValidationIssues,
+  validationTargetFromIssue,
+} from './validationIssueTargets'
 
 export { graphShapeError, mutationShapeError } from './graphDraft'
 
@@ -83,6 +90,49 @@ export function ObjectLinterPage() {
     links: graphView.links,
     onFocusNode,
   })
+
+  const invalidEntityIds = useMemo(() => {
+    if (!result || result.issues.length === 0) return new Set<string>()
+    return entityIdsFromValidationIssues(
+      result.issues,
+      mutationBody.upsert.entities,
+      mutationBody.upsert.edges,
+    )
+  }, [mutationBody.upsert.edges, mutationBody.upsert.entities, result])
+
+  const invalidEdgeIds = useMemo(() => {
+    if (!result || result.issues.length === 0) return new Set<string>()
+    return edgeIdsFromValidationIssues(
+      result.issues,
+      mutationBody.upsert.entities,
+      mutationBody.upsert.edges,
+    )
+  }, [mutationBody.upsert.edges, mutationBody.upsert.entities, result])
+
+  const focusValidationIssue = useCallback(
+    (issue: BoMValidationIssue) => {
+      const target = validationTargetFromIssue(
+        issue,
+        mutationBody.upsert.entities,
+        mutationBody.upsert.edges,
+      )
+      if (!target) return
+      setTab('visual')
+      setError(null)
+      if (target.kind === 'entity') {
+        const node = graphView.nodes.find((n) => n.id === target.id)
+        if (!node) return
+        select({ kind: 'node', node })
+        requestAnimationFrame(() => visualRef.current?.focusNode(target.id))
+        return
+      }
+      const edge = graphView.links.find((l) => l.id === target.id)
+      if (!edge) return
+      select({ kind: 'edge', edge })
+      requestAnimationFrame(() => visualRef.current?.focusNode(edge.source))
+    },
+    [graphView.links, graphView.nodes, mutationBody.upsert.edges, mutationBody.upsert.entities, select],
+  )
 
   const onDraftParsed = useCallback(
     (parsed: { valid: boolean; value?: unknown; error?: string }) => {
@@ -354,6 +404,8 @@ export function ObjectLinterPage() {
             onRestoreDeletedEdge={restoreDeletedEdge}
             onRevertEntityChanges={revertEntityChanges}
             onRevertEdgeChanges={revertEdgeChanges}
+            invalidEntityIds={invalidEntityIds}
+            invalidEdgeIds={invalidEdgeIds}
           />
         </Tabs.Panel>
 
@@ -402,27 +454,126 @@ export function ObjectLinterPage() {
       )}
 
       {result && (
-        <Paper withBorder p="md" style={{ flexShrink: 0, maxHeight: 220, overflow: 'auto' }}>
-          <Group mb="sm">
-            <Text fw={700}>Validation result</Text>
-            <Badge color={valid ? 'green' : 'red'}>{valid ? 'valid' : 'invalid'}</Badge>
+        <Paper
+          withBorder
+          radius="md"
+          p={0}
+          style={{ flexShrink: 0, maxHeight: 200, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+        >
+          <Group
+            justify="space-between"
+            gap={8}
+            wrap="nowrap"
+            px="xs"
+            py={6}
+            style={{
+              borderBottom: '1px solid var(--mantine-color-default-border)',
+              background: 'color-mix(in srgb, var(--mantine-color-default-hover) 55%, transparent)',
+              flexShrink: 0,
+            }}
+          >
+            <Group gap={8} wrap="nowrap" style={{ minWidth: 0 }}>
+              <Box
+                style={{
+                  width: 3,
+                  height: 14,
+                  borderRadius: 2,
+                  background: valid
+                    ? 'var(--mantine-color-teal-filled)'
+                    : 'var(--mantine-color-red-filled)',
+                  flexShrink: 0,
+                }}
+              />
+              <Text size="xs" fw={700} tt="uppercase" style={{ letterSpacing: '0.05em' }}>
+                Validation
+              </Text>
+              <Badge size="xs" variant="light" color={valid ? 'teal' : 'red'}>
+                {valid ? 'valid' : `${result.issues.length} issue${result.issues.length === 1 ? '' : 's'}`}
+              </Badge>
+            </Group>
+            <Button size="compact-xs" variant="subtle" onClick={() => setResult(null)}>
+              Clear
+            </Button>
           </Group>
-          {valid ? (
-            <Text size="sm">The mutation conforms to the registered schemas and edge rules.</Text>
-          ) : (
-            <Stack gap="xs">
-              {result.issues.map((issue, index) => (
-                <Alert key={`${issue.code}:${issue.path}:${index}`} color="red" title={issue.code}>
-                  <Text size="sm">{issue.message}</Text>
-                  {issue.path && (
-                    <Code mt={4} style={{ display: 'inline-block' }}>
-                      {issue.path}
-                    </Code>
-                  )}
-                </Alert>
-              ))}
-            </Stack>
-          )}
+          <Box style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+            {valid ? (
+              <Text size="xs" c="dimmed" px="xs" py={8}>
+                Mutation conforms to registered schemas and edge rules.
+              </Text>
+            ) : (
+              <Table
+                striped
+                highlightOnHover
+                withTableBorder={false}
+                withColumnBorders
+                horizontalSpacing={8}
+                verticalSpacing={4}
+                style={{ fontSize: 'var(--mantine-font-size-xs)' }}
+              >
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th w={120}>Code</Table.Th>
+                    <Table.Th>Message</Table.Th>
+                    <Table.Th w="28%">Path</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {result.issues.map((issue, index) => {
+                    const target = validationTargetFromIssue(
+                      issue,
+                      mutationBody.upsert.entities,
+                      mutationBody.upsert.edges,
+                    )
+                    const clickable = target != null
+                    return (
+                      <Table.Tr
+                        key={`${issue.code}:${issue.path}:${index}`}
+                        onClick={clickable ? () => focusValidationIssue(issue) : undefined}
+                        style={{ cursor: clickable ? 'pointer' : 'default' }}
+                        title={clickable ? 'Select on canvas' : undefined}
+                      >
+                        <Table.Td
+                          style={{
+                            verticalAlign: 'top',
+                            background:
+                              'color-mix(in srgb, var(--mantine-color-default-hover) 40%, transparent)',
+                          }}
+                        >
+                          <Text size="xs" fw={700} c="red" style={{ wordBreak: 'break-word' }}>
+                            {issue.code}
+                          </Text>
+                        </Table.Td>
+                        <Table.Td style={{ verticalAlign: 'top' }}>
+                          <Text size="xs" style={{ wordBreak: 'break-word' }}>
+                            {issue.message}
+                          </Text>
+                        </Table.Td>
+                        <Table.Td style={{ verticalAlign: 'top' }}>
+                          {issue.path ? (
+                            <Code
+                              style={{
+                                fontSize: 10,
+                                display: 'inline-block',
+                                maxWidth: '100%',
+                                whiteSpace: 'normal',
+                                wordBreak: 'break-all',
+                              }}
+                            >
+                              {issue.path}
+                            </Code>
+                          ) : (
+                            <Text size="xs" c="dimmed">
+                              —
+                            </Text>
+                          )}
+                        </Table.Td>
+                      </Table.Tr>
+                    )
+                  })}
+                </Table.Tbody>
+              </Table>
+            )}
+          </Box>
         </Paper>
       )}
 

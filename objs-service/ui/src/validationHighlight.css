@@ -1,0 +1,16 @@
+@keyframes objs-validation-blink {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px rgba(250, 82, 82, 0.85);
+    outline: 2px solid #fa5252;
+  }
+  50% {
+    box-shadow: 0 0 0 7px rgba(250, 82, 82, 0.2);
+    outline: 2px solid #ff8787;
+  }
+}
+
+.objs-validation-error {
+  animation: objs-validation-blink 1s ease-in-out infinite;
+  border-color: #fa5252 !important;
+}

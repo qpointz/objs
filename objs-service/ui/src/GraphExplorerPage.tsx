@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  ActionIcon,
   Alert,
   Badge,
   Button,
@@ -13,7 +14,9 @@ import {
   Text,
   Title,
   Anchor,
+  Tooltip,
 } from '@mantine/core'
+import { IconX } from '@tabler/icons-react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   GraphCanvas,
@@ -21,14 +24,20 @@ import {
   type GraphLayout,
   type GraphNodePositions,
 } from './GraphCanvas'
-import { queryGraph, schemaDetailPath, toGraphData } from './api'
+import { queryGraph, listSchemas, schemaDetailPath, toGraphData } from './api'
 import { colorForType } from './color'
+import {
+  EntityAnnotationsView,
+  EntityPayloadView,
+} from './EntityCardNode'
 import {
   MatcherQueryForm,
   type MatcherQueryFormHandle,
 } from './MatcherQueryForm'
+import { payloadFieldKindsByTypeVersion } from './payloadFieldKinds'
 import type { QueryExecStats } from './queryExecStats'
-import type { GraphLink, GraphNode } from './types'
+import type { BoMSchema, GraphLink, GraphNode, GraphSelection } from './types'
+import { applyTypeHighlightDimming, toggleTypeInSet } from './typeHighlightDimming'
 import { newGraphQueryId, useGraphSelectionHistory } from './useGraphSelectionHistory'
 
 const GRAPH_MATCHER_STORAGE_KEY = 'objs.ui.graphExplorer.matcher'
@@ -151,6 +160,28 @@ export function GraphExplorerPage() {
   })
   queryIdRef.current = queryId
 
+  const [highlightedTypes, setHighlightedTypes] = useState<Set<string>>(() => new Set())
+  const [schemas, setSchemas] = useState<BoMSchema[]>([])
+
+  useEffect(() => {
+    let cancelled = false
+    listSchemas()
+      .then((list) => {
+        if (!cancelled) setSchemas(list)
+      })
+      .catch(() => {
+        /* inspector still works without enum pills */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const fieldKindsByTypeVersion = useMemo(
+    () => payloadFieldKindsByTypeVersion(schemas),
+    [schemas],
+  )
+
   const types = useMemo(() => {
     const set = new Map<string, string>()
     for (const n of nodes) {
@@ -158,6 +189,36 @@ export function GraphExplorerPage() {
     }
     return [...set.entries()].sort(([a], [b]) => a.localeCompare(b))
   }, [nodes])
+
+  const nodesWithKinds = useMemo(
+    () =>
+      nodes.map((n) => ({
+        ...n,
+        payloadFieldKinds: fieldKindsByTypeVersion.get(`${n.type}@${n.schemaVersion}`),
+      })),
+    [fieldKindsByTypeVersion, nodes],
+  )
+
+  const displayGraph = useMemo(
+    () => applyTypeHighlightDimming(nodesWithKinds, links, highlightedTypes),
+    [highlightedTypes, links, nodesWithKinds],
+  )
+
+  const clearTypeHighlight = useCallback(() => {
+    setHighlightedTypes((prev) => (prev.size === 0 ? prev : new Set()))
+  }, [])
+
+  const handleSelect = useCallback(
+    (next: GraphSelection | null) => {
+      clearTypeHighlight()
+      select(next)
+    },
+    [clearTypeHighlight, select],
+  )
+
+  function toggleTypeHighlight(type: string) {
+    setHighlightedTypes((prev) => toggleTypeInSet(prev, type))
+  }
 
   function persistSession(
     nextNodes: GraphNode[],
@@ -219,6 +280,7 @@ export function GraphExplorerPage() {
       // Drop prior canvas coordinates so Exec starts from a fresh layout.
       setNodes(graph.nodes)
       setLinks(graph.links)
+      setHighlightedTypes(new Set())
       setLastMatcher(body)
       saveStoredGraphMatcher(body)
       clearStoredGraphSession()
@@ -266,7 +328,7 @@ export function GraphExplorerPage() {
   function selectNodeFromCanvas(nodeId: string) {
     const node = nodes.find((n) => n.id === nodeId)
     if (!node) return
-    select({ kind: 'node', node })
+    handleSelect({ kind: 'node', node })
     requestAnimationFrame(() => graphRef.current?.focusNode(nodeId))
   }
 
@@ -281,8 +343,8 @@ export function GraphExplorerPage() {
         <div>
           <Title order={3}>Graph explorer</Title>
           <Text size="sm" c="dimmed">
-            Query <Code>POST /api/v1/objs/graph/query</Code>. Open a type to inspect its object model in Schema
-            explorer.
+            Query <Code>POST /api/v1/objs/graph/query</Code>. Click type pills to highlight matching
+            objects; the selected object’s type pill opens its schema.
           </Text>
         </div>
         <Group gap="xs">
@@ -386,23 +448,48 @@ export function GraphExplorerPage() {
       )}
 
       {!error && (nodes.length > 0 || links.length > 0) && (
-        <Group gap="xs">
+        <Group gap="xs" wrap="wrap">
           <Text size="sm">
             {nodes.length} nodes / {links.length} edges
           </Text>
-          {types.map(([type, color]) => (
-            <Badge
-              key={type}
-              component={Link}
-              to={`/model/${encodeURIComponent(type)}`}
-              color="gray"
-              variant="outline"
-              leftSection={<span style={{ color }}>●</span>}
-              style={{ cursor: 'pointer', textDecoration: 'none' }}
-            >
-              {type}
-            </Badge>
-          ))}
+          {types.map(([type, color]) => {
+            const active = highlightedTypes.has(type)
+            const filtering = highlightedTypes.size > 0
+            return (
+              <Badge
+                key={type}
+                variant={active ? 'filled' : 'outline'}
+                color="gray"
+                leftSection={
+                  <span style={{ color: active ? '#fff' : color, lineHeight: 1 }}>●</span>
+                }
+                onClick={() => toggleTypeHighlight(type)}
+                style={{
+                  cursor: 'pointer',
+                  background: active ? color : undefined,
+                  borderColor: color,
+                  color: active ? '#fff' : undefined,
+                  opacity: filtering && !active ? 0.45 : 1,
+                  userSelect: 'none',
+                }}
+              >
+                {type}
+              </Badge>
+            )
+          })}
+          {highlightedTypes.size > 0 && (
+            <Tooltip label="Clear type highlight" withArrow>
+              <ActionIcon
+                size="sm"
+                variant="subtle"
+                color="gray"
+                aria-label="Clear type highlight"
+                onClick={clearTypeHighlight}
+              >
+                <IconX size={14} />
+              </ActionIcon>
+            </Tooltip>
+          )}
         </Group>
       )}
 
@@ -434,10 +521,10 @@ export function GraphExplorerPage() {
             <GraphCanvas
               key={canvasEpoch}
               ref={graphRef}
-              nodes={nodes}
-              links={links}
+              nodes={displayGraph.nodes}
+              links={displayGraph.links}
               selection={selection}
-              onSelect={select}
+              onSelect={handleSelect}
               layout={layout}
               autoLayoutOnDataChange={false}
               onPositionsChange={onPositionsChange}
@@ -470,28 +557,29 @@ export function GraphExplorerPage() {
                     schema {selection.node.schemaVersion}
                   </Text>
                 </Text>
-                <Anchor
-                  component={Link}
-                  to={schemaDetailPath(selection.node.type, selection.node.schemaVersion)}
-                  size="sm"
-                >
-                  Open object model in Schema explorer
-                </Anchor>
                 <Text size="xs" c="dimmed" style={{ wordBreak: 'break-all' }}>
                   id: {selection.node.id}
                 </Text>
-                <div>
-                  <Text fw={600} size="sm" mb={4}>
-                    annotations
-                  </Text>
-                  <Code block>{JSON.stringify(selection.node.annotations, null, 2)}</Code>
-                </div>
-                <div>
-                  <Text fw={600} size="sm" mb={4}>
-                    payload
-                  </Text>
-                  <Code block>{JSON.stringify(selection.node.payload, null, 2)}</Code>
-                </div>
+                <Paper withBorder radius="md" p="sm">
+                  <EntityPayloadView
+                    payload={selection.node.payload ?? {}}
+                    fieldKinds={
+                      selection.node.payloadFieldKinds ??
+                      fieldKindsByTypeVersion.get(
+                        `${selection.node.type}@${selection.node.schemaVersion}`,
+                      )
+                    }
+                    size="panel"
+                    showLabel
+                  />
+                </Paper>
+                <Paper withBorder radius="md" p="sm">
+                  <EntityAnnotationsView
+                    annotations={selection.node.annotations ?? {}}
+                    size="panel"
+                    showLabel
+                  />
+                </Paper>
               </Stack>
             ) : selection?.kind === 'edge' ? (
               <Stack gap="sm">
@@ -512,7 +600,9 @@ export function GraphExplorerPage() {
                       )}
                       size="sm"
                     >
-                      {selection.edge.type}
+                      <Badge variant="light" style={{ cursor: 'pointer' }}>
+                        {selection.edge.type}
+                      </Badge>
                     </Anchor>
                   ) : (
                     '—'
@@ -523,18 +613,6 @@ export function GraphExplorerPage() {
                     </Text>
                   )}
                 </Text>
-                {selection.edge.type && (
-                  <Anchor
-                    component={Link}
-                    to={schemaDetailPath(
-                      selection.edge.type,
-                      selection.edge.schemaVersion ?? '1.0.0',
-                    )}
-                    size="sm"
-                  >
-                    Open edge property schema
-                  </Anchor>
-                )}
                 <Text size="xs" c="dimmed" style={{ wordBreak: 'break-all' }}>
                   id: {selection.edge.id}
                 </Text>
@@ -575,30 +653,25 @@ export function GraphExplorerPage() {
                     </Group>
                   </Stack>
                 </div>
-                <div>
-                  <Text fw={600} size="sm" mb={4}>
-                    edge JSON
-                  </Text>
-                  <Code block>
-                    {JSON.stringify(
-                      {
-                        id: selection.edge.id,
-                        source: selection.edge.source,
-                        target: selection.edge.target,
-                        role: selection.edge.role,
-                        type: selection.edge.type,
-                        schemaVersion: selection.edge.schemaVersion,
-                        properties: selection.edge.properties,
-                      },
-                      null,
-                      2,
-                    )}
-                  </Code>
-                </div>
+                <Paper withBorder radius="md" p="sm">
+                  <EntityPayloadView
+                    payload={selection.edge.properties ?? {}}
+                    fieldKinds={
+                      selection.edge.type
+                        ? fieldKindsByTypeVersion.get(
+                            `${selection.edge.type}@${selection.edge.schemaVersion ?? '1.0.0'}`,
+                          )
+                        : undefined
+                    }
+                    size="panel"
+                    showLabel
+                    label="properties"
+                  />
+                </Paper>
               </Stack>
             ) : (
               <Text c="dimmed" size="sm">
-                Select a node or edge to inspect JSON.
+                Select a node or edge to inspect.
               </Text>
             )}
           </ScrollArea>

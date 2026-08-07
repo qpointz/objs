@@ -29,12 +29,27 @@ export type GraphNode = {
   color: string
   payload: Record<string, unknown>
   annotations: Record<string, string>
+  /** Top-level payload field kinds from entity schema (for card rendering). */
+  payloadFieldKinds?: Record<string, PayloadFieldKind>
   x?: number
   y?: number
   draftStatus?: 'new' | 'modified' | 'deleted' | 'unchanged'
   /** Dimmed in Composer “Changes only” mode (unchanged items stay visible for stable layout). */
   dimmed?: boolean
+  /** Failing latest Validate — red blink until result cleared/revalidated. */
+  validationError?: boolean
 }
+
+/** How a top-level payload field should render on graph cards. */
+export type PayloadFieldKind =
+  | 'STRING'
+  | 'ENUM'
+  | 'NUMBER'
+  | 'INTEGER'
+  | 'BOOLEAN'
+  | 'ARRAY'
+  | 'OBJECT'
+  | 'OTHER'
 
 export type GraphLink = {
   id: string
@@ -47,6 +62,8 @@ export type GraphLink = {
   draftStatus?: 'new' | 'modified' | 'deleted' | 'unchanged'
   /** Dimmed in Composer “Changes only” mode. */
   dimmed?: boolean
+  /** Failing latest Validate — red blink until result cleared/revalidated. */
+  validationError?: boolean
 }
 
 export type GraphSelection =

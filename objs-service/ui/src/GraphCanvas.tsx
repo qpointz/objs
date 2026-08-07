@@ -5,6 +5,7 @@ import {
   useImperativeHandle,
   useMemo,
   useRef,
+  type MouseEvent as ReactMouseEvent,
 } from 'react'
 import dagre from '@dagrejs/dagre'
 import {
@@ -23,6 +24,7 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { EntityCardNode, type EntityCardData } from './EntityCardNode'
+import { closestHandleIds, type NodeBox } from './graphEdgeHandles'
 import type { GraphLink, GraphNode, GraphSelection } from './types'
 
 export type GraphNodePositions = Record<string, { x: number; y: number }>
@@ -43,6 +45,9 @@ type Props = {
   highlightedNodeIds?: string[]
   /** Fired after drag or layout with current canvas coordinates (for session restore). */
   onPositionsChange?: (positions: GraphNodePositions) => void
+  onNodeContextMenu?: (event: ReactMouseEvent, node: GraphNode) => void
+  onEdgeContextMenu?: (event: ReactMouseEvent, edge: GraphLink) => void
+  onPaneContextMenu?: (event: ReactMouseEvent | MouseEvent) => void
 }
 
 export type GraphLayout = 'TB' | 'LR' | 'BT' | 'RL'
@@ -64,13 +69,45 @@ function positionsFromNodes(rfNodes: Node<EntityCardData>[]): GraphNodePositions
   return Object.fromEntries(rfNodes.map((n) => [n.id, { x: n.position.x, y: n.position.y }]))
 }
 
+/** Fallback card size — real cards are taller; layout prefers measured when available. */
 const NODE_W = 180
-const NODE_H = 110
+const NODE_H = 132
+const NODE_SEP = 72
+const RANK_SEP = 96
 const EDGE_COLOR = '#495057'
 const EDGE_SELECTED = '#228be6'
 const nodeTypes = { entityCard: EntityCardNode }
 
 type EdgeData = { edge: GraphLink }
+
+function nodeSize(n: Node<EntityCardData>): { width: number; height: number } {
+  return {
+    width: n.measured?.width ?? NODE_W,
+    height: n.measured?.height ?? NODE_H,
+  }
+}
+
+function toNodeBox(n: Node<EntityCardData>): NodeBox {
+  const { width, height } = nodeSize(n)
+  return { id: n.id, position: n.position, width, height }
+}
+
+export function withClosestHandles(
+  edges: Edge<EdgeData>[],
+  nodes: Node<EntityCardData>[],
+): Edge<EdgeData>[] {
+  const byId = new Map(nodes.map((n) => [n.id, n]))
+  return edges.map((e) => {
+    const source = byId.get(e.source)
+    const target = byId.get(e.target)
+    if (!source || !target) return e
+    const handles = closestHandleIds(toNodeBox(source), toNodeBox(target))
+    if (e.sourceHandle === handles.sourceHandle && e.targetHandle === handles.targetHandle) {
+      return e
+    }
+    return { ...e, ...handles }
+  })
+}
 
 function layoutWithDagre(
   rfNodes: Node<EntityCardData>[],
@@ -80,14 +117,15 @@ function layoutWithDagre(
   const g = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}))
   g.setGraph({
     rankdir: layout,
-    nodesep: 48,
-    ranksep: 72,
-    marginx: 24,
-    marginy: 24,
+    nodesep: NODE_SEP,
+    ranksep: RANK_SEP,
+    marginx: 32,
+    marginy: 32,
   })
 
   for (const n of rfNodes) {
-    g.setNode(n.id, { width: NODE_W, height: NODE_H })
+    const { width, height } = nodeSize(n)
+    g.setNode(n.id, { width, height })
   }
   for (const e of rfEdges) {
     g.setEdge(e.source, e.target)
@@ -96,11 +134,12 @@ function layoutWithDagre(
 
   return rfNodes.map((n) => {
     const pos = g.node(n.id)
+    const { width, height } = nodeSize(n)
     return {
       ...n,
       position: {
-        x: (pos?.x ?? 0) - NODE_W / 2,
-        y: (pos?.y ?? 0) - NODE_H / 2,
+        x: (pos?.x ?? 0) - width / 2,
+        y: (pos?.y ?? 0) - height / 2,
       },
     }
   })
@@ -117,31 +156,40 @@ function styleForDraftEdge(
   draftStatus: GraphLink['draftStatus'],
   selected: boolean,
   dimmed = false,
+  validationError = false,
 ): Pick<Edge<EdgeData>, 'style' | 'labelStyle' | 'markerEnd' | 'animated'> {
   const deleted = draftStatus === 'deleted'
   const modified = draftStatus === 'modified'
   const isNew = draftStatus === 'new'
-  const stroke = selected
-    ? EDGE_SELECTED
-    : deleted
-      ? '#fa5252'
-      : modified
-        ? '#fd7e14'
-        : isNew
-          ? '#40c057'
-          : EDGE_COLOR
+  const stroke = validationError
+    ? '#fa5252'
+    : selected
+      ? EDGE_SELECTED
+      : deleted
+        ? '#fa5252'
+        : modified
+          ? '#fd7e14'
+          : isNew
+            ? '#40c057'
+            : EDGE_COLOR
   return {
-    animated: selected,
+    animated: selected || validationError,
     style: {
       ...edgeStyle(selected),
       stroke,
-      strokeWidth: selected ? 4 : deleted || modified || isNew ? 3 : 2,
+      strokeWidth: selected || validationError ? 4 : deleted || modified || isNew ? 3 : 2,
       strokeDasharray: deleted ? '6 4' : undefined,
       opacity: dimmed ? 0.25 : deleted ? 0.7 : 1,
     },
     labelStyle: {
       fontSize: 10,
-      fill: selected ? EDGE_SELECTED : deleted ? '#fa5252' : '#212529',
+      fill: validationError
+        ? '#fa5252'
+        : selected
+          ? EDGE_SELECTED
+          : deleted
+            ? '#fa5252'
+            : '#212529',
       fontWeight: 700,
       textDecoration: deleted ? 'line-through' : undefined,
       opacity: dimmed ? 0.25 : 1,
@@ -149,8 +197,8 @@ function styleForDraftEdge(
     markerEnd: {
       type: MarkerType.ArrowClosed,
       color: stroke,
-      width: selected ? 18 : 16,
-      height: selected ? 18 : 16,
+      width: selected || validationError ? 18 : 16,
+      height: selected || validationError ? 18 : 16,
     },
   }
 }
@@ -190,11 +238,11 @@ function toFlowElements(
         data: { edge: l },
         labelBgStyle: { fill: '#fff', fillOpacity: 0.95 },
         labelBgPadding: [4, 2] as [number, number],
-        ...styleForDraftEdge(l.draftStatus, selected, l.dimmed === true),
+        ...styleForDraftEdge(l.draftStatus, selected, l.dimmed === true, l.validationError === true),
       }
     })
 
-  return { nodes, edges }
+  return { nodes, edges: withClosestHandles(edges, nodes) }
 }
 
 function positionForNewNode(
@@ -256,6 +304,9 @@ function GraphCanvasInner(
     autoLayoutOnDataChange = true,
     highlightedNodeIds,
     onPositionsChange,
+    onNodeContextMenu,
+    onEdgeContextMenu,
+    onPaneContextMenu,
   }: Props,
   ref: React.Ref<GraphCanvasHandle>,
 ) {
@@ -287,34 +338,49 @@ function GraphCanvasInner(
     const shouldAutoLayout = autoLayoutOnDataChange
     const hasPositions = entitiesHavePositions(entities)
     let laidOut: Node<EntityCardData>[] | null = null
+    let positioned: Node<EntityCardData>[] = next.nodes
     setNodes((curr) => {
+      // Carry measured sizes into layout so dagre spacing matches real card height.
+      const sized = next.nodes.map((n) => {
+        const prev = curr.find((c) => c.id === n.id)
+        if (!prev?.measured) return n
+        return { ...n, measured: prev.measured }
+      })
       if (hasPositions) {
         laidOutOnce.current = true
         // Prefer live canvas coordinates when the graph is already mounted so a
         // parent re-render (e.g. mid applyLayout) cannot wipe a fresher layout.
-        if (curr.length > 0 && next.nodes.some((n) => curr.some((c) => c.id === n.id))) {
-          return mergePreservingPositions(next.nodes, links, curr)
+        if (curr.length > 0 && sized.some((n) => curr.some((c) => c.id === n.id))) {
+          positioned = mergePreservingPositions(sized, links, curr)
+          return positioned
         }
-        return next.nodes
+        positioned = sized
+        return positioned
       }
       if (shouldAutoLayout) {
         laidOutOnce.current = true
-        laidOut = layoutWithDagre(next.nodes, next.edges, layout)
+        laidOut = layoutWithDagre(sized, next.edges, layout)
+        positioned = laidOut
         return laidOut
       }
-      const overlap = next.nodes.some((n) => curr.some((c) => c.id === n.id))
-      if (!laidOutOnce.current || (!overlap && next.nodes.length > 0)) {
+      const overlap = sized.some((n) => curr.some((c) => c.id === n.id))
+      if (!laidOutOnce.current || (!overlap && sized.length > 0)) {
         laidOutOnce.current = true
-        laidOut = layoutWithDagre(next.nodes, next.edges, layout)
+        laidOut = layoutWithDagre(sized, next.edges, layout)
+        positioned = laidOut
         return laidOut
       }
-      return mergePreservingPositions(next.nodes, links, curr)
+      positioned = mergePreservingPositions(sized, links, curr)
+      return positioned
     })
-    setEdges(next.edges)
+    setEdges(withClosestHandles(next.edges, positioned))
     if (laidOut || shouldAutoLayout) {
       const snapshot = laidOut
       requestAnimationFrame(() => {
-        if (snapshot) emitPositions(snapshot)
+        if (snapshot) {
+          emitPositions(snapshot)
+          setEdges((curr) => withClosestHandles(curr, snapshot))
+        }
         fitView({ padding: 0.15, duration: 300 })
       })
     }
@@ -341,16 +407,21 @@ function GraphCanvasInner(
       }),
     )
     setEdges((curr) =>
-      curr.map((e) => {
-        const selected = e.id === selectedEdgeId
-        const draftStatus = (e.data as EdgeData | undefined)?.edge?.draftStatus
-        const dimmed = (e.data as EdgeData | undefined)?.edge?.dimmed === true
-        return {
-          ...e,
-          selected,
-          ...styleForDraftEdge(draftStatus, selected, dimmed),
-        }
-      }),
+      withClosestHandles(
+        curr.map((e) => {
+          const selected = e.id === selectedEdgeId
+          const draftStatus = (e.data as EdgeData | undefined)?.edge?.draftStatus
+          const dimmed = (e.data as EdgeData | undefined)?.edge?.dimmed === true
+          const validationError = (e.data as EdgeData | undefined)?.edge?.validationError === true
+          return {
+            ...e,
+            selected,
+            data: e.data,
+            ...styleForDraftEdge(draftStatus, selected, dimmed, validationError),
+          }
+        }),
+        nodesRef.current,
+      ),
     )
   }, [selection, highlightedNodeIds, setNodes, setEdges])
 
@@ -360,13 +431,21 @@ function GraphCanvasInner(
         const next = layoutWithDagre(curr, edges, nextLayout)
         requestAnimationFrame(() => {
           emitPositions(next)
+          setEdges((currEdges) => withClosestHandles(currEdges, next))
           fitView({ padding: 0.15, duration: 400 })
         })
         return next
       })
       laidOutOnce.current = true
     },
-    [edges, emitPositions, fitView, layout, setNodes],
+    [edges, emitPositions, fitView, layout, setEdges, setNodes],
+  )
+
+  const refreshEdgeHandles = useCallback(
+    (rfNodes: Node<EntityCardData>[]) => {
+      setEdges((curr) => withClosestHandles(curr, rfNodes))
+    },
+    [setEdges],
   )
 
   const focusNode = useCallback(
@@ -400,7 +479,11 @@ function GraphCanvasInner(
       edgesFocusable
       elementsSelectable
       nodesDraggable
-      onNodeDragStop={(_event, _node, dragged) => emitPositions(dragged)}
+      onNodeDrag={(_event, _node, dragged) => refreshEdgeHandles(dragged)}
+      onNodeDragStop={(_event, _node, dragged) => {
+        refreshEdgeHandles(dragged)
+        emitPositions(dragged)
+      }}
       onNodeClick={(event, node) =>
         onSelect(
           { kind: 'node', node: (node.data as EntityCardData).entity },
@@ -412,6 +495,14 @@ function GraphCanvasInner(
         if (data?.edge) onSelect({ kind: 'edge', edge: data.edge })
       }}
       onPaneClick={() => onSelect(null)}
+      onNodeContextMenu={(event, node) => {
+        onNodeContextMenu?.(event, (node.data as EntityCardData).entity)
+      }}
+      onEdgeContextMenu={(event, edge) => {
+        const data = edge.data as EdgeData | undefined
+        if (data?.edge) onEdgeContextMenu?.(event, data.edge)
+      }}
+      onPaneContextMenu={(event) => onPaneContextMenu?.(event)}
       proOptions={{ hideAttribution: true }}
     >
       <Background gap={16} size={1} />

@@ -334,6 +334,12 @@ export function SchemaExplorerPage() {
       return
     }
 
+    // Wait for catalog load before deciding the type is missing (deep links from
+    // Explorer/Composer must not bounce to the overview while schemas === []).
+    if (loading) {
+      return
+    }
+
     if (leavingDetailRef.current) {
       return
     }
@@ -426,6 +432,7 @@ export function SchemaExplorerPage() {
     selectedType,
     selectedVersion,
     schemas,
+    loading,
     navigate,
     isNewDraft,
     createKind,

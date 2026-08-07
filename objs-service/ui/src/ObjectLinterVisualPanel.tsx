@@ -1,5 +1,15 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+} from 'react'
+import {
+  ActionIcon,
   Alert,
   Anchor,
   Badge,
@@ -16,8 +26,11 @@ import {
   Switch,
   Tabs,
   Text,
+  Tooltip,
 } from '@mantine/core'
-import { getSchema, getTypeEdges, listSchemas, toGraphData } from './api'
+import { IconX } from '@tabler/icons-react'
+import { getSchema, getTypeEdges, listSchemas, schemaDetailPath, toGraphData } from './api'
+import { Link } from 'react-router-dom'
 import { colorForType, nodeLabel } from './color'
 import {
   GraphCanvas,
@@ -26,7 +39,9 @@ import {
 } from './GraphCanvas'
 import { edgeStatus, entityStatus, type GraphDraftState } from './graphDraft'
 import { newEntityId } from './graphDraft'
-import { AnnotationsEditor, SchemaInstanceForm, defaultValueForSchema } from './SchemaInstanceForm'
+import { payloadFieldKindsByTypeVersion } from './payloadFieldKinds'
+import { AnnotationsEditor, PayloadInspector, SchemaInstanceForm, defaultValueForSchema } from './SchemaInstanceForm'
+import { applyTypeHighlightDimming, toggleTypeInSet } from './typeHighlightDimming'
 import type {
   BoMAllowedEdgeRule,
   BoMEdge,
@@ -72,6 +87,22 @@ export function applyChangesOnlyDimming(
   }
 }
 
+/** Overlay wins on key collision (Paste Merge). */
+export function mergeAnnotations(
+  base: Record<string, string>,
+  overlay: Record<string, string>,
+): Record<string, string> {
+  return { ...base, ...overlay }
+}
+
+export function versionsForEntityType(schemas: BoMSchema[], type: string | null): string[] {
+  if (!type) return []
+  return schemas
+    .filter((s) => s.type === type && s.usages.includes('ENTITY'))
+    .map((s) => s.version)
+    .sort((a, b) => b.localeCompare(a))
+}
+
 function entityToGraphNode(entity: BoMEntity): GraphNode {
   return {
     id: entity.id,
@@ -97,6 +128,10 @@ type Props = {
   onRestoreDeletedEdge: (id: string) => void
   onRevertEntityChanges: (id: string) => void
   onRevertEdgeChanges: (id: string) => void
+  /** Entity ids failing the latest Validate (red blink until result cleared). */
+  invalidEntityIds?: ReadonlySet<string>
+  /** Edge ids failing the latest Validate. */
+  invalidEdgeIds?: ReadonlySet<string>
 }
 
 export type ObjectLinterVisualPanelHandle = {
@@ -129,29 +164,15 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
       onRestoreDeletedEdge,
       onRevertEntityChanges,
       onRevertEdgeChanges,
+      invalidEntityIds,
+      invalidEdgeIds,
     },
     ref,
   ) {
   const document = canvasDocument
   const liveDocument = draftState.document
-  const graphView = useMemo(() => {
-    const base = toGraphData(canvasDocument)
-    return {
-      nodes: base.nodes.map((n) => ({
-        ...n,
-        draftStatus: entityStatus(draftState, n.id),
-      })),
-      links: base.links.map((l) => ({
-        ...l,
-        draftStatus: edgeStatus(draftState, l.id),
-      })),
-    }
-  }, [canvasDocument, draftState])
   const [changesOnly, setChangesOnly] = useState(false)
-  const displayGraph = useMemo(
-    () => applyChangesOnlyDimming(graphView.nodes, graphView.links, changesOnly),
-    [changesOnly, graphView],
-  )
+  const [highlightedTypes, setHighlightedTypes] = useState<Set<string>>(() => new Set())
   const graphRef = useRef<GraphCanvasHandle>(null)
   useImperativeHandle(
     ref,
@@ -165,6 +186,45 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
   const [layout, setLayout] = useState<GraphLayout>('TB')
   const [schemas, setSchemas] = useState<BoMSchema[]>([])
   const [schemasError, setSchemasError] = useState<string | null>(null)
+  const fieldKindsByTypeVersion = useMemo(
+    () => payloadFieldKindsByTypeVersion(schemas),
+    [schemas],
+  )
+  const graphView = useMemo(() => {
+    const base = toGraphData(canvasDocument)
+    return {
+      nodes: base.nodes.map((n) => ({
+        ...n,
+        draftStatus: entityStatus(draftState, n.id),
+        validationError: invalidEntityIds?.has(n.id) === true,
+        payloadFieldKinds: fieldKindsByTypeVersion.get(`${n.type}@${n.schemaVersion}`),
+      })),
+      links: base.links.map((l) => ({
+        ...l,
+        draftStatus: edgeStatus(draftState, l.id),
+        validationError: invalidEdgeIds?.has(l.id) === true,
+      })),
+    }
+  }, [canvasDocument, draftState, fieldKindsByTypeVersion, invalidEdgeIds, invalidEntityIds])
+  const types = useMemo(() => {
+    const set = new Map<string, string>()
+    for (const n of graphView.nodes) {
+      if (!set.has(n.type)) set.set(n.type, colorForType(n.type))
+    }
+    return [...set.entries()].sort(([a], [b]) => a.localeCompare(b))
+  }, [graphView.nodes])
+  const displayGraph = useMemo(() => {
+    const withChanges = applyChangesOnlyDimming(graphView.nodes, graphView.links, changesOnly)
+    return applyTypeHighlightDimming(withChanges.nodes, withChanges.links, highlightedTypes, {
+      compose: true,
+    })
+  }, [changesOnly, graphView, highlightedTypes])
+  const clearTypeHighlight = useCallback(() => {
+    setHighlightedTypes((prev) => (prev.size === 0 ? prev : new Set()))
+  }, [])
+  const toggleTypeHighlight = useCallback((type: string) => {
+    setHighlightedTypes((prev) => toggleTypeInSet(prev, type))
+  }, [])
   const [addOpen, setAddOpen] = useState(false)
   const [linkOpen, setLinkOpen] = useState(false)
   const [connectOpen, setConnectOpen] = useState(false)
@@ -172,8 +232,17 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
   const [addVersion, setAddVersion] = useState<string | null>(null)
   const [linkOptions, setLinkOptions] = useState<LinkOption[]>([])
   const [linkOptionKey, setLinkOptionKey] = useState<string | null>(null)
+  const [linkVersion, setLinkVersion] = useState<string | null>(null)
   const [copyAnnotations, setCopyAnnotations] = useState(true)
+  const [annotationBuffer, setAnnotationBuffer] = useState<Record<string, string> | null>(null)
   const [pairIds, setPairIds] = useState<string[]>([])
+  const [canvasMenu, setCanvasMenu] = useState<{
+    x: number
+    y: number
+    pairCount: number
+    hasEdge: boolean
+    entityDeleted: boolean
+  } | null>(null)
   const [connectOptions, setConnectOptions] = useState<ConnectOption[]>([])
   const [connectOptionKey, setConnectOptionKey] = useState<string | null>(null)
   const [connectBusy, setConnectBusy] = useState(false)
@@ -199,11 +268,26 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
     setPairIds((prev) => (prev.length === 0 ? prev : []))
   }, [selection])
 
+  // Clear type highlight when selection changes (canvas, history, validation jump).
+  const selectionKey =
+    selection?.kind === 'node'
+      ? `n:${selection.node.id}`
+      : selection?.kind === 'edge'
+        ? `e:${selection.edge.id}`
+        : 'none'
+  const prevSelectionKeyRef = useRef(selectionKey)
+  useEffect(() => {
+    if (prevSelectionKeyRef.current === selectionKey) return
+    prevSelectionKeyRef.current = selectionKey
+    clearTypeHighlight()
+  }, [clearTypeHighlight, selectionKey])
+
   const pairIdsRef = useRef(pairIds)
   pairIdsRef.current = pairIds
 
   const handleSelect = useCallback(
     (sel: GraphSelection | null, meta?: { additive?: boolean }) => {
+      clearTypeHighlight()
       if (!sel) {
         setPairIds([])
         onSelect(null)
@@ -225,15 +309,16 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
         onSelect(sel)
       }
     },
-    [document.entities, onSelect],
+    [clearTypeHighlight, document.entities, onSelect],
   )
 
   const selectEntityAlone = useCallback(
     (entity: BoMEntity) => {
+      clearTypeHighlight()
       setPairIds([entity.id])
       onSelect({ kind: 'node', node: entityToGraphNode(entity) })
     },
-    [onSelect],
+    [clearTypeHighlight, onSelect],
   )
 
   const selectAndFocusEntity = useCallback(
@@ -348,13 +433,22 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
     }
   }, [selectedEdgeId, selectedEdgeType, selectedEdgeVersion])
 
-  const versionsForAddType = useMemo(() => {
-    if (!addType) return []
-    return schemas
-      .filter((s) => s.type === addType && s.usages.includes('ENTITY'))
-      .map((s) => s.version)
-      .sort((a, b) => b.localeCompare(a))
-  }, [addType, schemas])
+  const versionsForAddType = useMemo(
+    () => versionsForEntityType(schemas, addType),
+    [addType, schemas],
+  )
+
+  const linkCreateType = useMemo(() => {
+    if (!linkOptionKey) return null
+    const option = linkOptions.find((o) => o.key === linkOptionKey)
+    if (!option || option.createType === '*') return null
+    return option.createType
+  }, [linkOptionKey, linkOptions])
+
+  const versionsForLinkType = useMemo(
+    () => versionsForEntityType(schemas, linkCreateType),
+    [linkCreateType, schemas],
+  )
 
   useEffect(() => {
     if (!addType) {
@@ -365,11 +459,129 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
     setAddVersion(latest?.version ?? versionsForAddType[0] ?? null)
   }, [addType, entitySchemaOptions, versionsForAddType])
 
+  useEffect(() => {
+    if (!linkCreateType) {
+      setLinkVersion(null)
+      return
+    }
+    const latest = entitySchemaOptions.find((s) => s.type === linkCreateType)
+    setLinkVersion(latest?.version ?? versionsForLinkType[0] ?? null)
+  }, [entitySchemaOptions, linkCreateType, versionsForLinkType])
+
+  const annotationsMenuEnabled =
+    pairIds.length === 1 &&
+    !!selectedEntity &&
+    !draftState.pendingDeleteEntityIds.has(selectedEntity.id)
+  const annotationPasteEnabled = annotationsMenuEnabled && annotationBuffer != null
+
+  function copySelectedAnnotations() {
+    if (!selectedEntity) return
+    setAnnotationBuffer({ ...(selectedEntity.annotations ?? {}) })
+  }
+
+  function pasteSelectedAnnotations() {
+    if (!selectedEntity || annotationBuffer == null) return
+    onUpsertEntity({ ...selectedEntity, annotations: { ...annotationBuffer } })
+  }
+
+  function pasteMergeSelectedAnnotations() {
+    if (!selectedEntity || annotationBuffer == null) return
+    onUpsertEntity({
+      ...selectedEntity,
+      annotations: mergeAnnotations(selectedEntity.annotations ?? {}, annotationBuffer),
+    })
+  }
+
+  const closeCanvasMenu = useCallback(() => setCanvasMenu(null), [])
+
+  const openCanvasMenuAt = useCallback(
+    (
+      event: { clientX: number; clientY: number; preventDefault: () => void },
+      snapshot: { pairCount: number; hasEdge: boolean; entityDeleted: boolean },
+    ) => {
+      event.preventDefault()
+      setCanvasMenu({
+        x: event.clientX,
+        y: event.clientY,
+        ...snapshot,
+      })
+    },
+    [],
+  )
+
+  const onCanvasNodeContextMenu = useCallback(
+    (event: ReactMouseEvent, node: GraphNode) => {
+      const entity = document.entities.find((e) => e.id === node.id)
+      if (!entity) return
+      const inPair = pairIds.includes(node.id)
+      let pairCount: number
+      if (!inPair) {
+        selectEntityAlone(entity)
+        pairCount = 1
+      } else {
+        pairCount = pairIds.length
+      }
+      openCanvasMenuAt(event, {
+        pairCount,
+        hasEdge: false,
+        entityDeleted: draftState.pendingDeleteEntityIds.has(entity.id),
+      })
+    },
+    [
+      document.entities,
+      draftState.pendingDeleteEntityIds,
+      openCanvasMenuAt,
+      pairIds,
+      selectEntityAlone,
+    ],
+  )
+
+  const onCanvasEdgeContextMenu = useCallback(
+    (event: ReactMouseEvent, edge: GraphLink) => {
+      clearTypeHighlight()
+      setPairIds([])
+      onSelect({ kind: 'edge', edge })
+      openCanvasMenuAt(event, {
+        pairCount: 0,
+        hasEdge: true,
+        entityDeleted: false,
+      })
+    },
+    [clearTypeHighlight, onSelect, openCanvasMenuAt],
+  )
+
+  const onCanvasPaneContextMenu = useCallback(
+    (event: ReactMouseEvent | MouseEvent) => {
+      const entityDeleted =
+        pairIds.length === 1 &&
+        !!pairIds[0] &&
+        draftState.pendingDeleteEntityIds.has(pairIds[0])
+      openCanvasMenuAt(event, {
+        pairCount: pairIds.length,
+        hasEdge: selection?.kind === 'edge',
+        entityDeleted,
+      })
+    },
+    [draftState.pendingDeleteEntityIds, openCanvasMenuAt, pairIds, selection],
+  )
+
+  const canvasMenuCanCreateLinked =
+    canvasMenu != null && canvasMenu.pairCount === 1 && !canvasMenu.entityDeleted
+  const canvasMenuCanConnect =
+    canvasMenu != null &&
+    canvasMenu.pairCount === 2 &&
+    !pairIds.some((id) => draftState.pendingDeleteEntityIds.has(id))
+  const canvasMenuCanDelete =
+    canvasMenu != null && (canvasMenu.pairCount > 0 || canvasMenu.hasEdge)
+  const canvasMenuCanAnnotations = canvasMenuCanCreateLinked
+  const canvasMenuCanPaste = canvasMenuCanAnnotations && annotationBuffer != null
+
   const openLink = useCallback(async () => {
     if (!selectedEntity) return
     if (draftState.pendingDeleteEntityIds.has(selectedEntity.id)) return
     setLinkOpen(true)
     setLinkOptionKey(null)
+    setLinkVersion(null)
     setLinkOptions([])
     try {
       const edges = await getTypeEdges(selectedEntity.type)
@@ -426,21 +638,18 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
   }
 
   async function confirmLinked() {
-    if (!selectedEntity || !linkOptionKey) return
+    if (!selectedEntity || !linkOptionKey || !linkVersion) return
     const option = linkOptions.find((o) => o.key === linkOptionKey)
     if (!option || option.createType === '*') return
     if (linkOptionOccupied(option, selectedEntity, liveDocument.edges, liveDocument.entities)) {
       return
     }
-    const latest = entitySchemaOptions.find((s) => s.type === option.createType)
-    const version = latest?.version
-    if (!version) return
-    const schema = await getSchema(option.createType, version)
+    const schema = await getSchema(option.createType, linkVersion)
     const createdId = newEntityId()
     const entity: BoMEntity = {
       id: createdId,
       type: option.createType,
-      schemaVersion: version,
+      schemaVersion: linkVersion,
       payload: defaultValueForSchema(schema.contentSchema) as Record<string, unknown>,
       annotations: copyAnnotations ? { ...(selectedEntity.annotations ?? {}) } : {},
     }
@@ -523,6 +732,54 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
         >
           Delete
         </Button>
+        <Menu shadow="md" width={180} position="bottom-end" withinPortal>
+          <Menu.Target>
+            <Group gap={0} wrap="nowrap" style={{ display: 'inline-flex' }}>
+              <Button
+                size="xs"
+                variant="light"
+                disabled={!annotationsMenuEnabled}
+                style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
+              >
+                Annotations
+              </Button>
+              <Button
+                size="xs"
+                variant="light"
+                disabled={!annotationsMenuEnabled}
+                aria-label="Annotation actions"
+                px="xs"
+                style={{
+                  borderTopLeftRadius: 0,
+                  borderBottomLeftRadius: 0,
+                  borderLeft: '1px solid var(--mantine-color-default-border)',
+                }}
+              >
+                ▾
+              </Button>
+            </Group>
+          </Menu.Target>
+          <Menu.Dropdown>
+            <Menu.Item
+              disabled={!annotationsMenuEnabled}
+              onClick={copySelectedAnnotations}
+            >
+              Copy
+            </Menu.Item>
+            <Menu.Item
+              disabled={!annotationPasteEnabled}
+              onClick={pasteSelectedAnnotations}
+            >
+              Paste
+            </Menu.Item>
+            <Menu.Item
+              disabled={!annotationPasteEnabled}
+              onClick={pasteMergeSelectedAnnotations}
+            >
+              Paste Merge
+            </Menu.Item>
+          </Menu.Dropdown>
+        </Menu>
         <Group gap={0}>
           <Button
             size="xs"
@@ -585,6 +842,53 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
         />
       </Group>
 
+      {graphView.nodes.length > 0 && (
+        <Group gap="xs" wrap="wrap">
+          <Text size="xs" c="dimmed">
+            {graphView.nodes.length} nodes / {graphView.links.length} edges
+          </Text>
+          {types.map(([type, color]) => {
+            const active = highlightedTypes.has(type)
+            const filtering = highlightedTypes.size > 0
+            return (
+              <Badge
+                key={type}
+                size="sm"
+                variant={active ? 'filled' : 'outline'}
+                color="gray"
+                leftSection={
+                  <span style={{ color: active ? '#fff' : color, lineHeight: 1 }}>●</span>
+                }
+                onClick={() => toggleTypeHighlight(type)}
+                style={{
+                  cursor: 'pointer',
+                  background: active ? color : undefined,
+                  borderColor: color,
+                  color: active ? '#fff' : undefined,
+                  opacity: filtering && !active ? 0.45 : 1,
+                  userSelect: 'none',
+                }}
+              >
+                {type}
+              </Badge>
+            )
+          })}
+          {highlightedTypes.size > 0 && (
+            <Tooltip label="Clear type highlight" withArrow>
+              <ActionIcon
+                size="sm"
+                variant="subtle"
+                color="gray"
+                aria-label="Clear type highlight"
+                onClick={clearTypeHighlight}
+              >
+                <IconX size={14} />
+              </ActionIcon>
+            </Tooltip>
+          )}
+        </Group>
+      )}
+
       {schemasError && (
         <Alert color="red" title="Cannot load schemas">
           {schemasError}
@@ -595,6 +899,9 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
         <Paper
           withBorder
           style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden', position: 'relative' }}
+          onContextMenu={
+            displayGraph.nodes.length === 0 ? onCanvasPaneContextMenu : undefined
+          }
         >
           {displayGraph.nodes.length === 0 ? (
             <Stack p="md" gap="xs">
@@ -612,9 +919,123 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
               layout={layout}
               autoLayoutOnDataChange={false}
               highlightedNodeIds={pairIds}
+              onNodeContextMenu={onCanvasNodeContextMenu}
+              onEdgeContextMenu={onCanvasEdgeContextMenu}
+              onPaneContextMenu={onCanvasPaneContextMenu}
             />
           )}
         </Paper>
+
+        <Menu
+          opened={canvasMenu != null}
+          onChange={(opened) => {
+            if (!opened) closeCanvasMenu()
+          }}
+          position="bottom-start"
+          offset={4}
+          withinPortal
+          shadow="md"
+          width={200}
+        >
+          <Menu.Target>
+            <div
+              style={{
+                position: 'fixed',
+                left: canvasMenu?.x ?? 0,
+                top: canvasMenu?.y ?? 0,
+                width: 0,
+                height: 0,
+                pointerEvents: 'none',
+              }}
+            />
+          </Menu.Target>
+          <Menu.Dropdown>
+            <Menu.Item
+              onClick={() => {
+                closeCanvasMenu()
+                setAddOpen(true)
+              }}
+            >
+              Add object
+            </Menu.Item>
+            {canvasMenuCanCreateLinked && (
+              <Menu.Item
+                onClick={() => {
+                  closeCanvasMenu()
+                  void openLink()
+                }}
+              >
+                Create linked
+              </Menu.Item>
+            )}
+            {canvasMenuCanConnect && (
+              <Menu.Item
+                onClick={() => {
+                  closeCanvasMenu()
+                  void openConnect()
+                }}
+              >
+                Connect existing
+              </Menu.Item>
+            )}
+            {canvasMenuCanDelete && (
+              <Menu.Item
+                color="red"
+                onClick={() => {
+                  closeCanvasMenu()
+                  deleteSelection()
+                }}
+              >
+                Delete
+              </Menu.Item>
+            )}
+            {canvasMenuCanAnnotations && (
+              <>
+                <Menu.Divider />
+                <Menu.Label>Annotations</Menu.Label>
+                <Menu.Item
+                  onClick={() => {
+                    copySelectedAnnotations()
+                    closeCanvasMenu()
+                  }}
+                >
+                  Copy annotations
+                </Menu.Item>
+                <Menu.Item
+                  disabled={!canvasMenuCanPaste}
+                  onClick={() => {
+                    pasteSelectedAnnotations()
+                    closeCanvasMenu()
+                  }}
+                >
+                  Paste annotations
+                </Menu.Item>
+                <Menu.Item
+                  disabled={!canvasMenuCanPaste}
+                  onClick={() => {
+                    pasteMergeSelectedAnnotations()
+                    closeCanvasMenu()
+                  }}
+                >
+                  Paste merge annotations
+                </Menu.Item>
+              </>
+            )}
+            {displayGraph.nodes.length > 0 && (
+              <>
+                <Menu.Divider />
+                <Menu.Item
+                  onClick={() => {
+                    closeCanvasMenu()
+                    graphRef.current?.applyLayout(layout)
+                  }}
+                >
+                  Apply layout
+                </Menu.Item>
+              </>
+            )}
+          </Menu.Dropdown>
+        </Menu>
 
         <Paper
           withBorder
@@ -664,8 +1085,32 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
                       <Text fw={600} size="sm">
                         Edit {selectedEntity.type}
                       </Text>
-                      <Text size="xs" c="dimmed">
-                        {selectedEntity.schemaVersion}
+                      <Text size="xs" mt={4}>
+                        <Text span fw={600}>
+                          type:{' '}
+                        </Text>
+                        <Anchor
+                          component={Link}
+                          to={schemaDetailPath(
+                            selectedEntity.type,
+                            selectedEntity.schemaVersion ?? '1.0.0',
+                          )}
+                          size="xs"
+                        >
+                          <Badge
+                            size="sm"
+                            variant="light"
+                            style={{
+                              color: colorForType(selectedEntity.type),
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {selectedEntity.type}
+                          </Badge>
+                        </Anchor>
+                        <Text span c="dimmed" ml={6}>
+                          schema {selectedEntity.schemaVersion ?? '—'}
+                        </Text>
                       </Text>
                     </div>
                     <Button size="compact-xs" variant="subtle" onClick={() => handleSelect(null)}>
@@ -717,20 +1162,19 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
                           Undo modifications
                         </Button>
                       )}
-                      <Tabs defaultValue="payload" keepMounted={false}>
+                      <Tabs defaultValue="payload" keepMounted={false} variant="outline">
                         <Tabs.List>
                           <Tabs.Tab value="payload">Payload</Tabs.Tab>
                           <Tabs.Tab value="annotations">Annotations</Tabs.Tab>
                         </Tabs.List>
                         <Tabs.Panel value="payload" pt="xs">
                           {editSchema ? (
-                            <SchemaInstanceForm
+                            <PayloadInspector
                               schema={editSchema.contentSchema}
                               value={(selectedEntity.payload ?? {}) as Record<string, unknown>}
                               onChange={(payload) =>
                                 onUpsertEntity({ ...selectedEntity, payload })
                               }
-                              compact
                             />
                           ) : (
                             <Text size="xs" c="dimmed">
@@ -762,6 +1206,30 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
                       Close
                     </Button>
                   </Group>
+                  {selectedEdge.type && (
+                    <Text size="xs">
+                      <Text span fw={600}>
+                        type:{' '}
+                      </Text>
+                      <Anchor
+                        component={Link}
+                        to={schemaDetailPath(
+                          selectedEdge.type,
+                          selectedEdge.schemaVersion ?? '1.0.0',
+                        )}
+                        size="xs"
+                      >
+                        <Badge size="sm" variant="light" style={{ cursor: 'pointer' }}>
+                          {selectedEdge.type}
+                        </Badge>
+                      </Anchor>
+                      {selectedEdge.schemaVersion && (
+                        <Text span c="dimmed" ml={6}>
+                          schema {selectedEdge.schemaVersion}
+                        </Text>
+                      )}
+                    </Text>
+                  )}
                   <Group gap={6}>
                     <Text size="xs">
                       <Code>{selectedEdge.id}</Code>
@@ -885,7 +1353,15 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
         </Stack>
       </Modal>
 
-      <Modal opened={linkOpen} onClose={() => setLinkOpen(false)} title="Create linked object">
+      <Modal
+        opened={linkOpen}
+        onClose={() => {
+          setLinkOpen(false)
+          setLinkOptionKey(null)
+          setLinkVersion(null)
+        }}
+        title="Create linked object"
+      >
         <Stack>
           {linkOptions.length === 0 ? (
             <Alert color="orange" title="No available relations">
@@ -904,12 +1380,22 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
                 onChange={setLinkOptionKey}
                 searchable
               />
+              <Select
+                label="Schema version"
+                data={versionsForLinkType}
+                value={linkVersion}
+                onChange={setLinkVersion}
+                disabled={!linkCreateType}
+              />
               <Checkbox
                 label="Copy annotations from selected"
                 checked={copyAnnotations}
                 onChange={(e) => setCopyAnnotations(e.currentTarget.checked)}
               />
-              <Button disabled={!linkOptionKey} onClick={() => void confirmLinked()}>
+              <Button
+                disabled={!linkOptionKey || !linkVersion}
+                onClick={() => void confirmLinked()}
+              >
                 Create linked
               </Button>
             </>
