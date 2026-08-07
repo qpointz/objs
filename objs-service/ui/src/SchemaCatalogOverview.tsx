@@ -557,7 +557,6 @@ function SchemaCatalogOverviewInner({
                         }))
                       }
                       data={[
-                        { label: 'None', value: 'none' },
                         { label: 'Outbound', value: 'outbound' },
                         { label: 'Linked', value: 'linked' },
                       ]}
@@ -566,7 +565,6 @@ function SchemaCatalogOverviewInner({
                       size="xs"
                       label="Edge property schemas"
                       checked={jsonSchemaOptions.includeEdgePropertySchemas}
-                      disabled={jsonSchemaOptions.includeEdges === 'none'}
                       onChange={(e) =>
                         setJsonSchemaOptions((prev) => ({
                           ...prev,

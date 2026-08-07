@@ -25,16 +25,14 @@ class FullCatalogJsonSchemaExporter(
             val mutableProps = properties.toMutableMap()
             projected["properties"] = mutableProps
 
-            if (options.includeEdges != BoMJsonSchemaEdgeInclusion.NONE) {
-                for (rule in edgeRules.all()) {
-                    if (rule.sourceType != type) continue
-                    if (rule.sourceType == BoMAllowedEdgeRule.ANY || rule.targetType == BoMAllowedEdgeRule.ANY) {
-                        continue
-                    }
-                    val targetDef = defKeyByType[rule.targetType] ?: continue
-                    val propName = relationPropertyName(rule.role, rule.targetType)
-                    mutableProps[propName] = outboundRelationPropertySchema(rule, targetDef)
+            for (rule in edgeRules.all()) {
+                if (rule.sourceType != type) continue
+                if (rule.sourceType == BoMAllowedEdgeRule.ANY || rule.targetType == BoMAllowedEdgeRule.ANY) {
+                    continue
                 }
+                val targetDef = defKeyByType[rule.targetType] ?: continue
+                val propName = relationPropertyName(rule.role, rule.targetType)
+                mutableProps[propName] = outboundRelationPropertySchema(rule, targetDef)
             }
 
             if (options.includeEdges == BoMJsonSchemaEdgeInclusion.LINKED) {
@@ -52,10 +50,7 @@ class FullCatalogJsonSchemaExporter(
             defs[defKeyByType.getValue(type)] = projected
         }
 
-        if (
-            options.includeEdges != BoMJsonSchemaEdgeInclusion.NONE &&
-            options.includeEdgePropertySchemas
-        ) {
+        if (options.includeEdgePropertySchemas) {
             val edgePropKeys = edgeRules.all()
                 .filter {
                     it.propertiesPolicy == BoMPropertiesPolicy.SCHEMA &&

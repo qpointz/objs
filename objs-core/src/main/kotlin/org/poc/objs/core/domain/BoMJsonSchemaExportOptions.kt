@@ -54,7 +54,6 @@ enum class BoMJsonSchemaDialect(val wire: String, val schemaUri: String) {
 }
 
 enum class BoMJsonSchemaEdgeInclusion(val wire: String) {
-    NONE("none"),
     OUTBOUND("outbound"),
     LINKED("linked"),
     ;
