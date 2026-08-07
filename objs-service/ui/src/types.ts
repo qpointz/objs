@@ -21,6 +21,20 @@ export type BoMSubgraph = {
   edges: BoMEdge[]
 }
 
+/** Soft-link / evidence-pack subgraph header + resolved members. */
+export type SoftLinkSubgraph = {
+  id: string
+  annotations: Record<string, string>
+  subgraph: BoMSubgraph
+}
+
+export type SoftLinkSubgraphListItem = {
+  id: string
+  annotations: Record<string, string>
+  entityCount: number
+  edgeCount: number
+}
+
 export type GraphNode = {
   id: string
   name: string

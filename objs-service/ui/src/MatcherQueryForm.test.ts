@@ -15,6 +15,7 @@ describe('buildMatcherBody / hydrateFromMatcher', () => {
       [{ key: '', value: '' }],
       '',
       expr,
+      '',
       [],
       '[]',
       'visual',
@@ -25,17 +26,37 @@ describe('buildMatcherBody / hydrateFromMatcher', () => {
     expect(hydrated?.objExprText).toBe(expr)
   })
 
+  it('builds and hydrates subg-expr', () => {
+    const expr = "a.decisionId == 'D-1'"
+    const body = buildMatcherBody(
+      'subg-expr',
+      [{ key: '', value: '' }],
+      '',
+      '',
+      expr,
+      [],
+      '[]',
+      'visual',
+    )
+    expect(body).toEqual({ 'subg-expr': expr })
+    const hydrated = hydrateFromMatcher(body)
+    expect(hydrated?.mode).toBe('subg-expr')
+    expect(hydrated?.subgExprText).toBe(expr)
+  })
+
   it('round-trips visual chain stages to JSON body', () => {
     const stages = [
       { kind: 'anno' as const, rows: [{ key: 'app', value: 'x' }] },
       { kind: 'obj-expr' as const, expr: "type == 'Component'" },
       { kind: 'anno-expr' as const, expr: "env == 'prod'" },
+      { kind: 'subg-expr' as const, expr: "a.decisionId == 'D-1'" },
     ]
-    const body = buildMatcherBody('chained', [], '', '', stages, '[]', 'visual')
+    const body = buildMatcherBody('chained', [], '', '', '', stages, '[]', 'visual')
     expect(body).toEqual([
       { anno: { app: 'x' } },
       { 'obj-expr': "type == 'Component'" },
       { 'anno-expr': "env == 'prod'" },
+      { 'subg-expr': "a.decisionId == 'D-1'" },
     ])
     const hydrated = hydrateFromMatcher(body)
     expect(hydrated?.mode).toBe('chained')
@@ -45,7 +66,7 @@ describe('buildMatcherBody / hydrateFromMatcher', () => {
 
   it('builds chained from JSON view', () => {
     const json = JSON.stringify([{ 'obj-expr': "id == 'a'" }, { anno: { k: 'v' } }], null, 2)
-    const body = buildMatcherBody('chained', [], '', '', [], json, 'json')
+    const body = buildMatcherBody('chained', [], '', '', '', [], json, 'json')
     expect(body).toEqual([{ 'obj-expr': "id == 'a'" }, { anno: { k: 'v' } }])
   })
 
@@ -58,8 +79,14 @@ describe('buildMatcherBody / hydrateFromMatcher', () => {
 
   it('rejects blank obj-expr', () => {
     expect(() =>
-      buildMatcherBody('obj-expr' as MatcherMode, [], '', '  ', [], '[]', 'visual'),
+      buildMatcherBody('obj-expr' as MatcherMode, [], '', '  ', '', [], '[]', 'visual'),
     ).toThrow(/obj-expr/)
+  })
+
+  it('rejects blank subg-expr', () => {
+    expect(() =>
+      buildMatcherBody('subg-expr' as MatcherMode, [], '', '', '  ', [], '[]', 'visual'),
+    ).toThrow(/subg-expr/)
   })
 })
 

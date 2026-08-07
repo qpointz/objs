@@ -24,7 +24,7 @@ import {
   type GraphLayout,
   type GraphNodePositions,
 } from './GraphCanvas'
-import { queryGraph, listSchemas, schemaDetailPath, toGraphData } from './api'
+import { queryGraph, listSchemas, schemaDetailPath, subgraphFromGraphView, toGraphData } from './api'
 import { colorForType } from './color'
 import {
   EntityAnnotationsView,
@@ -310,8 +310,14 @@ export function GraphExplorerPage() {
   }
 
   function onOpenInComposer() {
-    if (lastMatcher == null) return
-    navigate('/composer', { state: { matcher: lastMatcher, addAll: true } })
+    if (nodes.length === 0) return
+    navigate('/composer', {
+      state: {
+        subgraph: subgraphFromGraphView(nodes, links),
+        matcher: lastMatcher,
+        addAll: true,
+      },
+    })
   }
 
   function onOpenInQuery() {
@@ -350,32 +356,21 @@ export function GraphExplorerPage() {
         <Group gap="xs">
           <Menu shadow="md" width={160} position="bottom-end" withinPortal>
             <Menu.Target>
-              <Group gap={0} wrap="nowrap" style={{ display: 'inline-flex' }}>
-                <Button
-                  variant="light"
-                  disabled={lastMatcher == null}
-                  style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
-                >
-                  Open in…
-                </Button>
-                <Button
-                  variant="light"
-                  disabled={lastMatcher == null}
-                  aria-label="Open in destination"
-                  px="xs"
-                  style={{
-                    borderTopLeftRadius: 0,
-                    borderBottomLeftRadius: 0,
-                    borderLeft: '1px solid var(--mantine-color-default-border)',
-                  }}
-                >
-                  ▾
-                </Button>
-              </Group>
+              <Button
+                variant="light"
+                disabled={nodes.length === 0 && lastMatcher == null}
+                rightSection={<span aria-hidden>▾</span>}
+              >
+                Open in…
+              </Button>
             </Menu.Target>
             <Menu.Dropdown>
-              <Menu.Item onClick={onOpenInComposer}>Composer</Menu.Item>
-              <Menu.Item onClick={onOpenInQuery}>Query</Menu.Item>
+              <Menu.Item disabled={nodes.length === 0} onClick={onOpenInComposer}>
+                Composer
+              </Menu.Item>
+              <Menu.Item disabled={lastMatcher == null} onClick={onOpenInQuery}>
+                Query
+              </Menu.Item>
             </Menu.Dropdown>
           </Menu>
           <Group gap={0}>

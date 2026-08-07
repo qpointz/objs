@@ -95,6 +95,7 @@ export function AddObjectsPanel({
   const [doneBusy, setDoneBusy] = useState(false)
   const [stats, setStats] = useState<QueryExecStats | null>(null)
   const [results, setResults] = useState<BoMEntity[]>([])
+  const [lastSearchEdges, setLastSearchEdges] = useState<BoMEdge[]>([])
   const [page, setPage] = useState(1)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
   const autoSearchDone = useRef(false)
@@ -106,6 +107,37 @@ export function AddObjectsPanel({
     const start = (page - 1) * PAGE_SIZE
     return results.slice(start, start + PAGE_SIZE)
   }, [page, results])
+
+  /**
+   * Store-backed ids for induced-edge refresh: current baseline ∩ draft, plus just-added
+   * search hits (baseline props can lag one render behind mergeEntities).
+   */
+  function storeIdsForEdgeRefresh(extraIds: Iterable<string> = []): string[] {
+    const ids = new Set<string>()
+    for (const id of baselineEntityIds) {
+      if (draftEntityIds.has(id)) ids.add(id)
+    }
+    for (const id of extraIds) {
+      if (id) ids.add(id)
+    }
+    return [...ids]
+  }
+
+  async function refreshInducedEdges(extraIds: Iterable<string> = []) {
+    const storeBacked = storeIdsForEdgeRefresh(extraIds)
+    if (storeBacked.length === 0) return
+    const subgraph = await queryGraph({ ids: storeBacked })
+    const edges = subgraph.edges ?? []
+    if (edges.length > 0) onMergeEdges(edges)
+  }
+
+  /** Merge last Search edges whose endpoints are all in [entityIds]. */
+  function mergeSearchEdgesAmong(entityIds: ReadonlySet<string>) {
+    const edges = lastSearchEdges.filter(
+      (e) => entityIds.has(e.source) && entityIds.has(e.target),
+    )
+    if (edges.length > 0) onMergeEdges(edges)
+  }
 
   useEffect(() => {
     if (!active) {
@@ -144,6 +176,7 @@ export function AddObjectsPanel({
       }
       setStats(nextStats)
       setResults(entities)
+      setLastSearchEdges(edges)
       setPage(1)
       setSelectedIds(new Set())
       onSearchSuccess?.(body, nextStats)
@@ -151,6 +184,8 @@ export function AddObjectsPanel({
         autoAddPending.current = false
         if (entities.length > 0) onMergeEntities(entities)
         if (edges.length > 0) onMergeEdges(edges)
+        // Induce edges to entities already in the draft outside this hit set.
+        await refreshInducedEdges(entities.map((e) => e.id))
         onClose()
       }
     } catch (e) {
@@ -161,18 +196,31 @@ export function AddObjectsPanel({
     }
   }
 
+  async function addEntitiesToDraft(entities: BoMEntity[]) {
+    if (entities.length === 0) return
+    onMergeEntities(entities)
+    const nextIds = new Set(draftEntityIds)
+    for (const e of entities) nextIds.add(e.id)
+    mergeSearchEdgesAmong(nextIds)
+    try {
+      await refreshInducedEdges(entities.map((e) => e.id))
+    } catch (e) {
+      setSearchError(e instanceof Error ? e.message : String(e))
+    }
+  }
+
   function toggleInDraft(entity: BoMEntity) {
     if (draftEntityIds.has(entity.id)) {
       onExcludeEntity(entity.id)
       return
     }
-    onMergeEntities([entity])
+    void addEntitiesToDraft([entity])
   }
 
   function addSelected() {
     const toAdd = results.filter((e) => selectedIds.has(e.id) && !draftEntityIds.has(e.id))
     if (toAdd.length === 0) return
-    onMergeEntities(toAdd)
+    void addEntitiesToDraft(toAdd)
   }
 
   function excludeSelected() {
@@ -185,11 +233,9 @@ export function AddObjectsPanel({
     setSearchError(null)
     setDoneBusy(true)
     try {
-      const storeBacked = [...baselineEntityIds].filter((id) => draftEntityIds.has(id))
-      if (storeBacked.length > 0) {
-        const subgraph = await queryGraph({ ids: storeBacked })
-        onMergeEdges(subgraph.edges ?? [])
-      }
+      // Include search hits already in the draft in case baseline lags a render.
+      const inDraftFromSearch = results.filter((e) => draftEntityIds.has(e.id)).map((e) => e.id)
+      await refreshInducedEdges(inDraftFromSearch)
       onClose()
     } catch (e) {
       setSearchError(e instanceof Error ? e.message : String(e))

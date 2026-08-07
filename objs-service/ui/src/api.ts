@@ -10,6 +10,8 @@ import type {
   SchemaDefinitionRequest,
   SchemaLintResponse,
   SeedImportResult,
+  SoftLinkSubgraph,
+  SoftLinkSubgraphListItem,
   TypeEdgesResponse,
 } from './types'
 import { colorForType, nodeLabel } from './color'
@@ -39,6 +41,28 @@ export function toGraphData(subgraph: BoMSubgraph): { nodes: GraphNode[]; links:
     }))
 
   return { nodes, links }
+}
+
+/** Rebuild a BoMSubgraph from Explorer/Query canvas state (Open in Composer handoff). */
+export function subgraphFromGraphView(nodes: GraphNode[], links: GraphLink[]): BoMSubgraph {
+  return {
+    entities: nodes.map((n) => ({
+      id: n.id,
+      type: n.type,
+      schemaVersion: n.schemaVersion === '?' ? undefined : n.schemaVersion,
+      payload: n.payload ?? {},
+      annotations: n.annotations ?? {},
+    })),
+    edges: links.map((l) => ({
+      id: l.id,
+      source: l.source,
+      target: l.target,
+      role: l.role,
+      type: l.type ?? undefined,
+      schemaVersion: l.schemaVersion ?? undefined,
+      properties: l.properties ?? {},
+    })),
+  }
 }
 
 export function annotationsToQuery(obj: Record<string, unknown>): string {
@@ -132,6 +156,51 @@ export async function queryGraph(matcherBody: unknown): Promise<BoMSubgraph> {
     body: JSON.stringify(matcherBody),
   })
   return parseResponse<BoMSubgraph>(res)
+}
+
+export async function listSoftLinkSubgraphs(): Promise<SoftLinkSubgraphListItem[]> {
+  const res = await fetch('/api/v1/objs/graph/subgraphs')
+  return parseResponse<SoftLinkSubgraphListItem[]>(res)
+}
+
+export async function getSoftLinkSubgraph(id: string): Promise<SoftLinkSubgraph> {
+  const res = await fetch(`/api/v1/objs/graph/subgraphs/${encodeURIComponent(id)}`)
+  return parseResponse<SoftLinkSubgraph>(res)
+}
+
+export async function createSoftLinkSubgraph(body: {
+  id?: string
+  annotations: Record<string, string>
+  entityIds: string[]
+  edgeIds: string[]
+}): Promise<SoftLinkSubgraph> {
+  const res = await fetch('/api/v1/objs/graph/subgraphs', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  return parseResponse<SoftLinkSubgraph>(res)
+}
+
+export async function snapshotSoftLinkSubgraph(
+  id: string,
+  annotations: Record<string, string>,
+): Promise<SoftLinkSubgraph> {
+  const res = await fetch(`/api/v1/objs/graph/subgraphs/${encodeURIComponent(id)}/snapshot`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ annotations }),
+  })
+  return parseResponse<SoftLinkSubgraph>(res)
+}
+
+export async function deleteSoftLinkSubgraph(id: string): Promise<void> {
+  const res = await fetch(`/api/v1/objs/graph/subgraphs/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  })
+  if (!res.ok) {
+    await parseResponse<unknown>(res)
+  }
 }
 
 /** @deprecated Prefer [queryGraph] with an `anno` matcher body. */

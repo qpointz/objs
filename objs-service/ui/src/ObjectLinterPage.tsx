@@ -6,6 +6,7 @@ import {
   Button,
   Code,
   Group,
+  Menu,
   Paper,
   Stack,
   Table,
@@ -16,6 +17,7 @@ import {
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { mutationShapeError, normalizeGraphMutation } from './graphDraft'
 import { putGraphMutation, validateGraphMutation, toGraphData } from './api'
+import { CreateSubgraphModal, type CreateSubgraphMode } from './CreateSubgraphModal'
 import { JsonYamlEditor, type JsonYamlEditorHandle } from './JsonYamlEditor'
 import { NewUuidButton } from './NewUuidButton'
 import {
@@ -23,7 +25,8 @@ import {
   type ObjectLinterVisualPanelHandle,
 } from './ObjectLinterVisualPanel'
 import type { QueryExecStats } from './queryExecStats'
-import type { BoMValidationIssue, GraphValidationResult } from './types'
+import { SubgraphPacksModal } from './SubgraphPacksModal'
+import type { BoMSubgraph, BoMValidationIssue, GraphValidationResult } from './types'
 import { useGraphDraft } from './useGraphDraft'
 import { useGraphSelectionHistory } from './useGraphSelectionHistory'
 import {
@@ -36,8 +39,10 @@ export { graphShapeError, mutationShapeError } from './graphDraft'
 
 type ObjectLinterNavState = {
   matcher?: unknown
-  /** Explorer handoff: merge all Search hits without per-row Add. */
+  /** Explorer handoff: merge all canvas objects (and edges) into the draft. */
   addAll?: boolean
+  /** Explorer canvas snapshot — preferred over re-running matcher. */
+  subgraph?: BoMSubgraph
 }
 
 export function ObjectLinterPage() {
@@ -50,6 +55,7 @@ export function ObjectLinterPage() {
     emptyMutation,
     state,
     applyParsedMutation,
+    loadSubgraph,
     resetToRollback,
     clearDraft,
     upsertEntity,
@@ -76,10 +82,17 @@ export function ObjectLinterPage() {
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<GraphValidationResult | null>(null)
   const [addObjectsOpen, setAddObjectsOpen] = useState(false)
+  const [packsOpen, setPacksOpen] = useState(false)
+  const [createPack, setCreatePack] = useState<CreateSubgraphMode | null>(null)
   const [handoffMatcher, setHandoffMatcher] = useState<unknown | null>(null)
   const [autoSearch, setAutoSearch] = useState(false)
   const [autoAddAllResults, setAutoAddAllResults] = useState(false)
   const [addObjectsStats, setAddObjectsStats] = useState<QueryExecStats | null>(null)
+
+  const draftSubgraph = useMemo<BoMSubgraph>(
+    () => ({ entities: document.entities, edges: document.edges }),
+    [document.entities, document.edges],
+  )
 
   const graphView = useMemo(() => toGraphData(canvasDocument), [canvasDocument])
   const onFocusNode = useCallback((nodeId: string) => {
@@ -90,6 +103,16 @@ export function ObjectLinterPage() {
     links: graphView.links,
     onFocusNode,
   })
+
+  const openPack = useCallback(
+    (subgraph: BoMSubgraph) => {
+      loadSubgraph(subgraph)
+      clearQuery()
+      setResult(null)
+      setError(null)
+    },
+    [clearQuery, loadSubgraph],
+  )
 
   const draftEntityIds = useMemo(
     () => new Set(document.entities.map((e) => e.id)),
@@ -216,7 +239,7 @@ export function ObjectLinterPage() {
     }
   }
 
-  async function apply() {
+  async function saveGraph() {
     const synced = await syncTextIntoDraft()
     if (!synced) return
     setBusy(true)
@@ -226,7 +249,7 @@ export function ObjectLinterPage() {
       const validation = await validateGraphMutation(synced.body)
       setResult(validation)
       if (validation.issues.length > 0) {
-        setError('Fix validation issues before Apply')
+        setError('Fix validation issues before Save')
         return
       }
       await putGraphMutation(synced.body)
@@ -259,13 +282,32 @@ export function ObjectLinterPage() {
 
   useEffect(() => {
     const navState = location.state as ObjectLinterNavState | null
-    if (navState == null || typeof navState !== 'object' || !('matcher' in navState)) return
-    if (navState.matcher === undefined) return
-    const matcher = navState.matcher
+    if (navState == null || typeof navState !== 'object') return
+    const hasMatcher = 'matcher' in navState && navState.matcher !== undefined
+    const hasSubgraph = navState.subgraph != null && typeof navState.subgraph === 'object'
+    if (!hasMatcher && !hasSubgraph) return
+
+    const matcher = hasMatcher ? navState.matcher : undefined
     const addAll = navState.addAll === true
+    const subgraph = hasSubgraph ? navState.subgraph : undefined
     navigate('.', { replace: true, state: null })
-    openAddObjects({ matcher, autoSearch: true, autoAddAllResults: addAll })
-  }, [location.state, navigate])
+
+    if (addAll && subgraph) {
+      const entities = subgraph.entities ?? []
+      const edges = subgraph.edges ?? []
+      if (entities.length > 0) mergeEntities(entities)
+      if (edges.length > 0) mergeEdges(edges)
+      setResult(null)
+      setError(null)
+      setTab('visual')
+      return
+    }
+
+    if (matcher !== undefined) {
+      openAddObjects({ matcher, autoSearch: true, autoAddAllResults: addAll })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handoff once per location.state
+  }, [location.state, navigate, mergeEntities, mergeEdges])
 
   const valid = result != null && result.issues.length === 0
 
@@ -276,7 +318,7 @@ export function ObjectLinterPage() {
           <Title order={3}>Object linter</Title>
           <Text size="sm" c="dimmed">
             Add objects from the store into the draft, edit visually or as YAML/JSON, then Validate
-            or Apply (transactional upsert + delete).
+            or Save (transactional upsert + delete). Subgraph / Snapshot pack the draft.
           </Text>
         </div>
         <Group>
@@ -288,6 +330,9 @@ export function ObjectLinterPage() {
             onClick={() => (addObjectsOpen ? closeAddObjects() : openAddObjects())}
           >
             {addObjectsOpen ? 'Hide add objects' : 'Add objects…'}
+          </Button>
+          <Button variant="light" onClick={() => setPacksOpen(true)}>
+            Open packs…
           </Button>
           <Button variant="default" onClick={resetToRollback}>
             Reset
@@ -306,9 +351,36 @@ export function ObjectLinterPage() {
           <Button loading={busy} variant="light" onClick={() => void validate()}>
             Validate
           </Button>
-          <Button loading={busy} onClick={() => void apply()}>
-            Apply
-          </Button>
+          <Group gap={0} wrap="nowrap" style={{ display: 'inline-flex' }}>
+            <Button
+              loading={busy}
+              onClick={() => void saveGraph()}
+              style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
+            >
+              Save
+            </Button>
+            <Menu shadow="md" width={200} position="bottom-end" withinPortal>
+              <Menu.Target>
+                <Button
+                  loading={busy}
+                  aria-label="Save options"
+                  px="xs"
+                  style={{
+                    borderTopLeftRadius: 0,
+                    borderBottomLeftRadius: 0,
+                    borderLeft: '1px solid var(--mantine-color-default-border)',
+                  }}
+                >
+                  ▾
+                </Button>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item onClick={() => void saveGraph()}>Save</Menu.Item>
+                <Menu.Item onClick={() => setCreatePack('soft')}>Subgraph</Menu.Item>
+                <Menu.Item onClick={() => setCreatePack('hard')}>Snapshot</Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+          </Group>
         </Group>
       </Group>
 
@@ -553,6 +625,19 @@ export function ObjectLinterPage() {
           </Box>
         </Paper>
       )}
+
+      <SubgraphPacksModal
+        opened={packsOpen}
+        onClose={() => setPacksOpen(false)}
+        onOpenPack={openPack}
+      />
+      <CreateSubgraphModal
+        opened={createPack != null}
+        mode={createPack ?? 'soft'}
+        draftSubgraph={draftSubgraph}
+        onClose={() => setCreatePack(null)}
+        onHardCreated={openPack}
+      />
     </Stack>
   )
 }
