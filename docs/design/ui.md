@@ -24,7 +24,7 @@ dark/light toggle on the right:
 | View | Path | Purpose |
 |------|------|---------|
 | **Explorer** | `/workbench/explorer` | Query and inspect a stored subgraph |
-| **Composer** | `/workbench/composer` | Draft workspace: Add objects, Visual/Text edit, Validate / Apply mutation |
+| **Composer** | `/workbench/composer` | Draft workspace: Add objects, Visual/Text edit, Validate / Save (+ Subgraph / Snapshot) |
 | **Query** | `/workbench/query` | Tabs Query (script) / Matcher / Options; Exec → traverse API; Structured / Raw results |
 | **Schema** | `/workbench/model` | Browse and edit object/edge schemas |
 
@@ -44,6 +44,8 @@ stays available.
   for example `app == 'payments-api' && appVersion == '2.3.1'`.
 - **`obj-expr`** — one JEXL Boolean expression over `id`, `type`, `schemaVersion`, `a.*` (annotations),
   `p.*` (payload), for example `type == 'Product' && a.app == 'payments-api'`.
+- **`subg-expr`** — one JEXL Boolean expression over soft-link pack headers (`id`, `a.*` annotations);
+  matching packs contribute their **stored** member entities and edges (union; not re-induced).
 - **chained** — **Visual** builder (ordered stages; each stage uses the same editor as its standalone
   mode) or **JSON** for the full chain array. Matchers execute in order.
 
@@ -60,9 +62,9 @@ The UI sends the selected mode as matcher DSL:
 2. Select **Exec** (shows a loading overlay while the query runs).
 3. Select a node or edge on the canvas to inspect it. Edge source/target links jump to that node.
 4. Select **Apply layout** to recalculate the graph layout.
-5. After a successful query, **Open in…** (split control) opens a menu: **Composer** runs the same
-   matcher, **merges all matched entities and induced edges** into the draft (append — never replaces),
-   and closes Add objects; **Query** opens the Query view with the same matcher.
+5. After a successful query, **Open in…** (split control) opens a menu: **Composer** merges **all
+   current canvas entities and edges** into the draft (append — never replaces); **Query** opens the
+   Query view with the same matcher.
 
 The last successful matcher is kept in `localStorage` (`objs.ui.graphExplorer.matcher`). The last
 executed graph, layout direction, node positions, and query id are kept in
@@ -403,14 +405,16 @@ On an existing schema detail:
 ## Object linter
 
 Object linter is a **graph draft workspace**: add store objects into the draft, manipulate it
-visually or as YAML/JSON, then **Validate** or **Apply**.
+visually or as YAML/JSON, then **Validate** or **Save**.
 
 | Action | API |
 |--------|-----|
-| Add objects / Search | `POST /api/v1/objs/graph/query` (matcher DSL: `anno` / `anno-expr` / `obj-expr` / `ids` / chained) |
+| Add objects / Search | `POST /api/v1/objs/graph/query` (matcher DSL: `anno` / `anno-expr` / `obj-expr` / `subg-expr` / `ids` / chained) |
 | Done (edge refresh) | `POST /api/v1/objs/graph/query` with `{ "ids": […] }` among store-backed draft entity ids |
 | Validate | `POST /api/v1/objs/graph/validate` with `BoMGraphMutation` |
-| Apply | `PUT /api/v1/objs/graph` with the same mutation body (`upsert` + `delete`) |
+| Save (split: **Save**) | `PUT /api/v1/objs/graph` with the same mutation body (`upsert` + `delete`) |
+| Save → **Subgraph** / **Snapshot** | Soft-link or hard-clone pack from the whole draft; header annotations via key/value rows (same UI as matcher `anno`) |
+| Open packs… | `GET /api/v1/objs/graph/subgraphs` + `GET …/{id}` → **replace** Composer draft |
 
 **New UUID** (clipboard + toast, auto-hides after 3s) sits on the Text tab toolbar next to Format /
 Rollback.
@@ -429,23 +433,25 @@ Invalid Text blocks switching to Visual; the last good draft is preserved.
 1. Open **Add objects…** — search UI appears in the **right side pane** (same slot as the edit form; canvas stays visible). Defaults matcher mode to **`obj-expr`**; same shared `MatcherQueryForm` as Explorer / Query.
 2. Drag the **vertical splitter** between canvas and side pane to resize (width persisted). Opening Add objects bumps a narrow pane to a usable width once.
 3. **Search** runs the matcher and fills a results table (`id`, `type`, ≤6 scalar payload columns). Results paginate **locally** at **20** rows per page. Successful Search mints a new selection **`qid`**.
-4. **Add** / **In draft** toggles **immediately** merge or exclude that entity in the draft (id conflict keeps the draft copy). Multi-select supports Add selected / Remove selected from draft.
-5. **Done** queries induced edges among **store-backed** draft entity ids (`baselineEntityIds`) via `{ "ids": […] }`, merges those edges, then closes the panel (edit form returns). Search never wipes the draft.
-6. Graph explorer **Open in… → Composer** runs Search with the last matcher, **merges all results and induced edges** into the draft, then closes Add objects (append).
+4. **Add** / **In draft** toggles **immediately** merge or exclude that entity (id conflict keeps the draft copy) and merges **induced edges** among store-backed draft ids (from the last Search hit set plus an `ids` refresh). Multi-select supports Add selected / Remove selected from draft.
+5. **Done** re-runs induced-edge merge among store-backed draft ids, then closes the panel (edit form returns). Search never wipes the draft.
+6. Graph explorer **Open in… → Composer** merges the **current Explorer canvas** (entities + edges)
+   into the draft (append), without re-running Search.
 7. **Remove from draft** (toolbar / context menu) excludes the selection: drops from document/baseline with **no** pending-delete chrome. **Delete** still soft-deletes baseline ids for Apply.
 8. On the Visual canvas, draft status icons appear on object headers: **+** new, **pencil** modified, **−** deleted (Delete path only).
 9. Deleting a **new** (non-baseline) object/edge removes it from the canvas. Deleting a **loaded** object/edge soft-deletes it: it stays visible and marked deleted until Apply, and can be undone (restore) or have modifications reverted from the side panel.
 10. **Reset** restores the last rollback snapshot; **Clear** empties the draft.
+11. **Open packs…** lists soft-link packs and opens one with **replace**. Create via Save ▾ → **Subgraph** (soft) or **Snapshot** (hard clone); header annotations use key/value rows like matcher `anno`.
 
 Optional **Copy annotations from source** when creating a linked object.
 
-### Validate and Apply
+### Validate and Save
 
 1. Open **Object linter**.
 2. Optionally **Add objects…**, or start from an empty draft in Visual/Text.
-3. Select **Validate** (dry-run mutation) or **Apply** (persist mutation).
+3. Select **Validate** (dry-run mutation) or **Save** (persist mutation). Save ▾ also offers Subgraph / Snapshot for packs.
 
-Apply clears pending deletes and refreshes the baseline on success.
+Save clears pending deletes and refreshes the baseline on success.
 
 ```yaml
 upsert:
@@ -456,7 +462,7 @@ delete:
   edges: []      # loaded edge ids
 ```
 
-Loaded baseline objects appear in Text only after they are modified, newly created, or listed under `delete`. Validate/Apply send this same `BoMGraphMutation` envelope.
+Loaded baseline objects appear in Text only after they are modified, newly created, or listed under `delete`. Validate/Save send this same `BoMGraphMutation` envelope.
 
 Entities that are referenced by mutation edges need explicit UUIDs. Edge source/target types, role,
 property-schema reference, and properties are validated against the current registry.
@@ -466,7 +472,7 @@ property-schema reference, and properties are validated against the current regi
 | Message or condition | Resolution |
 |----------------------|------------|
 | Graph query returns no nodes | Verify `anno` / `anno-expr` / `obj-expr` criteria exist on stored entities and that chained stages retain results |
-| Matcher query is rejected | Correct the matcher shape: one `anno`/`anno-expr`/`obj-expr`/`ids` object or a non-empty JSON array of matcher objects |
+| Matcher query is rejected | Correct the matcher shape: one `anno`/`anno-expr`/`obj-expr`/`subg-expr`/`ids` object or a non-empty JSON array of matcher objects |
 | Schema cannot be loaded | Confirm the selected type and version still exist |
 | Source document is invalid | Correct YAML/JSON syntax before switching to Schema mode or saving |
 | `SCHEMA_DEFINITION_INVALID` | Correct the field named in the lint message |

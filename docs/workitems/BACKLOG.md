@@ -26,6 +26,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | C-9 | Matcher subgraph → in-memory Gremlin (`:objs-gremlin-core` / `:objs-gremlin-service`) + Query UI | feature | done | [`completed/20260806-gremlin-subgraph-traversal/`](completed/20260806-gremlin-subgraph-traversal/STORY.md) |
 | C-10 | Configurable full-catalog JSON Schema export (options + linked edges) | feature | done | [`completed/20260807-json-schema-generation/`](completed/20260807-json-schema-generation/STORY.md) |
 | C-11 | Composer add objects + `obj-expr` / `ids` + visual chain matcher UI | feature | done | [`completed/20260807-composer-draft-shopping/`](completed/20260807-composer-draft-shopping/STORY.md) |
+| C-12 | Soft-link subgraphs + snapshot clone (new ids) + Composer save/open/snapshot | feature | done | [`completed/20260807-subgraphs-materialization/`](completed/20260807-subgraphs-materialization/STORY.md) |
 
 ---
 
@@ -53,5 +54,5 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 |--------|------:|
 | backlog | 0 |
 | planned | 0 |
-| in-progress | 2 |
+| in-progress | 1 |
 | done | 12 |

@@ -25,6 +25,7 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`gremlin-subgraph-traversal`](completed/20260806-gremlin-subgraph-traversal/STORY.md) — Matcher → subgraph1 → envelope TinkerGraph → gremlin-lang → `BoMGremlinResult`; `:objs-gremlin-core` / `:objs-gremlin-service`; Query workbench (`/workbench/query`); TinkerPop `4.0.0-beta.3`; see also [`docs/design/graph/gremlin-examples.md`](../design/graph/gremlin-examples.md) (C-9).
 - [`json-schema-generation`](completed/20260807-json-schema-generation/STORY.md) — Configurable full-catalog JSON Schema export (`BoMJsonSchemaExportOptions`: dialect, includeEdges none/outbound/linked, edge-property `$defs`); Schemas overview UI options (C-10).
 - [`composer-draft-shopping`](completed/20260807-composer-draft-shopping/STORY.md) — Composer Add objects (side pane); `obj-expr` + `ids` matchers; draft merge/exclude; shared matcher UI + visual chain builder; Explorer handoff auto-merge (C-11).
+- [`subgraphs-materialization`](completed/20260807-subgraphs-materialization/STORY.md) — Soft-link subgraph packs (`bom_subgraph` M2M); `subg-expr` / id matchers; hard snapshot clone; Composer Save ▾ Subgraph/Snapshot; Explorer canvas handoff (C-12).
 
 ### In Progress
 

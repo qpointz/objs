@@ -63,6 +63,18 @@ Remaining time is dominated by selected-row transfer and HTTP JSON serialization
 Flyway `V2__bom_seed_ledger.sql` adds `bom_seed_ledger` for startup seed fingerprints.
 See [`seeds.md`](seeds.md).
 
+## Soft-link subgraph packs
+
+Flyway `V5__bom_subgraph.sql`:
+
+| Table | Role |
+|-------|------|
+| `bom_subgraph` | Pack header: `id UUID PK`, `annotations JSON NOT NULL` (free-form string map) |
+| `bom_subgraph_entities` | `(subgraph_id, entity_id)` PK; FK cascade on pack delete and on entity delete |
+| `bom_subgraph_edges` | `(subgraph_id, edge_id)` PK; FK cascade on pack delete and on edge delete |
+
+Indexes on `entity_id` / `edge_id` support cascade cleanup and reverse lookup. Deleting a pack removes membership only; deleting a graph object drops that id from every pack. Domain store: `BoMSubgraphStore` (create / replace / get / list / delete / snapshot). Snapshot clones members under new UUIDs then creates a new soft-link pack in one transaction. See [annotations-and-subgraphs.md](annotations-and-subgraphs.md).
+
 ## Edges
 
 - Edge / relation table shape is **TBD** (expect generic columns for **source**, **target**, role, and properties).

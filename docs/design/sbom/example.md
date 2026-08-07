@@ -250,6 +250,6 @@ python objs-sbom-example/scripts/random_sbom_crud.py get --app demo-app --versio
 - Canonical ontology: [`canonical-spec.md`](canonical-spec.md)
 - Story: [`docs/workitems/completed/20260728-sbom-typed-example/`](../../workitems/completed/20260728-sbom-typed-example/STORY.md)
 - Gaps: [`GAPS.md`](../../workitems/completed/20260728-sbom-typed-example/GAPS.md)
-- Annotations design: [`../graph/annotations-and-subgraphs.md`](../graph/annotations-and-subgraphs.md)
+- Annotations design: [`../graph/annotations-and-subgraphs.md`](../graph/annotations-and-subgraphs.md) (ephemeral annotation selection + soft-link packs; this example does **not** ship a pack demo seed)
 - Persistence / lazy reads: [`../graph/persistence.md`](../graph/persistence.md)
 - Typed toolkit (when written): [`../graph/typed-domain.md`](../graph/typed-domain.md)

@@ -11,7 +11,13 @@
 |--------|------|-----------|--------|
 | `PUT` | `/graph` | Mutate `BoMGraphMutation` (`upsert.entities` / `upsert.edges`, `delete.entities` / `delete.edges` ids) in one TX; return upsert `BoMGraph` with assigned ids; `400` + issues if invalid. Empty delete = upsert-only. | `:objs-service` |
 | `POST` | `/graph/validate` | Dry-run of the same mutation body; always `200` + `BoMValidationResult` | `:objs-service` |
-| `POST` | `/graph/query` | JSON/YAML matcher DSL → induced subgraph; sole **matcher** graph query endpoint | `:objs-service` |
+| `POST` | `/graph/query` | JSON/YAML matcher DSL → subgraph (induced edges, or stored pack members for `subgraph` / `subg-expr`); sole **matcher** graph query endpoint | `:objs-service` |
+| `GET` | `/graph/subgraphs` | List soft-link packs (`id`, `annotations`, `entityCount`, `edgeCount`) | `:objs-service` |
+| `POST` | `/graph/subgraphs` | Create soft-link pack (`annotations`, `entityIds`, `edgeIds`; optional `id`) → `201` + resolved members | `:objs-service` |
+| `GET` | `/graph/subgraphs/{id}` | Header + resolved live members; `404` if missing | `:objs-service` |
+| `PUT` | `/graph/subgraphs/{id}` | Replace annotations and membership | `:objs-service` |
+| `DELETE` | `/graph/subgraphs/{id}` | Drop header + membership; graph objects remain; `204` | `:objs-service` |
+| `POST` | `/graph/subgraphs/{id}/snapshot` | Hard clone: body `{ "annotations": {…} }` **required**; new ids + new pack → `201` | `:objs-service` |
 | `POST` | `/graph/traverse/gremlin` | Matcher + gremlin-lang script → `BoMGremlinResult` (OpenAPI tag **`traverse`**) | `:objs-gremlin-service` |
 | `POST` | `/graph/import?format=seeds` | Multipart Graph seed YAML (MERGE); catalog kinds rejected | `:objs-service` |
 | `GET` | `/graph/export?format=seeds` | Bounded Graph seed YAML; annotation filter required (`FILTER_EMPTY` if missing) | `:objs-service` |
@@ -35,10 +41,22 @@ JSON shape:
 
 `delete.entities` / `delete.edges` are id arrays.
 
-Matcher DSL root is one matcher object (`anno`, `anno-expr`, `obj-expr`, `ids`, …) or an ordered array of matcher
+Matcher DSL root is one matcher object (`anno`, `anno-expr`, `obj-expr`, `ids`, `subgraph`, `subg-expr`, …) or an ordered array of matcher
 objects (chained). See [`../graph/annotations-and-subgraphs.md`](../graph/annotations-and-subgraphs.md).
 
-Entity delete removes incident edges (store behaviour).
+Soft-link pack create/replace body:
+
+```json
+{
+  "annotations": { "decisionId": "D-42" },
+  "entityIds": ["11111111-1111-1111-1111-111111111111"],
+  "edgeIds": ["22222222-2222-2222-2222-222222222222"]
+}
+```
+
+Response shape `{ "id", "annotations", "subgraph": { "entities", "edges" } }`. Edge membership write requires both endpoints already in the entity membership set. Snapshot without `annotations` → `400` (`SUBGRAPH_SNAPSHOT_ANNOTATIONS`).
+
+Entity delete removes incident edges (store behaviour) and cascades pack membership rows.
 
 ## Registry
 
