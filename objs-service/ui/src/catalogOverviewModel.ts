@@ -139,3 +139,44 @@ export function catalogSeedContainsGraph(yamlText: string): boolean {
     return false
   }
 }
+
+/** `$defs` keys from a full-catalog JSON Schema document (sorted). */
+export function jsonSchemaDefKeys(body: string): string[] {
+  try {
+    const doc = JSON.parse(body) as { $defs?: Record<string, unknown> }
+    if (!doc.$defs || typeof doc.$defs !== 'object') return []
+    return Object.keys(doc.$defs).sort((a, b) => a.localeCompare(b))
+  } catch {
+    return []
+  }
+}
+
+/** Search string that uniquely targets a `$defs` entry in pretty-printed JSON Schema. */
+export function jsonSchemaDefRevealQuery(defKey: string): string {
+  return `"${defKey}": {`
+}
+
+/** ObjectSchema type names from catalog seed YAML (sorted, unique). */
+export function catalogSeedObjectTypes(body: string): string[] {
+  const types = new Set<string>()
+  try {
+    const docs = parseAllDocuments(body)
+    for (const doc of docs) {
+      if (doc.errors.length > 0) continue
+      const value = doc.toJSON()
+      if (!value || typeof value !== 'object' || Array.isArray(value)) continue
+      const rec = value as Record<string, unknown>
+      if (rec.kind !== 'ObjectSchema') continue
+      const t = rec.type
+      if (typeof t === 'string' && t.trim()) types.add(t.trim())
+    }
+  } catch {
+    /* ignore */
+  }
+  return [...types].sort((a, b) => a.localeCompare(b))
+}
+
+/** Prefer quoted YAML `type:` line for reveal. */
+export function catalogSeedTypeRevealQuery(typeName: string): string {
+  return `type: "${typeName}"`
+}

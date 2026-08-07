@@ -42,12 +42,16 @@ import {
 } from './api'
 import {
   catalogSeedContainsGraph,
+  catalogSeedObjectTypes,
+  catalogSeedTypeRevealQuery,
+  jsonSchemaDefKeys,
+  jsonSchemaDefRevealQuery,
   schemaCatalogElements,
   type CatalogLayout,
   type CatalogNodeData,
   type CatalogTypeNode,
 } from './catalogOverviewModel'
-import { SyntaxCodeEditor } from './SyntaxCodeEditor'
+import { SyntaxCodeEditor, type SyntaxCodeEditorHandle } from './SyntaxCodeEditor'
 import type { BoMAllowedEdgeRule, BoMSchema, SeedImportResult } from './types'
 
 const FULL_SCHEMA_LAYOUT_KEY = 'objs.ui.fullSchema.layout'
@@ -207,6 +211,8 @@ function SchemaCatalogOverviewInner({
   const [textBusy, setTextBusy] = useState(false)
   const [textError, setTextError] = useState<string | null>(null)
   const [textEpoch, setTextEpoch] = useState(0)
+  const textEditorRef = useRef<SyntaxCodeEditorHandle>(null)
+  const [jumpTo, setJumpTo] = useState<string | null>(null)
   const fittedOnceRef = useRef(false)
   const [storedSession] = useState(() => loadCatalogLayout())
   const [layout, setLayout] = useState<CatalogLayout>(() => storedSession.direction)
@@ -265,6 +271,7 @@ function SchemaCatalogOverviewInner({
 
   useEffect(() => {
     if (overviewTab !== 'text') return
+    setJumpTo(null)
     void loadTextView(textFormat, jsonSchemaOptions)
   }, [overviewTab, textFormat, jsonSchemaOptions, textEpoch, loadTextView, entityTypes, rules])
 
@@ -290,6 +297,26 @@ function SchemaCatalogOverviewInner({
   }
 
   const jsonSchemaHint = `${jsonSchemaOptions.includeEdges} · ${jsonSchemaOptions.dialect}`
+
+  const jumpTargets = useMemo(() => {
+    if (!textBody.trim()) return [] as { value: string; label: string }[]
+    if (textFormat === 'json-schema') {
+      return jsonSchemaDefKeys(textBody).map((k) => ({ value: k, label: k }))
+    }
+    return catalogSeedObjectTypes(textBody).map((t) => ({ value: t, label: t }))
+  }, [textBody, textFormat])
+
+  function onJumpTo(key: string | null) {
+    setJumpTo(key)
+    if (!key) return
+    const query =
+      textFormat === 'json-schema' ? jsonSchemaDefRevealQuery(key) : catalogSeedTypeRevealQuery(key)
+    const ok = textEditorRef.current?.revealText(query)
+    if (!ok && textFormat === 'seeds') {
+      // Unquoted YAML type lines
+      textEditorRef.current?.revealText(`type: ${key}`)
+    }
+  }
 
   async function onImportFile(file: File) {
     setIoError(null)
@@ -590,13 +617,31 @@ function SchemaCatalogOverviewInner({
                   </>
                 )}
               </Group>
-              {textBusy && <Loader size="xs" />}
+              <Group gap="xs" wrap="nowrap" style={{ flexShrink: 0 }}>
+                {jumpTargets.length > 0 && (
+                  <Select
+                    size="xs"
+                    w={200}
+                    searchable
+                    clearable
+                    placeholder="Go to type…"
+                    data={jumpTargets}
+                    value={jumpTo}
+                    onChange={onJumpTo}
+                    nothingFoundMessage="No match"
+                  />
+                )}
+                {textBusy && <Loader size="xs" />}
+              </Group>
             </Group>
             {textError && (
               <Alert color="red" title="Text view" style={{ flexShrink: 0 }}>
                 {textError}
               </Alert>
             )}
+            <Text size="xs" c="dimmed" style={{ flexShrink: 0 }}>
+              Ctrl/Cmd+F to search in the document
+            </Text>
             <div
               style={{
                 flex: 1,
@@ -606,6 +651,7 @@ function SchemaCatalogOverviewInner({
               }}
             >
               <SyntaxCodeEditor
+                ref={textEditorRef}
                 language={textFormat === 'json-schema' ? 'json' : 'yaml'}
                 readOnly
                 minHeight={240}

@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { catalogSeedContainsGraph, schemaCatalogElements } from './catalogOverviewModel'
+import {
+  catalogSeedContainsGraph,
+  catalogSeedObjectTypes,
+  catalogSeedTypeRevealQuery,
+  jsonSchemaDefKeys,
+  jsonSchemaDefRevealQuery,
+  schemaCatalogElements,
+} from './catalogOverviewModel'
 import type { BoMAllowedEdgeRule } from './types'
 
 describe('schemaCatalogElements', () => {
@@ -83,5 +90,46 @@ emptyPropertiesAllowed: true
 cardinality: UNSPECIFIED
 `
     expect(catalogSeedContainsGraph(yaml)).toBe(false)
+  })
+})
+
+describe('jsonSchemaDefKeys', () => {
+  it('shouldListSortedDefKeys', () => {
+    const body = JSON.stringify(
+      {
+        $defs: {
+          Dataset: { type: 'object' },
+          Database: { type: 'object' },
+        },
+      },
+      null,
+      2,
+    )
+    expect(jsonSchemaDefKeys(body)).toEqual(['Database', 'Dataset'])
+    expect(jsonSchemaDefRevealQuery('Database')).toBe('"Database": {')
+  })
+})
+
+describe('catalogSeedObjectTypes', () => {
+  it('shouldCollectObjectSchemaTypes', () => {
+    const yaml = `
+apiVersion: objs.poc.org/v1
+kind: ObjectSchema
+type: Dataset
+version: "1.0.0"
+---
+apiVersion: objs.poc.org/v1
+kind: ObjectSchema
+type: Database
+version: "1.0.0"
+---
+apiVersion: objs.poc.org/v1
+kind: AllowedEdgeRule
+sourceType: Database
+role: CONTAINS
+targetType: Dataset
+`
+    expect(catalogSeedObjectTypes(yaml)).toEqual(['Database', 'Dataset'])
+    expect(catalogSeedTypeRevealQuery('Database')).toBe('type: "Database"')
   })
 })

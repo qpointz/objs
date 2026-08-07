@@ -128,6 +128,8 @@ Opening **Schemas** without a type selected shows the **Full schema** overview:
   - **Include edges** — `Outbound` / `Linked` (`includeEdges`);
   - **Edge property schemas** switch (`includeEdgePropertySchemas`);
   - **Dialect** — `2020-12` (only dialect in v1);
+  - **Go to type…** — searchable jump to a `$defs` entry (JSON Schema) or ObjectSchema type (Seeds);
+  - in-document find via Ctrl/Cmd+F in the code editor;
 - click a type node (or a row in the type list) to open that type’s latest version;
 - nodes are draggable; positions and layout direction are kept in `localStorage`
   (`objs.ui.fullSchema.layout`) and restored on return (new types still use auto layout until moved);
