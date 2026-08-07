@@ -10,6 +10,9 @@ docs/workitems/completed/YYYYMMDD-<story-slug>/
 
 ## Index (optional, newest first)
 
+- [`20260807-subgraphs-materialization`](20260807-subgraphs-materialization/STORY.md) — Soft-link subgraph packs + snapshot + Composer Save/Subgraph/Snapshot (C-12)
+- [`20260807-composer-draft-shopping`](20260807-composer-draft-shopping/STORY.md) — Composer Add objects; `obj-expr` / `ids`; visual chain matcher (C-11)
+- [`20260807-json-schema-generation`](20260807-json-schema-generation/STORY.md) — Configurable full-catalog JSON Schema export (C-10)
 - [`20260806-gremlin-subgraph-traversal`](20260806-gremlin-subgraph-traversal/STORY.md) — Matcher → Gremlin traverse + Query UI (C-9)
 - [`20260805-graph-candidate-sources`](20260805-graph-candidate-sources/STORY.md) — Candidate-source query plan, JSONB/GIN, workbench in objs-service
 - [`20260805-object-linter-visual`](20260805-object-linter-visual/STORY.md) — Object linter Visual/Text draft workspace + graph mutate
