@@ -16,6 +16,8 @@ import org.poc.objs.core.seed.CATALOG_SEED_KINDS
 import org.poc.objs.core.seed.CanonicalSeedSerializer
 import org.poc.objs.core.seed.SeedImportException
 import org.poc.objs.core.seed.SeedImporter
+import org.poc.objs.core.domain.BoMJsonSchemaExportOptions
+import org.poc.objs.core.domain.BoMJsonSchemaExportOptionsException
 import org.poc.objs.core.domain.FullCatalogJsonSchemaExporter
 import org.poc.objs.core.validation.BoMValidationIssue
 import org.poc.objs.core.validation.BoMValidationResult
@@ -68,8 +70,17 @@ class ObjsRegistryController(
     }
 
     @GetMapping("/export")
-    @Operation(summary = "Export ontology catalogs in the requested format")
-    fun exportRegistry(@RequestParam format: String): ResponseEntity<Any> {
+    @Operation(
+        summary = "Export ontology catalogs in the requested format",
+        description = "For format=json-schema, optional dialect / includeEdges / includeEdgePropertySchemas " +
+            "configure the full-catalog projection (defaults: 2020-12, outbound, true).",
+    )
+    fun exportRegistry(
+        @RequestParam format: String,
+        @RequestParam(required = false) dialect: String?,
+        @RequestParam(required = false) includeEdges: String?,
+        @RequestParam(required = false) includeEdgePropertySchemas: Boolean?,
+    ): ResponseEntity<Any> {
         return when (format) {
             ObjsIoFormats.SEEDS -> {
                 val yaml = seedSerializer.serializeCatalogs(
@@ -82,9 +93,26 @@ class ObjsRegistryController(
                     .body(yaml)
             }
             ObjsIoFormats.JSON_SCHEMA -> {
+                val options = try {
+                    BoMJsonSchemaExportOptions.fromWire(
+                        dialect = dialect,
+                        includeEdges = includeEdges,
+                        includeEdgePropertySchemas = includeEdgePropertySchemas,
+                    )
+                } catch (ex: BoMJsonSchemaExportOptionsException) {
+                    return ResponseEntity.badRequest().body(
+                        BoMValidationResult.of(
+                            BoMValidationIssue(
+                                code = "JSON_SCHEMA_OPTIONS_INVALID",
+                                message = ex.message ?: "Invalid JSON Schema export options",
+                                path = "options",
+                            ),
+                        ),
+                    )
+                }
                 ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_TYPE, ObjsIoFormats.JSON_SCHEMA_MEDIA_TYPE)
-                    .body(fullCatalogJsonSchema.export())
+                    .body(fullCatalogJsonSchema.export(options))
             }
             else -> ObjsIoFormats.unknownFormat(format)
         }

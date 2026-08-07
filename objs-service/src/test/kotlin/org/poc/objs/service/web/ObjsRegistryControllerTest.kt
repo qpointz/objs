@@ -5,6 +5,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
 import org.poc.objs.core.domain.BoMAllowedEdgeRule
+import org.poc.objs.core.domain.BoMEdgeCardinality
 import org.poc.objs.core.domain.BoMPropertiesPolicy
 import org.poc.objs.core.domain.BoMSchema
 import org.poc.objs.core.domain.BoMSchemaDsl
@@ -545,6 +546,44 @@ class ObjsRegistryControllerTest {
             .andExpect(status().isOk)
             .andExpect(content().contentTypeCompatibleWith(MediaType.parseMediaType("application/schema+json")))
             .andExpect(jsonPath("$.['x-objs-export']").value("full-catalog"))
+            .andExpect(jsonPath("$.['x-objs-json-schema-options'].includeEdges").value("outbound"))
             .andExpect(jsonPath("$.['\$defs'].Person.type").value("object"))
+    }
+
+    @Test
+    fun shouldExportLinkedJsonSchema_whenIncludeEdgesLinked() {
+        schemas.register(BoMSchema("Database", "1", BoMSchemaDsl.obj("Database", "Database payload")))
+        schemas.register(BoMSchema("Dataset", "1", BoMSchemaDsl.obj("Dataset", "Dataset payload")))
+        edgeRules.register(
+            BoMAllowedEdgeRule(
+                sourceType = "Database",
+                role = "CONTAINS",
+                targetType = "Dataset",
+                cardinality = BoMEdgeCardinality.ONE_TO_MANY,
+            ),
+        )
+        mockMvc.perform(
+            get("/api/v1/objs/registry/export")
+                .param("format", "json-schema")
+                .param("includeEdges", "linked"),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.['x-objs-json-schema-options'].includeEdges").value("linked"))
+            .andExpect(jsonPath("$.['\$defs'].Database.properties.containsDataset.type").value("array"))
+            .andExpect(
+                jsonPath("$.['\$defs'].Dataset.properties.containsFromDatabase['\$ref']")
+                    .value("#/\$defs/Database"),
+            )
+    }
+
+    @Test
+    fun shouldRejectUnknownJsonSchemaOptions() {
+        mockMvc.perform(
+            get("/api/v1/objs/registry/export")
+                .param("format", "json-schema")
+                .param("includeEdges", "both"),
+        )
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.issues[0].code").value("JSON_SCHEMA_OPTIONS_INVALID"))
     }
 }
