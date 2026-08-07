@@ -7,12 +7,14 @@ import {
   useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
 } from 'react'
 import {
   ActionIcon,
   Alert,
   Anchor,
   Badge,
+  Box,
   Button,
   Checkbox,
   Code,
@@ -31,6 +33,7 @@ import {
 import { IconX } from '@tabler/icons-react'
 import { getSchema, getTypeEdges, listSchemas, schemaDetailPath, toGraphData } from './api'
 import { Link } from 'react-router-dom'
+import { AddObjectsPanel } from './AddObjectsPanel'
 import { colorForType, nodeLabel } from './color'
 import {
   GraphCanvas,
@@ -40,6 +43,7 @@ import {
 import { edgeStatus, entityStatus, type GraphDraftState } from './graphDraft'
 import { newEntityId } from './graphDraft'
 import { payloadFieldKindsByTypeVersion } from './payloadFieldKinds'
+import type { QueryExecStats } from './queryExecStats'
 import { AnnotationsEditor, PayloadInspector, SchemaInstanceForm, defaultValueForSchema } from './SchemaInstanceForm'
 import { applyTypeHighlightDimming, toggleTypeInSet } from './typeHighlightDimming'
 import type {
@@ -58,6 +62,37 @@ const GRAPH_LAYOUTS: { value: GraphLayout; label: string }[] = [
   { value: 'LR', label: 'Left to right' },
   { value: 'RL', label: 'Right to left' },
 ]
+
+const SIDE_PANE_WIDTH_KEY = 'objs.ui.composer.sidePaneWidth'
+const DEFAULT_SIDE_PANE_WIDTH = 360
+const ADD_OBJECTS_SIDE_PANE_FLOOR = 420
+const MIN_SIDE_PANE_WIDTH = 280
+const MIN_CANVAS_WIDTH = 240
+const SPLITTER_WIDTH = 8
+
+function clamp(n: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, n))
+}
+
+function readSidePaneWidth(): number {
+  try {
+    const raw = window.localStorage.getItem(SIDE_PANE_WIDTH_KEY)
+    if (raw == null) return DEFAULT_SIDE_PANE_WIDTH
+    const n = Number(raw)
+    if (!Number.isFinite(n)) return DEFAULT_SIDE_PANE_WIDTH
+    return clamp(n, MIN_SIDE_PANE_WIDTH, 720)
+  } catch {
+    return DEFAULT_SIDE_PANE_WIDTH
+  }
+}
+
+function writeSidePaneWidth(width: number) {
+  try {
+    window.localStorage.setItem(SIDE_PANE_WIDTH_KEY, String(Math.round(width)))
+  } catch {
+    /* ignore */
+  }
+}
 
 function isChangedStatus(status: GraphNode['draftStatus'] | GraphLink['draftStatus']): boolean {
   return status === 'new' || status === 'modified' || status === 'deleted'
@@ -124,6 +159,8 @@ type Props = {
   onUpsertEdge: (edge: BoMEdge) => void
   onRemoveEntity: (id: string) => void
   onRemoveEdge: (id: string) => void
+  onExcludeEntity: (id: string) => void
+  onExcludeEdge: (id: string) => void
   onRestoreDeletedEntity: (id: string) => void
   onRestoreDeletedEdge: (id: string) => void
   onRevertEntityChanges: (id: string) => void
@@ -132,6 +169,16 @@ type Props = {
   invalidEntityIds?: ReadonlySet<string>
   /** Edge ids failing the latest Validate. */
   invalidEdgeIds?: ReadonlySet<string>
+  /** Add objects side panel (replaces edit form while open). */
+  addObjectsOpen?: boolean
+  onCloseAddObjects?: () => void
+  addObjectsMatcher?: unknown | null
+  addObjectsAutoSearch?: boolean
+  addObjectsAutoAddAll?: boolean
+  draftEntityIds?: ReadonlySet<string>
+  onMergeEntities?: (entities: BoMEntity[]) => void
+  onMergeEdges?: (edges: BoMEdge[]) => void
+  onAddObjectsSearchSuccess?: (matcherBody: unknown, stats: QueryExecStats) => void
 }
 
 export type ObjectLinterVisualPanelHandle = {
@@ -160,12 +207,23 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
       onUpsertEdge,
       onRemoveEntity,
       onRemoveEdge,
+      onExcludeEntity,
+      onExcludeEdge,
       onRestoreDeletedEntity,
       onRestoreDeletedEdge,
       onRevertEntityChanges,
       onRevertEdgeChanges,
       invalidEntityIds,
       invalidEdgeIds,
+      addObjectsOpen = false,
+      onCloseAddObjects,
+      addObjectsMatcher = null,
+      addObjectsAutoSearch = false,
+      addObjectsAutoAddAll = false,
+      draftEntityIds,
+      onMergeEntities,
+      onMergeEdges,
+      onAddObjectsSearchSuccess,
     },
     ref,
   ) {
@@ -174,6 +232,50 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
   const [changesOnly, setChangesOnly] = useState(false)
   const [highlightedTypes, setHighlightedTypes] = useState<Set<string>>(() => new Set())
   const graphRef = useRef<GraphCanvasHandle>(null)
+  const splitHostRef = useRef<HTMLDivElement>(null)
+  const dragRef = useRef<{ startX: number; startWidth: number } | null>(null)
+  const [sidePaneWidth, setSidePaneWidth] = useState(readSidePaneWidth)
+  const resolvedDraftEntityIds = draftEntityIds ?? new Set(liveDocument.entities.map((e) => e.id))
+
+  useEffect(() => {
+    writeSidePaneWidth(sidePaneWidth)
+  }, [sidePaneWidth])
+
+  useEffect(() => {
+    if (!addObjectsOpen) return
+    setSidePaneWidth((w) => (w < ADD_OBJECTS_SIDE_PANE_FLOOR ? ADD_OBJECTS_SIDE_PANE_FLOOR : w))
+  }, [addObjectsOpen])
+
+  const onSplitterPointerDown = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      e.preventDefault()
+      dragRef.current = { startX: e.clientX, startWidth: sidePaneWidth }
+      e.currentTarget.setPointerCapture(e.pointerId)
+    },
+    [sidePaneWidth],
+  )
+
+  const onSplitterPointerMove = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current
+    if (drag == null) return
+    const host = splitHostRef.current
+    if (host == null) return
+    const hostWidth = host.clientWidth
+    const maxWidth = Math.max(
+      MIN_SIDE_PANE_WIDTH,
+      hostWidth - MIN_CANVAS_WIDTH - SPLITTER_WIDTH,
+    )
+    // Dragging the splitter left increases pane width.
+    const next = clamp(drag.startWidth - (e.clientX - drag.startX), MIN_SIDE_PANE_WIDTH, maxWidth)
+    setSidePaneWidth(next)
+  }, [])
+
+  const onSplitterPointerUp = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
+    dragRef.current = null
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    }
+  }, [])
   useImperativeHandle(
     ref,
     () => ({
@@ -385,6 +487,33 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
       handleSelect(null)
     }
   }
+
+  /** Drop from draft without Apply delete (no pending-delete chrome). */
+  function excludeSelection() {
+    if (selectedEdge?.id && pairIds.length === 0) {
+      onExcludeEdge(selectedEdge.id)
+      handleSelect(null)
+      return
+    }
+    if (pairIds.length === 0 && selectedEntity) {
+      onExcludeEntity(selectedEntity.id)
+      handleSelect(null)
+      return
+    }
+    if (pairIds.length > 0) {
+      for (const id of [...pairIds]) {
+        onExcludeEntity(id)
+      }
+      handleSelect(null)
+    }
+  }
+
+  const canExcludeFromDraft =
+    (pairIds.length > 0 &&
+      pairIds.every((id) => !draftState.pendingDeleteEntityIds.has(id))) ||
+    (selectedEdge?.id != null &&
+      pairIds.length === 0 &&
+      !draftState.pendingDeleteEdgeIds.has(selectedEdge.id))
 
   const selectedEntityId = selectedEntity?.id ?? null
   const selectedEntityType = selectedEntity?.type ?? null
@@ -726,6 +855,14 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
         <Button
           size="xs"
           variant="light"
+          disabled={!canExcludeFromDraft}
+          onClick={excludeSelection}
+        >
+          Remove from draft
+        </Button>
+        <Button
+          size="xs"
+          variant="light"
           color="red"
           disabled={pairIds.length === 0 && !selectedEdge}
           onClick={deleteSelection}
@@ -895,7 +1032,13 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
         </Alert>
       )}
 
-      <Group align="stretch" gap="sm" wrap="nowrap" style={{ flex: 1, minHeight: 0 }}>
+      <Group
+        ref={splitHostRef}
+        align="stretch"
+        gap={0}
+        wrap="nowrap"
+        style={{ flex: 1, minHeight: 0 }}
+      >
         <Paper
           withBorder
           style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden', position: 'relative' }}
@@ -906,7 +1049,7 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
           {displayGraph.nodes.length === 0 ? (
             <Stack p="md" gap="xs">
               <Text size="sm" c="dimmed">
-                Draft has no entities. Use Add object or Load a subgraph.
+                Draft has no entities. Use Add object or Add objects….
               </Text>
             </Stack>
           ) : (
@@ -925,6 +1068,35 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
             />
           )}
         </Paper>
+
+        <Box
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize side pane"
+          onPointerDown={onSplitterPointerDown}
+          onPointerMove={onSplitterPointerMove}
+          onPointerUp={onSplitterPointerUp}
+          onPointerCancel={onSplitterPointerUp}
+          style={{
+            width: SPLITTER_WIDTH,
+            flexShrink: 0,
+            cursor: 'col-resize',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            touchAction: 'none',
+            userSelect: 'none',
+          }}
+        >
+          <Box
+            style={{
+              width: 3,
+              height: 48,
+              borderRadius: 2,
+              background: 'var(--mantine-color-default-border)',
+            }}
+          />
+        </Box>
 
         <Menu
           opened={canvasMenu != null}
@@ -976,6 +1148,16 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
                 }}
               >
                 Connect existing
+              </Menu.Item>
+            )}
+            {canExcludeFromDraft && (
+              <Menu.Item
+                onClick={() => {
+                  closeCanvasMenu()
+                  excludeSelection()
+                }}
+              >
+                Remove from draft
               </Menu.Item>
             )}
             {canvasMenuCanDelete && (
@@ -1041,7 +1223,7 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
           withBorder
           p="sm"
           style={{
-            width: 360,
+            width: sidePaneWidth,
             flexShrink: 0,
             minHeight: 0,
             display: 'flex',
@@ -1049,7 +1231,21 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
             overflow: 'hidden',
           }}
         >
-          {pairIds.length > 1 ? (
+          {addObjectsOpen && onCloseAddObjects && onMergeEntities && onMergeEdges ? (
+            <AddObjectsPanel
+              active={addObjectsOpen}
+              onClose={onCloseAddObjects}
+              matcher={addObjectsMatcher}
+              autoSearch={addObjectsAutoSearch}
+              autoAddAllResults={addObjectsAutoAddAll}
+              draftEntityIds={resolvedDraftEntityIds}
+              baselineEntityIds={draftState.baselineEntityIds}
+              onMergeEntities={onMergeEntities}
+              onExcludeEntity={onExcludeEntity}
+              onMergeEdges={onMergeEdges}
+              onSearchSuccess={onAddObjectsSearchSuccess}
+            />
+          ) : pairIds.length > 1 ? (
             <Stack gap="sm">
               <Group justify="space-between" align="flex-start">
                 <Text fw={600}>Multiple selection</Text>

@@ -5,10 +5,7 @@ import {
   Box,
   Button,
   Code,
-  Collapse,
   Group,
-  Loader,
-  Modal,
   Paper,
   Stack,
   Table,
@@ -18,9 +15,8 @@ import {
 } from '@mantine/core'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { mutationShapeError, normalizeGraphMutation } from './graphDraft'
-import { putGraphMutation, queryGraph, toGraphData, validateGraphMutation } from './api'
+import { putGraphMutation, validateGraphMutation, toGraphData } from './api'
 import { JsonYamlEditor, type JsonYamlEditorHandle } from './JsonYamlEditor'
-import { MatcherLoadPanel } from './MatcherLoadPanel'
 import { NewUuidButton } from './NewUuidButton'
 import {
   ObjectLinterVisualPanel,
@@ -40,6 +36,8 @@ export { graphShapeError, mutationShapeError } from './graphDraft'
 
 type ObjectLinterNavState = {
   matcher?: unknown
+  /** Explorer handoff: merge all Search hits without per-row Add. */
+  addAll?: boolean
 }
 
 export function ObjectLinterPage() {
@@ -54,11 +52,14 @@ export function ObjectLinterPage() {
     applyParsedMutation,
     resetToRollback,
     clearDraft,
-    loadSubgraph,
     upsertEntity,
     upsertEdge,
     removeEntity,
     removeEdge,
+    excludeEntity,
+    excludeEdge,
+    mergeEntities,
+    mergeEdges,
     markApplied,
     canvasDocument,
     restoreDeletedEntity,
@@ -72,14 +73,13 @@ export function ObjectLinterPage() {
   const [tab, setTab] = useState<'visual' | 'text'>('visual')
   const [textError, setTextError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [loadBusy, setLoadBusy] = useState(false)
-  const [loadStats, setLoadStats] = useState<QueryExecStats | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<GraphValidationResult | null>(null)
-  const [loadOpen, setLoadOpen] = useState(false)
-  const [loadConfirmOpen, setLoadConfirmOpen] = useState(false)
-  const [pendingMatcher, setPendingMatcher] = useState<unknown>(null)
-  const [activeMatcher, setActiveMatcher] = useState<unknown | null>(null)
+  const [addObjectsOpen, setAddObjectsOpen] = useState(false)
+  const [handoffMatcher, setHandoffMatcher] = useState<unknown | null>(null)
+  const [autoSearch, setAutoSearch] = useState(false)
+  const [autoAddAllResults, setAutoAddAllResults] = useState(false)
+  const [addObjectsStats, setAddObjectsStats] = useState<QueryExecStats | null>(null)
 
   const graphView = useMemo(() => toGraphData(canvasDocument), [canvasDocument])
   const onFocusNode = useCallback((nodeId: string) => {
@@ -90,6 +90,11 @@ export function ObjectLinterPage() {
     links: graphView.links,
     onFocusNode,
   })
+
+  const draftEntityIds = useMemo(
+    () => new Set(document.entities.map((e) => e.id)),
+    [document.entities],
+  )
 
   const invalidEntityIds = useMemo(() => {
     if (!result || result.issues.length === 0) return new Set<string>()
@@ -233,55 +238,33 @@ export function ObjectLinterPage() {
     }
   }
 
-  async function doLoad(matcherBody: unknown) {
-    setLoadBusy(true)
-    setError(null)
-    try {
-      const started = performance.now()
-      const subgraph = await queryGraph(matcherBody)
-      const durationMs = performance.now() - started
-      setLoadStats({
-        durationMs,
-        nodes: subgraph.entities?.length ?? 0,
-        edges: subgraph.edges?.length ?? 0,
-      })
-      loadSubgraph(subgraph)
-      beginQueryResult()
-      setResult(null)
-      setActiveMatcher(matcherBody)
-      setLoadOpen(false)
-      setLoadConfirmOpen(false)
-      setPendingMatcher(null)
-      setTab('visual')
-    } catch (e) {
-      setLoadStats(null)
-      setError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setLoadBusy(false)
-    }
+  function closeAddObjects() {
+    setAddObjectsOpen(false)
+    setAutoSearch(false)
+    setAutoAddAllResults(false)
+    setHandoffMatcher(null)
   }
 
-  async function onLoadRequest(matcherBody: unknown) {
-    if (document.entities.length > 0 || document.edges.length > 0 || pendingDeleteCount > 0) {
-      setPendingMatcher(matcherBody)
-      setLoadConfirmOpen(true)
-      return
-    }
-    await doLoad(matcherBody)
+  function openAddObjects(opts?: {
+    matcher?: unknown
+    autoSearch?: boolean
+    autoAddAllResults?: boolean
+  }) {
+    setHandoffMatcher(opts?.matcher ?? null)
+    setAutoSearch(opts?.autoSearch ?? false)
+    setAutoAddAllResults(opts?.autoAddAllResults ?? false)
+    setAddObjectsOpen(true)
+    setTab('visual')
   }
-
-  const onLoadRequestRef = useRef(onLoadRequest)
-  onLoadRequestRef.current = onLoadRequest
 
   useEffect(() => {
     const navState = location.state as ObjectLinterNavState | null
     if (navState == null || typeof navState !== 'object' || !('matcher' in navState)) return
     if (navState.matcher === undefined) return
     const matcher = navState.matcher
-    setActiveMatcher(matcher)
-    setLoadOpen(false)
+    const addAll = navState.addAll === true
     navigate('.', { replace: true, state: null })
-    void onLoadRequestRef.current(matcher)
+    openAddObjects({ matcher, autoSearch: true, autoAddAllResults: addAll })
   }, [location.state, navigate])
 
   const valid = result != null && result.issues.length === 0
@@ -292,7 +275,7 @@ export function ObjectLinterPage() {
         <div>
           <Title order={3}>Object linter</Title>
           <Text size="sm" c="dimmed">
-            Load an optional subgraph, manipulate the draft visually or as YAML/JSON, then Validate
+            Add objects from the store into the draft, edit visually or as YAML/JSON, then Validate
             or Apply (transactional upsert + delete).
           </Text>
         </div>
@@ -300,8 +283,11 @@ export function ObjectLinterPage() {
           <Button variant="default" component={Link} to="/model">
             Browse schemas
           </Button>
-          <Button variant="light" onClick={() => setLoadOpen((v) => !v)}>
-            {loadOpen ? 'Hide load' : 'Load…'}
+          <Button
+            variant="light"
+            onClick={() => (addObjectsOpen ? closeAddObjects() : openAddObjects())}
+          >
+            {addObjectsOpen ? 'Hide add objects' : 'Add objects…'}
           </Button>
           <Button variant="default" onClick={resetToRollback}>
             Reset
@@ -326,40 +312,11 @@ export function ObjectLinterPage() {
         </Group>
       </Group>
 
-      <Collapse in={loadOpen}>
-        <Paper withBorder p="md">
-          <MatcherLoadPanel
-            loading={loadBusy}
-            matcher={activeMatcher}
-            stats={loadStats}
-            onLoad={onLoadRequest}
-          />
-        </Paper>
-      </Collapse>
-
       <Tabs
         value={tab}
         onChange={trySwitchTab}
         style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', position: 'relative' }}
       >
-        {loadBusy && (
-          <Stack
-            align="center"
-            justify="center"
-            gap="sm"
-            style={{
-              position: 'absolute',
-              inset: 0,
-              zIndex: 20,
-              background: 'color-mix(in srgb, var(--mantine-color-body) 82%, transparent)',
-            }}
-          >
-            <Loader size="md" />
-            <Text size="sm" c="dimmed">
-              Fetching subgraph…
-            </Text>
-          </Stack>
-        )}
         <Group justify="space-between" align="center" gap="sm" wrap="nowrap" style={{ flexShrink: 0 }}>
           <Tabs.List style={{ flex: 1 }}>
             <Tabs.Tab value="visual">Visual</Tabs.Tab>
@@ -382,6 +339,11 @@ export function ObjectLinterPage() {
             <Badge variant="light" size="sm">
               {canvasDocument.entities.length} on canvas
             </Badge>
+            {addObjectsStats != null && (
+              <Badge variant="outline" size="sm">
+                last search {addObjectsStats.nodes} nodes
+              </Badge>
+            )}
           </Group>
         </Group>
 
@@ -400,12 +362,27 @@ export function ObjectLinterPage() {
             onUpsertEdge={upsertEdge}
             onRemoveEntity={removeEntity}
             onRemoveEdge={removeEdge}
+            onExcludeEntity={excludeEntity}
+            onExcludeEdge={excludeEdge}
             onRestoreDeletedEntity={restoreDeletedEntity}
             onRestoreDeletedEdge={restoreDeletedEdge}
             onRevertEntityChanges={revertEntityChanges}
             onRevertEdgeChanges={revertEdgeChanges}
             invalidEntityIds={invalidEntityIds}
             invalidEdgeIds={invalidEdgeIds}
+            addObjectsOpen={addObjectsOpen}
+            onCloseAddObjects={closeAddObjects}
+            addObjectsMatcher={handoffMatcher}
+            addObjectsAutoSearch={autoSearch}
+            addObjectsAutoAddAll={autoAddAllResults}
+            draftEntityIds={draftEntityIds}
+            onMergeEntities={mergeEntities}
+            onMergeEdges={mergeEdges}
+            onAddObjectsSearchSuccess={(_body, stats) => {
+              beginQueryResult()
+              setAddObjectsStats(stats)
+              setResult(null)
+            }}
           />
         </Tabs.Panel>
 
@@ -576,40 +553,6 @@ export function ObjectLinterPage() {
           </Box>
         </Paper>
       )}
-
-      <Modal
-        opened={loadConfirmOpen}
-        onClose={() => {
-          setLoadConfirmOpen(false)
-          setPendingMatcher(null)
-        }}
-        title="Replace draft?"
-      >
-        <Stack>
-          <Text size="sm">
-            Loading replaces the current draft and pending deletes. Continue?
-          </Text>
-          <Group justify="flex-end">
-            <Button
-              variant="default"
-              onClick={() => {
-                setLoadConfirmOpen(false)
-                setPendingMatcher(null)
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              loading={loadBusy}
-              onClick={() => {
-                if (pendingMatcher != null) void doLoad(pendingMatcher)
-              }}
-            >
-              Replace
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
     </Stack>
   )
 }

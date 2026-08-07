@@ -24,7 +24,7 @@ dark/light toggle on the right:
 | View | Path | Purpose |
 |------|------|---------|
 | **Explorer** | `/workbench/explorer` | Query and inspect a stored subgraph |
-| **Composer** | `/workbench/composer` | Draft workspace: load, Visual/Text edit, Validate / Apply mutation |
+| **Composer** | `/workbench/composer` | Draft workspace: Add objects, Visual/Text edit, Validate / Apply mutation |
 | **Query** | `/workbench/query` | Tabs Query (script) / Matcher / Options; Exec → traverse API; Structured / Raw results |
 | **Schema** | `/workbench/model` | Browse and edit object/edge schemas |
 
@@ -34,21 +34,25 @@ Legacy `/ui/**` URLs redirect into `/workbench/**` (e.g. `/ui/graph` → `/workb
 
 Graph explorer loads entities and induced edges through
 `POST /api/v1/objs/graph/query`. Matcher controls are shared with Object linter
-(`MatcherQueryForm`): a compact **Matcher** select (`anno` / `anno-expr` / `chained`) plus mode
-fields, with **Exec** on the same row.
+(`MatcherQueryForm`): a compact **Matcher** select (`anno` / `anno-expr` / `obj-expr` / `chained`) plus mode
+fields, with **Exec** on the same row. In Explorer the matcher is **collapsible** (chevron; preference
+persisted) so the canvas keeps vertical space; collapsed shows mode + a one-line summary while Exec
+stays available.
 
 - **`anno`** — key/value rows. Every pair must match the entity annotation map.
 - **`anno-expr`** — one JEXL Boolean expression using annotation keys as variables,
   for example `app == 'payments-api' && appVersion == '2.3.1'`.
-- **chained** — non-empty JSON array of matcher objects. Matchers execute in order, passing
-  each stage's selected entities to the next.
+- **`obj-expr`** — one JEXL Boolean expression over `id`, `type`, `schemaVersion`, `a.*` (annotations),
+  `p.*` (payload), for example `type == 'Product' && a.app == 'payments-api'`.
+- **chained** — **Visual** builder (ordered stages; each stage uses the same editor as its standalone
+  mode) or **JSON** for the full chain array. Matchers execute in order.
 
 The UI sends the selected mode as matcher DSL:
 
 ```json
 [
   { "anno": { "app": "payments-api" } },
-  { "anno-expr": "appVersion == '2.3.1'" }
+  { "obj-expr": "type == 'Component' && p.kind == 'library'" }
 ]
 ```
 
@@ -56,8 +60,9 @@ The UI sends the selected mode as matcher DSL:
 2. Select **Exec** (shows a loading overlay while the query runs).
 3. Select a node or edge on the canvas to inspect it. Edge source/target links jump to that node.
 4. Select **Apply layout** to recalculate the graph layout.
-5. After a successful query, **Open in…** (split control) opens a menu: **Composer** loads the same
-   matcher into Object linter; **Query** opens the Query view with the same matcher.
+5. After a successful query, **Open in…** (split control) opens a menu: **Composer** runs the same
+   matcher, **merges all matched entities and induced edges** into the draft (append — never replaces),
+   and closes Add objects; **Query** opens the Query view with the same matcher.
 
 The last successful matcher is kept in `localStorage` (`objs.ui.graphExplorer.matcher`). The last
 executed graph, layout direction, node positions, and query id are kept in
@@ -397,12 +402,13 @@ On an existing schema detail:
 
 ## Object linter
 
-Object linter is a **graph draft workspace**: optionally load a stored subgraph, manipulate it
+Object linter is a **graph draft workspace**: add store objects into the draft, manipulate it
 visually or as YAML/JSON, then **Validate** or **Apply**.
 
 | Action | API |
 |--------|-----|
-| Load | `POST /api/v1/objs/graph/query` (matcher DSL: `anno` / `anno-expr` / chained) |
+| Add objects / Search | `POST /api/v1/objs/graph/query` (matcher DSL: `anno` / `anno-expr` / `obj-expr` / `ids` / chained) |
+| Done (edge refresh) | `POST /api/v1/objs/graph/query` with `{ "ids": […] }` among store-backed draft entity ids |
 | Validate | `POST /api/v1/objs/graph/validate` with `BoMGraphMutation` |
 | Apply | `PUT /api/v1/objs/graph` with the same mutation body (`upsert` + `delete`) |
 
@@ -413,30 +419,30 @@ Rollback.
 
 | Tab | Role |
 |-----|------|
-| **Visual** | React Flow canvas with inline side panel; toolbar: add / create linked / connect (Ctrl+click two nodes) / delete / layout; edit form only for a single selection |
-| **Text** | YAML/JSON of the **mutation only** (`upsert.entities` / `upsert.edges` + `delete.entities` / `delete.edges` ids). Unchanged loaded objects stay on Visual but are omitted from Text until edited, created, or deleted. |
+| **Visual** | React Flow canvas with resizable right side pane (edit form or Add objects); toolbar: add / create linked / connect / **Remove from draft** / **Delete** / layout |
+| **Text** | YAML/JSON of the **mutation only** (`upsert.entities` / `upsert.edges` + `delete.entities` / `delete.edges` ids). Unchanged baseline objects stay on Visual but are omitted from Text until edited, created, or deleted. |
 
 Invalid Text blocks switching to Visual; the last good draft is preserved.
 
-### Load / pending deletes
+### Add objects / exclude vs delete
 
-1. Open **Load…** and choose a matcher (same compact `MatcherQueryForm` as Graph explorer).
-2. Confirm replace when the draft is non-empty.
-3. Loaded entity/edge ids become the **baseline**. Removals from the draft become **pending deletes** for Validate/Apply.
-4. After Load with no edits, Text is an empty mutation; Visual still shows the loaded graph.
-5. Graph explorer **Edit in linter** navigates here with the last successful matcher and triggers the same Load path.
-6. Successful Load shows query wall time and counts; selection uses the same `qid` + `node`/`edge`
-   URL history as Explorer (scoped to that Load).
-7. On the Visual canvas, draft status icons appear on object headers: **+** new, **pencil** modified, **−** deleted.
-8. Deleting a **new** (non-baseline) object/edge removes it from the canvas. Deleting a **loaded** object/edge soft-deletes it: it stays visible and marked deleted until Apply, and can be undone (restore) or have modifications reverted from the side panel.
-9. **Reset** restores the last load/rollback snapshot; **Clear** empties the draft.
+1. Open **Add objects…** — search UI appears in the **right side pane** (same slot as the edit form; canvas stays visible). Defaults matcher mode to **`obj-expr`**; same shared `MatcherQueryForm` as Explorer / Query.
+2. Drag the **vertical splitter** between canvas and side pane to resize (width persisted). Opening Add objects bumps a narrow pane to a usable width once.
+3. **Search** runs the matcher and fills a results table (`id`, `type`, ≤6 scalar payload columns). Results paginate **locally** at **20** rows per page. Successful Search mints a new selection **`qid`**.
+4. **Add** / **In draft** toggles **immediately** merge or exclude that entity in the draft (id conflict keeps the draft copy). Multi-select supports Add selected / Remove selected from draft.
+5. **Done** queries induced edges among **store-backed** draft entity ids (`baselineEntityIds`) via `{ "ids": […] }`, merges those edges, then closes the panel (edit form returns). Search never wipes the draft.
+6. Graph explorer **Open in… → Composer** runs Search with the last matcher, **merges all results and induced edges** into the draft, then closes Add objects (append).
+7. **Remove from draft** (toolbar / context menu) excludes the selection: drops from document/baseline with **no** pending-delete chrome. **Delete** still soft-deletes baseline ids for Apply.
+8. On the Visual canvas, draft status icons appear on object headers: **+** new, **pencil** modified, **−** deleted (Delete path only).
+9. Deleting a **new** (non-baseline) object/edge removes it from the canvas. Deleting a **loaded** object/edge soft-deletes it: it stays visible and marked deleted until Apply, and can be undone (restore) or have modifications reverted from the side panel.
+10. **Reset** restores the last rollback snapshot; **Clear** empties the draft.
 
 Optional **Copy annotations from source** when creating a linked object.
 
 ### Validate and Apply
 
 1. Open **Object linter**.
-2. Optionally Load a subgraph, or start from an empty draft in Visual/Text.
+2. Optionally **Add objects…**, or start from an empty draft in Visual/Text.
 3. Select **Validate** (dry-run mutation) or **Apply** (persist mutation).
 
 Apply clears pending deletes and refreshes the baseline on success.
@@ -459,8 +465,8 @@ property-schema reference, and properties are validated against the current regi
 
 | Message or condition | Resolution |
 |----------------------|------------|
-| Graph query returns no nodes | Verify `anno` keys/values or `anno-expr` variables exist on stored entities and that chained stages retain results |
-| Matcher query is rejected | Correct the matcher shape: one `anno`/`anno-expr` object or a non-empty JSON array of matcher objects |
+| Graph query returns no nodes | Verify `anno` / `anno-expr` / `obj-expr` criteria exist on stored entities and that chained stages retain results |
+| Matcher query is rejected | Correct the matcher shape: one `anno`/`anno-expr`/`obj-expr`/`ids` object or a non-empty JSON array of matcher objects |
 | Schema cannot be loaded | Confirm the selected type and version still exist |
 | Source document is invalid | Correct YAML/JSON syntax before switching to Schema mode or saving |
 | `SCHEMA_DEFINITION_INVALID` | Correct the field named in the lint message |

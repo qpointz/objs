@@ -7,7 +7,10 @@ import {
   edgeStatus,
   emptyDraftState,
   entityStatus,
+  excludeEntityFromDraft,
   graphShapeError,
+  mergeEdgesIntoDraft,
+  mergeEntitiesIntoDraft,
   mutationShapeError,
   normalizeGraphDocument,
   normalizeGraphMutation,
@@ -209,5 +212,31 @@ describe('graphDraft helpers', () => {
     expect(entityStatus(next, 'a')).toBe('modified')
     expect(entityStatus(next, 'b')).toBe('unchanged')
     expect(buildMutationDocument(next).upsert.entities.map((e) => e.id)).toEqual(['a'])
+  })
+
+  it('merges entities without overwriting and excludes without pending deletes', () => {
+    const loaded = draftFromSubgraph({
+      entities: [{ id: 'a', type: 'A', annotations: {}, payload: { name: 'keep' } }],
+      edges: [],
+    })
+    const merged = mergeEntitiesIntoDraft(loaded, [
+      { id: 'a', type: 'A', annotations: {}, payload: { name: 'store' } },
+      { id: 'b', type: 'B', annotations: {}, payload: {} },
+    ])
+    expect(merged.document.entities.find((e) => e.id === 'a')?.payload).toEqual({ name: 'keep' })
+    expect(merged.document.entities.map((e) => e.id).sort()).toEqual(['a', 'b'])
+    expect(merged.baselineEntityIds.has('b')).toBe(true)
+
+    const withEdge = mergeEdgesIntoDraft(merged, [
+      { id: 'e1', source: 'a', target: 'b', role: 'R' },
+    ])
+    expect(withEdge.document.edges.map((e) => e.id)).toEqual(['e1'])
+
+    const excluded = excludeEntityFromDraft(withEdge, 'b')
+    expect(excluded.document.entities.map((e) => e.id)).toEqual(['a'])
+    expect(excluded.document.edges).toEqual([])
+    expect(excluded.pendingDeleteEntityIds.size).toBe(0)
+    expect(excluded.pendingDeleteEdgeIds.size).toBe(0)
+    expect(excluded.baselineEntityIds.has('b')).toBe(false)
   })
 })

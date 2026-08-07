@@ -87,6 +87,37 @@ class BoMMatcherDslTest {
         assertThat(roundTrip.matches(candidate("env" to "prod", "team" to "core"))).isTrue()
     }
 
+    @Test
+    fun shouldDecodeObjExprAndIds() {
+        val obj = dsl.decode("""{"obj-expr":"type == 'Product' && a.env == 'prod'"}""", BoMMatcherFormat.JSON)
+        assertThat(obj).isInstanceOf(BoMObjExprMatcher::class.java)
+        assertThat((obj as BoMObjExprMatcher).expression).contains("Product")
+
+        val id = "11111111-1111-4111-8111-111111111111"
+        val ids = dsl.decode("""{"ids":["$id"]}""", BoMMatcherFormat.JSON)
+        assertThat(ids).isInstanceOf(BoMIdsMatcher::class.java)
+        assertThat((ids as BoMIdsMatcher).ids).containsExactly(UUID.fromString(id))
+
+        assertThatThrownBy {
+            dsl.decode("""{"ids":["not-a-uuid"]}""", BoMMatcherFormat.JSON)
+        }.isInstanceOf(BoMValidationException::class.java)
+    }
+
+    @Test
+    fun shouldChainObjExprWithAnno() {
+        val matcher = dsl.decode(
+            """
+            [
+              {"anno":{"env":"prod"}},
+              {"obj-expr":"type == 'Thing'"}
+            ]
+            """.trimIndent(),
+            BoMMatcherFormat.JSON,
+        )
+        assertThat(matcher.matches(candidate("env" to "prod"))).isTrue()
+        assertThat(matcher.matches(candidate("env" to "test"))).isFalse()
+    }
+
     private fun candidate(vararg annotations: Pair<String, String>): BoMEntityMatchCandidate =
         BoMEntityDomainCandidate(
             BoMEntity(

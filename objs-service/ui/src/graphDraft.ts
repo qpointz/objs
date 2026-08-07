@@ -690,6 +690,158 @@ export function clearPendingDeletes(state: GraphDraftState): GraphDraftState {
   }
 }
 
+/**
+ * Append store entities into the draft. Existing ids are kept (not overwritten).
+ * New ids are recorded as baseline (store-backed).
+ */
+export function mergeEntitiesIntoDraft(
+  state: GraphDraftState,
+  entities: BoMEntity[],
+): GraphDraftState {
+  const existing = new Set(state.document.entities.map((e) => e.id))
+  const added: BoMEntity[] = []
+  for (const entity of entities) {
+    if (!entity.id || existing.has(entity.id)) continue
+    if (state.pendingDeleteEntityIds.has(entity.id)) continue
+    added.push(cloneEntity(entity))
+    existing.add(entity.id)
+  }
+  if (added.length === 0) return state
+
+  const baselineEntityIds = new Set(state.baselineEntityIds)
+  const baselineEntities = new Map(state.baselineEntities)
+  for (const entity of added) {
+    baselineEntityIds.add(entity.id)
+    baselineEntities.set(entity.id, cloneEntity(entity))
+  }
+  return {
+    ...state,
+    document: {
+      entities: [...state.document.entities, ...added],
+      edges: state.document.edges,
+    },
+    baselineEntityIds,
+    baselineEntities,
+  }
+}
+
+/**
+ * Append store edges into the draft when both endpoints exist. Existing edge ids are kept.
+ */
+export function mergeEdgesIntoDraft(state: GraphDraftState, edges: BoMEdge[]): GraphDraftState {
+  const entityIds = new Set(state.document.entities.map((e) => e.id))
+  const existingEdgeIds = new Set(
+    state.document.edges.map((e) => e.id).filter((id): id is string => !!id),
+  )
+  const added: BoMEdge[] = []
+  for (const edge of edges) {
+    const id = edge.id
+    if (!id || existingEdgeIds.has(id)) continue
+    if (state.pendingDeleteEdgeIds.has(id)) continue
+    if (!entityIds.has(edge.source) || !entityIds.has(edge.target)) continue
+    added.push(cloneEdge({ ...edge, id }))
+    existingEdgeIds.add(id)
+  }
+  if (added.length === 0) return state
+
+  const baselineEdgeIds = new Set(state.baselineEdgeIds)
+  const baselineEdges = new Map(state.baselineEdges)
+  for (const edge of added) {
+    if (!edge.id) continue
+    baselineEdgeIds.add(edge.id)
+    baselineEdges.set(edge.id, cloneEdge(edge))
+  }
+  return {
+    ...state,
+    document: {
+      entities: state.document.entities,
+      edges: [...state.document.edges, ...added],
+    },
+    baselineEdgeIds,
+    baselineEdges,
+  }
+}
+
+/**
+ * Remove an entity from the draft without Apply-delete. Drops baseline membership;
+ * cascades exclude on incident edges (not pending-delete).
+ */
+export function excludeEntityFromDraft(state: GraphDraftState, entityId: string): GraphDraftState {
+  const inDoc = state.document.entities.some((e) => e.id === entityId)
+  const soft = state.softDeletedEntities.get(entityId)
+  if (!inDoc && !soft) return state
+
+  const softDeletedEntities = new Map(state.softDeletedEntities)
+  softDeletedEntities.delete(entityId)
+  const pendingDeleteEntityIds = new Set(state.pendingDeleteEntityIds)
+  pendingDeleteEntityIds.delete(entityId)
+
+  const baselineEntityIds = new Set(state.baselineEntityIds)
+  baselineEntityIds.delete(entityId)
+  const baselineEntities = new Map(state.baselineEntities)
+  baselineEntities.delete(entityId)
+
+  let next: GraphDraftState = {
+    ...state,
+    document: {
+      entities: state.document.entities.filter((e) => e.id !== entityId),
+      edges: state.document.edges,
+    },
+    softDeletedEntities,
+    pendingDeleteEntityIds,
+    baselineEntityIds,
+    baselineEntities,
+  }
+
+  const incidentIds = [
+    ...next.document.edges.filter((e) => e.source === entityId || e.target === entityId),
+    ...[...next.softDeletedEdges.values()].filter((e) => e.source === entityId || e.target === entityId),
+  ]
+    .map((e) => e.id)
+    .filter((id): id is string => !!id)
+
+  for (const edgeId of incidentIds) {
+    next = excludeEdgeFromDraft(next, edgeId)
+  }
+  // Drop any remaining incident edges that had no id
+  next = {
+    ...next,
+    document: {
+      entities: next.document.entities,
+      edges: next.document.edges.filter((e) => e.source !== entityId && e.target !== entityId),
+    },
+  }
+  return next
+}
+
+/** Remove an edge from the draft without Apply-delete. */
+export function excludeEdgeFromDraft(state: GraphDraftState, edgeId: string): GraphDraftState {
+  const inDoc = state.document.edges.some((e) => e.id === edgeId)
+  const soft = state.softDeletedEdges.get(edgeId)
+  if (!inDoc && !soft) return state
+
+  const softDeletedEdges = new Map(state.softDeletedEdges)
+  softDeletedEdges.delete(edgeId)
+  const pendingDeleteEdgeIds = new Set(state.pendingDeleteEdgeIds)
+  pendingDeleteEdgeIds.delete(edgeId)
+  const baselineEdgeIds = new Set(state.baselineEdgeIds)
+  baselineEdgeIds.delete(edgeId)
+  const baselineEdges = new Map(state.baselineEdges)
+  baselineEdges.delete(edgeId)
+
+  return {
+    ...state,
+    document: {
+      entities: state.document.entities,
+      edges: state.document.edges.filter((e) => e.id !== edgeId),
+    },
+    softDeletedEdges,
+    pendingDeleteEdgeIds,
+    baselineEdgeIds,
+    baselineEdges,
+  }
+}
+
 export function newEntityId(): string {
   return crypto.randomUUID()
 }

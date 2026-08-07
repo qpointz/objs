@@ -89,6 +89,14 @@ class BoMMatcherDsl(
         is BoMAnnoExprMatcher -> {
             jsonMapper.createObjectNode().put("anno-expr", matcher.expression)
         }
+        is BoMObjExprMatcher -> {
+            jsonMapper.createObjectNode().put("obj-expr", matcher.expression)
+        }
+        is BoMIdsMatcher -> {
+            val array = jsonMapper.createArrayNode()
+            matcher.ids.forEach { array.add(it.toString()) }
+            jsonMapper.createObjectNode().set("ids", array)
+        }
         else -> fail(
             "MATCHER_DSL_ENCODE_UNSUPPORTED",
             "Cannot encode matcher type ${matcher::class.simpleName}",
@@ -120,7 +128,13 @@ class BoMMatcherDsl(
         node.isBoolean -> node.asBoolean()
         node.isIntegralNumber -> node.asLong()
         node.isFloatingPointNumber -> node.asDouble()
-        node.isArray -> node.map { jacksonToKotlin(it) }
+        node.isArray -> {
+            val list = ArrayList<Any?>(node.size())
+            for (i in 0 until node.size()) {
+                list.add(jacksonToKotlin(node.get(i)))
+            }
+            list
+        }
         node.isObject -> {
             val map = linkedMapOf<String, Any?>()
             node.properties().forEach { (k, v) -> map[k] = jacksonToKotlin(v) }
@@ -145,14 +159,18 @@ class BoMMatcherDsl(
 
         fun defaultHandlers(
             annoExprFactory: (String) -> BoMMatcher = { expression -> BoMAnnoExprMatcher(expression) },
+            objExprFactory: (String) -> BoMMatcher = { expression -> BoMObjExprMatcher(expression) },
         ): List<BoMMatcherKeyHandler> = listOf(
             AnnoMatcherHandler,
             AnnoExprMatcherHandler(annoExprFactory),
+            ObjExprMatcherHandler(objExprFactory),
+            IdsMatcherHandler,
         )
 
         fun create(
             annoExprFactory: (String) -> BoMMatcher = { expression -> BoMAnnoExprMatcher(expression) },
-        ): BoMMatcherDsl = BoMMatcherDsl(defaultHandlers(annoExprFactory))
+            objExprFactory: (String) -> BoMMatcher = { expression -> BoMObjExprMatcher(expression) },
+        ): BoMMatcherDsl = BoMMatcherDsl(defaultHandlers(annoExprFactory, objExprFactory))
     }
 }
 
@@ -235,5 +253,47 @@ class AnnoExprMatcherHandler(
             )
         }
         return factory(value)
+    }
+}
+
+class ObjExprMatcherHandler(
+    private val factory: (String) -> BoMMatcher,
+) : BoMMatcherKeyHandler {
+    override val key: String = "obj-expr"
+
+    override fun decode(value: Any?, path: String): BoMMatcher {
+        if (value !is String || value.isBlank()) {
+            throw BoMValidationException(
+                "matcher-dsl",
+                BoMValidationResult.of(
+                    BoMValidationIssue(
+                        code = "MATCHER_DSL_OBJ_EXPR_TYPE",
+                        message = "'obj-expr' value must be a non-blank string expression",
+                        path = path,
+                    ),
+                ),
+            )
+        }
+        return factory(value)
+    }
+}
+
+object IdsMatcherHandler : BoMMatcherKeyHandler {
+    override val key: String = "ids"
+
+    override fun decode(value: Any?, path: String): BoMMatcher {
+        if (value !is List<*>) {
+            throw BoMValidationException(
+                "matcher-dsl",
+                BoMValidationResult.of(
+                    BoMValidationIssue(
+                        code = "MATCHER_DSL_IDS_TYPE",
+                        message = "'ids' value must be an array of UUID strings",
+                        path = path,
+                    ),
+                ),
+            )
+        }
+        return BoMIdsMatcher.fromRaw(value, path)
     }
 }

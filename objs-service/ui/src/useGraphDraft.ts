@@ -10,6 +10,10 @@ import {
   draftFromSubgraph,
   emptyDraftState,
   EMPTY_GRAPH,
+  excludeEdgeFromDraft,
+  excludeEntityFromDraft,
+  mergeEdgesIntoDraft,
+  mergeEntitiesIntoDraft,
   normalizeGraphMutation,
   replaceDocument,
   undoDeleteEdge,
@@ -108,6 +112,22 @@ export function useGraphDraft(initial: GraphDraftDocument = EMPTY_GRAPH) {
     setState((prev) => deleteEdgeFromDraft(prev, edgeId))
   }, [])
 
+  const excludeEntity = useCallback((entityId: string) => {
+    setState((prev) => excludeEntityFromDraft(prev, entityId))
+  }, [])
+
+  const excludeEdge = useCallback((edgeId: string) => {
+    setState((prev) => excludeEdgeFromDraft(prev, edgeId))
+  }, [])
+
+  const mergeEntities = useCallback((entities: BoMEntity[]) => {
+    setState((prev) => mergeEntitiesIntoDraft(prev, entities))
+  }, [])
+
+  const mergeEdges = useCallback((edges: BoMEdge[]) => {
+    setState((prev) => mergeEdgesIntoDraft(prev, edges))
+  }, [])
+
   const restoreDeletedEntity = useCallback((entityId: string) => {
     setState((prev) => undoDeleteEntity(prev, entityId))
   }, [])
@@ -150,6 +170,10 @@ export function useGraphDraft(initial: GraphDraftDocument = EMPTY_GRAPH) {
     upsertEdge,
     removeEntity,
     removeEdge,
+    excludeEntity,
+    excludeEdge,
+    mergeEntities,
+    mergeEdges,
     restoreDeletedEntity,
     restoreDeletedEdge,
     revertEntityChanges,

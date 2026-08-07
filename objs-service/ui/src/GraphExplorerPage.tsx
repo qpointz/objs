@@ -311,7 +311,7 @@ export function GraphExplorerPage() {
 
   function onOpenInComposer() {
     if (lastMatcher == null) return
-    navigate('/composer', { state: { matcher: lastMatcher } })
+    navigate('/composer', { state: { matcher: lastMatcher, addAll: true } })
   }
 
   function onOpenInQuery() {
@@ -426,13 +426,16 @@ export function GraphExplorerPage() {
         </Group>
       </Group>
 
-      <Paper withBorder p="sm">
+      <Paper withBorder p="xs">
         <MatcherQueryForm
           ref={matcherRef}
           emptyDefaults
           matcher={storedMatcher}
           error={formError}
           stats={execStats}
+          collapsible
+          defaultCollapsed={false}
+          collapseStorageKey="objs.ui.graphExplorer.matcherCollapsed"
           action={
             <Button size="xs" onClick={() => void onExec()} loading={loading}>
               Exec

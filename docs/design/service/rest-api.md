@@ -35,7 +35,7 @@ JSON shape:
 
 `delete.entities` / `delete.edges` are id arrays.
 
-Matcher DSL root is one matcher object (`anno`, `anno-expr`, …) or an ordered array of matcher
+Matcher DSL root is one matcher object (`anno`, `anno-expr`, `obj-expr`, `ids`, …) or an ordered array of matcher
 objects (chained). See [`../graph/annotations-and-subgraphs.md`](../graph/annotations-and-subgraphs.md).
 
 Entity delete removes incident edges (store behaviour).

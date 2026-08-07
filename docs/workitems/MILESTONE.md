@@ -23,10 +23,12 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`object-linter-visual`](completed/20260805-object-linter-visual/STORY.md) — Object linter Visual/Text draft workspace; matcher load; schema forms; graph mutate (upsert + delete) Validate/Apply; workbench routes and schema polish.
 - [`graph-candidate-sources`](completed/20260805-graph-candidate-sources/STORY.md) — Workbench SPA in `:objs-service`; candidate-source query plan (`anno` / lowerable `anno-expr` incl. OR); bound edges; lazy candidate JSON; Postgres JSONB + GIN; Explorer/Composer exec stats and `qid` selection history (DSL frozen; no API pagination/caps).
 - [`gremlin-subgraph-traversal`](completed/20260806-gremlin-subgraph-traversal/STORY.md) — Matcher → subgraph1 → envelope TinkerGraph → gremlin-lang → `BoMGremlinResult`; `:objs-gremlin-core` / `:objs-gremlin-service`; Query workbench (`/workbench/query`); TinkerPop `4.0.0-beta.3`; see also [`docs/design/graph/gremlin-examples.md`](../design/graph/gremlin-examples.md) (C-9).
+- [`json-schema-generation`](completed/20260807-json-schema-generation/STORY.md) — Configurable full-catalog JSON Schema export (`BoMJsonSchemaExportOptions`: dialect, includeEdges none/outbound/linked, edge-property `$defs`); Schemas overview UI options (C-10).
+- [`composer-draft-shopping`](completed/20260807-composer-draft-shopping/STORY.md) — Composer Add objects (side pane); `obj-expr` + `ids` matchers; draft merge/exclude; shared matcher UI + visual chain builder; Explorer handoff auto-merge (C-11).
 
 ### In Progress
 
-- [`json-schema-generation`](in-progress/json-schema-generation/STORY.md) — Configurable full-catalog JSON Schema export (`BoMJsonSchemaExportOptions`: dialect, includeEdges none/outbound/linked, edge-property `$defs`); Schemas overview UI options (C-10).
+_(none)_
 
 ### Planned
 

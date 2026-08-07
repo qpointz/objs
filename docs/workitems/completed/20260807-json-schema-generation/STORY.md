@@ -2,7 +2,7 @@
 
 **Slug:** `json-schema-generation`  
 **Branch:** `json-schema-generation`  
-**Status:** in-progress  
+**Status:** completed  
 **Backlog:** C-10  
 **Design:** [`docs/design/graph/object-schema-dsl.md`](../../../design/graph/object-schema-dsl.md), [`docs/design/graph/seeds.md`](../../../design/graph/seeds.md), [`docs/design/service/rest-api.md`](../../../design/service/rest-api.md), [`docs/design/ui.md`](../../../design/ui.md)  
 **Depends on:** [`registry-graph-io-formats`](../../completed/20260805-registry-graph-io-formats/STORY.md)

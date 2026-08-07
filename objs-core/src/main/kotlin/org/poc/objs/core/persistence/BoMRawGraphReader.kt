@@ -10,6 +10,7 @@ import org.poc.objs.core.match.BoMEntityColumnProjection
 import org.poc.objs.core.match.BoMEntityMatchCandidate
 import org.poc.objs.core.match.BoMEntitySelectionPlan
 import org.poc.objs.core.match.BoMMatcher
+import org.poc.objs.core.match.BoMObjExprPushdown
 import org.poc.objs.core.typed.PayloadMapper
 import org.poc.objs.core.validation.BoMValidationException
 import org.poc.objs.core.validation.BoMValidationIssue
@@ -289,6 +290,91 @@ class BoMRawGraphReader(
         }
     }
 
+    private fun selectEntitiesByIds(
+        ids: List<UUID>,
+        projection: BoMEntityColumnProjection,
+    ): List<BoMEntityMatchCandidate> {
+        val entities = mutableListOf<BoMEntityMatchCandidate>()
+        val connection = DataSourceUtils.getConnection(dataSource)
+        try {
+            for (chunk in ids.distinct().chunked(IN_CHUNK_SIZE)) {
+                val placeholders = chunk.joinToString(",") { "?" }
+                connection.prepareStatement(
+                    """
+                    ${entitySelectSql(projection, postgresCast = isPostgres)}
+                    WHERE id IN ($placeholders)
+                    """.trimIndent(),
+                ).use { statement ->
+                    statement.fetchSize = FETCH_SIZE
+                    chunk.forEachIndexed { index, id -> statement.setObject(index + 1, id) }
+                    statement.executeQuery().use { rs ->
+                        while (rs.next()) {
+                            entities += readEntity(rs, projection)
+                        }
+                    }
+                }
+            }
+        } finally {
+            DataSourceUtils.releaseConnection(connection, dataSource)
+        }
+        return entities
+    }
+
+    private fun selectObjExprPushdown(
+        plan: BoMObjExprPushdown,
+        projection: BoMEntityColumnProjection,
+    ): List<BoMEntityMatchCandidate> {
+        val where = mutableListOf<String>()
+        val params = mutableListOf<Any?>()
+        plan.typeEquals?.let {
+            where += "type = ?"
+            params += it
+        }
+        plan.idEquals?.let {
+            where += "id = ?"
+            params += it
+        }
+        plan.schemaVersionEquals?.let {
+            where += "schema_version = ?"
+            params += it
+        }
+        if (plan.annotationEquals.isNotEmpty()) {
+            where += "annotations @> CAST(? AS jsonb)"
+            params += PayloadMapper.mapper.writeValueAsString(plan.annotationEquals)
+        }
+        if (plan.payloadEquals.isNotEmpty()) {
+            where += "payload @> CAST(? AS jsonb)"
+            params += PayloadMapper.mapper.writeValueAsString(plan.payloadEquals)
+        }
+        require(where.isNotEmpty()) { "obj-expr pushdown WHERE must not be empty" }
+        val connection = DataSourceUtils.getConnection(dataSource)
+        try {
+            val entities = mutableListOf<BoMEntityMatchCandidate>()
+            connection.prepareStatement(
+                """
+                ${entitySelectSql(projection, postgresCast = isPostgres)}
+                WHERE ${where.joinToString(" AND ")}
+                """.trimIndent(),
+            ).use { statement ->
+                statement.fetchSize = FETCH_SIZE
+                params.forEachIndexed { index, value ->
+                    when (value) {
+                        is UUID -> statement.setObject(index + 1, value)
+                        else -> statement.setString(index + 1, value as String)
+                    }
+                }
+                statement.executeQuery().use { rs ->
+                    while (rs.next()) {
+                        entities += readEntity(rs, projection)
+                    }
+                }
+            }
+            return entities
+        } finally {
+            DataSourceUtils.releaseConnection(connection, dataSource)
+        }
+    }
+
     private fun entitySelectSql(projection: BoMEntityColumnProjection, postgresCast: Boolean): String {
         // SELECT-list casts (::text) are for JDBC string reads only and do not affect the
         // GIN-backed WHERE annotations @> … predicate on pushdown queries.
@@ -373,6 +459,28 @@ class BoMRawGraphReader(
             }
             val filterJsons = disjuncts.map { PayloadMapper.mapper.writeValueAsString(it) }
             return AnnotationContainmentGraphSource(filterJsons)
+        }
+
+        override fun entityIdsSource(ids: List<UUID>): BoMCandidateSource {
+            if (ids.isEmpty()) {
+                return BoMCandidateSource { emptyList() }
+            }
+            return BoMCandidateSource { checkBudget ->
+                checkBudget()
+                selectEntitiesByIds(ids, activeProjection)
+            }
+        }
+
+        override fun objExprPushdownSource(plan: BoMObjExprPushdown): BoMCandidateSource? {
+            // Scalar predicates work on H2 + Postgres; JSONB @> requires Postgres.
+            val needsJsonb = plan.annotationEquals.isNotEmpty() || plan.payloadEquals.isNotEmpty()
+            if (needsJsonb && !isPostgres) {
+                return null
+            }
+            return BoMCandidateSource { checkBudget ->
+                checkBudget()
+                selectObjExprPushdown(plan, activeProjection)
+            }
         }
     }
 

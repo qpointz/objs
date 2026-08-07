@@ -22,19 +22,19 @@
 ### Graph read path
 
 - Filtered subgraph reads use a dedicated JDBC reader with fetch sizing rather than `findAll()` hydration.
-- Selection plans (`BoMEntitySelectionPlan` / `BoMEntityColumnProjection`) omit unused JSON columns during matching (payload never selected for filters); survivors hydrate deferred columns before domain mapping.
+- Selection plans (`BoMEntitySelectionPlan` / `BoMEntityColumnProjection`) omit unused JSON columns during matching (payload is selected when filters include `obj-expr`); survivors hydrate deferred columns before domain mapping.
 - JSON that is loaded stays as raw strings in `LazyJsonMap` until accessed; equality filters can use tree checks without building a full `MutableMap`.
 - Graph queries enter through `POST /api/v1/objs/graph/query` with JSON/YAML matcher DSL.
 - Selection is **candidate source → filters → induced edges**. A source-capable first stage
-  (DSL `anno` / `MatchAllAnnotationMatcher`, or lowerable DSL `anno-expr`) may supply a Postgres
-  JSONB `@>` candidate source; otherwise the reader uses an all-entities source and applies
+  (DSL `anno` / `MatchAllAnnotationMatcher`, lowerable DSL `anno-expr` / `obj-expr`, or DSL `ids`)
+  may supply a Postgres candidate source; otherwise the reader uses an all-entities source and applies
   `matches` in order (**local eval**).
 - In an ordered matcher chain, only the first matcher may provide a source. Later matchers filter
   retained candidates in memory.
 - When the entity source is annotation containment (`BoMCandidateSourceWithEdges`), edges load via
   SQL joins on the same `@>` predicate (max induced on the source set), then retain edges among
-  survivors. AllEntities / local-eval falls back to id-bounded `IN` induced-edge queries.
-- Filter-only matchers (non-lowerable `anno-expr`, legacy adapters) and non-PostgreSQL backends
+  survivors. Id-set and obj-expr pushdown sources similarly bound induced edges. AllEntities / local-eval falls back to id-bounded `IN` induced-edge queries.
+- Filter-only matchers (non-lowerable `anno-expr` / `obj-expr`, legacy adapters) and non-PostgreSQL backends
   scan raw rows in memory using the same lazy maps.
 
 **API response shape** (pagination, result caps, sparse projection) is **out of scope** for this execution-plan work; track as a compensating follow-up if backend gains are insufficient.

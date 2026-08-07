@@ -2,8 +2,7 @@ package org.poc.objs.core.match
 
 /**
  * Which JSON columns are required while collecting / filtering entity candidates.
- * Payload is never required for current matchers; survivors hydrate deferred columns before
- * [BoMEntityMatchCandidate.toDomain].
+ * Survivors hydrate deferred columns before [BoMEntityMatchCandidate.toDomain].
  */
 data class BoMEntityColumnProjection(
     val includePayload: Boolean,
@@ -11,14 +10,14 @@ data class BoMEntityColumnProjection(
 ) {
     companion object {
         /**
-         * Matching never reads payload. Annotations are needed when any stage runs as an
-         * in-memory filter ([BoMEntitySelectionPlan.localEval] or non-empty [BoMEntitySelectionPlan.filters]).
-         * Pure SQL sources with no later filters omit both JSON columns until survivor hydrate.
+         * Annotations are needed when any stage runs as an in-memory filter.
+         * Payload is needed when any [BoMObjExprMatcher] may evaluate `p` (local eval or filters).
          */
         fun forPlan(plan: BoMEntitySelectionPlan): BoMEntityColumnProjection {
             val needAnnotations = plan.localEval || plan.filters.isNotEmpty()
+            val needPayload = plan.filters.any { it is BoMObjExprMatcher }
             return BoMEntityColumnProjection(
-                includePayload = false,
+                includePayload = needPayload,
                 includeAnnotations = needAnnotations,
             )
         }
