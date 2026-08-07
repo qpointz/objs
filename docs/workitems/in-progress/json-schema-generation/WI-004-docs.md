@@ -2,7 +2,7 @@
 
 **Story:** [`STORY.md`](STORY.md)  
 **Stage:** 4 — Docs  
-**Status:** pending  
+**Status:** done  
 **Depends on:** WI-003
 
 ## Goal
@@ -15,4 +15,4 @@ Document options on design surfaces (object-schema-dsl, seeds, rest-api, ui).
 
 ## Acceptance
 
-- [ ] Docs describe options fields, defaults, linked naming, and UI controls
+- [x] Docs describe options fields, defaults, linked naming, and UI controls
