@@ -3,16 +3,16 @@ package org.poc.objs.core.domain
 import org.springframework.stereotype.Service
 
 /**
- * Builds a single JSON Schema 2020-12 document for the full ontology catalog:
- * latest ENTITY type per name in `$defs`, with directed allow-list edges as
- * relation properties on the source type (singular vs array by cardinality).
+ * Builds a single JSON Schema document for the full ontology catalog:
+ * latest ENTITY type per name in `$defs`, with optional allow-list edges as
+ * relation properties (outbound and optionally inverse / linked).
  */
 @Service
 class FullCatalogJsonSchemaExporter(
     private val schemas: BoMSchemaCatalog,
     private val edgeRules: BoMAllowedEdgeCatalog,
 ) {
-    fun export(): Map<String, Any?> {
+    fun export(options: BoMJsonSchemaExportOptions = BoMJsonSchemaExportOptions.DEFAULT): Map<String, Any?> {
         val latestEntities = latestByType(schemas.all().filter { BoMSchemaUsage.ENTITY in it.usages })
         val defKeyByType = latestEntities.keys.associateWith { jsonSchemaDefKey(it) }
 
@@ -22,57 +22,76 @@ class FullCatalogJsonSchemaExporter(
             projected.remove("\$schema")
             val properties = (projected["properties"] as? MutableMap<String, Any?>)
                 ?: linkedMapOf<String, Any?>().also { projected["properties"] = it }
-            // Ensure mutable map for additive relation props
             val mutableProps = properties.toMutableMap()
             projected["properties"] = mutableProps
 
-            for (rule in edgeRules.all()) {
-                if (rule.sourceType != type) continue
-                if (rule.sourceType == BoMAllowedEdgeRule.ANY || rule.targetType == BoMAllowedEdgeRule.ANY) {
-                    continue
+            if (options.includeEdges != BoMJsonSchemaEdgeInclusion.NONE) {
+                for (rule in edgeRules.all()) {
+                    if (rule.sourceType != type) continue
+                    if (rule.sourceType == BoMAllowedEdgeRule.ANY || rule.targetType == BoMAllowedEdgeRule.ANY) {
+                        continue
+                    }
+                    val targetDef = defKeyByType[rule.targetType] ?: continue
+                    val propName = relationPropertyName(rule.role, rule.targetType)
+                    mutableProps[propName] = outboundRelationPropertySchema(rule, targetDef)
                 }
-                val targetDef = defKeyByType[rule.targetType] ?: continue
-                val propName = relationPropertyName(rule.role, rule.targetType)
-                mutableProps[propName] = relationPropertySchema(rule, targetDef)
             }
+
+            if (options.includeEdges == BoMJsonSchemaEdgeInclusion.LINKED) {
+                for (rule in edgeRules.all()) {
+                    if (rule.targetType != type) continue
+                    if (rule.sourceType == BoMAllowedEdgeRule.ANY || rule.targetType == BoMAllowedEdgeRule.ANY) {
+                        continue
+                    }
+                    val sourceDef = defKeyByType[rule.sourceType] ?: continue
+                    val propName = inverseRelationPropertyName(rule.role, rule.sourceType)
+                    mutableProps[propName] = inverseRelationPropertySchema(rule, sourceDef)
+                }
+            }
+
             defs[defKeyByType.getValue(type)] = projected
         }
 
-        // Include latest edge-property schemas referenced by concrete rules.
-        val edgePropKeys = edgeRules.all()
-            .filter {
-                it.propertiesPolicy == BoMPropertiesPolicy.SCHEMA &&
-                    it.propertiesSchemaType != null &&
-                    it.sourceType != BoMAllowedEdgeRule.ANY &&
-                    it.targetType != BoMAllowedEdgeRule.ANY
-            }
-            .mapNotNull { rule ->
-                val t = rule.propertiesSchemaType ?: return@mapNotNull null
-                val v = rule.propertiesSchemaVersion
-                if (v != null) schemas.get(t, v) else latestByType(
-                    schemas.listByType(t).filter { BoMSchemaUsage.EDGE_PROPERTIES in it.usages },
-                )[t]
-            }
-            .distinctBy { it.key }
+        if (
+            options.includeEdges != BoMJsonSchemaEdgeInclusion.NONE &&
+            options.includeEdgePropertySchemas
+        ) {
+            val edgePropKeys = edgeRules.all()
+                .filter {
+                    it.propertiesPolicy == BoMPropertiesPolicy.SCHEMA &&
+                        it.propertiesSchemaType != null &&
+                        it.sourceType != BoMAllowedEdgeRule.ANY &&
+                        it.targetType != BoMAllowedEdgeRule.ANY
+                }
+                .mapNotNull { rule ->
+                    val t = rule.propertiesSchemaType ?: return@mapNotNull null
+                    val v = rule.propertiesSchemaVersion
+                    if (v != null) schemas.get(t, v) else latestByType(
+                        schemas.listByType(t).filter { BoMSchemaUsage.EDGE_PROPERTIES in it.usages },
+                    )[t]
+                }
+                .distinctBy { it.key }
 
-        for (schema in edgePropKeys.sortedWith(compareBy({ it.type }, { it.version }))) {
-            val key = jsonSchemaDefKey(schema.type)
-            if (key in defs) continue
-            val projected = BoMJsonSchema.from(schema).toMutableMap()
-            projected.remove("\$schema")
-            defs[key] = projected
+            for (schema in edgePropKeys.sortedWith(compareBy({ it.type }, { it.version }))) {
+                val key = jsonSchemaDefKey(schema.type)
+                if (key in defs) continue
+                val projected = BoMJsonSchema.from(schema).toMutableMap()
+                projected.remove("\$schema")
+                defs[key] = projected
+            }
         }
 
         return linkedMapOf(
-            "\$schema" to BoMJsonSchema.DIALECT,
+            "\$schema" to options.dialect.schemaUri,
             "title" to "Objs full catalog",
             "description" to "Latest ENTITY object types with allow-list relations as properties",
             "x-objs-export" to "full-catalog",
+            "x-objs-json-schema-options" to options.toWireMap(),
             "\$defs" to defs,
         )
     }
 
-    private fun relationPropertySchema(rule: BoMAllowedEdgeRule, targetDefKey: String): Map<String, Any?> {
+    private fun outboundRelationPropertySchema(rule: BoMAllowedEdgeRule, targetDefKey: String): Map<String, Any?> {
         val ref = linkedMapOf<String, Any?>("\$ref" to "#/\$defs/$targetDefKey")
         val base = linkedMapOf<String, Any?>(
             "title" to "${rule.role} → ${rule.targetType}",
@@ -80,8 +99,32 @@ class FullCatalogJsonSchemaExporter(
             "x-objs-role" to rule.role,
             "x-objs-target-type" to rule.targetType,
             "x-objs-cardinality" to rule.cardinality.wire,
+            "x-objs-direction" to "outbound",
         )
         return if (rule.cardinality.isSingular) {
+            base + ref
+        } else {
+            base + linkedMapOf(
+                "type" to "array",
+                "items" to ref,
+            )
+        }
+    }
+
+    private fun inverseRelationPropertySchema(rule: BoMAllowedEdgeRule, sourceDefKey: String): Map<String, Any?> {
+        val ref = linkedMapOf<String, Any?>("\$ref" to "#/\$defs/$sourceDefKey")
+        val inverseSingular = !rule.cardinality.isSingular
+        val inverseCardWire = if (inverseSingular) BoMEdgeCardinality.ONE_TO_ONE.wire else BoMEdgeCardinality.ONE_TO_MANY.wire
+        val base = linkedMapOf<String, Any?>(
+            "title" to "${rule.role} ← ${rule.sourceType}",
+            "description" to
+                "Inverse of allow-list relation ${rule.role} from ${rule.sourceType} (${rule.cardinality.wire})",
+            "x-objs-role" to rule.role,
+            "x-objs-source-type" to rule.sourceType,
+            "x-objs-cardinality" to inverseCardWire,
+            "x-objs-direction" to "inbound",
+        )
+        return if (inverseSingular) {
             base + ref
         } else {
             base + linkedMapOf(
@@ -118,6 +161,20 @@ class FullCatalogJsonSchemaExporter(
                 }.joinToString("")
             }
             return roleCamel + targetPascal
+        }
+
+        /** camelCase(role + "From" + PascalCase(sourceType)), e.g. CONTAINS + Database → containsFromDatabase. */
+        fun inverseRelationPropertyName(role: String, sourceType: String): String {
+            val roleParts = role.split(Regex("[^A-Za-z0-9]+")).filter { it.isNotEmpty() }
+            val sourcePascal = jsonSchemaDefKey(sourceType)
+            val roleCamel = when {
+                roleParts.isEmpty() -> "rel"
+                else -> roleParts.mapIndexed { index, part ->
+                    val lower = part.lowercase()
+                    if (index == 0) lower else lower.replaceFirstChar { it.titlecaseChar() }
+                }.joinToString("")
+            }
+            return roleCamel + "From" + sourcePascal
         }
     }
 }

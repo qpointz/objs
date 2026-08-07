@@ -2,7 +2,7 @@
 
 **Story:** [`STORY.md`](STORY.md)  
 **Stage:** 1 — Core options  
-**Status:** pending  
+**Status:** done  
 **Depends on:** WI-000
 
 ## Goal
@@ -23,6 +23,6 @@ Add `BoMJsonSchemaExportOptions` and teach `FullCatalogJsonSchemaExporter` to ho
 
 ## Acceptance
 
-- [ ] Default options reproduce prior outbound-only export (plus options echo marker)
-- [ ] `NONE` omits relation props; `LINKED` adds inverse props
-- [ ] Inverse naming and cardinality rules match STORY.md
+- [x] Default options reproduce prior outbound-only export (plus options echo marker)
+- [x] `NONE` omits relation props; `LINKED` adds inverse props
+- [x] Inverse naming and cardinality rules match STORY.md
