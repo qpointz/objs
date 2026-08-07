@@ -26,7 +26,7 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 
 ### In Progress
 
-- [`json-schema-generation`](in-progress/json-schema-generation/STORY.md) — Configurable full-catalog JSON Schema export (`BoMJsonSchemaExportOptions`: dialect, includeEdges outbound/linked, edge-property `$defs`); Schemas overview UI options (C-10).
+- [`json-schema-generation`](in-progress/json-schema-generation/STORY.md) — Configurable full-catalog JSON Schema export (`BoMJsonSchemaExportOptions`: dialect, includeEdges none/outbound/linked, edge-property `$defs`); Schemas overview UI options (C-10).
 
 ### Planned
 

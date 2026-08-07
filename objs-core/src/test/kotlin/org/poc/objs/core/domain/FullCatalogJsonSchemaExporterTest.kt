@@ -73,6 +73,18 @@ class FullCatalogJsonSchemaExporterTest {
     }
 
     @Test
+    fun shouldOmitEdges_whenIncludeEdgesNone() {
+        registerProductCatalog()
+        val doc = exporter.export(
+            BoMJsonSchemaExportOptions(includeEdges = BoMJsonSchemaEdgeInclusion.NONE),
+        )
+        @Suppress("UNCHECKED_CAST")
+        val props = (doc["\$defs"] as Map<String, Map<String, Any?>>)
+            .getValue("Product")["properties"] as Map<String, Any?>
+        assertThat(props.keys).containsExactlyInAnyOrder("name", "sku")
+    }
+
+    @Test
     fun shouldAddInverseProps_whenIncludeEdgesLinked() {
         schemas.register(
             BoMSchema(

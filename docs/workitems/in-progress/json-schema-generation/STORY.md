@@ -17,7 +17,7 @@ Make full-catalog JSON Schema export **configurable** for codegen: a `BoMJsonSch
 |-------|--------|
 | Options type | `BoMJsonSchemaExportOptions` in `objs-core` |
 | Defaults | Match today’s export (`dialect=2020-12`, `includeEdges=outbound`, `includeEdgePropertySchemas=true`) |
-| `includeEdges` | `outbound` \| `linked` |
+| `includeEdges` | `none` \| `outbound` \| `linked` |
 | Linked | Outbound on source + inverse on target; inverse name `camelCase(role + "From" + PascalCase(sourceType))` |
 | Inverse cardinality | Outbound `1:*`/`UNSPECIFIED` → singular inverse; `1:1` → array inverse |
 | REST | Flat query params on existing GET export when `format=json-schema` |

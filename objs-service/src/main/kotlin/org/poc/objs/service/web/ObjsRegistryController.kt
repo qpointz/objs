@@ -73,7 +73,8 @@ class ObjsRegistryController(
     @Operation(
         summary = "Export ontology catalogs in the requested format",
         description = "For format=json-schema, optional dialect / includeEdges / includeEdgePropertySchemas " +
-            "configure the full-catalog projection (defaults: 2020-12, outbound, true).",
+            "configure the full-catalog projection (defaults: 2020-12, outbound, true). " +
+            "includeEdges: none | outbound | linked.",
     )
     fun exportRegistry(
         @RequestParam format: String,

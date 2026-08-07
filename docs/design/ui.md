@@ -125,8 +125,8 @@ Opening **Schemas** without a type selected shows the **Full schema** overview:
 - **Visual** / **Text** tabs: Visual shows the ontology graph; Text is a read-only catalog export with
   a **JSON Schema** / **Seeds** segmented control (same pattern as the type editor JSON/YAML toggle).
   When **JSON Schema** is selected, Text shows export options shared with Export:
-  - **Include edges** — `Outbound` / `Linked` (`includeEdges`);
-  - **Edge property schemas** switch (`includeEdgePropertySchemas`);
+  - **Include edges** — `None` / `Outbound` / `Linked` (`includeEdges`);
+  - **Edge property schemas** switch (`includeEdgePropertySchemas`; disabled when edges are None);
   - **Dialect** — `2020-12` (only dialect in v1);
   - **Go to type…** — searchable jump to a `$defs` entry (JSON Schema) or ObjectSchema type (Seeds);
   - in-document find via Ctrl/Cmd+F in the code editor;

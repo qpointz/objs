@@ -329,14 +329,15 @@ Optional query params (defaults match historical outbound export):
 | Param | Values | Default | Meaning |
 |-------|--------|---------|---------|
 | `dialect` | `2020-12` | `2020-12` | `$schema` dialect URI |
-| `includeEdges` | `outbound` \| `linked` | `outbound` | Relation props on `$defs` |
-| `includeEdgePropertySchemas` | `true` \| `false` | `true` | Include edge-property schemas in `$defs` |
+| `includeEdges` | `none` \| `outbound` \| `linked` | `outbound` | Relation props on `$defs` |
+| `includeEdgePropertySchemas` | `true` \| `false` | `true` | Include edge-property schemas in `$defs` when edges are included |
 
 Document shape:
 
 - `$defs` entry per **ENTITY** type at the **latest** version (lexicographic max among versions);
 - payload fields from the per-schema projection;
-- directed allow-list edges as optional properties on the **source** type:
+- directed allow-list edges as optional properties on the **source** type (when `includeEdges` is
+  `outbound` or `linked`):
   - property name = camelCase(`role` + PascalCase(`targetType`)) (e.g. `containsDataset`);
   - `1:1` → singular `$ref`; `1:*` and `UNSPECIFIED` → array of `$ref`;
   - rules with `*` endpoints are omitted;

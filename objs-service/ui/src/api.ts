@@ -350,7 +350,7 @@ export type CatalogExportFormat = 'seeds' | 'json-schema'
 
 export type JsonSchemaExportOptions = {
   dialect?: '2020-12'
-  includeEdges?: 'outbound' | 'linked'
+  includeEdges?: 'none' | 'outbound' | 'linked'
   includeEdgePropertySchemas?: boolean
 }
 
