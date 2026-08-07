@@ -2,7 +2,7 @@
 
 **Story:** [`STORY.md`](STORY.md)  
 **Stage:** 3 — UI  
-**Status:** pending  
+**Status:** done  
 **Depends on:** WI-002
 
 ## Goal
@@ -21,5 +21,5 @@ Expose JSON Schema export options on the Schemas full-catalog overview (shared s
 
 ## Acceptance
 
-- [ ] Changing Include edges reloads Text preview
-- [ ] Export download uses current options
+- [x] Changing Include edges reloads Text preview
+- [x] Export download uses current options

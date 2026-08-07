@@ -348,8 +348,31 @@ export async function listEdges(): Promise<BoMAllowedEdgeRule[]> {
 /** Catalog-only seed YAML (ObjectSchema + AllowedEdgeRule). */
 export type CatalogExportFormat = 'seeds' | 'json-schema'
 
-export async function exportCatalog(format: CatalogExportFormat): Promise<string> {
-  const res = await fetch(`/api/v1/objs/registry/export?format=${encodeURIComponent(format)}`)
+export type JsonSchemaExportOptions = {
+  dialect?: '2020-12'
+  includeEdges?: 'none' | 'outbound' | 'linked'
+  includeEdgePropertySchemas?: boolean
+}
+
+export const DEFAULT_JSON_SCHEMA_EXPORT_OPTIONS: Required<JsonSchemaExportOptions> = {
+  dialect: '2020-12',
+  includeEdges: 'outbound',
+  includeEdgePropertySchemas: true,
+}
+
+export async function exportCatalog(
+  format: CatalogExportFormat,
+  options?: JsonSchemaExportOptions,
+): Promise<string> {
+  const params = new URLSearchParams({ format })
+  if (format === 'json-schema' && options) {
+    if (options.dialect) params.set('dialect', options.dialect)
+    if (options.includeEdges) params.set('includeEdges', options.includeEdges)
+    if (options.includeEdgePropertySchemas != null) {
+      params.set('includeEdgePropertySchemas', String(options.includeEdgePropertySchemas))
+    }
+  }
+  const res = await fetch(`/api/v1/objs/registry/export?${params.toString()}`)
   if (!res.ok) {
     const body = await res.json().catch(() => null)
     throw new Error(typeof body === 'string' ? body : `HTTP ${res.status}`)

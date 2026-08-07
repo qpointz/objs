@@ -7,7 +7,9 @@ import {
   Menu,
   Paper,
   SegmentedControl,
+  Select,
   Stack,
+  Switch,
   Table,
   Tabs,
   Text,
@@ -30,11 +32,13 @@ import {
 import '@xyflow/react/dist/style.css'
 import { useNavigate } from 'react-router-dom'
 import {
+  DEFAULT_JSON_SCHEMA_EXPORT_OPTIONS,
   exportCatalog,
   importCatalogSeed,
   listEdges,
   schemaDetailPath,
   type CatalogExportFormat,
+  type JsonSchemaExportOptions,
 } from './api'
 import {
   catalogSeedContainsGraph,
@@ -196,6 +200,9 @@ function SchemaCatalogOverviewInner({
   const [ioBusy, setIoBusy] = useState(false)
   const [overviewTab, setOverviewTab] = useState<'visual' | 'text'>('visual')
   const [textFormat, setTextFormat] = useState<CatalogExportFormat>('json-schema')
+  const [jsonSchemaOptions, setJsonSchemaOptions] = useState<Required<JsonSchemaExportOptions>>(
+    () => ({ ...DEFAULT_JSON_SCHEMA_EXPORT_OPTIONS }),
+  )
   const [textBody, setTextBody] = useState('')
   const [textBusy, setTextBusy] = useState(false)
   const [textError, setTextError] = useState<string | null>(null)
@@ -240,29 +247,32 @@ function SchemaCatalogOverviewInner({
     [entityTypes, rules, layout, setNodes, setEdges, fitView],
   )
 
-  const loadTextView = useCallback(async (format: CatalogExportFormat) => {
-    setTextBusy(true)
-    setTextError(null)
-    try {
-      setTextBody(await exportCatalog(format))
-    } catch (e) {
-      setTextBody('')
-      setTextError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setTextBusy(false)
-    }
-  }, [])
+  const loadTextView = useCallback(
+    async (format: CatalogExportFormat, options: Required<JsonSchemaExportOptions>) => {
+      setTextBusy(true)
+      setTextError(null)
+      try {
+        setTextBody(await exportCatalog(format, format === 'json-schema' ? options : undefined))
+      } catch (e) {
+        setTextBody('')
+        setTextError(e instanceof Error ? e.message : String(e))
+      } finally {
+        setTextBusy(false)
+      }
+    },
+    [],
+  )
 
   useEffect(() => {
     if (overviewTab !== 'text') return
-    void loadTextView(textFormat)
-  }, [overviewTab, textFormat, textEpoch, loadTextView, entityTypes, rules])
+    void loadTextView(textFormat, jsonSchemaOptions)
+  }, [overviewTab, textFormat, jsonSchemaOptions, textEpoch, loadTextView, entityTypes, rules])
 
   async function onExport(format: CatalogExportFormat) {
     setIoError(null)
     setIoBusy(true)
     try {
-      const body = await exportCatalog(format)
+      const body = await exportCatalog(format, format === 'json-schema' ? jsonSchemaOptions : undefined)
       const blob = new Blob([body], {
         type: format === 'json-schema' ? 'application/schema+json' : 'application/yaml',
       })
@@ -278,6 +288,8 @@ function SchemaCatalogOverviewInner({
       setIoBusy(false)
     }
   }
+
+  const jsonSchemaHint = `${jsonSchemaOptions.includeEdges} · ${jsonSchemaOptions.dialect}`
 
   async function onImportFile(file: File) {
     setIoError(null)
@@ -377,7 +389,12 @@ function SchemaCatalogOverviewInner({
             <Menu.Dropdown>
               <Menu.Label>Format</Menu.Label>
               <Menu.Item onClick={() => void onExport('seeds')}>Seeds (YAML)</Menu.Item>
-              <Menu.Item onClick={() => void onExport('json-schema')}>JSON Schema</Menu.Item>
+              <Menu.Item onClick={() => void onExport('json-schema')}>
+                JSON Schema
+                <Text span size="xs" c="dimmed" ml={8}>
+                  {jsonSchemaHint}
+                </Text>
+              </Menu.Item>
             </Menu.Dropdown>
           </Menu>
           <Button size="sm" loading={ioBusy} onClick={() => fileRef.current?.click()}>
@@ -517,16 +534,64 @@ function SchemaCatalogOverviewInner({
           }}
         >
           <Stack gap="xs" style={{ flex: 1, minHeight: 0, height: '100%' }}>
-            <Group justify="space-between" style={{ flexShrink: 0 }}>
-              <SegmentedControl
-                size="xs"
-                value={textFormat}
-                onChange={(v) => setTextFormat(v as CatalogExportFormat)}
-                data={[
-                  { label: 'JSON Schema', value: 'json-schema' },
-                  { label: 'Seeds', value: 'seeds' },
-                ]}
-              />
+            <Group justify="space-between" style={{ flexShrink: 0 }} wrap="wrap">
+              <Group gap="sm" wrap="wrap">
+                <SegmentedControl
+                  size="xs"
+                  value={textFormat}
+                  onChange={(v) => setTextFormat(v as CatalogExportFormat)}
+                  data={[
+                    { label: 'JSON Schema', value: 'json-schema' },
+                    { label: 'Seeds', value: 'seeds' },
+                  ]}
+                />
+                {textFormat === 'json-schema' && (
+                  <>
+                    <SegmentedControl
+                      size="xs"
+                      value={jsonSchemaOptions.includeEdges}
+                      onChange={(v) =>
+                        setJsonSchemaOptions((prev) => ({
+                          ...prev,
+                          includeEdges: v as Required<JsonSchemaExportOptions>['includeEdges'],
+                        }))
+                      }
+                      data={[
+                        { label: 'None', value: 'none' },
+                        { label: 'Outbound', value: 'outbound' },
+                        { label: 'Linked', value: 'linked' },
+                      ]}
+                    />
+                    <Switch
+                      size="xs"
+                      label="Edge property schemas"
+                      checked={jsonSchemaOptions.includeEdgePropertySchemas}
+                      disabled={jsonSchemaOptions.includeEdges === 'none'}
+                      onChange={(e) =>
+                        setJsonSchemaOptions((prev) => ({
+                          ...prev,
+                          includeEdgePropertySchemas: e.currentTarget.checked,
+                        }))
+                      }
+                    />
+                    <Select
+                      size="xs"
+                      w={110}
+                      label=""
+                      aria-label="JSON Schema dialect"
+                      data={[{ value: '2020-12', label: '2020-12' }]}
+                      value={jsonSchemaOptions.dialect}
+                      onChange={(v) =>
+                        setJsonSchemaOptions((prev) => ({
+                          ...prev,
+                          dialect: (v as '2020-12') ?? '2020-12',
+                        }))
+                      }
+                      allowDeselect={false}
+                    />
+                  </>
+                )}
+              </Group>
               {textBusy && <Loader size="xs" />}
             </Group>
             {textError && (

@@ -2,7 +2,7 @@
 
 **Story:** [`STORY.md`](STORY.md)  
 **Stage:** 2 — REST  
-**Status:** pending  
+**Status:** done  
 **Depends on:** WI-001
 
 ## Goal
@@ -21,6 +21,6 @@ Map `dialect`, `includeEdges`, and `includeEdgePropertySchemas` query params on 
 
 ## Acceptance
 
-- [ ] Default GET (no extra params) still returns outbound catalog schema
-- [ ] `includeEdges=linked` returns inverse props
-- [ ] Unknown enum → 400
+- [x] Default GET (no extra params) still returns outbound catalog schema
+- [x] `includeEdges=linked` returns inverse props
+- [x] Unknown enum → 400
