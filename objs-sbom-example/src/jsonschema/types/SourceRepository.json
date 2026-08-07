@@ -1,0 +1,55 @@
+{
+  "$schema" : "https://json-schema.org/draft/2020-12/schema",
+  "x-objs-type" : "Source Repository",
+  "x-objs-version" : "1.0.0",
+  "title" : "Source Repository",
+  "description" : "Canonical SBOM Source Repository payload",
+  "type" : "object",
+  "properties" : {
+    "name" : {
+      "title" : "Text",
+      "description" : "Text value",
+      "type" : "string"
+    },
+    "url" : {
+      "title" : "URI",
+      "description" : "URI value",
+      "type" : "string",
+      "format" : "uri"
+    },
+    "revision" : {
+      "title" : "Text",
+      "description" : "Text value",
+      "type" : "string"
+    },
+    "branch" : {
+      "title" : "Text",
+      "description" : "Text value",
+      "type" : "string"
+    },
+    "description" : {
+      "title" : "Text",
+      "description" : "Text value",
+      "type" : "string"
+    },
+    "labels" : {
+      "title" : "Text list",
+      "description" : "Ordered list of text values",
+      "type" : "array",
+      "items" : {
+        "title" : "Text item",
+        "description" : "One text value",
+        "type" : "string"
+      }
+    },
+    "attributes" : {
+      "title" : "Attributes",
+      "description" : "Open attributes object",
+      "type" : "object",
+      "properties" : { },
+      "additionalProperties" : true
+    }
+  },
+  "required" : [ "name", "url" ],
+  "additionalProperties" : true
+}

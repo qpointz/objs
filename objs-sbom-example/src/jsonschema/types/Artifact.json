@@ -1,0 +1,54 @@
+{
+  "$schema" : "https://json-schema.org/draft/2020-12/schema",
+  "x-objs-type" : "Artifact",
+  "x-objs-version" : "1.0.0",
+  "title" : "Artifact",
+  "description" : "Canonical SBOM Artifact payload",
+  "type" : "object",
+  "properties" : {
+    "name" : {
+      "title" : "Text",
+      "description" : "Text value",
+      "type" : "string"
+    },
+    "artifactType" : {
+      "title" : "Text",
+      "description" : "Text value",
+      "type" : "string"
+    },
+    "checksum" : {
+      "title" : "Text",
+      "description" : "Text value",
+      "type" : "string"
+    },
+    "size" : {
+      "title" : "Integer",
+      "description" : "Whole-number value",
+      "type" : "integer"
+    },
+    "description" : {
+      "title" : "Text",
+      "description" : "Text value",
+      "type" : "string"
+    },
+    "labels" : {
+      "title" : "Text list",
+      "description" : "Ordered list of text values",
+      "type" : "array",
+      "items" : {
+        "title" : "Text item",
+        "description" : "One text value",
+        "type" : "string"
+      }
+    },
+    "attributes" : {
+      "title" : "Attributes",
+      "description" : "Open attributes object",
+      "type" : "object",
+      "properties" : { },
+      "additionalProperties" : true
+    }
+  },
+  "required" : [ "name", "artifactType" ],
+  "additionalProperties" : true
+}

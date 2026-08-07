@@ -1,0 +1,60 @@
+{
+  "$schema" : "https://json-schema.org/draft/2020-12/schema",
+  "x-objs-type" : "Product",
+  "x-objs-version" : "1.0.0",
+  "title" : "Product",
+  "description" : "Canonical SBOM Product payload",
+  "type" : "object",
+  "properties" : {
+    "name" : {
+      "title" : "Text",
+      "description" : "Text value",
+      "type" : "string"
+    },
+    "version" : {
+      "title" : "Text",
+      "description" : "Text value",
+      "type" : "string"
+    },
+    "supplier" : {
+      "title" : "Text",
+      "description" : "Text value",
+      "type" : "string"
+    },
+    "lifecycle" : {
+      "title" : "Text",
+      "description" : "Text value",
+      "type" : "string"
+    },
+    "homepage" : {
+      "title" : "URI",
+      "description" : "URI value",
+      "type" : "string",
+      "format" : "uri"
+    },
+    "description" : {
+      "title" : "Text",
+      "description" : "Text value",
+      "type" : "string"
+    },
+    "labels" : {
+      "title" : "Text list",
+      "description" : "Ordered list of text values",
+      "type" : "array",
+      "items" : {
+        "title" : "Text item",
+        "description" : "One text value",
+        "type" : "string"
+      }
+    },
+    "attributes" : {
+      "title" : "Attributes",
+      "description" : "Open attributes object",
+      "type" : "object",
+      "properties" : { },
+      "additionalProperties" : true
+    }
+  },
+  "required" : [ "name", "version" ],
+  "additionalProperties" : true
+}

@@ -1,0 +1,49 @@
+{
+  "$schema" : "https://json-schema.org/draft/2020-12/schema",
+  "x-objs-type" : "Container Layer",
+  "x-objs-version" : "1.0.0",
+  "title" : "Container Layer",
+  "description" : "Canonical SBOM Container Layer payload",
+  "type" : "object",
+  "properties" : {
+    "name" : {
+      "title" : "Text",
+      "description" : "Text value",
+      "type" : "string"
+    },
+    "digest" : {
+      "title" : "Text",
+      "description" : "Text value",
+      "type" : "string"
+    },
+    "size" : {
+      "title" : "Integer",
+      "description" : "Whole-number value",
+      "type" : "integer"
+    },
+    "description" : {
+      "title" : "Text",
+      "description" : "Text value",
+      "type" : "string"
+    },
+    "labels" : {
+      "title" : "Text list",
+      "description" : "Ordered list of text values",
+      "type" : "array",
+      "items" : {
+        "title" : "Text item",
+        "description" : "One text value",
+        "type" : "string"
+      }
+    },
+    "attributes" : {
+      "title" : "Attributes",
+      "description" : "Open attributes object",
+      "type" : "object",
+      "properties" : { },
+      "additionalProperties" : true
+    }
+  },
+  "required" : [ "name", "digest" ],
+  "additionalProperties" : true
+}

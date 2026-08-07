@@ -1,0 +1,50 @@
+{
+  "$schema" : "https://json-schema.org/draft/2020-12/schema",
+  "x-objs-type" : "Service",
+  "x-objs-version" : "1.0.0",
+  "title" : "Service",
+  "description" : "Canonical SBOM Service payload",
+  "type" : "object",
+  "properties" : {
+    "name" : {
+      "title" : "Text",
+      "description" : "Text value",
+      "type" : "string"
+    },
+    "protocol" : {
+      "title" : "Text",
+      "description" : "Text value",
+      "type" : "string"
+    },
+    "endpoint" : {
+      "title" : "URI",
+      "description" : "URI value",
+      "type" : "string",
+      "format" : "uri"
+    },
+    "description" : {
+      "title" : "Text",
+      "description" : "Text value",
+      "type" : "string"
+    },
+    "labels" : {
+      "title" : "Text list",
+      "description" : "Ordered list of text values",
+      "type" : "array",
+      "items" : {
+        "title" : "Text item",
+        "description" : "One text value",
+        "type" : "string"
+      }
+    },
+    "attributes" : {
+      "title" : "Attributes",
+      "description" : "Open attributes object",
+      "type" : "object",
+      "properties" : { },
+      "additionalProperties" : true
+    }
+  },
+  "required" : [ "name" ],
+  "additionalProperties" : true
+}

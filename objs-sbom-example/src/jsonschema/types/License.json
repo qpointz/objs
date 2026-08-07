@@ -1,0 +1,50 @@
+{
+  "$schema" : "https://json-schema.org/draft/2020-12/schema",
+  "x-objs-type" : "License",
+  "x-objs-version" : "1.0.0",
+  "title" : "License",
+  "description" : "Canonical SBOM License payload",
+  "type" : "object",
+  "properties" : {
+    "name" : {
+      "title" : "Text",
+      "description" : "Text value",
+      "type" : "string"
+    },
+    "spdxId" : {
+      "title" : "Text",
+      "description" : "Text value",
+      "type" : "string"
+    },
+    "url" : {
+      "title" : "URI",
+      "description" : "URI value",
+      "type" : "string",
+      "format" : "uri"
+    },
+    "description" : {
+      "title" : "Text",
+      "description" : "Text value",
+      "type" : "string"
+    },
+    "labels" : {
+      "title" : "Text list",
+      "description" : "Ordered list of text values",
+      "type" : "array",
+      "items" : {
+        "title" : "Text item",
+        "description" : "One text value",
+        "type" : "string"
+      }
+    },
+    "attributes" : {
+      "title" : "Attributes",
+      "description" : "Open attributes object",
+      "type" : "object",
+      "properties" : { },
+      "additionalProperties" : true
+    }
+  },
+  "required" : [ "name", "spdxId" ],
+  "additionalProperties" : true
+}

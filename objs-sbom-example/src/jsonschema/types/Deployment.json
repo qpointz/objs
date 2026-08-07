@@ -1,0 +1,55 @@
+{
+  "$schema" : "https://json-schema.org/draft/2020-12/schema",
+  "x-objs-type" : "Deployment",
+  "x-objs-version" : "1.0.0",
+  "title" : "Deployment",
+  "description" : "Canonical SBOM Deployment payload",
+  "type" : "object",
+  "properties" : {
+    "name" : {
+      "title" : "Text",
+      "description" : "Text value",
+      "type" : "string"
+    },
+    "status" : {
+      "title" : "Text",
+      "description" : "Text value",
+      "type" : "string"
+    },
+    "replicas" : {
+      "title" : "Integer",
+      "description" : "Whole-number value",
+      "type" : "integer"
+    },
+    "deployedAt" : {
+      "title" : "Date and time",
+      "description" : "ISO-8601 timestamp",
+      "type" : "string",
+      "format" : "date-time"
+    },
+    "description" : {
+      "title" : "Text",
+      "description" : "Text value",
+      "type" : "string"
+    },
+    "labels" : {
+      "title" : "Text list",
+      "description" : "Ordered list of text values",
+      "type" : "array",
+      "items" : {
+        "title" : "Text item",
+        "description" : "One text value",
+        "type" : "string"
+      }
+    },
+    "attributes" : {
+      "title" : "Attributes",
+      "description" : "Open attributes object",
+      "type" : "object",
+      "properties" : { },
+      "additionalProperties" : true
+    }
+  },
+  "required" : [ "name" ],
+  "additionalProperties" : true
+}
