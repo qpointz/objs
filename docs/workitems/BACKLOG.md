@@ -24,6 +24,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | C-7 | Split registry/graph multi-format import/export + full-catalog JSON Schema | feature | done | [`completed/20260805-registry-graph-io-formats/`](completed/20260805-registry-graph-io-formats/STORY.md) |
 | C-8 | Graph query backend performance (+ workbench UI into objs-service prerequisite) | improvement | done | [`completed/20260805-graph-candidate-sources/`](completed/20260805-graph-candidate-sources/STORY.md) |
 | C-9 | Matcher subgraph → in-memory Gremlin (`:objs-gremlin-core` / `:objs-gremlin-service`) + Query UI | feature | done | [`completed/20260806-gremlin-subgraph-traversal/`](completed/20260806-gremlin-subgraph-traversal/STORY.md) |
+| C-10 | Configurable full-catalog JSON Schema export (options + linked edges) | feature | in-progress | [`in-progress/json-schema-generation/`](in-progress/json-schema-generation/STORY.md) |
 
 ---
 
