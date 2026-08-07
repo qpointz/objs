@@ -54,10 +54,13 @@ Entity delete removes incident edges (store behaviour).
 | `GET`/`PUT` | `/registry/schemas/{type}/{version}/edges` | List / replace relations for an edge-property schema (includes `cardinality`) |
 | `POST` | `/registry/import?format=seeds` | Multipart catalog seed YAML (MERGE); Graph kinds rejected |
 | `GET` | `/registry/export?format=seeds` | Catalog-only seed YAML |
-| `GET` | `/registry/export?format=json-schema` | Full-catalog JSON Schema for codegen |
+| `GET` | `/registry/export?format=json-schema` | Full-catalog JSON Schema for codegen; optional `dialect` / `includeEdges` / `includeEdgePropertySchemas` |
 
 See [`../graph/seeds.md`](../graph/seeds.md) and [`../graph/object-schema-dsl.md`](../graph/object-schema-dsl.md).
 
+JSON Schema export options (C-10): defaults are `dialect=2020-12`, `includeEdges=outbound`,
+`includeEdgePropertySchemas=true`. Use `includeEdges=linked` for bidirectional relation props
+(codegen parent/child navigation).
 ## Status
 
 | Method | Path | Behaviour |

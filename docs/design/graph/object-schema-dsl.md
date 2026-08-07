@@ -307,7 +307,7 @@ the catalog.
 | `POST` | `/api/v1/objs/registry/schemas/{type}/versions/next-major` | Create next major version (`4` → `5`, `4.2.1` → `5.0.0`) |
 | `DELETE` | `/api/v1/objs/registry/schemas/{type}` | Remove all versions + incident allow-list rules |
 | `GET` | `/api/v1/objs/registry/schemas/{type}/{version}/json-schema` | Generated JSON Schema (one type/version) |
-| `GET` | `/api/v1/objs/registry/export?format=json-schema` | Full-catalog JSON Schema (latest ENTITY + relations) |
+| `GET` | `/api/v1/objs/registry/export?format=json-schema` | Full-catalog JSON Schema (latest ENTITY + optional relations; see options below) |
 | `GET` | `/api/v1/objs/registry/schemas/{type}/{version}/edges` | Relations using an edge-property schema |
 | `PUT` | `/api/v1/objs/registry/schemas/{type}/{version}/edges` | Replace relations using an edge-property schema |
 | `GET` | `/api/v1/objs/registry/types/{type}/edges` | Incoming/outgoing allow-list rules including wildcards |
@@ -320,17 +320,33 @@ existing versions of the type and creates the next major only.
 
 ### Full-catalog JSON Schema
 
-`GET /api/v1/objs/registry/export?format=json-schema` returns one JSON Schema 2020-12 document for
-codegen of an object model:
+`GET /api/v1/objs/registry/export?format=json-schema` returns one JSON Schema document for codegen
+of an object model. Programmatic API: `FullCatalogJsonSchemaExporter.export(options)` with
+`BoMJsonSchemaExportOptions`.
+
+Optional query params (defaults match historical outbound export):
+
+| Param | Values | Default | Meaning |
+|-------|--------|---------|---------|
+| `dialect` | `2020-12` | `2020-12` | `$schema` dialect URI |
+| `includeEdges` | `none` \| `outbound` \| `linked` | `outbound` | Relation props on `$defs` |
+| `includeEdgePropertySchemas` | `true` \| `false` | `true` | Include edge-property schemas in `$defs` when edges are included |
+
+Document shape:
 
 - `$defs` entry per **ENTITY** type at the **latest** version (lexicographic max among versions);
 - payload fields from the per-schema projection;
-- directed allow-list edges as optional properties on the **source** type:
-  - property name = camelCase(`role` + PascalCase(`targetType`)) (e.g. `containsComponent`);
+- when `includeEdges` is `outbound` or `linked`, directed allow-list edges as optional properties on
+  the **source** type:
+  - property name = camelCase(`role` + PascalCase(`targetType`)) (e.g. `containsDataset`);
   - `1:1` → singular `$ref`; `1:*` and `UNSPECIFIED` → array of `$ref`;
   - rules with `*` endpoints are omitted;
-- root markers: `x-objs-export: full-catalog`; relation props carry `x-objs-role` /
-  `x-objs-target-type` / `x-objs-cardinality`.
+  - `x-objs-direction: outbound`;
+- when `includeEdges` is `linked`, also emit **inverse** props on the **target** type:
+  - property name = camelCase(`role` + `"From"` + PascalCase(`sourceType`)) (e.g. `containsFromDatabase`);
+  - inverse of `1:*` / `UNSPECIFIED` → singular `$ref`; inverse of `1:1` → array of `$ref`;
+  - `x-objs-direction: inbound`;
+- root markers: `x-objs-export: full-catalog`, `x-objs-json-schema-options` (echo of applied options).
 
 An `EDGE_PROPERTIES` schema owns a property definition and may be referenced by many directed
 allowed-edge rules. Each rule retains its own `(sourceType, role, targetType)` identity and stores

@@ -79,7 +79,7 @@ Ontology and graph instance I/O are **separated**. Both use a required `format` 
 |--------|------|-------|
 | `POST` | `/api/v1/objs/registry/import?format=seeds` | Multipart YAML; catalog kinds only (`ObjectSchema`, `AllowedEdgeRule`); no ledger write |
 | `GET` | `/api/v1/objs/registry/export?format=seeds` | Catalog YAML only |
-| `GET` | `/api/v1/objs/registry/export?format=json-schema` | Full-catalog JSON Schema 2020-12 (latest ENTITY versions + relation props) |
+| `GET` | `/api/v1/objs/registry/export?format=json-schema` | Full-catalog JSON Schema (`dialect`, `includeEdges`, `includeEdgePropertySchemas` optional; see object-schema-dsl) |
 | `POST` | `/api/v1/objs/graph/import?format=seeds` | Multipart YAML; `Graph` kind only |
 | `GET` | `/api/v1/objs/graph/export?format=seeds` | Requires annotation filter; never dumps the whole graph |
 

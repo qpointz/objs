@@ -40,7 +40,7 @@ Make full-catalog JSON Schema export **configurable** for codegen: a `BoMJsonSch
 - [x] WI-001 — Export options + exporter (`WI-001-export-options.md`)
 - [x] WI-002 — REST query params (`WI-002-rest-openapi.md`)
 - [x] WI-003 — Schemas overview UI (`WI-003-ui-options.md`)
-- [ ] WI-004 — Design docs (`WI-004-docs.md`)
+- [x] WI-004 — Design docs (`WI-004-docs.md`)
 
 ## Scope
 
