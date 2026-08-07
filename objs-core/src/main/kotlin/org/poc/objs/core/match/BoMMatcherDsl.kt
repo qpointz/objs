@@ -97,6 +97,15 @@ class BoMMatcherDsl(
             matcher.ids.forEach { array.add(it.toString()) }
             jsonMapper.createObjectNode().set("ids", array)
         }
+        is BoMSubgraphIdMatcher -> {
+            jsonMapper.createObjectNode().set(
+                "subgraph",
+                jsonMapper.createObjectNode().put("id", matcher.id.toString()),
+            )
+        }
+        is BoMSubgExprMatcher -> {
+            jsonMapper.createObjectNode().put("subg-expr", matcher.expression)
+        }
         else -> fail(
             "MATCHER_DSL_ENCODE_UNSUPPORTED",
             "Cannot encode matcher type ${matcher::class.simpleName}",
@@ -160,17 +169,21 @@ class BoMMatcherDsl(
         fun defaultHandlers(
             annoExprFactory: (String) -> BoMMatcher = { expression -> BoMAnnoExprMatcher(expression) },
             objExprFactory: (String) -> BoMMatcher = { expression -> BoMObjExprMatcher(expression) },
+            subgExprFactory: (String) -> BoMMatcher = { expression -> BoMSubgExprMatcher(expression) },
         ): List<BoMMatcherKeyHandler> = listOf(
             AnnoMatcherHandler,
             AnnoExprMatcherHandler(annoExprFactory),
             ObjExprMatcherHandler(objExprFactory),
             IdsMatcherHandler,
+            SubgraphIdMatcherHandler,
+            SubgExprMatcherHandler(subgExprFactory),
         )
 
         fun create(
             annoExprFactory: (String) -> BoMMatcher = { expression -> BoMAnnoExprMatcher(expression) },
             objExprFactory: (String) -> BoMMatcher = { expression -> BoMObjExprMatcher(expression) },
-        ): BoMMatcherDsl = BoMMatcherDsl(defaultHandlers(annoExprFactory, objExprFactory))
+            subgExprFactory: (String) -> BoMMatcher = { expression -> BoMSubgExprMatcher(expression) },
+        ): BoMMatcherDsl = BoMMatcherDsl(defaultHandlers(annoExprFactory, objExprFactory, subgExprFactory))
     }
 }
 
@@ -295,5 +308,34 @@ object IdsMatcherHandler : BoMMatcherKeyHandler {
             )
         }
         return BoMIdsMatcher.fromRaw(value, path)
+    }
+}
+
+object SubgraphIdMatcherHandler : BoMMatcherKeyHandler {
+    override val key: String = "subgraph"
+
+    override fun decode(value: Any?, path: String): BoMMatcher =
+        BoMSubgraphIdMatcher.fromRaw(value, path)
+}
+
+class SubgExprMatcherHandler(
+    private val factory: (String) -> BoMMatcher,
+) : BoMMatcherKeyHandler {
+    override val key: String = "subg-expr"
+
+    override fun decode(value: Any?, path: String): BoMMatcher {
+        if (value !is String || value.isBlank()) {
+            throw BoMValidationException(
+                "matcher-dsl",
+                BoMValidationResult.of(
+                    BoMValidationIssue(
+                        code = "MATCHER_DSL_SUBG_EXPR_TYPE",
+                        message = "'subg-expr' value must be a non-blank string expression",
+                        path = path,
+                    ),
+                ),
+            )
+        }
+        return factory(value)
     }
 }

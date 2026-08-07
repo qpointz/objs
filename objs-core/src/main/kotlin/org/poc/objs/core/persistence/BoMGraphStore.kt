@@ -9,11 +9,16 @@ import org.poc.objs.core.domain.BoMGraphMutation
 import org.poc.objs.core.domain.BoMGraphUpsert
 import org.poc.objs.core.domain.BoMSubgraph
 import org.poc.objs.core.match.BoMAnnotationMatcher
+import org.poc.objs.core.match.BoMChainedMatcher
+import org.poc.objs.core.match.BoMEntityDomainCandidate
 import org.poc.objs.core.match.BoMMatcher
+import org.poc.objs.core.match.BoMSubgExprMatcher
+import org.poc.objs.core.match.BoMSubgraphIdMatcher
 import org.poc.objs.core.match.MatchAllAnnotationMatcher
 import org.poc.objs.core.match.asBoMMatcher
 import org.poc.objs.core.validation.BoMEntityTypeLookup
 import org.poc.objs.core.validation.BoMPersistGate
+import org.poc.objs.core.validation.BoMValidationException
 import org.poc.objs.core.validation.BoMValidationIssue
 import org.poc.objs.core.validation.BoMValidationResult
 import org.poc.objs.core.validation.BoMValidator
@@ -31,6 +36,7 @@ class BoMGraphStore(
     private val validator: BoMValidator,
     private val rawGraphReader: BoMRawGraphReader,
     private val entityManager: EntityManager,
+    private val subgraphStore: BoMSubgraphStore,
 ) {
     private fun gate(): BoMPersistGate = BoMPersistGate(
         validator = validator,
@@ -189,12 +195,75 @@ class BoMGraphStore(
     fun selectSubgraph(matcher: BoMMatcher): BoMSubgraph {
         // JDBC reads share the Spring transaction connection; flush pending JPA writes first.
         entityManager.flush()
+        val stages = flattenStages(matcher)
+        val first = stages.first()
+        if (first is BoMSubgraphIdMatcher || first is BoMSubgExprMatcher) {
+            return selectSoftLinkSubgraph(stages)
+        }
         val (entities, edges) = rawGraphReader.select(matcher)
         return BoMSubgraph(
             entities = entities.map { it.toDomain() },
             edges = edges.map { it.toDomain() },
         )
     }
+
+    private fun selectSoftLinkSubgraph(stages: List<BoMMatcher>): BoMSubgraph {
+        val first = stages.first()
+        val packs = when (first) {
+            is BoMSubgraphIdMatcher -> {
+                val resolved = subgraphStore.get(first.id)
+                    ?: throw BoMValidationException(
+                        "subgraph",
+                        BoMValidationResult.of(
+                            BoMValidationIssue(
+                                code = "MATCHER_SUBGRAPH_NOT_FOUND",
+                                message = "Subgraph not found: ${first.id}",
+                                path = "subgraph.id",
+                            ),
+                        ),
+                    )
+                listOf(resolved)
+            }
+            is BoMSubgExprMatcher ->
+                subgraphStore.list().mapNotNull { item ->
+                    if (first.matchesHeader(item.id, item.annotations)) {
+                        subgraphStore.get(item.id)
+                    } else {
+                        null
+                    }
+                }
+            else -> error("expected soft-link matcher stage")
+        }
+        val entityById = linkedMapOf<UUID, BoMEntity>()
+        val edgeById = linkedMapOf<UUID, BoMEdge>()
+        for (pack in packs) {
+            for (entity in pack.subgraph.entities) {
+                val id = entity.id ?: continue
+                entityById[id] = entity
+            }
+            for (edge in pack.subgraph.edges) {
+                val id = edge.id ?: continue
+                edgeById[id] = edge
+            }
+        }
+        var entities = entityById.values.toList()
+        val filters = stages.drop(1)
+        if (filters.isNotEmpty()) {
+            entities = entities.filter { entity ->
+                val candidate = BoMEntityDomainCandidate(entity)
+                filters.all { it.matches(candidate) }
+            }
+        }
+        val selectedIds = entities.mapNotNullTo(linkedSetOf()) { it.id }
+        val edges = edgeById.values.filter { it.source in selectedIds && it.target in selectedIds }
+        return BoMSubgraph(entities = entities, edges = edges)
+    }
+
+    private fun flattenStages(matcher: BoMMatcher): List<BoMMatcher> =
+        when (matcher) {
+            is BoMChainedMatcher -> matcher.matchers.flatMap(::flattenStages)
+            else -> listOf(matcher)
+        }
 
     @Transactional(readOnly = true)
     fun selectSubgraph(matcher: BoMAnnotationMatcher): BoMSubgraph =
