@@ -11,6 +11,7 @@ import org.poc.objs.core.domain.BoMGraphMutation
 import org.poc.objs.core.domain.BoMResolvedGraph
 import org.poc.objs.core.domain.BoMGraphContents
 import org.poc.objs.core.domain.BoMGraphException
+import org.poc.objs.core.domain.BoMGraphHeader
 import org.poc.objs.core.domain.BoMGraphListItem
 import org.poc.objs.core.domain.BoMGraphSpec
 import org.poc.objs.core.match.BoMMatcherDsl
@@ -30,6 +31,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import java.nio.charset.StandardCharsets
 import java.util.UUID
@@ -64,9 +66,30 @@ class ObjsGraphsController(
         val annotations: Map<String, String> = emptyMap(),
     )
 
+    @Schema(description = "Open-graph search envelope (G-U10); additive fields may appear later")
+    data class GraphSearchResponse(
+        val items: List<BoMGraphHeader>,
+    )
+
     @GetMapping
     @Operation(summary = "List graph headers")
     fun list(): List<BoMGraphListItem> = namedGraphs.list()
+
+    @GetMapping("/search")
+    @Operation(
+        summary = "Search graph headers (open-graph dialog)",
+        description = "G-U10 extensible search contract. Empty `q` without `expr` returns `{ items: [] }` " +
+            "(never the full catalog). v1 match: id / UUID-prefix + case-insensitive substring on id and " +
+            "annotation key/value; optional `expr` is a graph-expr (AND with `q` when both set). " +
+            "Additive query params and response fields may be added later; FTS is out of scope for v1.",
+    )
+    fun search(
+        @RequestParam(required = false) q: String?,
+        @RequestParam(required = false) expr: String?,
+        @RequestParam(required = false, defaultValue = "15") limit: Int,
+    ): GraphSearchResponse = GraphSearchResponse(
+        items = namedGraphs.search(q = q, expr = expr, limit = limit),
+    )
 
     @PostMapping
     @Operation(summary = "Create a graph header, optionally seeding membership with existing pool entity ids")

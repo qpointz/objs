@@ -5,6 +5,7 @@ import type {
   BoMAllowedEdgeRule,
   BoMGraphListItem,
   BoMGraphResponse,
+  BoMGraphSearchResponse,
   EdgeRelationRequest,
   GraphLink,
   GraphNode,
@@ -157,6 +158,34 @@ export async function traverseGremlin(body: TraverseGremlinRequest): Promise<BoM
 export async function listGraphs(): Promise<BoMGraphListItem[]> {
   const res = await fetch('/api/v1/objs/graphs')
   return parseResponse<BoMGraphListItem[]>(res)
+}
+
+/** Build `GET /api/v1/objs/graphs/search` query string (G-U10). */
+export function graphSearchQuery(params: {
+  q?: string
+  expr?: string
+  limit?: number
+}): string {
+  const sp = new URLSearchParams()
+  const q = params.q?.trim()
+  const expr = params.expr?.trim()
+  if (q) sp.set('q', q)
+  if (expr) sp.set('expr', expr)
+  sp.set('limit', String(params.limit ?? 15))
+  return sp.toString()
+}
+
+/**
+ * Open-graph search (WI-007 / G-U10). Empty `q` without `expr` returns `{ items: [] }` —
+ * never the full catalog. Response shape is additive-extendable; callers should ignore unknowns.
+ */
+export async function searchGraphs(params: {
+  q?: string
+  expr?: string
+  limit?: number
+} = {}): Promise<BoMGraphSearchResponse> {
+  const res = await fetch(`/api/v1/objs/graphs/search?${graphSearchQuery(params)}`)
+  return parseResponse<BoMGraphSearchResponse>(res)
 }
 
 export async function getGraph(id: string): Promise<BoMGraphResponse> {

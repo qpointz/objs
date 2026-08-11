@@ -10,6 +10,7 @@ import org.poc.objs.core.domain.BoMEntity
 import org.poc.objs.core.domain.BoMResolvedGraph
 import org.poc.objs.core.domain.BoMGraphContents
 import org.poc.objs.core.domain.BoMGraphException
+import org.poc.objs.core.domain.BoMGraphHeader
 import org.poc.objs.core.domain.BoMGraphListItem
 import org.poc.objs.core.match.BoMMatcher
 import org.poc.objs.core.persistence.BoMGraphStore
@@ -29,6 +30,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import tools.jackson.databind.json.JsonMapper
 import java.util.UUID
+import org.mockito.ArgumentMatchers.isNull
 
 class ObjsGraphsControllerTest {
 
@@ -66,6 +68,46 @@ class ObjsGraphsControllerTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$[0].id").value(id.toString()))
             .andExpect(jsonPath("$[0].entityCount").value(2))
+    }
+
+    @Test
+    fun shouldSearchGraphs_returningItemsEnvelope() {
+        val id = UUID.randomUUID()
+        given(namedGraphs.search(eqObj("prod"), isNull(), eqObj(15)))
+            .willReturn(listOf(BoMGraphHeader(id, mapOf("env" to "prod"))))
+
+        mockMvc.perform(get("/api/v1/objs/graphs/search").param("q", "prod").param("limit", "15"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.items[0].id").value(id.toString()))
+            .andExpect(jsonPath("$.items[0].annotations.env").value("prod"))
+            .andExpect(jsonPath("$.items[0].entityCount").doesNotExist())
+    }
+
+    @Test
+    fun shouldSearchGraphs_returnEmpty_whenNoQAndNoExpr() {
+        given(namedGraphs.search(isNull(), isNull(), eqObj(15))).willReturn(emptyList())
+
+        mockMvc.perform(get("/api/v1/objs/graphs/search"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.items").isArray)
+            .andExpect(jsonPath("$.items").isEmpty)
+    }
+
+    @Test
+    fun shouldSearchGraphs_passExprAndQ() {
+        given(namedGraphs.search(eqObj("acme"), eqObj("a.env == 'prod'"), eqObj(10)))
+            .willReturn(emptyList())
+
+        mockMvc.perform(
+            get("/api/v1/objs/graphs/search")
+                .param("q", "acme")
+                .param("expr", "a.env == 'prod'")
+                .param("limit", "10"),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.items").isEmpty)
+
+        verify(namedGraphs).search(eqObj("acme"), eqObj("a.env == 'prod'"), eqObj(10))
     }
 
     @Test

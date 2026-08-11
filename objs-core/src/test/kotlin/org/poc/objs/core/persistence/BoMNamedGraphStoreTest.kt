@@ -426,4 +426,56 @@ class BoMNamedGraphStoreTest {
             .extracting("code")
             .isEqualTo("GRAPH_NOT_FOUND")
     }
+
+    @Test
+    fun shouldSearch_returnEmpty_whenNoQAndNoExpr() {
+        namedGraphs.create(BoMGraphSpec(annotations = mapOf("env" to "prod"), entityIds = setOf(a)))
+        assertThat(namedGraphs.search(q = null, expr = null)).isEmpty()
+        assertThat(namedGraphs.search(q = "  ", expr = "")).isEmpty()
+    }
+
+    @Test
+    fun shouldSearch_byAnnotationSubstring_caseInsensitive() {
+        val hit = namedGraphs.create(BoMGraphSpec(annotations = mapOf("env" to "Production"), entityIds = setOf(a)))
+        namedGraphs.create(BoMGraphSpec(annotations = mapOf("env" to "test"), entityIds = setOf(b)))
+
+        val items = namedGraphs.search(q = "prod")
+        assertThat(items).hasSize(1)
+        assertThat(items[0].id).isEqualTo(hit.id)
+        assertThat(items[0].annotations).containsEntry("env", "Production")
+    }
+
+    @Test
+    fun shouldSearch_byUuidPrefix() {
+        val hit = namedGraphs.create(BoMGraphSpec(entityIds = setOf(a)))
+        namedGraphs.create(BoMGraphSpec(entityIds = setOf(b)))
+        val prefix = hit.id.toString().substring(0, 8)
+
+        val items = namedGraphs.search(q = prefix)
+        assertThat(items.map { it.id }).contains(hit.id)
+        assertThat(items).allMatch { it.id.toString().startsWith(prefix, ignoreCase = true) ||
+            it.id.toString().contains(prefix, ignoreCase = true) ||
+            it.annotations.any { (k, v) -> k.contains(prefix, ignoreCase = true) || v.contains(prefix, ignoreCase = true) } }
+    }
+
+    @Test
+    fun shouldSearch_andQWithExpr() {
+        val hit = namedGraphs.create(BoMGraphSpec(annotations = mapOf("env" to "prod", "app" to "acme"), entityIds = setOf(a)))
+        namedGraphs.create(BoMGraphSpec(annotations = mapOf("env" to "prod", "app" to "other"), entityIds = setOf(b)))
+        namedGraphs.create(BoMGraphSpec(annotations = mapOf("env" to "test", "app" to "acme"), entityIds = setOf(a)))
+
+        val items = namedGraphs.search(q = "acme", expr = "a.env == 'prod'")
+        assertThat(items).hasSize(1)
+        assertThat(items[0].id).isEqualTo(hit.id)
+    }
+
+    @Test
+    fun shouldSearch_respectLimitAndStableOrder() {
+        repeat(5) { i ->
+            namedGraphs.create(BoMGraphSpec(annotations = mapOf("tag" to "shared-$i"), entityIds = setOf(a)))
+        }
+        val limited = namedGraphs.search(q = "shared", limit = 2)
+        assertThat(limited).hasSize(2)
+        assertThat(limited.map { it.id }).isSorted
+    }
 }

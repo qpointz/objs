@@ -3,12 +3,14 @@ package org.poc.objs.core.persistence
 import org.poc.objs.core.domain.BoMEdge
 import org.poc.objs.core.domain.BoMEntity
 import org.poc.objs.core.domain.BoMGraph
+import org.poc.objs.core.domain.BoMGraphHeader
 import org.poc.objs.core.domain.BoMGraphMutation
 import org.poc.objs.core.domain.BoMResolvedGraph
 import org.poc.objs.core.domain.BoMGraphContents
 import org.poc.objs.core.domain.BoMGraphException
 import org.poc.objs.core.domain.BoMGraphListItem
 import org.poc.objs.core.domain.BoMGraphSpec
+import org.poc.objs.core.match.BoMGraphExprMatcher
 import org.poc.objs.core.validation.BoMEntityTypeLookup
 import org.poc.objs.core.validation.BoMPersistGate
 import org.poc.objs.core.validation.BoMValidationIssue
@@ -101,6 +103,36 @@ class BoMNamedGraphStore(
                 edgeCount = edgeRepository.countByGraphId(header.id),
             )
         }
+
+    /**
+     * G-U10 / WI-007 open-graph search over headers (no FTS). Empty [q] without [expr] returns
+     * nothing — never the full catalog. When both are set, results must match **both** (AND).
+     * Order is stable by id; [limit] is capped at [MAX_SEARCH_LIMIT].
+     */
+    @Transactional(readOnly = true)
+    fun search(q: String? = null, expr: String? = null, limit: Int = DEFAULT_SEARCH_LIMIT): List<BoMGraphHeader> {
+        val query = q?.trim().orEmpty()
+        val expression = expr?.trim().orEmpty()
+        if (query.isEmpty() && expression.isEmpty()) {
+            return emptyList()
+        }
+        val capped = when {
+            limit < 1 -> DEFAULT_SEARCH_LIMIT
+            else -> minOf(limit, MAX_SEARCH_LIMIT)
+        }
+        val matcher = if (expression.isNotEmpty()) BoMGraphExprMatcher(expression) else null
+        return graphRepository.findAll()
+            .asSequence()
+            .map { BoMGraphHeader(id = it.id, annotations = it.annotations.toMap()) }
+            .filter { header ->
+                val qOk = query.isEmpty() || matchesSearchText(header, query)
+                val exprOk = matcher == null || matcher.matchesHeader(header.id, header.annotations)
+                qOk && exprOk
+            }
+            .sortedBy { it.id }
+            .take(capped)
+            .toList()
+    }
 
     /**
      * Hard materialization: clone members (new ids) into a brand-new graph, stamp [annotations]
@@ -407,5 +439,21 @@ class BoMNamedGraphStore(
             annotations = header.annotations.toMap(),
             contents = BoMGraphContents(entities = entities, edges = edges),
         )
+    }
+
+    companion object {
+        const val DEFAULT_SEARCH_LIMIT = 15
+        const val MAX_SEARCH_LIMIT = 100
+
+        /** v1 q match: UUID / UUID-prefix + case-insensitive substring on id and annotation key/value. */
+        internal fun matchesSearchText(header: BoMGraphHeader, q: String): Boolean {
+            val idStr = header.id.toString()
+            if (idStr.startsWith(q, ignoreCase = true) || idStr.contains(q, ignoreCase = true)) {
+                return true
+            }
+            return header.annotations.any { (key, value) ->
+                key.contains(q, ignoreCase = true) || value.contains(q, ignoreCase = true)
+            }
+        }
     }
 }

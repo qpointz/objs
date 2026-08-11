@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { execMatcher, scopeMatcherToGraph } from './api'
+import { execMatcher, graphSearchQuery, scopeMatcherToGraph, searchGraphs } from './api'
 
 describe('execMatcher (WI-005 graph-scoped routing)', () => {
   afterEach(() => {
@@ -64,5 +64,34 @@ describe('scopeMatcherToGraph (Query page obj-expr scoping)', () => {
     expect(() => scopeMatcherToGraph('obj-expr', { 'obj-expr': "type == 'X'" }, null)).toThrow(
       /current graph/,
     )
+  })
+})
+
+describe('searchGraphs (WI-007 / G-U10)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('builds query with q, limit, and optional expr', () => {
+    expect(graphSearchQuery({ q: 'prod', limit: 15 })).toBe('q=prod&limit=15')
+    expect(graphSearchQuery({ q: 'acme', expr: "a.env == 'prod'", limit: 10 })).toBe(
+      'q=acme&expr=a.env+%3D%3D+%27prod%27&limit=10',
+    )
+    expect(graphSearchQuery({})).toBe('limit=15')
+  })
+
+  it('GETs /graphs/search and returns items envelope', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        items: [{ id: 'g-1', annotations: { env: 'prod' }, score: 0.9 }],
+      }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const res = await searchGraphs({ q: 'prod', limit: 15 })
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/objs/graphs/search?q=prod&limit=15')
+    expect(res.items).toEqual([{ id: 'g-1', annotations: { env: 'prod' }, score: 0.9 }])
   })
 })
