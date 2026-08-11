@@ -132,36 +132,66 @@ class BoMPoolEntityReader(
         plan: BoMObjExprPushdown,
         projection: BoMEntityColumnProjection,
     ): List<BoMEntityMatchCandidate> {
-        val where = mutableListOf<String>()
-        val params = mutableListOf<Any?>()
-        plan.typeEquals?.let {
-            where += "type = ?"
-            params += it
+        if (plan.isUnsatisfiable) {
+            return emptyList()
         }
-        plan.idEquals?.let {
-            where += "id = ?"
-            params += it
+        val groupSql = ArrayList<String>()
+        val params = ArrayList<Any?>()
+        for (group in plan.dnf) {
+            val where = ArrayList<String>()
+            group.typeEquals?.let {
+                where += "type = ?"
+                params += it
+            }
+            for (v in group.typeNotEquals) {
+                where += "type <> ?"
+                params += v
+            }
+            group.idEquals?.let {
+                where += "id = ?"
+                params += it
+            }
+            for (v in group.idNotEquals) {
+                where += "id <> ?"
+                params += v
+            }
+            group.schemaVersionEquals?.let {
+                where += "schema_version = ?"
+                params += it
+            }
+            for (v in group.schemaVersionNotEquals) {
+                where += "schema_version <> ?"
+                params += v
+            }
+            if (group.annotationEquals.isNotEmpty()) {
+                where += "annotations @> CAST(? AS jsonb)"
+                params += PayloadMapper.mapper.writeValueAsString(group.annotationEquals)
+            }
+            for ((key, value) in group.annotationNotEquals) {
+                where += "(annotations ->> ?) IS DISTINCT FROM ?"
+                params += key
+                params += value
+            }
+            if (group.payloadEquals.isNotEmpty()) {
+                where += "payload @> CAST(? AS jsonb)"
+                params += PayloadMapper.mapper.writeValueAsString(group.payloadEquals)
+            }
+            for ((key, value) in group.payloadNotEquals) {
+                where += "(payload ->> ?) IS DISTINCT FROM ?"
+                params += key
+                params += value
+            }
+            require(where.isNotEmpty()) { "obj-expr AND-group WHERE must not be empty" }
+            groupSql += "(${where.joinToString(" AND ")})"
         }
-        plan.schemaVersionEquals?.let {
-            where += "schema_version = ?"
-            params += it
-        }
-        if (plan.annotationEquals.isNotEmpty()) {
-            where += "annotations @> CAST(? AS jsonb)"
-            params += PayloadMapper.mapper.writeValueAsString(plan.annotationEquals)
-        }
-        if (plan.payloadEquals.isNotEmpty()) {
-            where += "payload @> CAST(? AS jsonb)"
-            params += PayloadMapper.mapper.writeValueAsString(plan.payloadEquals)
-        }
-        require(where.isNotEmpty()) { "obj-expr pushdown WHERE must not be empty" }
+        require(groupSql.isNotEmpty()) { "obj-expr pushdown WHERE must not be empty" }
         val connection = DataSourceUtils.getConnection(dataSource)
         try {
             val entities = mutableListOf<BoMEntityMatchCandidate>()
             connection.prepareStatement(
                 """
                 ${entitySelectSql(projection, postgresCast = isPostgres)}
-                WHERE ${where.joinToString(" AND ")}
+                WHERE ${groupSql.joinToString(" OR ")}
                 """.trimIndent(),
             ).use { statement ->
                 statement.fetchSize = FETCH_SIZE
@@ -267,8 +297,8 @@ class BoMPoolEntityReader(
         }
 
         override fun objExprPushdownSource(plan: BoMObjExprPushdown): BoMCandidateSource? {
-            val needsJsonb = plan.annotationEquals.isNotEmpty() || plan.payloadEquals.isNotEmpty()
-            if (needsJsonb && !isPostgres) {
+            // Scalar / ->> predicates work on H2 + Postgres; JSONB @> requires Postgres.
+            if (plan.needsJsonbContainment && !isPostgres) {
                 return null
             }
             return BoMCandidateSource { checkBudget ->

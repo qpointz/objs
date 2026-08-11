@@ -9,6 +9,9 @@ import org.apache.commons.jexl3.parser.ASTEQSNode
 import org.apache.commons.jexl3.parser.ASTIdentifier
 import org.apache.commons.jexl3.parser.ASTIdentifierAccess
 import org.apache.commons.jexl3.parser.ASTJexlScript
+import org.apache.commons.jexl3.parser.ASTNENode
+import org.apache.commons.jexl3.parser.ASTNESNode
+import org.apache.commons.jexl3.parser.ASTOrNode
 import org.apache.commons.jexl3.parser.ASTReference
 import org.apache.commons.jexl3.parser.ASTReferenceExpression
 import org.apache.commons.jexl3.parser.ASTStringLiteral
@@ -16,31 +19,20 @@ import org.apache.commons.jexl3.parser.JexlNode
 import java.util.UUID
 
 /**
- * Lowers `graph-expr` AST to [BoMGraphExprPushdown] when the tree is only equality (`==` / `===`)
- * of `id` / `a.*` combined with `&&`. Any `||` or unsupported shape → null (local eval).
+ * Lowers `graph-expr` AST to [BoMGraphExprPushdown] when the tree is only equality / inequality
+ * (`==` / `===` / `!=` / `!==`) of `id` / `a.*` combined with `&&` / `||`.
+ * Anything else → null (local eval).
  */
 object BoMGraphExprLowerer : ScriptVisitor() {
 
     fun toPushdown(compiled: JexlExpression): BoMGraphExprPushdown? {
         @Suppress("UNCHECKED_CAST")
-        val clauses = visitExpression(compiled, null) as? List<GraphEqClause> ?: return null
-        if (clauses.isEmpty()) return null
-        var idEquals: UUID? = null
-        val annotations = linkedMapOf<String, String>()
-        for (clause in clauses) {
-            when (clause) {
-                is GraphEqClause.Id -> {
-                    if (idEquals != null && idEquals != clause.value) return null
-                    idEquals = clause.value
-                }
-                is GraphEqClause.Annotation -> annotations[clause.key] = clause.value
-            }
+        val tree = visitExpression(compiled, null) as? BoolExpr<GraphAtom> ?: return null
+        val groups = toDnf(tree).mapNotNull { atoms -> foldAndGroup(atoms) }
+        if (groups.isEmpty()) {
+            return BoMGraphExprPushdown(dnf = emptyList())
         }
-        return try {
-            BoMGraphExprPushdown(idEquals = idEquals, annotationEquals = annotations)
-        } catch (_: IllegalArgumentException) {
-            null
-        }
+        return BoMGraphExprPushdown(dnf = groups)
     }
 
     override fun visit(node: ASTJexlScript, data: Any?): Any? {
@@ -54,28 +46,40 @@ object BoMGraphExprLowerer : ScriptVisitor() {
     }
 
     override fun visit(node: ASTAndNode, data: Any?): Any? {
-        val parts = ArrayList<GraphEqClause>()
+        val parts = ArrayList<BoolExpr<GraphAtom>>()
         for (i in 0 until node.jjtGetNumChildren()) {
-            when (val child = node.jjtGetChild(i).jjtAccept(this, data)) {
-                is GraphEqClause -> parts.add(child)
-                is List<*> -> {
-                    for (item in child) {
-                        parts.add(item as? GraphEqClause ?: return null)
-                    }
-                }
-                else -> return null
-            }
+            val child = node.jjtGetChild(i).jjtAccept(this, data) as? BoolExpr<*> ?: return null
+            @Suppress("UNCHECKED_CAST")
+            parts.add(child as BoolExpr<GraphAtom>)
         }
-        return parts
+        return if (parts.isEmpty()) null else BoolExpr.And(parts)
     }
 
-    override fun visit(node: ASTEQNode, data: Any?): Any? = parseEquality(node)?.let { listOf(it) }
+    override fun visit(node: ASTOrNode, data: Any?): Any? {
+        val parts = ArrayList<BoolExpr<GraphAtom>>()
+        for (i in 0 until node.jjtGetNumChildren()) {
+            val child = node.jjtGetChild(i).jjtAccept(this, data) as? BoolExpr<*> ?: return null
+            @Suppress("UNCHECKED_CAST")
+            parts.add(child as BoolExpr<GraphAtom>)
+        }
+        return if (parts.isEmpty()) null else BoolExpr.Or(parts)
+    }
 
-    override fun visit(node: ASTEQSNode, data: Any?): Any? = parseEquality(node)?.let { listOf(it) }
+    override fun visit(node: ASTEQNode, data: Any?): Any? =
+        parseComparison(node, eq = true)?.let { BoolExpr.Atom(it) }
+
+    override fun visit(node: ASTEQSNode, data: Any?): Any? =
+        parseComparison(node, eq = true)?.let { BoolExpr.Atom(it) }
+
+    override fun visit(node: ASTNENode, data: Any?): Any? =
+        parseComparison(node, eq = false)?.let { BoolExpr.Atom(it) }
+
+    override fun visit(node: ASTNESNode, data: Any?): Any? =
+        parseComparison(node, eq = false)?.let { BoolExpr.Atom(it) }
 
     override fun visitNode(node: JexlNode, data: Any?): Any? = null
 
-    private fun parseEquality(node: JexlNode): GraphEqClause? {
+    private fun parseComparison(node: JexlNode, eq: Boolean): GraphAtom? {
         if (node.jjtGetNumChildren() != 2) return null
         val left = node.jjtGetChild(0)
         val right = node.jjtGetChild(1)
@@ -84,7 +88,7 @@ object BoMGraphExprLowerer : ScriptVisitor() {
             left is ASTStringLiteral -> pathFrom(right) to left.literal
             else -> return null
         }
-        return clauseFromPath(path ?: return null, value)
+        return atomFromPath(path ?: return null, value, eq)
     }
 
     private fun pathFrom(node: JexlNode): List<String>? {
@@ -116,7 +120,7 @@ object BoMGraphExprLowerer : ScriptVisitor() {
         }
     }
 
-    private fun clauseFromPath(path: List<String>, value: String): GraphEqClause? =
+    private fun atomFromPath(path: List<String>, value: String, eq: Boolean): GraphAtom? =
         when {
             path.size == 1 && path[0] == "id" -> {
                 val uuid = try {
@@ -124,26 +128,84 @@ object BoMGraphExprLowerer : ScriptVisitor() {
                 } catch (_: IllegalArgumentException) {
                     return null
                 }
-                GraphEqClause.Id(uuid)
+                GraphAtom.Id(uuid, eq)
             }
-            path.size == 2 && path[0] == "a" -> GraphEqClause.Annotation(path[1], value)
+            path.size == 2 && path[0] == "a" -> GraphAtom.Annotation(path[1], value, eq)
             else -> null
         }
 
-    private sealed interface GraphEqClause {
-        data class Id(val value: UUID) : GraphEqClause
-        data class Annotation(val key: String, val value: String) : GraphEqClause
+    private fun foldAndGroup(atoms: List<GraphAtom>): BoMGraphExprAndGroup? {
+        var idEquals: UUID? = null
+        val idNotEquals = linkedSetOf<UUID>()
+        val annotationEquals = linkedMapOf<String, String>()
+        val annotationNotEquals = linkedMapOf<String, String>()
+
+        for (atom in atoms) {
+            when (atom) {
+                is GraphAtom.Id -> {
+                    if (atom.eq) {
+                        if (idEquals != null && idEquals != atom.value) return null
+                        idEquals = atom.value
+                    } else {
+                        idNotEquals += atom.value
+                    }
+                }
+                is GraphAtom.Annotation -> {
+                    if (atom.eq) {
+                        val prev = annotationEquals.put(atom.key, atom.value)
+                        if (prev != null && prev != atom.value) return null
+                    } else {
+                        val prev = annotationNotEquals.put(atom.key, atom.value)
+                        if (prev != null && prev != atom.value) return null
+                    }
+                }
+            }
+        }
+
+        if (idEquals != null && idEquals in idNotEquals) return null
+        for ((k, v) in annotationEquals) {
+            if (annotationNotEquals[k] == v) return null
+        }
+
+        val group = BoMGraphExprAndGroup(
+            idEquals = idEquals,
+            idNotEquals = idNotEquals,
+            annotationEquals = annotationEquals,
+            annotationNotEquals = annotationNotEquals,
+        )
+        return if (group.hasConstraint) group else null
+    }
+
+    private sealed interface GraphAtom {
+        data class Id(val value: UUID, val eq: Boolean) : GraphAtom
+        data class Annotation(val key: String, val value: String, val eq: Boolean) : GraphAtom
     }
 }
 
-/** Equality/`&&` pushdown plan for [BoMGraphExprMatcher] (Postgres `annotations @>` / PK). */
+/** DNF pushdown plan for [BoMGraphExprMatcher] (`==`/`!=` with `&&`/`||` over `id` / `a.*`). */
 data class BoMGraphExprPushdown(
-    val idEquals: UUID? = null,
-    val annotationEquals: Map<String, String> = emptyMap(),
+    val dnf: List<BoMGraphExprAndGroup>,
 ) {
-    init {
-        require(idEquals != null || annotationEquals.isNotEmpty()) {
-            "graph-expr pushdown must constrain id and/or annotations"
-        }
-    }
+    val idEquals: UUID? get() = dnf.singleOrNull()?.idEquals
+    val annotationEquals: Map<String, String> get() = dnf.singleOrNull()?.annotationEquals.orEmpty()
+
+    val needsJsonbContainment: Boolean
+        get() = dnf.any { it.annotationEquals.isNotEmpty() }
+
+    val isUnsatisfiable: Boolean get() = dnf.isEmpty()
+}
+
+/** One AND-group inside a [BoMGraphExprPushdown] DNF. */
+data class BoMGraphExprAndGroup(
+    val idEquals: UUID? = null,
+    val idNotEquals: Set<UUID> = emptySet(),
+    val annotationEquals: Map<String, String> = emptyMap(),
+    val annotationNotEquals: Map<String, String> = emptyMap(),
+) {
+    val hasConstraint: Boolean
+        get() =
+            idEquals != null ||
+                idNotEquals.isNotEmpty() ||
+                annotationEquals.isNotEmpty() ||
+                annotationNotEquals.isNotEmpty()
 }

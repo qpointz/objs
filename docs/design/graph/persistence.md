@@ -75,7 +75,8 @@ erDiagram
 - Entity **payload** and **annotations** are **JSONB** on PostgreSQL; edge **properties** likewise.
 - GIN index on `bom_entity.annotations` uses `jsonb_path_ops` for containment (`@>`) sources.
   Pushdown predicate is `WHERE annotations @> $filter::jsonb` (no cast on the column) so the planner can use GIN; `SELECT` may still cast columns to `text` for JDBC without affecting index use.
-- GIN index on `bom_graph.annotations` (same `jsonb_path_ops`) supports `graph-expr` equality/`&&`
+- GIN index on `bom_graph.annotations` (same `jsonb_path_ops`) supports `graph-expr` `==`/`&&`
+  containment; `!=` / `||` use SQL `->>` / DNF OR (may not use GIN)
   pushdown (`a.key == '…'` / `id == '…'`) in open-graph search and cross-graph `select`. Non-lowerable
   expressions and free-text `q` still evaluate headers in memory.
 - Composite indexes `(graph_id, source_id)` / `(graph_id, target_id)` on `bom_graph_edge` complement
@@ -148,5 +149,5 @@ Persistence is the **enforcement** point for payload schema and allowed edges �
 - Exact DDL / column lists beyond **UUID** identity
 - Whether a GIN (or other) index on **payload** is warranted for future payload pushdown
 - Whether annotations JSON storage should ever move to normalized tables
-- Pushdown of `obj-expr` beyond equality/`&&` (and graph-expr beyond equality/`&&` over `id` / `a.*`)
+- Pushdown of `obj-expr` / `graph-expr` beyond `==`/`!=` + `&&`/`||` (comparisons, functions)
   — inequality, comparisons, functions, OR/DNF

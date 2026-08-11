@@ -9,6 +9,9 @@ import org.apache.commons.jexl3.parser.ASTEQSNode
 import org.apache.commons.jexl3.parser.ASTIdentifier
 import org.apache.commons.jexl3.parser.ASTIdentifierAccess
 import org.apache.commons.jexl3.parser.ASTJexlScript
+import org.apache.commons.jexl3.parser.ASTNENode
+import org.apache.commons.jexl3.parser.ASTNESNode
+import org.apache.commons.jexl3.parser.ASTOrNode
 import org.apache.commons.jexl3.parser.ASTReference
 import org.apache.commons.jexl3.parser.ASTReferenceExpression
 import org.apache.commons.jexl3.parser.ASTStringLiteral
@@ -16,50 +19,21 @@ import org.apache.commons.jexl3.parser.JexlNode
 import java.util.UUID
 
 /**
- * Lowers `obj-expr` AST to [BoMObjExprPushdown] when the tree is only equality (`==` / `===`)
- * of `id` / `type` / `schemaVersion` / `a.*` / `p.*` combined with `&&`.
- * Any `||` or unsupported shape → null (local eval).
+ * Lowers `obj-expr` AST to [BoMObjExprPushdown] when the tree is only equality / inequality
+ * (`==` / `===` / `!=` / `!==`) of `id` / `type` / `schemaVersion` / `a.*` / `p.*` combined with
+ * `&&` / `||`. Anything else → null (local eval).
  */
 object BoMObjExprLowerer : ScriptVisitor() {
 
     fun toPushdown(compiled: JexlExpression): BoMObjExprPushdown? {
         @Suppress("UNCHECKED_CAST")
-        val clauses = visitExpression(compiled, null) as? List<ObjEqClause> ?: return null
-        if (clauses.isEmpty()) return null
-        var typeEquals: String? = null
-        var idEquals: UUID? = null
-        var schemaVersionEquals: String? = null
-        val annotations = linkedMapOf<String, String>()
-        val payload = linkedMapOf<String, String>()
-        for (clause in clauses) {
-            when (clause) {
-                is ObjEqClause.Type -> {
-                    if (typeEquals != null && typeEquals != clause.value) return null
-                    typeEquals = clause.value
-                }
-                is ObjEqClause.Id -> {
-                    if (idEquals != null && idEquals != clause.value) return null
-                    idEquals = clause.value
-                }
-                is ObjEqClause.SchemaVersion -> {
-                    if (schemaVersionEquals != null && schemaVersionEquals != clause.value) return null
-                    schemaVersionEquals = clause.value
-                }
-                is ObjEqClause.Annotation -> annotations[clause.key] = clause.value
-                is ObjEqClause.Payload -> payload[clause.key] = clause.value
-            }
+        val tree = visitExpression(compiled, null) as? BoolExpr<ObjAtom> ?: return null
+        val groups = toDnf(tree).mapNotNull { atoms -> foldAndGroup(atoms) }
+        if (groups.isEmpty()) {
+            // Proven unsatisfiable (e.g. type == 'A' && type == 'B') — empty result set.
+            return BoMObjExprPushdown(dnf = emptyList())
         }
-        return try {
-            BoMObjExprPushdown(
-                typeEquals = typeEquals,
-                idEquals = idEquals,
-                schemaVersionEquals = schemaVersionEquals,
-                annotationEquals = annotations,
-                payloadEquals = payload,
-            )
-        } catch (_: IllegalArgumentException) {
-            null
-        }
+        return BoMObjExprPushdown(dnf = groups)
     }
 
     override fun visit(node: ASTJexlScript, data: Any?): Any? {
@@ -73,28 +47,40 @@ object BoMObjExprLowerer : ScriptVisitor() {
     }
 
     override fun visit(node: ASTAndNode, data: Any?): Any? {
-        val parts = ArrayList<ObjEqClause>()
+        val parts = ArrayList<BoolExpr<ObjAtom>>()
         for (i in 0 until node.jjtGetNumChildren()) {
-            when (val child = node.jjtGetChild(i).jjtAccept(this, data)) {
-                is ObjEqClause -> parts.add(child)
-                is List<*> -> {
-                    for (item in child) {
-                        parts.add(item as? ObjEqClause ?: return null)
-                    }
-                }
-                else -> return null
-            }
+            val child = node.jjtGetChild(i).jjtAccept(this, data) as? BoolExpr<*> ?: return null
+            @Suppress("UNCHECKED_CAST")
+            parts.add(child as BoolExpr<ObjAtom>)
         }
-        return parts
+        return if (parts.isEmpty()) null else BoolExpr.And(parts)
     }
 
-    override fun visit(node: ASTEQNode, data: Any?): Any? = parseEquality(node)?.let { listOf(it) }
+    override fun visit(node: ASTOrNode, data: Any?): Any? {
+        val parts = ArrayList<BoolExpr<ObjAtom>>()
+        for (i in 0 until node.jjtGetNumChildren()) {
+            val child = node.jjtGetChild(i).jjtAccept(this, data) as? BoolExpr<*> ?: return null
+            @Suppress("UNCHECKED_CAST")
+            parts.add(child as BoolExpr<ObjAtom>)
+        }
+        return if (parts.isEmpty()) null else BoolExpr.Or(parts)
+    }
 
-    override fun visit(node: ASTEQSNode, data: Any?): Any? = parseEquality(node)?.let { listOf(it) }
+    override fun visit(node: ASTEQNode, data: Any?): Any? =
+        parseComparison(node, eq = true)?.let { BoolExpr.Atom(it) }
+
+    override fun visit(node: ASTEQSNode, data: Any?): Any? =
+        parseComparison(node, eq = true)?.let { BoolExpr.Atom(it) }
+
+    override fun visit(node: ASTNENode, data: Any?): Any? =
+        parseComparison(node, eq = false)?.let { BoolExpr.Atom(it) }
+
+    override fun visit(node: ASTNESNode, data: Any?): Any? =
+        parseComparison(node, eq = false)?.let { BoolExpr.Atom(it) }
 
     override fun visitNode(node: JexlNode, data: Any?): Any? = null
 
-    private fun parseEquality(node: JexlNode): ObjEqClause? {
+    private fun parseComparison(node: JexlNode, eq: Boolean): ObjAtom? {
         if (node.jjtGetNumChildren() != 2) return null
         val left = node.jjtGetChild(0)
         val right = node.jjtGetChild(1)
@@ -103,7 +89,7 @@ object BoMObjExprLowerer : ScriptVisitor() {
             left is ASTStringLiteral -> pathFrom(right) to left.literal
             else -> return null
         }
-        return clauseFromPath(path ?: return null, value)
+        return atomFromPath(path ?: return null, value, eq)
     }
 
     private fun pathFrom(node: JexlNode): List<String>? {
@@ -135,28 +121,112 @@ object BoMObjExprLowerer : ScriptVisitor() {
         }
     }
 
-    private fun clauseFromPath(path: List<String>, value: String): ObjEqClause? =
+    private fun atomFromPath(path: List<String>, value: String, eq: Boolean): ObjAtom? =
         when {
-            path.size == 1 && path[0] == "type" -> ObjEqClause.Type(value)
-            path.size == 1 && path[0] == "schemaVersion" -> ObjEqClause.SchemaVersion(value)
+            path.size == 1 && path[0] == "type" -> ObjAtom.Type(value, eq)
+            path.size == 1 && path[0] == "schemaVersion" -> ObjAtom.SchemaVersion(value, eq)
             path.size == 1 && path[0] == "id" -> {
                 val uuid = try {
                     UUID.fromString(value)
                 } catch (_: IllegalArgumentException) {
                     return null
                 }
-                ObjEqClause.Id(uuid)
+                ObjAtom.Id(uuid, eq)
             }
-            path.size == 2 && path[0] == "a" -> ObjEqClause.Annotation(path[1], value)
-            path.size == 2 && path[0] == "p" -> ObjEqClause.Payload(path[1], value)
+            path.size == 2 && path[0] == "a" -> ObjAtom.Annotation(path[1], value, eq)
+            path.size == 2 && path[0] == "p" -> ObjAtom.Payload(path[1], value, eq)
             else -> null
         }
 
-    private sealed interface ObjEqClause {
-        data class Type(val value: String) : ObjEqClause
-        data class Id(val value: UUID) : ObjEqClause
-        data class SchemaVersion(val value: String) : ObjEqClause
-        data class Annotation(val key: String, val value: String) : ObjEqClause
-        data class Payload(val key: String, val value: String) : ObjEqClause
+    private fun foldAndGroup(atoms: List<ObjAtom>): BoMObjExprAndGroup? {
+        var typeEquals: String? = null
+        val typeNotEquals = linkedSetOf<String>()
+        var idEquals: UUID? = null
+        val idNotEquals = linkedSetOf<UUID>()
+        var schemaVersionEquals: String? = null
+        val schemaVersionNotEquals = linkedSetOf<String>()
+        val annotationEquals = linkedMapOf<String, String>()
+        val annotationNotEquals = linkedMapOf<String, String>()
+        val payloadEquals = linkedMapOf<String, String>()
+        val payloadNotEquals = linkedMapOf<String, String>()
+
+        for (atom in atoms) {
+            when (atom) {
+                is ObjAtom.Type -> {
+                    if (atom.eq) {
+                        if (typeEquals != null && typeEquals != atom.value) return null
+                        typeEquals = atom.value
+                    } else {
+                        typeNotEquals += atom.value
+                    }
+                }
+                is ObjAtom.Id -> {
+                    if (atom.eq) {
+                        if (idEquals != null && idEquals != atom.value) return null
+                        idEquals = atom.value
+                    } else {
+                        idNotEquals += atom.value
+                    }
+                }
+                is ObjAtom.SchemaVersion -> {
+                    if (atom.eq) {
+                        if (schemaVersionEquals != null && schemaVersionEquals != atom.value) return null
+                        schemaVersionEquals = atom.value
+                    } else {
+                        schemaVersionNotEquals += atom.value
+                    }
+                }
+                is ObjAtom.Annotation -> {
+                    if (atom.eq) {
+                        val prev = annotationEquals.put(atom.key, atom.value)
+                        if (prev != null && prev != atom.value) return null
+                    } else {
+                        val prev = annotationNotEquals.put(atom.key, atom.value)
+                        if (prev != null && prev != atom.value) return null
+                    }
+                }
+                is ObjAtom.Payload -> {
+                    if (atom.eq) {
+                        val prev = payloadEquals.put(atom.key, atom.value)
+                        if (prev != null && prev != atom.value) return null
+                    } else {
+                        val prev = payloadNotEquals.put(atom.key, atom.value)
+                        if (prev != null && prev != atom.value) return null
+                    }
+                }
+            }
+        }
+
+        if (typeEquals != null && typeEquals in typeNotEquals) return null
+        if (idEquals != null && idEquals in idNotEquals) return null
+        if (schemaVersionEquals != null && schemaVersionEquals in schemaVersionNotEquals) return null
+        for ((k, v) in annotationEquals) {
+            if (annotationNotEquals[k] == v) return null
+        }
+        for ((k, v) in payloadEquals) {
+            if (payloadNotEquals[k] == v) return null
+        }
+
+        val group = BoMObjExprAndGroup(
+            typeEquals = typeEquals,
+            typeNotEquals = typeNotEquals,
+            idEquals = idEquals,
+            idNotEquals = idNotEquals,
+            schemaVersionEquals = schemaVersionEquals,
+            schemaVersionNotEquals = schemaVersionNotEquals,
+            annotationEquals = annotationEquals,
+            annotationNotEquals = annotationNotEquals,
+            payloadEquals = payloadEquals,
+            payloadNotEquals = payloadNotEquals,
+        )
+        return if (group.hasConstraint) group else null
+    }
+
+    private sealed interface ObjAtom {
+        data class Type(val value: String, val eq: Boolean) : ObjAtom
+        data class Id(val value: UUID, val eq: Boolean) : ObjAtom
+        data class SchemaVersion(val value: String, val eq: Boolean) : ObjAtom
+        data class Annotation(val key: String, val value: String, val eq: Boolean) : ObjAtom
+        data class Payload(val key: String, val value: String, val eq: Boolean) : ObjAtom
     }
 }

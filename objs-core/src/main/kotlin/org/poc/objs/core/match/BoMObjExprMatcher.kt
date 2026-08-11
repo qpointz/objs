@@ -41,7 +41,8 @@ object BoMObjExprCompile {
  * Object expression matcher (DSL `obj-expr`).
  *
  * JEXL bindings: `id`, `type`, `schemaVersion`, `a` (annotations map), `p` (payload map).
- * Pushdown when the expression lowers to equality/`&&` over those fields (see [BoMObjExprLowerer]).
+ * Pushdown when the expression lowers to equality/inequality (`==`/`!=`) with `&&`/`||`
+ * over those fields (see [BoMObjExprLowerer]).
  */
 class BoMObjExprMatcher(
     val expression: String,
@@ -91,23 +92,48 @@ class BoMObjExprMatcher(
     }
 }
 
-/** Equality/`&&` pushdown plan for [BoMObjExprMatcher] (no OR across heterogeneous fields). */
+/** DNF pushdown plan for [BoMObjExprMatcher] (`==`/`!=` with `&&`/`||` over supported fields). */
 data class BoMObjExprPushdown(
-    val typeEquals: String? = null,
-    val idEquals: UUID? = null,
-    val schemaVersionEquals: String? = null,
-    val annotationEquals: Map<String, String> = emptyMap(),
-    val payloadEquals: Map<String, String> = emptyMap(),
+    val dnf: List<BoMObjExprAndGroup>,
 ) {
-    init {
-        require(
+    /** Convenience when the plan is a single conjunction (common equality/`&&` case). */
+    val typeEquals: String? get() = dnf.singleOrNull()?.typeEquals
+    val idEquals: UUID? get() = dnf.singleOrNull()?.idEquals
+    val schemaVersionEquals: String? get() = dnf.singleOrNull()?.schemaVersionEquals
+    val annotationEquals: Map<String, String> get() = dnf.singleOrNull()?.annotationEquals.orEmpty()
+    val payloadEquals: Map<String, String> get() = dnf.singleOrNull()?.payloadEquals.orEmpty()
+
+    val needsJsonbContainment: Boolean
+        get() = dnf.any { it.annotationEquals.isNotEmpty() || it.payloadEquals.isNotEmpty() }
+
+    val isUnsatisfiable: Boolean get() = dnf.isEmpty()
+}
+
+/** One AND-group inside an [BoMObjExprPushdown] DNF. */
+data class BoMObjExprAndGroup(
+    val typeEquals: String? = null,
+    val typeNotEquals: Set<String> = emptySet(),
+    val idEquals: UUID? = null,
+    val idNotEquals: Set<UUID> = emptySet(),
+    val schemaVersionEquals: String? = null,
+    val schemaVersionNotEquals: Set<String> = emptySet(),
+    val annotationEquals: Map<String, String> = emptyMap(),
+    val annotationNotEquals: Map<String, String> = emptyMap(),
+    val payloadEquals: Map<String, String> = emptyMap(),
+    val payloadNotEquals: Map<String, String> = emptyMap(),
+) {
+    val hasConstraint: Boolean
+        get() =
             typeEquals != null ||
+                typeNotEquals.isNotEmpty() ||
                 idEquals != null ||
+                idNotEquals.isNotEmpty() ||
                 schemaVersionEquals != null ||
+                schemaVersionNotEquals.isNotEmpty() ||
                 annotationEquals.isNotEmpty() ||
-                payloadEquals.isNotEmpty(),
-        ) { "obj-expr pushdown must constrain at least one field" }
-    }
+                annotationNotEquals.isNotEmpty() ||
+                payloadEquals.isNotEmpty() ||
+                payloadNotEquals.isNotEmpty()
 }
 
 private class ObjExprVariableContext(

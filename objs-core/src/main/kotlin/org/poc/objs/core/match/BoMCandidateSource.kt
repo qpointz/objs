@@ -63,8 +63,8 @@ interface BoMEntityCandidateBackend {
     fun entityIdsSource(ids: List<java.util.UUID>): BoMCandidateSource? = null
 
     /**
-     * AND pushdown for lowerable [BoMObjExprPushdown] (type / id / schemaVersion / a.* / p.*).
-     * Default: unsupported (null → local eval).
+     * DNF pushdown for lowerable [BoMObjExprPushdown] (`==`/`!=` + `&&`/`||` over
+     * type / id / schemaVersion / a.* / p.*). Default: unsupported (null → local eval).
      */
     fun objExprPushdownSource(plan: BoMObjExprPushdown): BoMCandidateSource? = null
 }

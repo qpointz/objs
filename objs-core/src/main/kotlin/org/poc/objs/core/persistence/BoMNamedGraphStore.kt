@@ -205,18 +205,36 @@ class BoMNamedGraphStore(
     }
 
     private fun findHeadersByPushdown(pushdown: BoMGraphExprPushdown, limit: Int?): List<BoMGraphHeader> {
-        val sql = StringBuilder("SELECT id, annotations::text AS annotations FROM bom_graph WHERE ")
+        if (pushdown.isUnsatisfiable) {
+            return emptyList()
+        }
+        val groupSql = ArrayList<String>()
         val args = ArrayList<Any>()
-        val clauses = ArrayList<String>()
-        pushdown.idEquals?.let { id ->
-            clauses += "id = ?"
-            args += id
+        for (group in pushdown.dnf) {
+            val clauses = ArrayList<String>()
+            group.idEquals?.let { id ->
+                clauses += "id = ?"
+                args += id
+            }
+            for (id in group.idNotEquals) {
+                clauses += "id <> ?"
+                args += id
+            }
+            if (group.annotationEquals.isNotEmpty()) {
+                clauses += "annotations @> ?::jsonb"
+                args += objectMapper.writeValueAsString(group.annotationEquals)
+            }
+            for ((key, value) in group.annotationNotEquals) {
+                clauses += "(annotations ->> ?) IS DISTINCT FROM ?"
+                args += key
+                args += value
+            }
+            require(clauses.isNotEmpty()) { "graph-expr AND-group WHERE must not be empty" }
+            groupSql += "(${clauses.joinToString(" AND ")})"
         }
-        if (pushdown.annotationEquals.isNotEmpty()) {
-            clauses += "annotations @> ?::jsonb"
-            args += objectMapper.writeValueAsString(pushdown.annotationEquals)
-        }
-        sql.append(clauses.joinToString(" AND "))
+        require(groupSql.isNotEmpty()) { "graph-expr pushdown WHERE must not be empty" }
+        val sql = StringBuilder("SELECT id, annotations::text AS annotations FROM bom_graph WHERE ")
+        sql.append(groupSql.joinToString(" OR "))
         sql.append(" ORDER BY id")
         if (limit != null) {
             sql.append(" LIMIT ?")

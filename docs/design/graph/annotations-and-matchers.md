@@ -61,8 +61,9 @@ obj-expr: "type == 'Component' && a.app == 'payments' && p.kind == 'library'"
 - `obj-expr` uses the sandboxed JEXL engine with bindings `id`, `type`, `schemaVersion`, `a`
   (annotations map), `p` (payload map). Dot/bracket access on maps, e.g.
   `type == 'Product' && p.name == 'x' && a.app == 'y'`. Candidates expose those fields with **lazy**
-  JSON deserialization. On PostgreSQL, equality/`&&`/`||` over `type`/`id`/`schemaVersion` columns and
-  `a`/`p` JSONB `@>` push down when lowerable; otherwise local JEXL.
+  JSON deserialization. On PostgreSQL, `==` / `!=` combined with `&&` / `||` over
+  `type`/`id`/`schemaVersion` columns and `a`/`p` JSON (`@>` for equals, `->>` for not-equals)
+  push down when lowerable; otherwise local JEXL. Same operators for `graph-expr` over `id` / `a.*`.
 - Ordered DSL arrays decode to `BoMChainedMatcher`. Only the first child may provide a candidate
   source; later children always filter in memory. Edges resolve after the final entity stage, scoped
   to the graph(s) selected by a stage-0 `all` / `graph-expr` (or the graph fixed by the request path).
@@ -139,6 +140,6 @@ Programmatic apps that hold a graph id use **get-by-id**
 - Revisit edge annotations if requirements demand it
 - Value type of map entries (string-only vs richer JSON values) — assume string values unless decided
   otherwise
-- Pushdown of `graph-expr` / `obj-expr` beyond equality/`&&` (inequality, comparisons, functions,
-  OR/DNF for headers)
+- Pushdown of `graph-expr` / `obj-expr` beyond `==`/`!=` + `&&`/`||` (comparisons, functions,
+  richer JSON predicates)
 - Gremlin strategies over graph membership (deferred)

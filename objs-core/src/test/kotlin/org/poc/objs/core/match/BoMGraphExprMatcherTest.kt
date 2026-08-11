@@ -27,10 +27,14 @@ class BoMGraphExprMatcherTest {
     }
 
     @Test
-    fun shouldNotLowerOrExpressions() {
-        val matcher = BoMGraphExprMatcher("a.env == 'prod' || a.env == 'test'")
-        assertThat(matcher.localEvalOnly).isTrue()
-        assertThat(matcher.pushdown).isNull()
+    fun shouldLowerOrAndNotEquals() {
+        val matcher = BoMGraphExprMatcher("a.env == 'prod' || a.env == 'test' || a.env != 'dev'")
+        assertThat(matcher.localEvalOnly).isFalse()
+        val plan = matcher.pushdown!!
+        assertThat(plan.dnf).hasSize(3)
+        assertThat(plan.dnf.map { it.annotationEquals["env"] }).containsExactlyInAnyOrder("prod", "test", null)
+        val ne = plan.dnf.first { it.annotationEquals.isEmpty() }
+        assertThat(ne.annotationNotEquals).isEqualTo(mapOf("env" to "dev"))
     }
 
     @Test
