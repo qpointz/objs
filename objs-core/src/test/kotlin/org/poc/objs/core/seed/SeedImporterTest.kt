@@ -35,7 +35,7 @@ class SeedImporterTest {
             ruleHandler,
             GraphSeedHandler(
                 // unused in these tests
-                org.mockito.Mockito.mock(org.poc.objs.core.persistence.BoMGraphStore::class.java),
+                org.mockito.Mockito.mock(org.poc.objs.core.persistence.BoMNamedGraphStore::class.java),
             ),
         )
     }
@@ -171,7 +171,7 @@ class SeedImporterTest {
     @Test
     fun shouldParseGraphWithDeterministicUuidV5Ids() {
         val handler = GraphSeedHandler(
-            org.mockito.Mockito.mock(org.poc.objs.core.persistence.BoMGraphStore::class.java),
+            org.mockito.Mockito.mock(org.poc.objs.core.persistence.BoMNamedGraphStore::class.java),
         )
         val docs = SeedYaml.parseDocuments(
             """
@@ -198,6 +198,8 @@ class SeedImporterTest {
         assertThat(payload.graph.entities.single().id).isEqualTo(UuidV5.entityId("demo", "p1"))
         assertThat(payload.graph.edges.single().id).isEqualTo(UuidV5.edgeId("demo", "e1"))
         assertThat(payload.graph.edges.single().source).isEqualTo(UuidV5.entityId("demo", "p1"))
+        assertThat(payload.graphId).isEqualTo(java.util.UUID.nameUUIDFromBytes("graph-seed:demo".toByteArray()))
+        assertThat(payload.graph.edges.single().graphId).isEqualTo(payload.graphId)
     }
 
     @Test

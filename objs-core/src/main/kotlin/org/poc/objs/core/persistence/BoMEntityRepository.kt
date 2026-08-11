@@ -9,4 +9,8 @@ interface BoMEdgeRepository : JpaRepository<BoMEdgeRecord, UUID> {
     fun findBySourceIdInAndTargetIdIn(sourceIds: Collection<UUID>, targetIds: Collection<UUID>): List<BoMEdgeRecord>
 
     fun findBySourceIdInOrTargetIdIn(sourceIds: Collection<UUID>, targetIds: Collection<UUID>): List<BoMEdgeRecord>
+
+    fun findByGraphId(graphId: UUID): List<BoMEdgeRecord>
+
+    fun countByGraphId(graphId: UUID): Long
 }

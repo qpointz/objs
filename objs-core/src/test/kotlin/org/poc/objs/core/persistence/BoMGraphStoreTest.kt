@@ -3,6 +3,7 @@ package org.poc.objs.core.persistence
 import java.util.UUID
 
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.catchThrowableOfType
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.poc.objs.core.domain.BoMAllowedEdgeCatalog
@@ -17,6 +18,8 @@ import org.poc.objs.core.domain.BoMPropertiesPolicy
 import org.poc.objs.core.domain.BoMSchema
 import org.poc.objs.core.domain.BoMSchemaCatalog
 import org.poc.objs.core.domain.BoMSchemaDsl
+import org.poc.objs.core.match.BoMObjExprMatcher
+import org.poc.objs.core.validation.BoMValidationException
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.SpringBootConfiguration
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration
@@ -52,6 +55,12 @@ class BoMGraphStoreTest {
     @Autowired
     lateinit var allowed: BoMAllowedEdgeCatalog
 
+    @Autowired
+    lateinit var graphRepository: BoMGraphRepository
+
+    /** Edges require an owning graph (`graph_id` NOT NULL); every edge in this file shares [graphId]. */
+    private lateinit var graphId: UUID
+
     @BeforeEach
     fun catalogs() {
         schemas.clear()
@@ -68,10 +77,12 @@ class BoMGraphStoreTest {
             ),
         )
         allowed.register(BoMAllowedEdgeRule("Person", "knows", "Person", BoMPropertiesPolicy.NONE))
+        graphId = UUID.randomUUID()
+        graphRepository.save(BoMGraphRecord(id = graphId))
     }
 
     @Test
-    fun shouldRoundTripBatchWriteAndSelectSubgraph() {
+    fun shouldRoundTripBatchWriteAndLoadAll() {
         val existingId = UUID.randomUUID()
         val seed = BoMGraph(
             entities = mutableListOf(
@@ -98,7 +109,7 @@ class BoMGraphStoreTest {
                 ),
             ),
             edges = mutableListOf(
-                BoMEdge(source = neu, target = existingId, role = "knows"),
+                BoMEdge(graphId = graphId, source = neu, target = existingId, role = "knows"),
             ),
         )
         assertThat(store.write(batch).isValid).isTrue()
@@ -106,21 +117,50 @@ class BoMGraphStoreTest {
         val loaded = store.loadAll()
         assertThat(loaded.entities).hasSize(2)
         assertThat(loaded.edges).hasSize(1)
+    }
 
-        val sub = store.selectSubgraphMatchAll(mapOf("item" to "X", "src" to "ui"))
-        assertThat(sub.entities).hasSize(1)
-        assertThat(sub.edges).isEmpty()
+    /**
+     * Pool ops (G-G3): entity CRUD requires no membership — an entity with zero
+     * `bom_graph_entity` rows ("orphan") is a normal, fully-writable/readable pool member.
+     */
+    @Test
+    fun shouldAllowOrphanEntity_withNoGraphMembership() {
+        val orphan = UUID.randomUUID()
+        assertThat(
+            store.write(
+                BoMGraph(
+                    entities = mutableListOf(
+                        BoMEntity(id = orphan, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "Orphan")),
+                    ),
+                ),
+            ).isValid,
+        ).isTrue()
+        assertThat(store.loadAll().entities.map { it.id }).contains(orphan)
+    }
 
-        val allX = store.selectSubgraphMatchAll(mapOf("item" to "X"))
-        assertThat(allX.entities).hasSize(2)
-        assertThat(allX.edges).hasSize(1)
+    /**
+     * G-G16: there is no global graph, so a bare `obj-expr` (no `graph-expr` stage-0, no fixed
+     * graph scope) must not silently scan the whole pool as if it were one graph.
+     */
+    @Test
+    fun shouldFailSelect_whenNoGraphScope() {
+        assertThat(
+            store.write(
+                BoMGraph(
+                    entities = mutableListOf(
+                        BoMEntity(type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "A")),
+                    ),
+                ),
+            ).isValid,
+        ).isTrue()
 
-        val filterOnly = store.selectSubgraph(
-            org.poc.objs.core.match.BoMAnnotationMatcher { it.annotations["src"] == "ui" },
-        )
-        assertThat(filterOnly.entities).hasSize(1)
-        assertThat(filterOnly.entities.single().id).isEqualTo(neu)
-        assertThat(filterOnly.edges).isEmpty()
+        val ex = catchThrowableOfType(BoMValidationException::class.java) {
+            store.select(BoMObjExprMatcher("type == 'Person'"))
+        }
+        assertThat(ex).isNotNull()
+        assertThat(ex.result.issues).anySatisfy { issue ->
+            assertThat(issue.code).isEqualTo("MATCHER_GRAPH_SCOPE_REQUIRED")
+        }
     }
 
     @Test
@@ -162,7 +202,7 @@ class BoMGraphStoreTest {
                 BoMEntity(id = b, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "B")),
             ),
             edges = mutableListOf(
-                BoMEdge(source = a, target = b, role = "knows"),
+                BoMEdge(graphId = graphId, source = a, target = b, role = "knows"),
             ),
         )
         assertThat(store.write(graph).isValid).isTrue()
@@ -211,7 +251,7 @@ class BoMGraphStoreTest {
                         BoMEntity(id = remove, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "Remove")),
                     ),
                     edges = mutableListOf(
-                        BoMEdge(source = keep, target = remove, role = "knows"),
+                        BoMEdge(graphId = graphId, source = keep, target = remove, role = "knows"),
                     ),
                 ),
             ).isValid,
@@ -224,7 +264,7 @@ class BoMGraphStoreTest {
                     BoMEntity(id = neu, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "New")),
                 ),
                 edges = mutableListOf(
-                    BoMEdge(source = keep, target = neu, role = "knows"),
+                    BoMEdge(graphId = graphId, source = keep, target = neu, role = "knows"),
                 ),
             ),
             delete = BoMGraphDelete(
@@ -259,7 +299,7 @@ class BoMGraphStoreTest {
         val result = store.validateMutation(
             BoMGraphMutation(
                 upsert = BoMGraphUpsert(
-                    edges = mutableListOf(BoMEdge(source = a, target = b, role = "knows")),
+                    edges = mutableListOf(BoMEdge(graphId = graphId, source = a, target = b, role = "knows")),
                 ),
                 delete = BoMGraphDelete(entities = mutableListOf(b)),
             ),
@@ -290,11 +330,46 @@ class BoMGraphStoreTest {
                     entities = mutableListOf(
                         BoMEntity(id = b, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "B2")),
                     ),
-                    edges = mutableListOf(BoMEdge(source = a, target = b, role = "knows")),
+                    edges = mutableListOf(BoMEdge(graphId = graphId, source = a, target = b, role = "knows")),
                 ),
                 delete = BoMGraphDelete(entities = mutableListOf(b)),
             ),
         )
         assertThat(result.isValid).isTrue()
+    }
+
+    @Test
+    fun shouldGetEntity_orNullWhenMissing() {
+        val id = UUID.randomUUID()
+        assertThat(
+            store.write(
+                BoMGraph(
+                    entities = mutableListOf(
+                        BoMEntity(id = id, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "A")),
+                    ),
+                ),
+            ).isValid,
+        ).isTrue()
+
+        assertThat(store.getEntity(id)?.payload?.get("name")).isEqualTo("A")
+        assertThat(store.getEntity(UUID.randomUUID())).isNull()
+    }
+
+    @Test
+    fun shouldListEntities_ungroupedByGraph() {
+        val a = UUID.randomUUID()
+        val b = UUID.randomUUID()
+        assertThat(
+            store.write(
+                BoMGraph(
+                    entities = mutableListOf(
+                        BoMEntity(id = a, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "A")),
+                        BoMEntity(id = b, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "B")),
+                    ),
+                ),
+            ).isValid,
+        ).isTrue()
+
+        assertThat(store.listEntities().map { it.id }).containsExactlyInAnyOrder(a, b)
     }
 }

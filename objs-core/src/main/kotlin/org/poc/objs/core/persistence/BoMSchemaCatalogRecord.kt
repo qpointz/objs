@@ -17,7 +17,7 @@ data class BoMSchemaCatalogId(
 ) : Serializable
 
 @Entity
-@Table(name = "bom_graph_entity_schema")
+@Table(name = "bom_entity_schema")
 @IdClass(BoMSchemaCatalogId::class)
 class BoMSchemaCatalogRecord(
     @Id

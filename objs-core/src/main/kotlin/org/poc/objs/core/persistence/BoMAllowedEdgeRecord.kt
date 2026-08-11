@@ -21,7 +21,7 @@ data class BoMAllowedEdgeRuleId(
 ) : Serializable
 
 @Entity
-@Table(name = "bom_graph_edge_schema")
+@Table(name = "bom_edge_schema")
 @IdClass(BoMAllowedEdgeRuleId::class)
 class BoMAllowedEdgeRuleRecord(
     @Id

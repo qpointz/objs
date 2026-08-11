@@ -24,6 +24,7 @@ data class BoMEntity(
  */
 data class BoMEdge(
     var id: UUID? = null,
+    var graphId: UUID? = null,
     var source: UUID,
     var target: UUID,
     var role: String,
@@ -79,7 +80,7 @@ data class BoMGraphMutation(
 }
 
 /** Result of annotation-based subgraph selection (induced edges). */
-data class BoMSubgraph(
+data class BoMGraphContents(
     val entities: List<BoMEntity>,
     val edges: List<BoMEdge>,
 )

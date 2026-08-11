@@ -12,12 +12,13 @@ class BoMEntityColumnProjectionTest {
         override val isPostgres: Boolean = true
         override fun allEntitiesSource(): BoMCandidateSource = all
         override fun annotationContainmentAnySource(disjuncts: List<Map<String, String>>): BoMCandidateSource? =
-            if (disjuncts.isEmpty()) null else sql
+            null
+        override fun objExprPushdownSource(plan: BoMObjExprPushdown): BoMCandidateSource? = sql
     }
 
     @Test
     fun shouldOmitJsonColumnsForPureSqlSource() {
-        val matcher = MatchAllAnnotationMatcher(mapOf("env" to "prod"))
+        val matcher = BoMObjExprMatcher("a.env == 'prod'")
         val plan = BoMEntitySelectionPlan.resolve(listOf(matcher), postgres)
         assertThat(plan.localEval).isFalse()
         assertThat(plan.filters).isEmpty()
@@ -27,12 +28,13 @@ class BoMEntityColumnProjectionTest {
     }
 
     @Test
-    fun shouldIncludeAnnotationsForLocalEvalFilters() {
-        val matcher = BoMAnnoExprMatcher("team != null")
+    fun shouldIncludeAnnotationsAndPayloadForLocalEvalObjExprFilters() {
+        // obj-expr may read both a.* and p.* namespaces, so local eval always needs both columns.
+        val matcher = BoMObjExprMatcher("a.team != null")
         val plan = BoMEntitySelectionPlan.resolve(listOf(matcher), postgres)
         assertThat(plan.localEval).isTrue()
         val projection = BoMEntityColumnProjection.forPlan(plan)
-        assertThat(projection.includePayload).isFalse()
+        assertThat(projection.includePayload).isTrue()
         assertThat(projection.includeAnnotations).isTrue()
     }
 }

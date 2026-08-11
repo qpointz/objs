@@ -8,17 +8,18 @@ class BoMEntitySelectionPlanTest {
     private val allEntities = BoMCandidateSource { emptyList() }
     private val sqlSource = BoMCandidateSource { emptyList() }
 
-    private fun postgresBackend(containment: BoMCandidateSource? = sqlSource) =
+    private fun postgresBackend(pushdown: BoMCandidateSource? = sqlSource) =
         object : BoMEntityCandidateBackend {
             override val isPostgres: Boolean = true
             override fun allEntitiesSource(): BoMCandidateSource = allEntities
             override fun annotationContainmentAnySource(disjuncts: List<Map<String, String>>): BoMCandidateSource? =
-                if (disjuncts.isEmpty()) null else containment
+                null
+            override fun objExprPushdownSource(plan: BoMObjExprPushdown): BoMCandidateSource? = pushdown
         }
 
     @Test
-    fun shouldUseSqlSourceWhenAnnoExprIsLowerable() {
-        val matcher = BoMAnnoExprMatcher("app == 'payments' && env == 'prod'")
+    fun shouldUseSqlSourceWhenObjExprIsLowerable() {
+        val matcher = BoMObjExprMatcher("a.app == 'payments' && a.env == 'prod'")
         assertThat(matcher.localEvalOnly).isFalse()
         val plan = BoMEntitySelectionPlan.resolve(listOf(matcher), postgresBackend())
         assertThat(plan.localEval).isFalse()
@@ -27,10 +28,10 @@ class BoMEntitySelectionPlanTest {
     }
 
     @Test
-    fun shouldSwitchToLocalEvalWhenAnnoExprCannotConvertToSql() {
-        val matcher = BoMAnnoExprMatcher("team != null || app == 'x'")
+    fun shouldSwitchToLocalEvalWhenObjExprCannotConvertToSql() {
+        val matcher = BoMObjExprMatcher("a.team != null || a.app == 'x'")
         assertThat(matcher.localEvalOnly).isTrue()
-        assertThat(matcher.sqlContainmentDisjuncts).isNull()
+        assertThat(matcher.pushdown).isNull()
         assertThat(matcher.toCandidateSource(postgresBackend())).isNull()
 
         val plan = BoMEntitySelectionPlan.resolve(listOf(matcher), postgresBackend())
@@ -40,8 +41,8 @@ class BoMEntitySelectionPlanTest {
     }
 
     @Test
-    fun shouldSwitchToLocalEvalWhenBackendRejectsContainment() {
-        val matcher = BoMAnnoExprMatcher("app == 'payments'")
+    fun shouldSwitchToLocalEvalWhenBackendRejectsPushdown() {
+        val matcher = BoMObjExprMatcher("a.app == 'payments'")
         assertThat(matcher.localEvalOnly).isFalse()
         val h2 = object : BoMEntityCandidateBackend {
             override val isPostgres: Boolean = false
@@ -57,7 +58,7 @@ class BoMEntitySelectionPlanTest {
     }
 
     @Test
-    fun shouldAttachEdgeStrategyWhenContainmentSourceProvidesOne() {
+    fun shouldAttachEdgeStrategyWhenPushdownSourceProvidesOne() {
         val edgeStrategy = BoMEdgeCandidateStrategy { _, _ -> emptyList() }
         val withEdges = object : BoMCandidateSourceWithEdges {
             override fun collect(checkBudget: () -> Unit) = emptyList<BoMEntityMatchCandidate>()
@@ -67,10 +68,11 @@ class BoMEntitySelectionPlanTest {
             override val isPostgres: Boolean = true
             override fun allEntitiesSource(): BoMCandidateSource = allEntities
             override fun annotationContainmentAnySource(disjuncts: List<Map<String, String>>): BoMCandidateSource? =
-                withEdges
+                null
+            override fun objExprPushdownSource(plan: BoMObjExprPushdown): BoMCandidateSource? = withEdges
         }
         val plan = BoMEntitySelectionPlan.resolve(
-            listOf(MatchAllAnnotationMatcher(mapOf("app" to "x"))),
+            listOf(BoMObjExprMatcher("a.app == 'x'")),
             backend,
         )
         assertThat(plan.localEval).isFalse()
@@ -79,16 +81,16 @@ class BoMEntitySelectionPlanTest {
 
     @Test
     fun shouldOmitEdgeStrategyForLocalEvalAllEntities() {
-        val matcher = BoMAnnoExprMatcher("team != null")
+        val matcher = BoMObjExprMatcher("a.team != null")
         val plan = BoMEntitySelectionPlan.resolve(listOf(matcher), postgresBackend())
         assertThat(plan.localEval).isTrue()
         assertThat(plan.edgeStrategy).isNull()
     }
 
     @Test
-    fun shouldUseSqlSourceForOrAnnoExpr() {
-        val matcher = BoMAnnoExprMatcher(
-            "(app == 'app-00021' || app == 'app-00022') && appVersion == '1.0.0'",
+    fun shouldUseSqlSourceForMultiFieldEquality() {
+        val matcher = BoMObjExprMatcher(
+            "type == 'Product' && a.app == 'payments' && p.sku == 'x'",
         )
         val plan = BoMEntitySelectionPlan.resolve(listOf(matcher), postgresBackend())
         assertThat(plan.localEval).isFalse()

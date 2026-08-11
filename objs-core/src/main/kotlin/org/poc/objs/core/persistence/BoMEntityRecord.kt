@@ -12,7 +12,7 @@ import java.util.UUID
  * JPA row for [org.poc.objs.core.domain.BoMEntity] — generic columns + JSON payload/annotations.
  */
 @Entity
-@Table(name = "bom_graph_entity")
+@Table(name = "bom_entity")
 class BoMEntityRecord(
     @Id
     @Column(name = "id", nullable = false)
@@ -42,6 +42,9 @@ class BoMEdgeRecord(
     @Id
     @Column(name = "id", nullable = false)
     var id: UUID = UUID.randomUUID(),
+
+    @Column(name = "graph_id", nullable = false)
+    var graphId: UUID = UUID.randomUUID(),
 
     @Column(name = "source_id", nullable = false)
     var sourceId: UUID = UUID.randomUUID(),

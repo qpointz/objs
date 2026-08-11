@@ -8,41 +8,35 @@ import java.util.UUID
 class BoMMatcherHierarchyTest {
 
     @Test
-    fun shouldExposeSourceCapableMatchAllForPostgres() {
-        val matcher = MatchAllAnnotationMatcher(mapOf("app" to "payments", "appVersion" to "1.0.0"))
+    fun shouldExposeSourceCapablePushdownForPostgres() {
+        val matcher = BoMObjExprMatcher("a.app == 'payments' && a.appVersion == '1.0.0'")
         assertThat(matcher).isInstanceOf(BoMSourceCapableMatcher::class.java)
-        assertThat(matcher.expression).isEqualTo(
-            BoMMatchExpression.And(
-                listOf(
-                    BoMMatchExpression.AnnotationEquals("app", "payments"),
-                    BoMMatchExpression.AnnotationEquals("appVersion", "1.0.0"),
-                ),
-            ),
-        )
+        assertThat(matcher.localEvalOnly).isFalse()
         val backend = object : BoMEntityCandidateBackend {
             override val isPostgres: Boolean = true
             override fun allEntitiesSource(): BoMCandidateSource = BoMCandidateSource { emptyList() }
-            override fun annotationContainmentAnySource(disjuncts: List<Map<String, String>>): BoMCandidateSource? {
-                assertThat(disjuncts).hasSize(1)
-                assertThat(disjuncts.single())
+            override fun annotationContainmentAnySource(disjuncts: List<Map<String, String>>): BoMCandidateSource? =
+                null
+            override fun objExprPushdownSource(plan: BoMObjExprPushdown): BoMCandidateSource? {
+                assertThat(plan.annotationEquals)
                     .containsEntry("app", "payments")
                     .containsEntry("appVersion", "1.0.0")
                 return BoMCandidateSource { emptyList() }
             }
         }
         assertThat(matcher.toCandidateSource(backend)).isNotNull()
-        val h2 = object : BoMEntityCandidateBackend {
+        val noPushdown = object : BoMEntityCandidateBackend {
             override val isPostgres: Boolean = false
             override fun allEntitiesSource(): BoMCandidateSource = BoMCandidateSource { emptyList() }
             override fun annotationContainmentAnySource(disjuncts: List<Map<String, String>>): BoMCandidateSource? =
                 null
         }
-        assertThat(matcher.toCandidateSource(h2)).isNull()
+        assertThat(matcher.toCandidateSource(noPushdown)).isNull()
     }
 
     @Test
-    fun shouldMatchCandidatesAndDomainEntitiesIdentically() {
-        val matcher = MatchAllAnnotationMatcher(mapOf("env" to "test"))
+    fun shouldMatchDomainCandidatesConsistently() {
+        val matcher = BoMObjExprMatcher("a.env == 'test'")
         val entity = BoMEntity(
             id = UUID.randomUUID(),
             type = "Person",
@@ -50,35 +44,34 @@ class BoMMatcherHierarchyTest {
             annotations = mutableMapOf("env" to "test", "team" to "core"),
         )
         val candidate = BoMEntityDomainCandidate(entity)
-        assertThat(matcher.matches(entity)).isTrue()
         assertThat(matcher.matches(candidate)).isTrue()
-        assertThat(matcher.expression.matches(candidate)).isTrue()
+        assertThat(matcher.matches(BoMEntityDomainCandidate(entity))).isTrue()
     }
 
     @Test
-    fun shouldAdaptLegacyAnnotationMatchersAsFilterOnly() {
-        val legacy = BoMAnnotationMatcher { it.annotations["env"] == "prod" }
-        val adapted = legacy.asBoMMatcher()
-        assertThat(adapted).isInstanceOf(BoMAnnotationMatcherAdapter::class.java)
-        assertThat(adapted).isNotInstanceOf(BoMSourceCapableMatcher::class.java)
+    fun shouldTreatGraphExprAsHeaderOnlyMatcher() {
+        val matcher = BoMGraphExprMatcher("a.decisionId == 'D-1'")
+        assertThat(matcher).isNotInstanceOf(BoMSourceCapableMatcher::class.java)
+        val candidate = BoMEntityDomainCandidate(
+            BoMEntity(type = "Person", schemaVersion = "1", annotations = mutableMapOf()),
+        )
+        assertThat(matcher.matches(candidate)).isTrue()
+        assertThat(matcher.matchesHeader(UUID.randomUUID(), mapOf("decisionId" to "D-1"))).isTrue()
+        assertThat(matcher.matchesHeader(UUID.randomUUID(), mapOf("decisionId" to "other"))).isFalse()
+    }
 
-        val prod = BoMEntity(
-            type = "Person",
-            schemaVersion = "1",
-            annotations = mutableMapOf("env" to "prod"),
+    @Test
+    fun shouldTreatAllGraphsMatcherAsHeaderOnlyMatcher() {
+        assertThat(BoMAllGraphsMatcher).isNotInstanceOf(BoMSourceCapableMatcher::class.java)
+        val candidate = BoMEntityDomainCandidate(
+            BoMEntity(type = "Person", schemaVersion = "1", annotations = mutableMapOf()),
         )
-        val test = BoMEntity(
-            type = "Person",
-            schemaVersion = "1",
-            annotations = mutableMapOf("env" to "test"),
-        )
-        assertThat(adapted.matches(BoMEntityDomainCandidate(prod))).isTrue()
-        assertThat(adapted.matches(BoMEntityDomainCandidate(test))).isFalse()
+        assertThat(BoMAllGraphsMatcher.matches(candidate)).isTrue()
     }
 
     @Test
     fun shouldKeepInducedEdgeDefault() {
-        val matcher = MatchAllAnnotationMatcher(mapOf("env" to "test"))
+        val matcher = BoMObjExprMatcher("a.env == 'test'")
         val a = UUID.randomUUID()
         val b = UUID.randomUUID()
         val c = UUID.randomUUID()

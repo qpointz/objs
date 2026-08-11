@@ -3,25 +3,40 @@ package org.poc.objs.core.seed
 import org.poc.objs.core.domain.BoMEdge
 import org.poc.objs.core.domain.BoMEntity
 import org.poc.objs.core.domain.BoMGraph
-import org.poc.objs.core.persistence.BoMGraphStore
+import org.poc.objs.core.domain.BoMGraphMutation
+import org.poc.objs.core.domain.BoMGraphUpsert
+import org.poc.objs.core.domain.BoMGraphSpec
+import org.poc.objs.core.persistence.BoMNamedGraphStore
 import org.springframework.stereotype.Component
 import java.util.UUID
 
 data class SeedGraphPayload(
     val name: String,
+    val graphId: UUID,
+    val annotations: Map<String, String>,
     val graph: BoMGraph,
     val entityKeys: Map<String, UUID>,
     val edgeKeys: Map<String, UUID>,
 )
 
+/**
+ * Seed handler for `kind: Graph`.
+ *
+ * Each Graph document becomes one `bom_graph` (header + membership + graph-local edges). Optional
+ * document fields: `id` (graph UUID), `annotations` (header annotations). When `id` is omitted,
+ * a stable UUIDv3 is derived from `graph-seed:<name>`.
+ */
 @Component
 class GraphSeedHandler(
-    private val graphStore: BoMGraphStore,
+    private val namedGraphs: BoMNamedGraphStore,
 ) : SeedDocumentHandler {
     override val kind: String = SEED_KIND_GRAPH
 
     override fun parse(document: SeedRawDocument): ParsedSeedDocument {
         val name = requireText(document.raw, "name", document.index)
+        val annotations = stringStringMap(document.raw["annotations"], document.index, "annotations")
+        val graphId = parseOptionalUuid(document.raw["id"], document.index, "id")
+            ?: UUID.nameUUIDFromBytes("graph-seed:$name".toByteArray())
         val entitiesRaw = document.raw["entities"] as? List<*>
             ?: throw SeedDocumentParseException(document.index, "Graph requires entities list")
         val edgesRaw = document.raw["edges"] as? List<*> ?: emptyList<Any?>()
@@ -72,6 +87,7 @@ class GraphSeedHandler(
             val properties = map["properties"]?.let { stringKeyedMap(it).toMutableMap() }
             edges += BoMEdge(
                 id = id,
+                graphId = graphId,
                 source = sourceId,
                 target = targetId,
                 role = requireText(map, "role", document.index, "edges[$i].role"),
@@ -86,6 +102,8 @@ class GraphSeedHandler(
             identity = name,
             payload = SeedGraphPayload(
                 name = name,
+                graphId = graphId,
+                annotations = annotations,
                 graph = BoMGraph(entities = entities, edges = edges),
                 entityKeys = entityKeys,
                 edgeKeys = edgeKeys,
@@ -95,7 +113,23 @@ class GraphSeedHandler(
 
     override fun apply(parsed: ParsedSeedDocument): SeedDocumentResult {
         val payload = parsed.payload as SeedGraphPayload
-        val result = graphStore.write(payload.graph)
+        if (namedGraphs.get(payload.graphId) == null) {
+            namedGraphs.create(
+                BoMGraphSpec(
+                    id = payload.graphId,
+                    annotations = payload.annotations,
+                ),
+            )
+        }
+        val result = namedGraphs.mutate(
+            payload.graphId,
+            BoMGraphMutation(
+                upsert = BoMGraphUpsert(
+                    entities = payload.graph.entities,
+                    edges = payload.graph.edges,
+                ),
+            ),
+        )
         if (!result.isValid) {
             throw SeedDocumentValidationException(
                 parsed.document.index,
@@ -118,6 +152,8 @@ class GraphSeedHandler(
         edges: List<BoMEdge>,
         entityKeys: Map<UUID, String>,
         edgeKeys: Map<UUID, String>,
+        graphId: UUID? = null,
+        annotations: Map<String, String> = emptyMap(),
     ): Map<String, Any?> {
         val entityDocs = entities.map { entity ->
             val key = entityKeys[entity.id]
@@ -152,13 +188,20 @@ class GraphSeedHandler(
             }
             doc
         }
-        return linkedMapOf(
+        val doc = linkedMapOf<String, Any?>(
             "apiVersion" to SEED_API_VERSION_V1,
             "kind" to kind,
             "name" to name,
-            "entities" to entityDocs,
-            "edges" to edgeDocs,
         )
+        if (graphId != null) {
+            doc["id"] = graphId.toString()
+        }
+        if (annotations.isNotEmpty()) {
+            doc["annotations"] = annotations.toSortedMap()
+        }
+        doc["entities"] = entityDocs
+        doc["edges"] = edgeDocs
+        return doc
     }
 
     private fun parseOptionalUuid(raw: Any?, index: Int, path: String): UUID? {

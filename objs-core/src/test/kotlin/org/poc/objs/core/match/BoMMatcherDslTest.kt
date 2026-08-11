@@ -2,45 +2,67 @@ package org.poc.objs.core.match
 
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.assertj.core.api.Assertions.catchThrowableOfType
 import org.junit.jupiter.api.Test
 import org.poc.objs.core.domain.BoMEntity
 import org.poc.objs.core.validation.BoMValidationException
 import java.util.UUID
 
+/**
+ * C-13 DSL: `all` / `graph-expr` / `obj-expr` / chained array.
+ * See [shouldRejectRetiredKeysWithMigrateMessage] for the retired `anno` / `anno-expr` / `ids` /
+ * `subgraph` / `subg-expr` keys (G-G17).
+ */
 class BoMMatcherDslTest {
     private val dsl = BoMMatcherDsl.create()
 
     @Test
-    fun shouldDecodeAnnoObjectFromJsonAndYaml() {
-        val json = """{"anno":{"app":"payments","env":"prod"}}"""
+    fun shouldDecodeAllMatcher() {
+        val fromJson = dsl.decode("""{"all":true}""", BoMMatcherFormat.JSON)
+        val fromYaml = dsl.decode("all: true", BoMMatcherFormat.YAML)
+        assertThat(fromJson).isSameAs(BoMAllGraphsMatcher)
+        assertThat(fromYaml).isSameAs(BoMAllGraphsMatcher)
+        assertThat(dsl.encode(BoMAllGraphsMatcher, BoMMatcherFormat.JSON)).contains("\"all\"").contains("true")
+    }
+
+    @Test
+    fun shouldRejectAllWhenNotBooleanTrue() {
+        assertThatThrownBy { dsl.decode("""{"all":false}""", BoMMatcherFormat.JSON) }
+            .isInstanceOf(BoMValidationException::class.java)
+        assertThatThrownBy { dsl.decode("""{"all":"yes"}""", BoMMatcherFormat.JSON) }
+            .isInstanceOf(BoMValidationException::class.java)
+    }
+
+    @Test
+    fun shouldDecodeGraphExprFromJsonAndYaml() {
+        val json = """{"graph-expr":"a.env == 'prod'"}"""
         val yaml = """
-            anno:
-              app: payments
-              env: prod
+            graph-expr: "a.env == 'prod'"
         """.trimIndent()
 
         val fromJson = dsl.decode(json, BoMMatcherFormat.JSON)
         val fromYaml = dsl.decode(yaml, BoMMatcherFormat.YAML)
 
-        assertThat(fromJson).isInstanceOf(MatchAllAnnotationMatcher::class.java)
-        assertThat(fromYaml).isInstanceOf(MatchAllAnnotationMatcher::class.java)
-        assertThat((fromJson as MatchAllAnnotationMatcher).filter)
-            .isEqualTo(mapOf("app" to "payments", "env" to "prod"))
-        assertThat((fromYaml as MatchAllAnnotationMatcher).filter)
-            .isEqualTo(mapOf("app" to "payments", "env" to "prod"))
-
-        val entity = candidate("app" to "payments", "env" to "prod", "team" to "core")
-        assertThat(fromJson.matches(entity)).isTrue()
-        assertThat(fromYaml.matches(entity)).isTrue()
+        assertThat(fromJson).isInstanceOf(BoMGraphExprMatcher::class.java)
+        assertThat(fromYaml).isInstanceOf(BoMGraphExprMatcher::class.java)
+        assertThat((fromJson as BoMGraphExprMatcher).matchesHeader(UUID.randomUUID(), mapOf("env" to "prod"))).isTrue()
+        assertThat((fromYaml as BoMGraphExprMatcher).matchesHeader(UUID.randomUUID(), mapOf("env" to "test"))).isFalse()
     }
 
     @Test
-    fun shouldDecodeChainedMatchersInOrder() {
+    fun shouldDecodeObjExpr() {
+        val obj = dsl.decode("""{"obj-expr":"type == 'Product' && a.env == 'prod'"}""", BoMMatcherFormat.JSON)
+        assertThat(obj).isInstanceOf(BoMObjExprMatcher::class.java)
+        assertThat((obj as BoMObjExprMatcher).expression).contains("Product")
+    }
+
+    @Test
+    fun shouldDecodeChainedGraphExprThenObjExprInOrder() {
         val matcher = dsl.decode(
             """
             [
-              {"anno":{"env":"prod"}},
-              {"anno-expr":"app == 'payments'"}
+              {"graph-expr":"a.env == 'prod'"},
+              {"obj-expr":"a.app == 'payments'"}
             ]
             """.trimIndent(),
             BoMMatcherFormat.JSON,
@@ -49,12 +71,12 @@ class BoMMatcherDslTest {
         assertThat(matcher).isInstanceOf(BoMChainedMatcher::class.java)
         val chained = matcher as BoMChainedMatcher
         assertThat(chained.matchers).hasSize(2)
-        assertThat(chained.matchers[0]).isInstanceOf(MatchAllAnnotationMatcher::class.java)
-        assertThat(chained.matchers[1]).isInstanceOf(BoMAnnoExprMatcher::class.java)
+        assertThat(chained.matchers[0]).isInstanceOf(BoMGraphExprMatcher::class.java)
+        assertThat(chained.matchers[1]).isInstanceOf(BoMObjExprMatcher::class.java)
 
-        assertThat(matcher.matches(candidate("env" to "prod", "app" to "payments"))).isTrue()
-        assertThat(matcher.matches(candidate("env" to "prod", "app" to "other"))).isFalse()
-        assertThat(matcher.matches(candidate("env" to "test", "app" to "payments"))).isFalse()
+        // BoMGraphExprMatcher.matches() is always true (header-only); obj-expr does the filtering.
+        assertThat(matcher.matches(candidate("app" to "payments"))).isTrue()
+        assertThat(matcher.matches(candidate("app" to "other"))).isFalse()
     }
 
     @Test
@@ -63,11 +85,12 @@ class BoMMatcherDslTest {
             .isInstanceOf(BoMValidationException::class.java)
         assertThatThrownBy { dsl.decode("{}", BoMMatcherFormat.JSON) }
             .isInstanceOf(BoMValidationException::class.java)
-        assertThatThrownBy { dsl.decode("""{"anno":{},"anno-expr":"x==1"}""", BoMMatcherFormat.JSON) }
-            .isInstanceOf(BoMValidationException::class.java)
+        assertThatThrownBy {
+            dsl.decode("""{"obj-expr":"type == 'A'","graph-expr":"id == '1'"}""", BoMMatcherFormat.JSON)
+        }.isInstanceOf(BoMValidationException::class.java)
         assertThatThrownBy { dsl.decode("""{"unknown":{}}""", BoMMatcherFormat.JSON) }
             .isInstanceOf(BoMValidationException::class.java)
-        assertThatThrownBy { dsl.decode("""{"anno":{}}""", BoMMatcherFormat.JSON) }
+        assertThatThrownBy { dsl.decode("""{"obj-expr":""}""", BoMMatcherFormat.JSON) }
             .isInstanceOf(BoMValidationException::class.java)
     }
 
@@ -75,47 +98,46 @@ class BoMMatcherDslTest {
     fun shouldRoundTripEncodeDecode() {
         val original = dsl.decode(
             """
-            - anno:
-                env: prod
-            - anno-expr: "team != null"
+            - graph-expr: "a.env == 'prod'"
+            - obj-expr: "a.team == 'core'"
             """.trimIndent(),
             BoMMatcherFormat.YAML,
         )
         val encoded = dsl.encode(original, BoMMatcherFormat.JSON)
         val roundTrip = dsl.decode(encoded, BoMMatcherFormat.JSON)
         assertThat(roundTrip).isInstanceOf(BoMChainedMatcher::class.java)
-        assertThat(roundTrip.matches(candidate("env" to "prod", "team" to "core"))).isTrue()
+        assertThat(roundTrip.matches(candidate("team" to "core"))).isTrue()
+        assertThat(roundTrip.matches(candidate("team" to "other"))).isFalse()
     }
 
     @Test
-    fun shouldDecodeObjExprAndIds() {
-        val obj = dsl.decode("""{"obj-expr":"type == 'Product' && a.env == 'prod'"}""", BoMMatcherFormat.JSON)
-        assertThat(obj).isInstanceOf(BoMObjExprMatcher::class.java)
-        assertThat((obj as BoMObjExprMatcher).expression).contains("Product")
-
-        val id = "11111111-1111-4111-8111-111111111111"
-        val ids = dsl.decode("""{"ids":["$id"]}""", BoMMatcherFormat.JSON)
-        assertThat(ids).isInstanceOf(BoMIdsMatcher::class.java)
-        assertThat((ids as BoMIdsMatcher).ids).containsExactly(UUID.fromString(id))
-
-        assertThatThrownBy {
-            dsl.decode("""{"ids":["not-a-uuid"]}""", BoMMatcherFormat.JSON)
-        }.isInstanceOf(BoMValidationException::class.java)
-    }
-
-    @Test
-    fun shouldChainObjExprWithAnno() {
-        val matcher = dsl.decode(
-            """
-            [
-              {"anno":{"env":"prod"}},
-              {"obj-expr":"type == 'Thing'"}
-            ]
-            """.trimIndent(),
-            BoMMatcherFormat.JSON,
+    fun shouldRejectRetiredKeysWithMigrateMessage() {
+        val cases = listOf(
+            """{"anno":{"env":"prod"}}""",
+            """{"anno-expr":"env == 'prod'"}""",
+            """{"ids":["11111111-1111-4111-8111-111111111111"]}""",
+            """{"subgraph":{"id":"11111111-1111-4111-8111-111111111111"}}""",
+            """{"subg-expr":"id == '1'"}""",
         )
-        assertThat(matcher.matches(candidate("env" to "prod"))).isTrue()
-        assertThat(matcher.matches(candidate("env" to "test"))).isFalse()
+        cases.forEach { body ->
+            val ex = catchThrowableOfType(BoMValidationException::class.java) {
+                dsl.decode(body, BoMMatcherFormat.JSON)
+            }
+            assertThat(ex).isNotNull()
+            assertThat(ex.result.issues).anySatisfy { issue ->
+                assertThat(issue.code).isEqualTo("MATCHER_DSL_RETIRED_KEY")
+                assertThat(issue.message).containsIgnoringCase("retired")
+            }
+        }
+    }
+
+    @Test
+    fun shouldFailToEncodeUnsupportedMatcherTypes() {
+        val unsupported = object : BoMMatcher {
+            override fun matches(candidate: BoMEntityMatchCandidate): Boolean = true
+        }
+        assertThatThrownBy { dsl.encode(unsupported) }
+            .isInstanceOf(BoMValidationException::class.java)
     }
 
     private fun candidate(vararg annotations: Pair<String, String>): BoMEntityMatchCandidate =

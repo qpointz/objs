@@ -13,7 +13,7 @@ import org.springframework.test.context.TestPropertySource
 @ImportAutoConfiguration(ObjsCoreAutoConfiguration::class)
 @TestPropertySource(
     properties = [
-        "spring.datasource.url=jdbc:h2:mem:objs-subgraph;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",
+        "spring.datasource.url=jdbc:h2:mem:objs-graph-persistence;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",
         "spring.datasource.username=sa",
         "spring.datasource.password=",
         "spring.datasource.driver-class-name=org.h2.Driver",
@@ -22,7 +22,7 @@ import org.springframework.test.context.TestPropertySource
         "spring.flyway.locations=classpath:db/migration",
     ],
 )
-class BoMSubgraphPersistenceTest {
+class BoMGraphPersistenceTest {
 
     @SpringBootConfiguration
     class TestApp
@@ -34,13 +34,10 @@ class BoMSubgraphPersistenceTest {
     lateinit var edges: BoMEdgeRepository
 
     @Autowired
-    lateinit var subgraphs: BoMSubgraphRepository
+    lateinit var graphs: BoMGraphRepository
 
     @Autowired
-    lateinit var subgraphEntities: BoMSubgraphEntityRepository
-
-    @Autowired
-    lateinit var subgraphEdges: BoMSubgraphEdgeRepository
+    lateinit var memberships: BoMGraphMembershipRepository
 
     @Test
     fun shouldCascadeEntityMembership_whenEntityDeleted() {
@@ -66,23 +63,23 @@ class BoMSubgraphPersistenceTest {
         )
 
         val sgId = UUID.randomUUID()
-        subgraphs.save(BoMSubgraphRecord(id = sgId, annotations = mutableMapOf("pack" to "demo")))
-        subgraphEntities.saveAll(
+        graphs.save(BoMGraphRecord(id = sgId, annotations = mutableMapOf("pack" to "demo")))
+        memberships.saveAll(
             listOf(
-                BoMSubgraphEntityRecord(subgraphId = sgId, entityId = e1),
-                BoMSubgraphEntityRecord(subgraphId = sgId, entityId = e2),
+                BoMGraphMembershipRecord(graphId = sgId, entityId = e1),
+                BoMGraphMembershipRecord(graphId = sgId, entityId = e2),
             ),
         )
 
         entities.deleteById(e1)
         entities.flush()
 
-        assertThat(subgraphEntities.findBySubgraphId(sgId).map { it.entityId }).containsExactly(e2)
-        assertThat(subgraphs.findById(sgId)).isPresent
+        assertThat(memberships.findByGraphId(sgId).map { it.entityId }).containsExactly(e2)
+        assertThat(graphs.findById(sgId)).isPresent
     }
 
     @Test
-    fun shouldCascadeEdgeMembership_whenEdgeDeleted() {
+    fun shouldCascadeEdgeDelete_whenGraphDeleted() {
         val e1 = UUID.randomUUID()
         val e2 = UUID.randomUUID()
         entities.saveAll(
@@ -91,29 +88,50 @@ class BoMSubgraphPersistenceTest {
                 BoMEntityRecord(id = e2, type = "Person", schemaVersion = "1", payload = mutableMapOf(), annotations = mutableMapOf()),
             ),
         )
-        val edgeId = UUID.randomUUID()
-        edges.save(BoMEdgeRecord(id = edgeId, sourceId = e1, targetId = e2, role = "knows"))
-
         val sgId = UUID.randomUUID()
-        subgraphs.save(BoMSubgraphRecord(id = sgId, annotations = mutableMapOf()))
-        subgraphEntities.saveAll(
+        graphs.save(BoMGraphRecord(id = sgId, annotations = mutableMapOf()))
+        memberships.saveAll(
             listOf(
-                BoMSubgraphEntityRecord(subgraphId = sgId, entityId = e1),
-                BoMSubgraphEntityRecord(subgraphId = sgId, entityId = e2),
+                BoMGraphMembershipRecord(graphId = sgId, entityId = e1),
+                BoMGraphMembershipRecord(graphId = sgId, entityId = e2),
             ),
         )
-        subgraphEdges.save(BoMSubgraphEdgeRecord(subgraphId = sgId, edgeId = edgeId))
+        val edgeId = UUID.randomUUID()
+        edges.save(BoMEdgeRecord(id = edgeId, graphId = sgId, sourceId = e1, targetId = e2, role = "knows"))
+        edges.flush()
+
+        graphs.deleteById(sgId)
+        graphs.flush()
+
+        assertThat(edges.existsById(edgeId)).isFalse()
+        assertThat(entities.existsById(e1)).isTrue()
+        assertThat(entities.existsById(e2)).isTrue()
+    }
+
+    @Test
+    fun shouldCascadeEdgeDelete_whenEndpointEntityDeleted() {
+        val e1 = UUID.randomUUID()
+        val e2 = UUID.randomUUID()
+        entities.saveAll(
+            listOf(
+                BoMEntityRecord(id = e1, type = "Person", schemaVersion = "1", payload = mutableMapOf(), annotations = mutableMapOf()),
+                BoMEntityRecord(id = e2, type = "Person", schemaVersion = "1", payload = mutableMapOf(), annotations = mutableMapOf()),
+            ),
+        )
+        val sgId = UUID.randomUUID()
+        graphs.save(BoMGraphRecord(id = sgId, annotations = mutableMapOf()))
+        val edgeId = UUID.randomUUID()
+        edges.save(BoMEdgeRecord(id = edgeId, graphId = sgId, sourceId = e1, targetId = e2, role = "knows"))
 
         edges.deleteById(edgeId)
         edges.flush()
 
-        assertThat(subgraphEdges.findBySubgraphId(sgId)).isEmpty()
-        assertThat(subgraphEntities.countBySubgraphId(sgId)).isEqualTo(2)
+        assertThat(edges.findByGraphId(sgId)).isEmpty()
         assertThat(entities.existsById(e1)).isTrue()
     }
 
     @Test
-    fun shouldCascadeMembership_whenSubgraphDeleted_withoutDeletingGraphObjects() {
+    fun shouldCascadeMembership_whenGraphDeleted_withoutDeletingGraphObjects() {
         val e1 = UUID.randomUUID()
         entities.save(
             BoMEntityRecord(
@@ -125,14 +143,14 @@ class BoMSubgraphPersistenceTest {
             ),
         )
         val sgId = UUID.randomUUID()
-        subgraphs.save(BoMSubgraphRecord(id = sgId, annotations = mutableMapOf("x" to "y")))
-        subgraphEntities.save(BoMSubgraphEntityRecord(subgraphId = sgId, entityId = e1))
+        graphs.save(BoMGraphRecord(id = sgId, annotations = mutableMapOf("x" to "y")))
+        memberships.save(BoMGraphMembershipRecord(graphId = sgId, entityId = e1))
 
-        subgraphs.deleteById(sgId)
-        subgraphs.flush()
+        graphs.deleteById(sgId)
+        graphs.flush()
 
-        assertThat(subgraphs.findById(sgId)).isEmpty
-        assertThat(subgraphEntities.findBySubgraphId(sgId)).isEmpty()
+        assertThat(graphs.findById(sgId)).isEmpty
+        assertThat(memberships.findByGraphId(sgId)).isEmpty()
         assertThat(entities.findById(e1)).isPresent
     }
 }

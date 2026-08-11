@@ -77,13 +77,3 @@ interface BoMEntityCandidateBackend {
 interface BoMSourceCapableMatcher : BoMMatcher {
     fun toCandidateSource(backend: BoMEntityCandidateBackend): BoMCandidateSource?
 }
-
-/** In-memory "all entities" source for [org.poc.objs.core.subgraph.BoMSubgraphSelector]. */
-class BoMInMemoryAllEntitiesSource(
-    private val candidates: List<BoMEntityMatchCandidate>,
-) : BoMCandidateSource {
-    override fun collect(checkBudget: () -> Unit): List<BoMEntityMatchCandidate> {
-        checkBudget()
-        return candidates
-    }
-}

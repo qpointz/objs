@@ -67,6 +67,12 @@ class BoMGraphStorePostgresIT {
     @Autowired
     lateinit var allowed: BoMAllowedEdgeCatalog
 
+    @Autowired
+    lateinit var graphRepository: BoMGraphRepository
+
+    /** Edges require an owning graph (`graph_id` NOT NULL); every edge in this file shares [graphId]. */
+    private lateinit var graphId: UUID
+
     @BeforeEach
     fun catalogs() {
         schemas.clear()
@@ -83,6 +89,8 @@ class BoMGraphStorePostgresIT {
             ),
         )
         allowed.register(BoMAllowedEdgeRule("Person", "knows", "Person", BoMPropertiesPolicy.NONE))
+        graphId = UUID.randomUUID()
+        graphRepository.save(BoMGraphRecord(id = graphId))
     }
 
     @Test
@@ -103,8 +111,8 @@ class BoMGraphStorePostgresIT {
                     annotations = mutableMapOf("env" to "prod", "team" to "core")),
             ),
             edges = mutableListOf(
-                BoMEdge(source = a, target = b, role = "knows"),
-                BoMEdge(source = a, target = c, role = "knows"),
+                BoMEdge(graphId = graphId, source = a, target = b, role = "knows"),
+                BoMEdge(graphId = graphId, source = a, target = c, role = "knows"),
             ),
         )
         assertThat(store.write(graph).isValid).isTrue()
@@ -117,24 +125,6 @@ class BoMGraphStorePostgresIT {
         assertThat(alice.payload["name"]).isEqualTo("Alice")
         assertThat(alice.annotations["env"]).isEqualTo("test")
         assertThat(alice.annotations["team"]).isEqualTo("core")
-
-        val sub = store.selectSubgraphMatchAll(mapOf("env" to "test", "team" to "core"))
-        assertThat(sub.entities.map { it.id }).containsExactly(a)
-        assertThat(sub.edges).isEmpty()
-
-        val testSubgraph = store.selectSubgraphMatchAll(mapOf("env" to "test"))
-        assertThat(testSubgraph.entities.map { it.id }).containsExactlyInAnyOrder(a, b)
-        assertThat(testSubgraph.edges).hasSize(1)
-
-        val filterOnly = store.selectSubgraph(
-            org.poc.objs.core.match.BoMAnnotationMatcher { entity ->
-                entity.annotations["team"] == "core"
-            },
-        )
-        assertThat(filterOnly.entities.map { it.id }).containsExactlyInAnyOrder(a, c)
-        assertThat(filterOnly.edges).hasSize(1)
-        assertThat(filterOnly.edges.single().source).isEqualTo(a)
-        assertThat(filterOnly.edges.single().target).isEqualTo(c)
     }
 
     @Test
@@ -142,8 +132,8 @@ class BoMGraphStorePostgresIT {
         val count = jdbc.queryForObject(
             """
             SELECT COUNT(*) FROM pg_indexes
-            WHERE tablename = 'bom_graph_entity'
-              AND indexname = 'idx_bom_graph_entity_annotations_gin'
+            WHERE tablename = 'bom_entity'
+              AND indexname = 'idx_bom_entity_annotations_gin'
             """.trimIndent(),
             Int::class.java,
         )
@@ -171,7 +161,7 @@ class BoMGraphStorePostgresIT {
                 BoMEntity(id = a, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "A")),
                 BoMEntity(id = b, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "B")),
             ),
-            edges = mutableListOf(BoMEdge(source = a, target = b, role = "knows")),
+            edges = mutableListOf(BoMEdge(graphId = graphId, source = a, target = b, role = "knows")),
         )
         assertThat(store.write(graph).isValid).isTrue()
         assertThat(store.delete(entityIds = listOf(a)).isValid).isTrue()

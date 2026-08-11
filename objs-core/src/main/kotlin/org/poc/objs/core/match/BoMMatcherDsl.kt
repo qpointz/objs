@@ -21,6 +21,10 @@ enum class BoMMatcherFormat {
  * Root forms:
  * - object: one matcher
  * - array: ordered [BoMChainedMatcher]
+ *
+ * C-13 (graphs-from-objects) set: **`all`**, **`graph-expr`**, **`obj-expr`**, chained array.
+ * Older keys (`anno`, `anno-expr`, `ids`, `subgraph`, `subg-expr`) are retired — see
+ * [defaultHandlers] / [RetiredMatcherKeyHandler] for the clear migrate-error each produces.
  */
 class BoMMatcherDsl(
     handlers: List<BoMMatcherKeyHandler> = defaultHandlers(),
@@ -83,28 +87,14 @@ class BoMMatcherDsl(
             matcher.matchers.forEach { child -> array.add(encodeNode(child)) }
             array
         }
-        is MatchAllAnnotationMatcher -> {
-            jsonMapper.createObjectNode().set("anno", jsonMapper.valueToTree(matcher.filter))
+        is BoMAllGraphsMatcher -> {
+            jsonMapper.createObjectNode().put("all", true)
         }
-        is BoMAnnoExprMatcher -> {
-            jsonMapper.createObjectNode().put("anno-expr", matcher.expression)
+        is BoMGraphExprMatcher -> {
+            jsonMapper.createObjectNode().put("graph-expr", matcher.expression)
         }
         is BoMObjExprMatcher -> {
             jsonMapper.createObjectNode().put("obj-expr", matcher.expression)
-        }
-        is BoMIdsMatcher -> {
-            val array = jsonMapper.createArrayNode()
-            matcher.ids.forEach { array.add(it.toString()) }
-            jsonMapper.createObjectNode().set("ids", array)
-        }
-        is BoMSubgraphIdMatcher -> {
-            jsonMapper.createObjectNode().set(
-                "subgraph",
-                jsonMapper.createObjectNode().put("id", matcher.id.toString()),
-            )
-        }
-        is BoMSubgExprMatcher -> {
-            jsonMapper.createObjectNode().put("subg-expr", matcher.expression)
         }
         else -> fail(
             "MATCHER_DSL_ENCODE_UNSUPPORTED",
@@ -166,91 +156,74 @@ class BoMMatcherDsl(
             .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
             .build()
 
+        /**
+         * C-13 set: `all` + `graph-expr` + `obj-expr`, plus [RetiredMatcherKeyHandler] entries for
+         * the retired `anno` / `anno-expr` / `ids` / `subgraph` / `subg-expr` keys so callers get a
+         * clear migrate error instead of a generic unknown-key failure.
+         */
         fun defaultHandlers(
-            annoExprFactory: (String) -> BoMMatcher = { expression -> BoMAnnoExprMatcher(expression) },
             objExprFactory: (String) -> BoMMatcher = { expression -> BoMObjExprMatcher(expression) },
-            subgExprFactory: (String) -> BoMMatcher = { expression -> BoMSubgExprMatcher(expression) },
+            graphExprFactory: (String) -> BoMMatcher = { expression -> BoMGraphExprMatcher(expression) },
         ): List<BoMMatcherKeyHandler> = listOf(
-            AnnoMatcherHandler,
-            AnnoExprMatcherHandler(annoExprFactory),
+            AllGraphsMatcherHandler,
+            GraphExprMatcherHandler(graphExprFactory),
             ObjExprMatcherHandler(objExprFactory),
-            IdsMatcherHandler,
-            SubgraphIdMatcherHandler,
-            SubgExprMatcherHandler(subgExprFactory),
+            RetiredMatcherKeyHandler(
+                key = "anno",
+                migrateTo = "'obj-expr' (e.g. obj-expr: \"a.k == 'v' && a.k2 == 'v2'\")",
+            ),
+            RetiredMatcherKeyHandler(
+                key = "anno-expr",
+                migrateTo = "'obj-expr' (annotation keys now live under a.*, e.g. obj-expr: \"a.k == 'v'\")",
+            ),
+            RetiredMatcherKeyHandler(
+                key = "ids",
+                migrateTo = "'obj-expr' (e.g. obj-expr: \"id == '...' || id == '...'\")",
+            ),
+            RetiredMatcherKeyHandler(
+                key = "subgraph",
+                migrateTo = "'graph-expr' (e.g. graph-expr: \"id == '<uuid>'\")",
+            ),
+            RetiredMatcherKeyHandler(
+                key = "subg-expr",
+                migrateTo = "'graph-expr' (same id/a header bindings)",
+            ),
         )
 
         fun create(
-            annoExprFactory: (String) -> BoMMatcher = { expression -> BoMAnnoExprMatcher(expression) },
             objExprFactory: (String) -> BoMMatcher = { expression -> BoMObjExprMatcher(expression) },
-            subgExprFactory: (String) -> BoMMatcher = { expression -> BoMSubgExprMatcher(expression) },
-        ): BoMMatcherDsl = BoMMatcherDsl(defaultHandlers(annoExprFactory, objExprFactory, subgExprFactory))
+            graphExprFactory: (String) -> BoMMatcher = { expression -> BoMGraphExprMatcher(expression) },
+        ): BoMMatcherDsl = BoMMatcherDsl(defaultHandlers(objExprFactory, graphExprFactory))
     }
 }
 
-object AnnoMatcherHandler : BoMMatcherKeyHandler {
-    override val key: String = "anno"
+/**
+ * DSL key **`all`**: value must be boolean `true` → [BoMAllGraphsMatcher].
+ */
+object AllGraphsMatcherHandler : BoMMatcherKeyHandler {
+    override val key: String = "all"
 
-    @Suppress("UNCHECKED_CAST")
     override fun decode(value: Any?, path: String): BoMMatcher {
-        if (value !is Map<*, *>) {
+        if (value != true) {
             throw BoMValidationException(
                 "matcher-dsl",
                 BoMValidationResult.of(
                     BoMValidationIssue(
-                        code = "MATCHER_DSL_ANNO_TYPE",
-                        message = "'anno' value must be an object of string key/value pairs",
+                        code = "MATCHER_DSL_ALL_TYPE",
+                        message = "'all' value must be boolean true (e.g. {\"all\": true})",
                         path = path,
                     ),
                 ),
             )
         }
-        if (value.isEmpty()) {
-            throw BoMValidationException(
-                "matcher-dsl",
-                BoMValidationResult.of(
-                    BoMValidationIssue(
-                        code = "MATCHER_DSL_ANNO_EMPTY",
-                        message = "'anno' filter must not be empty",
-                        path = path,
-                    ),
-                ),
-            )
-        }
-        val filter = linkedMapOf<String, String>()
-        value.forEach { (rawKey, rawValue) ->
-            val key = rawKey?.toString()
-                ?: throw BoMValidationException(
-                    "matcher-dsl",
-                    BoMValidationResult.of(
-                        BoMValidationIssue(
-                            code = "MATCHER_DSL_ANNO_KEY",
-                            message = "'anno' keys must be strings",
-                            path = path,
-                        ),
-                    ),
-                )
-            if (rawValue == null) {
-                throw BoMValidationException(
-                    "matcher-dsl",
-                    BoMValidationResult.of(
-                        BoMValidationIssue(
-                            code = "MATCHER_DSL_ANNO_VALUE",
-                            message = "'anno' values must be strings",
-                            path = "$path.$key",
-                        ),
-                    ),
-                )
-            }
-            filter[key] = rawValue.toString()
-        }
-        return MatchAllAnnotationMatcher(filter)
+        return BoMAllGraphsMatcher
     }
 }
 
-class AnnoExprMatcherHandler(
+class GraphExprMatcherHandler(
     private val factory: (String) -> BoMMatcher,
 ) : BoMMatcherKeyHandler {
-    override val key: String = "anno-expr"
+    override val key: String = "graph-expr"
 
     override fun decode(value: Any?, path: String): BoMMatcher {
         if (value !is String || value.isBlank()) {
@@ -258,8 +231,8 @@ class AnnoExprMatcherHandler(
                 "matcher-dsl",
                 BoMValidationResult.of(
                     BoMValidationIssue(
-                        code = "MATCHER_DSL_ANNO_EXPR_TYPE",
-                        message = "'anno-expr' value must be a non-blank string expression",
+                        code = "MATCHER_DSL_GRAPH_EXPR_TYPE",
+                        message = "'graph-expr' value must be a non-blank string expression",
                         path = path,
                     ),
                 ),
@@ -291,51 +264,25 @@ class ObjExprMatcherHandler(
     }
 }
 
-object IdsMatcherHandler : BoMMatcherKeyHandler {
-    override val key: String = "ids"
-
-    override fun decode(value: Any?, path: String): BoMMatcher {
-        if (value !is List<*>) {
-            throw BoMValidationException(
-                "matcher-dsl",
-                BoMValidationResult.of(
-                    BoMValidationIssue(
-                        code = "MATCHER_DSL_IDS_TYPE",
-                        message = "'ids' value must be an array of UUID strings",
-                        path = path,
-                    ),
-                ),
-            )
-        }
-        return BoMIdsMatcher.fromRaw(value, path)
-    }
-}
-
-object SubgraphIdMatcherHandler : BoMMatcherKeyHandler {
-    override val key: String = "subgraph"
-
-    override fun decode(value: Any?, path: String): BoMMatcher =
-        BoMSubgraphIdMatcher.fromRaw(value, path)
-}
-
-class SubgExprMatcherHandler(
-    private val factory: (String) -> BoMMatcher,
+/**
+ * Handles a DSL key retired in C-13 (graphs-from-objects): `anno`, `anno-expr`, `ids`,
+ * `subgraph`, `subg-expr`. Always fails with a clear `MATCHER_DSL_RETIRED_KEY` migrate message
+ * instead of the generic `MATCHER_DSL_UNKNOWN_KEY` (G-G17).
+ */
+class RetiredMatcherKeyHandler(
+    override val key: String,
+    private val migrateTo: String,
 ) : BoMMatcherKeyHandler {
-    override val key: String = "subg-expr"
-
     override fun decode(value: Any?, path: String): BoMMatcher {
-        if (value !is String || value.isBlank()) {
-            throw BoMValidationException(
-                "matcher-dsl",
-                BoMValidationResult.of(
-                    BoMValidationIssue(
-                        code = "MATCHER_DSL_SUBG_EXPR_TYPE",
-                        message = "'subg-expr' value must be a non-blank string expression",
-                        path = path,
-                    ),
+        throw BoMValidationException(
+            "matcher-dsl",
+            BoMValidationResult.of(
+                BoMValidationIssue(
+                    code = "MATCHER_DSL_RETIRED_KEY",
+                    message = "Matcher key '$key' was retired in C-13 (graphs-from-objects); migrate to $migrateTo",
+                    path = path,
                 ),
-            )
-        }
-        return factory(value)
+            ),
+        )
     }
 }

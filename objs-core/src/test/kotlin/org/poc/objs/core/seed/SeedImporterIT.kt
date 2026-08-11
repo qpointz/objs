@@ -9,6 +9,7 @@ import org.poc.objs.core.domain.BoMSchemaCatalog
 import org.poc.objs.core.persistence.BoMEdgeRepository
 import org.poc.objs.core.persistence.BoMEntityRepository
 import org.poc.objs.core.persistence.BoMGraphStore
+import org.poc.objs.core.persistence.BoMNamedGraphStore
 import org.poc.objs.core.persistence.ObjsCoreAutoConfiguration
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.SpringBootConfiguration
@@ -21,7 +22,7 @@ import org.springframework.transaction.annotation.Transactional
 
 @DataJpaTest
 @ImportAutoConfiguration(ObjsCoreAutoConfiguration::class)
-@Import(BoMGraphStore::class)
+@Import(BoMGraphStore::class, BoMNamedGraphStore::class)
 @TestPropertySource(
     properties = [
         "spring.datasource.url=jdbc:h2:mem:objs-seed;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",

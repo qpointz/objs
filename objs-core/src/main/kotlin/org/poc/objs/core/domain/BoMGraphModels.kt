@@ -2,14 +2,14 @@ package org.poc.objs.core.domain
 
 import java.util.UUID
 
-/** Soft-link subgraph header (id + free-form annotations). */
-data class BoMSubgraphHeader(
+/** Soft-link graph header (id + free-form annotations). */
+data class BoMGraphHeader(
     val id: UUID,
     val annotations: Map<String, String>,
 )
 
 /** Create/replace membership spec for a soft-link subgraph. */
-data class BoMSubgraphSpec(
+data class BoMGraphSpec(
     val id: UUID? = null,
     val annotations: Map<String, String> = emptyMap(),
     val entityIds: Set<UUID> = emptySet(),
@@ -17,24 +17,24 @@ data class BoMSubgraphSpec(
 )
 
 /** List row with membership counts. */
-data class BoMSubgraphListItem(
+data class BoMGraphListItem(
     val id: UUID,
     val annotations: Map<String, String>,
     val entityCount: Long,
     val edgeCount: Long,
 )
 
-/** Header + resolved live [BoMSubgraph] (member ids unchanged). */
-data class BoMResolvedSubgraph(
+/** Header + resolved live [BoMGraphContents] (member ids unchanged). */
+data class BoMResolvedGraph(
     val id: UUID,
     val annotations: Map<String, String>,
-    val subgraph: BoMSubgraph,
+    val contents: BoMGraphContents,
 )
 
 /**
  * Soft-link subgraph membership validation / not-found failures.
  */
-class BoMSubgraphException(
+class BoMGraphException(
     val code: String,
     message: String,
 ) : RuntimeException(message)

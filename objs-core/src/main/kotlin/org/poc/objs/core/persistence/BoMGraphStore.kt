@@ -7,15 +7,12 @@ import org.poc.objs.core.domain.BoMGraph
 import org.poc.objs.core.domain.BoMGraphDelete
 import org.poc.objs.core.domain.BoMGraphMutation
 import org.poc.objs.core.domain.BoMGraphUpsert
-import org.poc.objs.core.domain.BoMSubgraph
-import org.poc.objs.core.match.BoMAnnotationMatcher
+import org.poc.objs.core.domain.BoMGraphContents
+import org.poc.objs.core.match.BoMAllGraphsMatcher
 import org.poc.objs.core.match.BoMChainedMatcher
 import org.poc.objs.core.match.BoMEntityDomainCandidate
+import org.poc.objs.core.match.BoMGraphExprMatcher
 import org.poc.objs.core.match.BoMMatcher
-import org.poc.objs.core.match.BoMSubgExprMatcher
-import org.poc.objs.core.match.BoMSubgraphIdMatcher
-import org.poc.objs.core.match.MatchAllAnnotationMatcher
-import org.poc.objs.core.match.asBoMMatcher
 import org.poc.objs.core.validation.BoMEntityTypeLookup
 import org.poc.objs.core.validation.BoMPersistGate
 import org.poc.objs.core.validation.BoMValidationException
@@ -27,16 +24,18 @@ import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
 
 /**
- * Persistence facade: batch subgraph write with two-stage gate; load and subgraph select.
+ * Persistence facade: batch pool write with two-stage gate; load, and graph-scoped select.
+ *
+ * [select] / `selectInGraph` enforce G-G16 (no whole-pool-as-a-graph): a bare `obj-expr`
+ * (or any matcher whose first stage is not `all` / `graph-expr`) is rejected — see [select].
  */
 @Service
 class BoMGraphStore(
     private val entityRepository: BoMEntityRepository,
     private val edgeRepository: BoMEdgeRepository,
     private val validator: BoMValidator,
-    private val rawGraphReader: BoMRawGraphReader,
     private val entityManager: EntityManager,
-    private val subgraphStore: BoMSubgraphStore,
+    private val namedGraphs: BoMNamedGraphStore,
 ) {
     private fun gate(): BoMPersistGate = BoMPersistGate(
         validator = validator,
@@ -162,18 +161,13 @@ class BoMGraphStore(
     }
 
     private fun applyUpserts(graph: BoMGraph) {
-        for (entity in graph.entities) {
-            val id = requireNotNull(entity.id)
-            val record = entityRepository.findById(id).orElseGet { BoMEntityRecord(id = id) }
-            record.type = entity.type
-            record.schemaVersion = entity.schemaVersion
-            record.payload = entity.payload.toMutableMap()
-            record.annotations = entity.annotations.toMutableMap()
-            entityRepository.save(record)
-        }
+        upsertEntities(graph.entities)
         for (edge in graph.edges) {
             val id = requireNotNull(edge.id)
-            val record = edgeRepository.findById(id).orElseGet { BoMEdgeRecord(id = id) }
+            val existing = edgeRepository.findById(id).orElse(null)
+            val record = existing ?: BoMEdgeRecord(id = id)
+            record.graphId = edge.graphId ?: existing?.graphId
+                ?: error("edge $id requires graphId when creating a new edge")
             record.sourceId = edge.source
             record.targetId = edge.target
             record.role = edge.role
@@ -191,57 +185,119 @@ class BoMGraphStore(
         return BoMGraph(entities, edges)
     }
 
+    /** Fetch a single pool entity, or null if it does not exist (WI-004: `GET /entities/{id}`). */
     @Transactional(readOnly = true)
-    fun selectSubgraph(matcher: BoMMatcher): BoMSubgraph {
-        // JDBC reads share the Spring transaction connection; flush pending JPA writes first.
+    fun getEntity(id: UUID): BoMEntity? = entityRepository.findById(id).map { it.toDomain() }.orElse(null)
+
+    /** List all pool entities, ungrouped by graph membership (WI-004: `GET /entities`). */
+    @Transactional(readOnly = true)
+    fun listEntities(): List<BoMEntity> = entityRepository.findAll().map { it.toDomain() }
+
+    /**
+     * Entity-only pool upsert (no edges, no membership). Shared by [applyUpserts] and
+     * [BoMNamedGraphStore.mutate]'s graph-scoped `upsert.entities` step.
+     */
+    @Transactional
+    fun upsertEntities(entities: Collection<BoMEntity>) {
+        for (entity in entities) {
+            val id = requireNotNull(entity.id)
+            val record = entityRepository.findById(id).orElseGet { BoMEntityRecord(id = id) }
+            record.type = entity.type
+            record.schemaVersion = entity.schemaVersion
+            record.payload = entity.payload.toMutableMap()
+            record.annotations = entity.annotations.toMutableMap()
+            entityRepository.save(record)
+        }
+    }
+
+    /**
+     * Select the union of stored members + graph-local edges of graph(s) matched by a stage-0
+     * `all` or `graph-expr`, filtered by any later stages (typically `obj-expr`).
+     * Entities and edges are **distinct by id** across the union.
+     *
+     * G-G16: there is no global graph, so a bare `obj-expr` (or any chain not starting with
+     * `all` / `graph-expr`) would otherwise silently scan the whole pool as if it were one graph.
+     * Reject it instead with `MATCHER_GRAPH_SCOPE_REQUIRED`; callers with a known graph id should
+     * use [selectInGraph], or start their chain with `all` / `graph-expr`.
+     */
+    @Transactional(readOnly = true)
+    fun select(matcher: BoMMatcher): BoMGraphContents {
+        // JDBC/JPA reads share the Spring transaction connection; flush pending writes first.
         entityManager.flush()
         val stages = flattenStages(matcher)
         val first = stages.first()
-        if (first is BoMSubgraphIdMatcher || first is BoMSubgExprMatcher) {
-            return selectSoftLinkSubgraph(stages)
+        if (first !is BoMGraphExprMatcher && first !is BoMAllGraphsMatcher) {
+            throw BoMValidationException(
+                "matcher-dsl",
+                BoMValidationResult.of(
+                    BoMValidationIssue(
+                        code = "MATCHER_GRAPH_SCOPE_REQUIRED",
+                        message = "select requires stage-0 'all' or 'graph-expr' to fix a graph " +
+                            "scope (there is no whole-pool graph); use selectInGraph(graphId, matcher) " +
+                            "for a known graph, or start the chain with all / graph-expr",
+                        path = "$",
+                    ),
+                ),
+            )
         }
-        val (entities, edges) = rawGraphReader.select(matcher)
-        return BoMSubgraph(
-            entities = entities.map { it.toDomain() },
-            edges = edges.map { it.toDomain() },
-        )
+        return selectAcrossGraphs(stages)
     }
 
-    private fun selectSoftLinkSubgraph(stages: List<BoMMatcher>): BoMSubgraph {
+    /**
+     * Filter a **known** graph's stored members/edges by [matcher] (typically `obj-expr` or a
+     * chain of `obj-expr` stages). The graph is fixed by [graphId], so unscoped matchers are safe
+     * here — this is the graph-scoped counterpart to [select]'s `graph-expr` requirement.
+     */
+    @Transactional(readOnly = true)
+    fun selectInGraph(graphId: UUID, matcher: BoMMatcher): BoMGraphContents {
+        entityManager.flush()
+        val resolved = namedGraphs.get(graphId)
+            ?: throw BoMValidationException(
+                "graph",
+                BoMValidationResult.of(
+                    BoMValidationIssue(code = "GRAPH_NOT_FOUND", message = "Graph not found: $graphId", path = "graphId"),
+                ),
+            )
+        val stages = flattenStages(matcher)
+        var entities = resolved.contents.entities
+        if (stages.isNotEmpty()) {
+            entities = entities.filter { entity ->
+                val candidate = BoMEntityDomainCandidate(entity)
+                stages.all { it.matches(candidate) }
+            }
+        }
+        val selectedIds = entities.mapNotNullTo(linkedSetOf()) { it.id }
+        val edges = resolved.contents.edges.filter { it.source in selectedIds && it.target in selectedIds }
+        return BoMGraphContents(entities = entities, edges = edges)
+    }
+
+    /**
+     * Union of stored members/edges of every graph selected by stage-0 `all` or `graph-expr`,
+     * then optional later-stage entity filters. Distinct by entity/edge id.
+     */
+    private fun selectAcrossGraphs(stages: List<BoMMatcher>): BoMGraphContents {
         val first = stages.first()
         val packs = when (first) {
-            is BoMSubgraphIdMatcher -> {
-                val resolved = subgraphStore.get(first.id)
-                    ?: throw BoMValidationException(
-                        "subgraph",
-                        BoMValidationResult.of(
-                            BoMValidationIssue(
-                                code = "MATCHER_SUBGRAPH_NOT_FOUND",
-                                message = "Subgraph not found: ${first.id}",
-                                path = "subgraph.id",
-                            ),
-                        ),
-                    )
-                listOf(resolved)
-            }
-            is BoMSubgExprMatcher ->
-                subgraphStore.list().mapNotNull { item ->
+            is BoMAllGraphsMatcher ->
+                namedGraphs.list().mapNotNull { item -> namedGraphs.get(item.id) }
+            is BoMGraphExprMatcher ->
+                namedGraphs.list().mapNotNull { item ->
                     if (first.matchesHeader(item.id, item.annotations)) {
-                        subgraphStore.get(item.id)
+                        namedGraphs.get(item.id)
                     } else {
                         null
                     }
                 }
-            else -> error("expected soft-link matcher stage")
+            else -> emptyList()
         }
         val entityById = linkedMapOf<UUID, BoMEntity>()
         val edgeById = linkedMapOf<UUID, BoMEdge>()
         for (pack in packs) {
-            for (entity in pack.subgraph.entities) {
+            for (entity in pack.contents.entities) {
                 val id = entity.id ?: continue
                 entityById[id] = entity
             }
-            for (edge in pack.subgraph.edges) {
+            for (edge in pack.contents.edges) {
                 val id = edge.id ?: continue
                 edgeById[id] = edge
             }
@@ -256,7 +312,7 @@ class BoMGraphStore(
         }
         val selectedIds = entities.mapNotNullTo(linkedSetOf()) { it.id }
         val edges = edgeById.values.filter { it.source in selectedIds && it.target in selectedIds }
-        return BoMSubgraph(entities = entities, edges = edges)
+        return BoMGraphContents(entities = entities, edges = edges)
     }
 
     private fun flattenStages(matcher: BoMMatcher): List<BoMMatcher> =
@@ -264,14 +320,6 @@ class BoMGraphStore(
             is BoMChainedMatcher -> matcher.matchers.flatMap(::flattenStages)
             else -> listOf(matcher)
         }
-
-    @Transactional(readOnly = true)
-    fun selectSubgraph(matcher: BoMAnnotationMatcher): BoMSubgraph =
-        selectSubgraph(matcher.asBoMMatcher())
-
-    @Transactional(readOnly = true)
-    fun selectSubgraphMatchAll(filter: Map<String, String>): BoMSubgraph =
-        selectSubgraph(MatchAllAnnotationMatcher(filter))
 }
 
 fun BoMEntityRecord.toDomain() = BoMEntity(
@@ -284,6 +332,7 @@ fun BoMEntityRecord.toDomain() = BoMEntity(
 
 fun BoMEdgeRecord.toDomain() = BoMEdge(
     id = id,
+    graphId = graphId,
     source = sourceId,
     target = targetId,
     role = role,
