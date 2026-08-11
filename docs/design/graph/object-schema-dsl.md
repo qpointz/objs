@@ -21,12 +21,12 @@ There is intentionally no JSON Schema-to-DSL conversion.
 ## Definition envelope
 
 Every catalog entry is identified by `type + version` and contains one root `contentSchema`
-plus a non-empty `usages` set:
+plus a required scalar `usage`:
 
 ```yaml
 type: Component
 version: 1.0.0
-usages: [ENTITY]
+usage: ENTITY
 contentSchema:
   type: OBJECT
   title: Component
@@ -41,11 +41,11 @@ The root must be `OBJECT`, because `BoMEntity.payload` and schema-governed
 |-------|----------|---------|
 | `type` | yes | Stable catalog type name; trimmed, nonblank |
 | `version` | yes | Opaque schema version; trimmed, nonblank |
-| `usages` | yes | Non-empty set of `ENTITY` and/or `EDGE_PROPERTIES` |
+| `usage` | yes | Exactly one of `ENTITY` or `EDGE_PROPERTIES` |
 | `contentSchema` | yes | Root recursive schema node; must be `OBJECT` |
 
 `ENTITY` schemas describe entity payloads. `EDGE_PROPERTIES` schemas describe edge property
-objects. A schema may declare both usages when shared, but SBOM currently keeps them separate.
+objects. A schema applies to exactly one kind; dual usage is not allowed.
 
 ## Schema node
 
@@ -286,7 +286,7 @@ flowchart LR
 ```
 
 - PostgreSQL `bom_graph_entity_schema.definition_doc` stores only the normalized DSL `contentSchema`.
-- `bom_graph_entity_schema.usages` stores the usage set as JSON.
+- `bom_entity_schema.usage` stores the scalar usage (`ENTITY` / `EDGE_PROPERTIES`).
 - `(type, version)` remain relational key columns.
 - Startup hydrates typed definitions from PostgreSQL before registry consumers run.
 - Registration writes the definition first, then updates the in-memory cache.
@@ -302,7 +302,7 @@ the catalog.
 |--------|------|--------|
 | `GET` | `/api/v1/objs/registry/schemas?usage=` | DSL envelopes; optional `ENTITY` / `EDGE_PROPERTIES` filter |
 | `GET` | `/api/v1/objs/registry/schemas/{type}/{version}` | One DSL definition envelope |
-| `PUT` | `/api/v1/objs/registry/schemas/{type}/{version}` | Update/create exact version (`contentSchema` + optional `usages`) |
+| `PUT` | `/api/v1/objs/registry/schemas/{type}/{version}` | Update/create exact version (`contentSchema` + optional `usage`) |
 | `POST` | `/api/v1/objs/registry/schemas/{type}/{version}/lint` | Normalize/lint without persistence |
 | `POST` | `/api/v1/objs/registry/schemas/{type}/versions/next-major` | Create next major version (`4` → `5`, `4.2.1` → `5.0.0`) |
 | `DELETE` | `/api/v1/objs/registry/schemas/{type}` | Remove all versions + incident allow-list rules |

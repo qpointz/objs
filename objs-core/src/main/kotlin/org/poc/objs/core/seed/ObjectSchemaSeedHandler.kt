@@ -18,7 +18,7 @@ class ObjectSchemaSeedHandler(
     override fun parse(document: SeedRawDocument): ParsedSeedDocument {
         val type = requireText(document.raw, "type", document.index)
         val version = requireText(document.raw, "version", document.index)
-        val usages = parseUsages(document.raw["usages"], document.index)
+        val usage = parseUsage(document.raw["usage"], document.index)
         val contentRaw = document.raw["contentSchema"]
             ?: throw SeedDocumentParseException(
                 document.index,
@@ -45,7 +45,7 @@ class ObjectSchemaSeedHandler(
                     type = type,
                     version = version,
                     contentSchema = contentSchema,
-                    usages = usages,
+                    usage = usage,
                 ),
             )
         } catch (ex: BoMSchemaDefinitionException) {
@@ -77,27 +77,22 @@ class ObjectSchemaSeedHandler(
             "type" to schema.type,
             "version" to schema.version,
         )
-        if (schema.usages != setOf(BoMSchemaUsage.ENTITY)) {
-            document["usages"] = schema.usages.map { it.name }.sorted()
+        if (schema.usage != BoMSchemaUsage.ENTITY) {
+            document["usage"] = schema.usage.name
         }
         document["contentSchema"] = PayloadMapper.toMap(schema.contentSchema)
         return document
     }
 
-    private fun parseUsages(raw: Any?, index: Int): Set<BoMSchemaUsage> {
-        if (raw == null) return setOf(BoMSchemaUsage.ENTITY)
-        val values = when (raw) {
-            is Collection<*> -> raw.map { it.toString() }
-            is Array<*> -> raw.map { it.toString() }
-            else -> throw SeedDocumentParseException(index, "usages must be a list")
-        }
-        if (values.isEmpty()) {
-            throw SeedDocumentParseException(index, "usages must not be empty")
+    private fun parseUsage(raw: Any?, index: Int): BoMSchemaUsage {
+        if (raw == null) return BoMSchemaUsage.ENTITY
+        if (raw is Collection<*> || raw is Array<*>) {
+            throw SeedDocumentParseException(index, "usage must be a single value (ENTITY or EDGE_PROPERTIES), not a list")
         }
         return try {
-            values.map { BoMSchemaUsage.valueOf(it) }.toSet()
+            BoMSchemaUsage.valueOf(raw.toString().trim())
         } catch (ex: IllegalArgumentException) {
-            throw SeedDocumentParseException(index, "Unknown schema usage in usages", ex)
+            throw SeedDocumentParseException(index, "Unknown schema usage: $raw", ex)
         }
     }
 }

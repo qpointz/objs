@@ -120,7 +120,7 @@ Persistence is the **enforcement** point for payload schema and allowed edges â€
 ## Schema and edge-rule catalogs
 
 - `bom_entity_schema` stores `(type, version)`, authoritative DSL in `definition_doc`,
-  and schema `usages` (`ENTITY` / `EDGE_PROPERTIES`); see [object-schema-dsl.md](object-schema-dsl.md).
+  and schema `usage` (`ENTITY` / `EDGE_PROPERTIES`); see [object-schema-dsl.md](object-schema-dsl.md).
 - Generated JSON Schema is not persisted. It is projected from the DSL for validation and tooling.
 - `bom_edge_schema` stores directed allow-list rules, property policies, nullable
   `properties_schema_type + properties_schema_version` references, and **cardinality**

@@ -122,10 +122,10 @@ class CanonicalOntologyTest {
             schemas.get("Product", "1.0.0")!!.toJsonSchema()["properties"] as Map<String, Map<String, Any?>>
         assertThat(productProperties["homepage"]!!["format"]).isEqualTo("uri")
 
-        assertThat(schemas.get("CanonicalEdge", "1.0.0")!!.usages)
-            .containsExactly(BoMSchemaUsage.EDGE_PROPERTIES)
-        assertThat(schemas.get("Component", "1.0.0")!!.usages)
-            .containsExactly(BoMSchemaUsage.ENTITY)
+        assertThat(schemas.get("CanonicalEdge", "1.0.0")!!.usage)
+            .isEqualTo(BoMSchemaUsage.EDGE_PROPERTIES)
+        assertThat(schemas.get("Component", "1.0.0")!!.usage)
+            .isEqualTo(BoMSchemaUsage.ENTITY)
     }
 
     @Test

@@ -17,7 +17,7 @@ data class BoMSchema(
     val type: String,
     val version: String,
     val contentSchema: BoMSchemaNode,
-    val usages: Set<BoMSchemaUsage> = setOf(BoMSchemaUsage.ENTITY),
+    val usage: BoMSchemaUsage = BoMSchemaUsage.ENTITY,
 ) {
     val key: BoMSchemaKey get() = BoMSchemaKey(type, version)
 

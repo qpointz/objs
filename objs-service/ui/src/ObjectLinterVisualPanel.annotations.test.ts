@@ -28,25 +28,25 @@ describe('versionsForEntityType', () => {
       {
         type: 'Product',
         version: '1.0.0',
-        usages: ['ENTITY'],
+        usage: 'ENTITY',
         contentSchema: emptySchema,
       },
       {
         type: 'Product',
         version: '2.0.0',
-        usages: ['ENTITY'],
+        usage: 'ENTITY',
         contentSchema: emptySchema,
       },
       {
         type: 'Service',
         version: '1.0.0',
-        usages: ['ENTITY'],
+        usage: 'ENTITY',
         contentSchema: emptySchema,
       },
       {
         type: 'Product',
         version: '1.5.0',
-        usages: ['EDGE_PROPERTIES'],
+        usage: 'EDGE_PROPERTIES',
         contentSchema: emptySchema,
       },
     ]

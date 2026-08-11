@@ -13,7 +13,7 @@ class FullCatalogJsonSchemaExporter(
     private val edgeRules: BoMAllowedEdgeCatalog,
 ) {
     fun export(options: BoMJsonSchemaExportOptions = BoMJsonSchemaExportOptions.DEFAULT): Map<String, Any?> {
-        val latestEntities = latestByType(schemas.all().filter { BoMSchemaUsage.ENTITY in it.usages })
+        val latestEntities = latestByType(schemas.all().filter { it.usage == BoMSchemaUsage.ENTITY })
         val defKeyByType = latestEntities.keys.associateWith { jsonSchemaDefKey(it) }
 
         val defs = linkedMapOf<String, Any?>()
@@ -67,7 +67,7 @@ class FullCatalogJsonSchemaExporter(
                     val t = rule.propertiesSchemaType ?: return@mapNotNull null
                     val v = rule.propertiesSchemaVersion
                     if (v != null) schemas.get(t, v) else latestByType(
-                        schemas.listByType(t).filter { BoMSchemaUsage.EDGE_PROPERTIES in it.usages },
+                        schemas.listByType(t).filter { it.usage == BoMSchemaUsage.EDGE_PROPERTIES },
                     )[t]
                 }
                 .distinctBy { it.key }

@@ -244,7 +244,7 @@ class SeedImporterTest {
                     "Person payload",
                     listOf(BoMSchemaDsl.field("name", BoMSchemaDsl.string("Name", "Person name"))),
                 ),
-                usages = setOf(BoMSchemaUsage.ENTITY),
+                usage = BoMSchemaUsage.ENTITY,
             ),
         )
         rules.register(

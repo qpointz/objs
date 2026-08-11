@@ -57,7 +57,6 @@ object BoMSchemaNormalizer {
     fun normalizeStrict(input: BoMSchema): BoMSchema {
         if (input.type.isBlank()) invalid("type must not be blank")
         if (input.version.isBlank()) invalid("version must not be blank")
-        if (input.usages.isEmpty()) invalid("usages must not be empty")
         val content = normalizeNode("$.contentSchema", input.contentSchema)
         if (content.type != BoMSchemaType.OBJECT) {
             invalid("$.contentSchema.type must be OBJECT")
@@ -66,7 +65,7 @@ object BoMSchemaNormalizer {
             type = input.type.trim(),
             version = input.version.trim(),
             contentSchema = content,
-            usages = input.usages.toSortedSet(),
+            usage = input.usage,
         )
     }
 

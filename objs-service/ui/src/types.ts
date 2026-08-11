@@ -28,6 +28,17 @@ export type BoMGraphResponse = {
   graph: BoMGraphContents
 }
 
+/** Header-only row from open-graph search (`GET …/graphs/search`). */
+export type BoMGraphHeader = {
+  id: string
+  annotations: Record<string, string>
+}
+
+/** `GET /api/v1/objs/graphs/search` envelope (G-U10; additive fields ignored by UI). */
+export type BoMGraphSearchResponse = {
+  items: BoMGraphHeader[]
+}
+
 /** `GET /api/v1/objs/graphs` list row with membership counts. */
 export type BoMGraphListItem = {
   id: string
@@ -124,7 +135,7 @@ export type BoMSchema = {
   type: string
   version: string
   contentSchema: BoMSchemaNode
-  usages: BoMSchemaUsage[]
+  usage: BoMSchemaUsage
 }
 
 export type BoMEdgeCardinality = 'UNSPECIFIED' | '1:1' | '1:*'
@@ -161,7 +172,7 @@ export type BoMValidationIssue = {
 
 export type SchemaDefinitionRequest = {
   contentSchema: BoMSchemaNode
-  usages?: BoMSchemaUsage[]
+  usage?: BoMSchemaUsage
 }
 
 export type SchemaLintResponse = {

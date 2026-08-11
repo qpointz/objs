@@ -33,7 +33,7 @@ data class RegistryPack(
             title: String = type,
             description: String = "$type payload",
             fields: List<BoMSchemaField>,
-            usages: Set<BoMSchemaUsage> = setOf(BoMSchemaUsage.ENTITY),
+            usage: BoMSchemaUsage = BoMSchemaUsage.ENTITY,
         ): BoMSchema = BoMSchema(
             type = type,
             version = version,
@@ -43,7 +43,7 @@ data class RegistryPack(
                 description = description,
                 fields = fields,
             ),
-            usages = usages,
+            usage = usage,
         )
     }
 }

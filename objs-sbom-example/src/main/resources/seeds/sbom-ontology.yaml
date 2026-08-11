@@ -181,8 +181,7 @@ apiVersion: "objs.poc.org/v1"
 kind: "ObjectSchema"
 type: "CanonicalEdge"
 version: "1.0.0"
-usages:
-- "EDGE_PROPERTIES"
+usage: "EDGE_PROPERTIES"
 contentSchema:
   type: "OBJECT"
   title: "Canonical edge"

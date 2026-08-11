@@ -92,7 +92,7 @@ class ObjsRegistryControllerTest {
                           "required":true
                         }]
                       },
-                      "usages":["ENTITY"]
+                      "usage":"ENTITY"
                     }
                     """.trimIndent(),
                 ),
@@ -100,7 +100,7 @@ class ObjsRegistryControllerTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.type").value("Person"))
             .andExpect(jsonPath("$.version").value("1"))
-            .andExpect(jsonPath("$.usages[0]").value("ENTITY"))
+            .andExpect(jsonPath("$.usage").value("ENTITY"))
 
         mockMvc.perform(get("/api/v1/objs/registry/schemas/Person/1"))
             .andExpect(status().isOk)
@@ -152,7 +152,7 @@ class ObjsRegistryControllerTest {
                         "description":"Person payload",
                         "fields":[]
                       },
-                      "usages":["ENTITY"]
+                      "usage":"ENTITY"
                     }
                     """.trimIndent(),
                 ),
@@ -206,7 +206,7 @@ class ObjsRegistryControllerTest {
                         "description":"Person payload v5",
                         "fields":[]
                       },
-                      "usages":["ENTITY"]
+                      "usage":"ENTITY"
                     }
                     """.trimIndent(),
                 ),
@@ -248,7 +248,7 @@ class ObjsRegistryControllerTest {
                 "Person",
                 "1",
                 BoMSchemaDsl.obj("Person", "Person payload"),
-                usages = setOf(BoMSchemaUsage.ENTITY),
+                usage = BoMSchemaUsage.ENTITY,
             ),
         )
         schemas.register(
@@ -256,7 +256,7 @@ class ObjsRegistryControllerTest {
                 "LinkProps",
                 "1",
                 BoMSchemaDsl.obj("Link", "Link properties"),
-                usages = setOf(BoMSchemaUsage.EDGE_PROPERTIES),
+                usage = BoMSchemaUsage.EDGE_PROPERTIES,
             ),
         )
 
@@ -295,7 +295,7 @@ class ObjsRegistryControllerTest {
                 "Person",
                 "1",
                 BoMSchemaDsl.obj("Person", "Person payload"),
-                usages = setOf(BoMSchemaUsage.ENTITY),
+                usage = BoMSchemaUsage.ENTITY,
             ),
         )
         schemas.register(
@@ -303,7 +303,7 @@ class ObjsRegistryControllerTest {
                 "Organization",
                 "1",
                 BoMSchemaDsl.obj("Organization", "Organization payload"),
-                usages = setOf(BoMSchemaUsage.ENTITY),
+                usage = BoMSchemaUsage.ENTITY,
             ),
         )
         schemas.register(
@@ -311,7 +311,7 @@ class ObjsRegistryControllerTest {
                 "CanonicalEdge",
                 "1",
                 BoMSchemaDsl.obj("Canonical edge", "Relationship properties"),
-                usages = setOf(BoMSchemaUsage.EDGE_PROPERTIES),
+                usage = BoMSchemaUsage.EDGE_PROPERTIES,
             ),
         )
 
@@ -364,7 +364,7 @@ class ObjsRegistryControllerTest {
                 "CanonicalEdge",
                 "1",
                 BoMSchemaDsl.obj("Canonical edge", "Relationship properties"),
-                usages = setOf(BoMSchemaUsage.EDGE_PROPERTIES),
+                usage = BoMSchemaUsage.EDGE_PROPERTIES,
             ),
         )
 

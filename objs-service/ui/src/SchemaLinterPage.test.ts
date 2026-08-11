@@ -6,7 +6,7 @@ describe('Schema linter expert document', () => {
     const result = parseSchemaExpertDocument({
       type: 'CanonicalEdge',
       version: '1.0.0',
-      usages: ['EDGE_PROPERTIES'],
+      usage: 'EDGE_PROPERTIES',
       contentSchema: {
         type: 'OBJECT',
         title: 'Canonical edge',
@@ -44,17 +44,17 @@ describe('Schema linter expert document', () => {
     expect(result).toEqual({ ok: false, error: 'Expert document type must not be blank' })
   })
 
-  it('rejects unsupported usages', () => {
+  it('rejects unsupported usage', () => {
     const result = parseSchemaExpertDocument({
       type: 'Thing',
       version: '1.0.0',
-      usages: ['UNKNOWN'],
+      usage: 'UNKNOWN',
       contentSchema: {},
     })
 
     expect(result).toEqual({
       ok: false,
-      error: 'Expert document contains an unsupported usage',
+      error: 'Expert document usage must be ENTITY or EDGE_PROPERTIES',
     })
   })
 })

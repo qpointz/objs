@@ -38,7 +38,7 @@ const contentSchema: BoMSchemaNode = {
 const schema: BoMSchema = {
   type: 'Component',
   version: '1.0.0',
-  usages: ['ENTITY'],
+  usage: 'ENTITY',
   contentSchema,
 }
 

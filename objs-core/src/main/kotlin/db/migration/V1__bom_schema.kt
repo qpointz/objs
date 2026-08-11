@@ -107,7 +107,7 @@ class V1__bom_schema : BaseJavaMigration() {
                 type VARCHAR(255) NOT NULL,
                 version VARCHAR(64) NOT NULL,
                 definition_doc $json NOT NULL,
-                usages $json NOT NULL,
+                usage VARCHAR(32) NOT NULL,
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 CONSTRAINT pk_bom_entity_schema PRIMARY KEY (type, version)

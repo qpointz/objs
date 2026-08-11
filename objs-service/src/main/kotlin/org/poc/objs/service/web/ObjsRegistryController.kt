@@ -123,7 +123,7 @@ class ObjsRegistryController(
     @Operation(summary = "List distinct schema type names")
     fun types(@RequestParam(required = false) usage: BoMSchemaUsage?): Set<String> {
         val all = schemas.all()
-        val filtered = if (usage == null) all else all.filter { usage in it.usages }
+        val filtered = if (usage == null) all else all.filter { it.usage == usage }
         return filtered.map { it.type }.toSortedSet()
     }
 
@@ -131,7 +131,7 @@ class ObjsRegistryController(
     @Operation(summary = "List registered schemas, optionally filtered by usage")
     fun listSchemas(@RequestParam(required = false) usage: BoMSchemaUsage?): Collection<BoMSchema> {
         val all = schemas.all()
-        return if (usage == null) all else all.filter { usage in it.usages }
+        return if (usage == null) all else all.filter { it.usage == usage }
     }
 
     @GetMapping("/schemas/{type}")
@@ -177,7 +177,7 @@ class ObjsRegistryController(
         @PathVariable version: String,
     ): ResponseEntity<Any> {
         val schema = schemas.get(type, version) ?: return notFoundSchema(type, version)
-        if (BoMSchemaUsage.EDGE_PROPERTIES !in schema.usages) {
+        if (schema.usage != BoMSchemaUsage.EDGE_PROPERTIES) {
             return ResponseEntity.badRequest().body(
                 BoMValidationResult.of(
                     BoMValidationIssue(
@@ -202,7 +202,7 @@ class ObjsRegistryController(
         @RequestBody body: List<EdgeRelationRequest>,
     ): ResponseEntity<Any> {
         val schema = schemas.get(type, version) ?: return notFoundSchema(type, version)
-        if (BoMSchemaUsage.EDGE_PROPERTIES !in schema.usages) {
+        if (schema.usage != BoMSchemaUsage.EDGE_PROPERTIES) {
             return ResponseEntity.badRequest().body(
                 BoMValidationResult.of(
                     BoMValidationIssue(
@@ -235,7 +235,7 @@ class ObjsRegistryController(
             }
             if (
                 request.sourceType != BoMAllowedEdgeRule.ANY &&
-                schemas.listByType(request.sourceType.trim()).none { BoMSchemaUsage.ENTITY in it.usages }
+                schemas.listByType(request.sourceType.trim()).none { it.usage == BoMSchemaUsage.ENTITY }
             ) {
                 issues += BoMValidationIssue(
                     "EDGE_SOURCE_SCHEMA_NOT_FOUND",
@@ -245,7 +245,7 @@ class ObjsRegistryController(
             }
             if (
                 request.targetType != BoMAllowedEdgeRule.ANY &&
-                schemas.listByType(request.targetType.trim()).none { BoMSchemaUsage.ENTITY in it.usages }
+                schemas.listByType(request.targetType.trim()).none { it.usage == BoMSchemaUsage.ENTITY }
             ) {
                 issues += BoMValidationIssue(
                     "EDGE_TARGET_SCHEMA_NOT_FOUND",
@@ -314,7 +314,7 @@ class ObjsRegistryController(
         return try {
             val schema = normalizeRequest(type, version, body)
             if (
-                BoMSchemaUsage.EDGE_PROPERTIES !in schema.usages &&
+                schema.usage != BoMSchemaUsage.EDGE_PROPERTIES &&
                 edgeRules.all().any {
                     it.propertiesSchemaType == type && it.propertiesSchemaVersion == version
                 }
@@ -479,13 +479,13 @@ class ObjsRegistryController(
     }
 
     private fun normalizeRequest(type: String, version: String, body: SchemaDefinitionRequest): BoMSchema {
-        val usages = body.usages?.takeIf { it.isNotEmpty() } ?: setOf(BoMSchemaUsage.ENTITY)
+        val usage = body.usage ?: BoMSchemaUsage.ENTITY
         return org.poc.objs.core.domain.BoMSchemaNormalizer.normalizeStrict(
             BoMSchema(
                 type = type,
                 version = version,
                 contentSchema = body.contentSchema,
-                usages = usages,
+                usage = usage,
             ),
         )
     }
@@ -502,7 +502,7 @@ class ObjsRegistryController(
 
     data class SchemaDefinitionRequest(
         val contentSchema: BoMSchemaNode,
-        val usages: Set<BoMSchemaUsage>? = null,
+        val usage: BoMSchemaUsage? = null,
     )
 
     data class SchemaLintResponse(

@@ -98,7 +98,7 @@ class JpaBoMCatalogsIT {
 
         assertThat(schemaCatalog.get("Person", "1")).isNotNull
         assertThat(schemaCatalog.get("Person", "1")!!.contentSchema.type.name).isEqualTo("OBJECT")
-        assertThat(schemaCatalog.get("Person", "1")!!.usages).containsExactly(BoMSchemaUsage.ENTITY)
+        assertThat(schemaCatalog.get("Person", "1")!!.usage).isEqualTo(BoMSchemaUsage.ENTITY)
         assertThat(schemaCatalog.contains("Person", "1")).isTrue()
         assertThat(schemaCatalog.types()).contains("Person")
         assertThat(schemaRepo.count()).isEqualTo(1)
@@ -140,7 +140,7 @@ class JpaBoMCatalogsIT {
                 type = "H",
                 version = "1",
                 definitionDoc = PayloadMapper.toMap(schema("H", "1").contentSchema),
-                usages = mutableListOf("ENTITY"),
+                usage = "ENTITY",
             ),
         )
         schemaRepo.flush()

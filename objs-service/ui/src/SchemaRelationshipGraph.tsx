@@ -249,9 +249,7 @@ export function schemaRelationshipElements(
         version: schema.version,
         properties: schemaPropertyRows(schema.contentSchema),
         schemaKind:
-          schema.usages.includes('EDGE_PROPERTIES') && !schema.usages.includes('ENTITY')
-            ? 'EDGE SCHEMA'
-            : 'ENTITY SCHEMA',
+          schema.usage === 'EDGE_PROPERTIES' ? 'EDGE SCHEMA' : 'ENTITY SCHEMA',
       } satisfies SchemaGraphNodeData,
       draggable: false,
       selectable: false,

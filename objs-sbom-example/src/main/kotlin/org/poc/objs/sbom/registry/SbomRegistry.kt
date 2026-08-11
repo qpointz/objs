@@ -136,7 +136,7 @@ object SbomRegistry {
             version = SCHEMA_VERSION,
             title = "Canonical edge",
             description = "Properties shared by canonical SBOM relationships",
-            usages = setOf(BoMSchemaUsage.EDGE_PROPERTIES),
+            usage = BoMSchemaUsage.EDGE_PROPERTIES,
             fields = listOf(
                 BoMSchemaDsl.field(
                     "createdAt",

@@ -58,7 +58,7 @@ object ExportSbomJsonSchema {
         mapper.writerWithDefaultPrettyPrinter().writeValue(catalogFile.toFile(), linked)
 
         // Payload-only schemas for TypedEntity / Wave* replacement experiments.
-        for (schema in schemas.all().filter { org.poc.objs.core.domain.BoMSchemaUsage.ENTITY in it.usages }) {
+        for (schema in schemas.all().filter { it.usage == org.poc.objs.core.domain.BoMSchemaUsage.ENTITY }) {
             val projected = BoMJsonSchema.from(schema).toMutableMap()
             val defKey = FullCatalogJsonSchemaExporter.jsonSchemaDefKey(schema.type)
             val file = typesDir.resolve("$defKey.json")

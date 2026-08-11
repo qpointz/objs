@@ -5,7 +5,7 @@ import type { BoMSchemaNode, BoMSchemaUsage, EdgeRelationRequest } from './types
 export type SchemaExpertDocument = {
   type: string
   version: string
-  usages: BoMSchemaUsage[]
+  usage: BoMSchemaUsage
   contentSchema: BoMSchemaNode
   allowedRelations?: EdgeRelationRequest[]
 }
@@ -23,11 +23,8 @@ export function parseSchemaExpertDocument(
   if (typeof doc.version !== 'string' || !doc.version.trim()) {
     return { ok: false, error: 'Expert document version must not be blank' }
   }
-  if (!Array.isArray(doc.usages) || doc.usages.length === 0) {
-    return { ok: false, error: 'Expert document usages must be a non-empty array' }
-  }
-  if (doc.usages.some((usage) => usage !== 'ENTITY' && usage !== 'EDGE_PROPERTIES')) {
-    return { ok: false, error: 'Expert document contains an unsupported usage' }
+  if (doc.usage !== 'ENTITY' && doc.usage !== 'EDGE_PROPERTIES') {
+    return { ok: false, error: 'Expert document usage must be ENTITY or EDGE_PROPERTIES' }
   }
   if (!doc.contentSchema || typeof doc.contentSchema !== 'object') {
     return { ok: false, error: 'Expert document contentSchema is required' }
@@ -40,7 +37,7 @@ export function parseSchemaExpertDocument(
     value: {
       type: doc.type,
       version: doc.version,
-      usages: doc.usages,
+      usage: doc.usage,
       contentSchema: doc.contentSchema,
       ...(doc.allowedRelations != null ? { allowedRelations: doc.allowedRelations } : {}),
     },

@@ -682,7 +682,7 @@ export function SchemaCatalogOverview({
   const entityTypes = useMemo(() => {
     const byType = new Map<string, string[]>()
     for (const schema of schemas) {
-      if (!schema.usages.includes('ENTITY')) continue
+      if (schema.usage !== 'ENTITY') continue
       const list = byType.get(schema.type) ?? []
       list.push(schema.version)
       byType.set(schema.type, list)

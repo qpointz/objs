@@ -32,9 +32,8 @@ class BoMSchemaCatalogRecord(
     @Column(name = "definition_doc", nullable = false, columnDefinition = "json")
     var definitionDoc: MutableMap<String, Any?> = mutableMapOf(),
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "usages", nullable = false, columnDefinition = "json")
-    var usages: MutableList<String> = mutableListOf("ENTITY"),
+    @Column(name = "usage", nullable = false, length = 32)
+    var usage: String = "ENTITY",
 
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant = Instant.now(),

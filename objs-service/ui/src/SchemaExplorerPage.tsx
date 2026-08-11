@@ -93,8 +93,8 @@ function isValidSchemaVersion(raw: string): boolean {
   return /^(\d+)(?:\.(\d+))?(?:\.(\d+))?(?:[-+].*)?$/.test(raw.trim())
 }
 
-function primaryKind(usages: BoMSchemaUsage[]): 'object' | 'edge' {
-  return usages.includes('ENTITY') ? 'object' : 'edge'
+function primaryKind(usage: BoMSchemaUsage): 'object' | 'edge' {
+  return usage === 'ENTITY' ? 'object' : 'edge'
 }
 
 function KindPill({ kind }: { kind: 'object' | 'edge' }) {
@@ -108,10 +108,10 @@ function KindPill({ kind }: { kind: 'object' | 'edge' }) {
 function expertDoc(
   type: string,
   version: string,
-  usages: BoMSchemaUsage[],
+  usage: BoMSchemaUsage,
   contentSchema: BoMSchemaNode,
 ): SchemaExpertDocument {
-  return { type, version, usages, contentSchema }
+  return { type, version, usage, contentSchema }
 }
 
 function cloneDoc(doc: SchemaExpertDocument): SchemaExpertDocument {
@@ -165,13 +165,13 @@ export function SchemaExplorerPage() {
 
   const [typeName, setTypeName] = useState('NewType')
   const [version, setVersion] = useState('1.0.0')
-  const [usages, setUsages] = useState<BoMSchemaUsage[]>(['ENTITY'])
+  const [usage, setUsage] = useState<BoMSchemaUsage>('ENTITY')
   const [contentSchema, setContentSchema] = useState<BoMSchemaNode>(emptyObjectSchema())
   const [expertSnapshot, setExpertSnapshot] = useState<SchemaExpertDocument>(() =>
-    expertDoc('NewType', '1.0.0', ['ENTITY'], emptyObjectSchema()),
+    expertDoc('NewType', '1.0.0', 'ENTITY', emptyObjectSchema()),
   )
   const [baseline, setBaseline] = useState<SchemaExpertDocument>(() =>
-    cloneDoc(expertDoc('NewType', '1.0.0', ['ENTITY'], emptyObjectSchema())),
+    cloneDoc(expertDoc('NewType', '1.0.0', 'ENTITY', emptyObjectSchema())),
   )
 
   const [createVersionOpen, setCreateVersionOpen] = useState(false)
@@ -202,7 +202,7 @@ export function SchemaExplorerPage() {
   function applyDocument(doc: SchemaExpertDocument) {
     setTypeName(doc.type)
     setVersion(doc.version)
-    setUsages([...doc.usages])
+    setUsage(doc.usage)
     setContentSchema(cloneDoc(doc).contentSchema)
     setExpertSnapshot(cloneDoc(doc))
   }
@@ -300,13 +300,12 @@ export function SchemaExplorerPage() {
 
   useEffect(() => {
     if (isNewDraft) {
-      const nextUsages: BoMSchemaUsage[] =
-        createKind === 'edge' ? ['EDGE_PROPERTIES'] : ['ENTITY']
+      const nextUsage: BoMSchemaUsage = createKind === 'edge' ? 'EDGE_PROPERTIES' : 'ENTITY'
       const name = createKind === 'edge' ? 'NewEdge' : 'NewType'
-      const draft = expertDoc(name, '1.0.0', nextUsages, emptyObjectSchema())
+      const draft = expertDoc(name, '1.0.0', nextUsage, emptyObjectSchema())
       setTypeName(name)
       setVersion('1.0.0')
-      setUsages(nextUsages)
+      setUsage(nextUsage)
       setContentSchema(emptyObjectSchema())
       setExpertSnapshot(draft)
       setEdgeRules(null)
@@ -372,7 +371,7 @@ export function SchemaExplorerPage() {
         const schema = await getSchema(selectedType, versionToOpen)
         const [projection, typeEdges] = await Promise.all([
           getJsonSchema(selectedType, versionToOpen),
-          schema.usages.includes('ENTITY')
+          schema.usage === 'ENTITY'
             ? getTypeEdges(selectedType)
             : Promise.resolve({ incoming: [], outgoing: [] }),
         ])
@@ -381,9 +380,9 @@ export function SchemaExplorerPage() {
         const rules = uniqueEdgeRules(typeEdges)
         setSelected(schema)
         setTypeName(schema.type)
-        setUsages(schema.usages)
+        setUsage(schema.usage)
         setContentSchema(schema.contentSchema)
-        const doc = expertDoc(schema.type, schema.version, schema.usages, schema.contentSchema)
+        const doc = expertDoc(schema.type, schema.version, schema.usage, schema.contentSchema)
         setEdgeRules(cloneEdgeRules(rules))
         captureBaseline(doc, rules)
         setJsonSchema(projection)
@@ -400,7 +399,7 @@ export function SchemaExplorerPage() {
                 ? draftNewVersionParam.trim()
                 : nextMajorVersion(versions)
             setVersion(next)
-            setExpertSnapshot(expertDoc(schema.type, next, schema.usages, schema.contentSchema))
+            setExpertSnapshot(expertDoc(schema.type, next, schema.usage, schema.contentSchema))
             setDirty(true)
             setExpertDirty(false)
           } catch (e) {
@@ -454,11 +453,13 @@ export function SchemaExplorerPage() {
     }
     return [...byType.entries()]
       .map(([type, versions]) => {
-        const usages = versions.flatMap((v) => v.usages)
+        const kind = primaryKind(
+          versions.some((v) => v.usage === 'ENTITY') ? 'ENTITY' : 'EDGE_PROPERTIES',
+        )
         return {
           type,
           versions: versions.map((v) => v.version).sort(),
-          kind: primaryKind(usages),
+          kind,
         }
       })
       .sort((a, b) => a.type.localeCompare(b.type))
@@ -466,14 +467,14 @@ export function SchemaExplorerPage() {
 
   const entityTypes = useMemo(
     () =>
-      [...new Set(schemas.filter((s) => s.usages.includes('ENTITY')).map((s) => s.type))].sort(),
+      [...new Set(schemas.filter((s) => s.usage === 'ENTITY').map((s) => s.type))].sort(),
     [schemas],
   )
 
   const edgeSchemaOptions = useMemo(
     () =>
       schemas
-        .filter((s) => s.usages.includes('EDGE_PROPERTIES'))
+        .filter((s) => s.usage === 'EDGE_PROPERTIES')
         .map((s) => ({
           value: `${s.type}@${s.version}`,
           label: `${s.type}@${s.version}`,
@@ -507,7 +508,7 @@ export function SchemaExplorerPage() {
     }
     setTypeName(document.value.type)
     setVersion(document.value.version)
-    setUsages(document.value.usages)
+    setUsage(document.value.usage)
     setContentSchema(document.value.contentSchema)
     setExpertSnapshot(document.value)
     setDirty(JSON.stringify(cloneDoc(document.value)) !== JSON.stringify(baseline))
@@ -524,7 +525,7 @@ export function SchemaExplorerPage() {
       if (!flushExpertEditor()) return
     }
     if (isTextSchemaView(next) && !isTextSchemaView(schemaView)) {
-      setExpertSnapshot(expertDoc(typeName, version, usages, contentSchema))
+      setExpertSnapshot(expertDoc(typeName, version, usage, contentSchema))
       setExpertDirty(false)
     }
     setSchemaView(next)
@@ -534,7 +535,7 @@ export function SchemaExplorerPage() {
     if (editorMode === 'schema' && isTextSchemaView(schemaView)) {
       return flushExpertEditor()
     }
-    return expertDoc(typeName, version, usages, contentSchema)
+    return expertDoc(typeName, version, usage, contentSchema)
   }
 
   async function runLint() {
@@ -545,17 +546,17 @@ export function SchemaExplorerPage() {
     try {
       const result = await lintSchema(document.type || 'Draft', document.version || '0', {
         contentSchema: document.contentSchema,
-        usages: document.usages,
+        usage: document.usage,
       })
       setLint(result)
       if (result.valid && result.schema) {
         setContentSchema(result.schema.contentSchema)
-        setUsages(result.schema.usages)
+        setUsage(result.schema.usage)
         setExpertSnapshot(
           expertDoc(
             result.schema.type,
             result.schema.version,
-            result.schema.usages,
+            result.schema.usage,
             result.schema.contentSchema,
           ),
         )
@@ -575,17 +576,17 @@ export function SchemaExplorerPage() {
     try {
       const saved = await updateSchema(document.type, document.version, {
         contentSchema: document.contentSchema,
-        usages: document.usages,
+        usage: document.usage,
       })
       const draftEdges = edgeRules ?? []
       await persistEdgeChanges(baselineEdgeRules, draftEdges)
-      const refreshedEdges = saved.usages.includes('ENTITY')
+      const refreshedEdges = saved.usage === 'ENTITY'
         ? uniqueEdgeRules(await getTypeEdges(saved.type))
         : []
       setEdgeRules(cloneEdgeRules(refreshedEdges))
       await reloadSchemas()
       captureBaseline(
-        expertDoc(saved.type, saved.version, saved.usages, saved.contentSchema),
+        expertDoc(saved.type, saved.version, saved.usage, saved.contentSchema),
         refreshedEdges,
       )
       markClean()
@@ -703,14 +704,14 @@ export function SchemaExplorerPage() {
     try {
       const created = await updateSchema(document.type, document.version || '1.0.0', {
         contentSchema: document.contentSchema,
-        usages: document.usages,
+        usage: document.usage,
       })
       await reloadSchemas()
       captureBaseline(
-        expertDoc(created.type, created.version, created.usages, created.contentSchema),
+        expertDoc(created.type, created.version, created.usage, created.contentSchema),
         [],
       )
-      setEdgeRules(created.usages.includes('ENTITY') ? [] : null)
+      setEdgeRules(created.usage === 'ENTITY' ? [] : null)
       markClean()
       navigate(schemaDetailPath(created.type, created.version))
     } catch (e) {
@@ -912,7 +913,19 @@ export function SchemaExplorerPage() {
                       }}
                       w={120}
                     />
-                    <Badge variant="light">{createKind === 'edge' ? 'EDGE' : 'OBJECT'}</Badge>
+                    <SegmentedControl
+                      size="xs"
+                      value={usage}
+                      data={[
+                        { label: 'Entity', value: 'ENTITY' },
+                        { label: 'Edge props', value: 'EDGE_PROPERTIES' },
+                      ]}
+                      onChange={(v) => {
+                        const next = v as BoMSchemaUsage
+                        setUsage(next)
+                        setDirty(true)
+                      }}
+                    />
                     {hasUnsavedChanges && (
                       <Button size="compact-xs" variant="subtle" onClick={rollbackUnsaved}>
                         Rollback
@@ -1110,7 +1123,7 @@ export function SchemaExplorerPage() {
                   editorMode !== 'schema' &&
                   isTextSchemaView(schemaView)
                 ) {
-                  setExpertSnapshot(expertDoc(typeName, version, usages, contentSchema))
+                  setExpertSnapshot(expertDoc(typeName, version, usage, contentSchema))
                   setExpertDirty(false)
                 }
                 setEditorMode(next)
@@ -1119,7 +1132,7 @@ export function SchemaExplorerPage() {
               <Tabs.List style={{ flexShrink: 0 }}>
                 {!isNewDraft && <Tabs.Tab value="visual">Visual</Tabs.Tab>}
                 <Tabs.Tab value="schema">Schema</Tabs.Tab>
-                {!isNewDraft && usages.includes('ENTITY') && (
+                {!isNewDraft && usage === 'ENTITY' && (
                   <Tabs.Tab value="edges">Edges</Tabs.Tab>
                 )}
               </Tabs.List>
@@ -1141,7 +1154,7 @@ export function SchemaExplorerPage() {
                       schema={{
                         ...selected,
                         contentSchema,
-                        usages,
+                        usage,
                       }}
                       relationships={edges ?? { incoming: [], outgoing: [] }}
                       highlightedEdge={highlightedEdge}
@@ -1291,7 +1304,7 @@ export function SchemaExplorerPage() {
                     )}
                   </Stack>
                 </Tabs.Panel>
-                {!isNewDraft && usages.includes('ENTITY') && edges && (
+                {!isNewDraft && usage === 'ENTITY' && edges && (
                   <Tabs.Panel value="edges" style={schemaTabPanelStyle}>
                     <ObjectEdgesEditor
                       selectedType={selectedType!}

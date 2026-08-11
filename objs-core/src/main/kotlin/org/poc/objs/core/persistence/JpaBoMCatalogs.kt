@@ -49,7 +49,7 @@ open class JpaBoMSchemaCatalog(
             )
         }
         record.definitionDoc = PayloadMapper.toMap(normalized.contentSchema)
-        record.usages = normalized.usages.map { it.name }.sorted().toMutableList()
+        record.usage = normalized.usage.name
         record.updatedAt = now
         repository.save(record)
         cache.register(normalized)
@@ -176,7 +176,7 @@ fun BoMSchemaCatalogRecord.toDomain() = BoMSchema(
     type = type,
     version = version,
     contentSchema = PayloadMapper.fromMap(definitionDoc, BoMSchemaNode::class.java),
-    usages = usages.map { BoMSchemaUsage.valueOf(it) }.toSet().ifEmpty { setOf(BoMSchemaUsage.ENTITY) },
+    usage = if (usage.isBlank()) BoMSchemaUsage.ENTITY else BoMSchemaUsage.valueOf(usage),
 )
 
 fun BoMAllowedEdgeRuleRecord.toDomain() = BoMAllowedEdgeRule(
