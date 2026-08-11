@@ -10,6 +10,7 @@ docs/workitems/completed/YYYYMMDD-<story-slug>/
 
 ## Index (optional, newest first)
 
+- [`20260811-graphs-from-objects`](20260811-graphs-from-objects/STORY.md) — Global entity pool + many graphs; graph-local edges; `all`/`graph-expr`/`obj-expr` (C-13)
 - [`20260807-subgraphs-materialization`](20260807-subgraphs-materialization/STORY.md) — Soft-link subgraph packs + snapshot + Composer Save/Subgraph/Snapshot (C-12)
 - [`20260807-composer-draft-shopping`](20260807-composer-draft-shopping/STORY.md) — Composer Add objects; `obj-expr` / `ids`; visual chain matcher (C-11)
 - [`20260807-json-schema-generation`](20260807-json-schema-generation/STORY.md) — Configurable full-catalog JSON Schema export (C-10)

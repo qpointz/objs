@@ -27,6 +27,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | C-10 | Configurable full-catalog JSON Schema export (options + linked edges) | feature | done | [`completed/20260807-json-schema-generation/`](completed/20260807-json-schema-generation/STORY.md) |
 | C-11 | Composer add objects + `obj-expr` / `ids` + visual chain matcher UI | feature | done | [`completed/20260807-composer-draft-shopping/`](completed/20260807-composer-draft-shopping/STORY.md) |
 | C-12 | Soft-link subgraphs + snapshot clone (new ids) + Composer save/open/snapshot | feature | done | [`completed/20260807-subgraphs-materialization/`](completed/20260807-subgraphs-materialization/STORY.md) |
+| C-13 | Global entity pool + many graphs (no global graph); table renames; graph-local edges | feature | done | [`completed/20260811-graphs-from-objects/`](completed/20260811-graphs-from-objects/STORY.md) |
 
 ---
 
@@ -54,5 +55,5 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 |--------|------:|
 | backlog | 0 |
 | planned | 0 |
-| in-progress | 1 |
-| done | 12 |
+| in-progress | 0 |
+| done | 17 |
