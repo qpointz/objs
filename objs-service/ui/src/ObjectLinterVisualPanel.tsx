@@ -44,7 +44,14 @@ import { edgeStatus, entityStatus, type GraphDraftState } from './graphDraft'
 import { newEntityId } from './graphDraft'
 import { payloadFieldKindsByTypeVersion } from './payloadFieldKinds'
 import type { QueryExecStats } from './queryExecStats'
-import { AnnotationsEditor, PayloadInspector, SchemaInstanceForm, defaultValueForSchema } from './SchemaInstanceForm'
+import {
+  AnnotationsEditor,
+  PayloadInspector,
+  SchemaInstanceForm,
+  defaultValueForSchema,
+  migrateNeedsConfirm,
+  migratePayloadByKey,
+} from './SchemaInstanceForm'
 import { applyTypeHighlightDimming, toggleTypeInSet } from './typeHighlightDimming'
 import type {
   BoMAllowedEdgeRule,
@@ -133,7 +140,7 @@ export function mergeAnnotations(
 export function versionsForEntityType(schemas: BoMSchema[], type: string | null): string[] {
   if (!type) return []
   return schemas
-    .filter((s) => s.type === type && s.usages.includes('ENTITY'))
+    .filter((s) => s.type === type && s.usage === 'ENTITY')
     .map((s) => s.version)
     .sort((a, b) => b.localeCompare(a))
 }
@@ -181,21 +188,38 @@ type Props = {
   onMergeEntities?: (entities: BoMEntity[]) => void
   onMergeEdges?: (edges: BoMEdge[]) => void
   onAddObjectsSearchSuccess?: (matcherBody: unknown, stats: QueryExecStats) => void
+  /** Graph-header annotations (empty selection side pane). */
+  graphAnnotations?: Record<string, string>
+  onGraphAnnotationsChange?: (next: Record<string, string>) => void
+  /** Report Visual L2 New linked / Link enablement to the page chrome. */
+  onCreateActionsState?: (state: { canNewLinked: boolean; canLink: boolean }) => void
 }
 
 export type ObjectLinterVisualPanelHandle = {
   focusNode: (nodeId: string) => void
+  openNew: () => void
+  openNewLinked: () => void
+  openLink: () => void
 }
 
 function latestEntitySchemas(schemas: BoMSchema[]): BoMSchema[] {
   const byType = new Map<string, BoMSchema>()
-  for (const schema of schemas.filter((s) => s.usages.includes('ENTITY'))) {
+  for (const schema of schemas.filter((s) => s.usage === 'ENTITY')) {
     const prev = byType.get(schema.type)
     if (!prev || schema.version.localeCompare(prev.version) > 0) {
       byType.set(schema.type, schema)
     }
   }
   return [...byType.values()].sort((a, b) => a.type.localeCompare(b.type))
+}
+
+/** ENTITY schemas for the same type (version list) for Schema ▾ migrate. */
+export function entitySchemasSameType(schemas: BoMSchema[], type: string | null): BoMSchema[] {
+  if (!type) return []
+  return schemas
+    .filter((s) => s.usage === 'ENTITY' && s.type === type)
+    .slice()
+    .sort((a, b) => b.version.localeCompare(a.version))
 }
 
 export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle, Props>(
@@ -227,6 +251,9 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
       onMergeEntities,
       onMergeEdges,
       onAddObjectsSearchSuccess,
+      graphAnnotations = {},
+      onGraphAnnotationsChange,
+      onCreateActionsState,
     },
     ref,
   ) {
@@ -279,15 +306,7 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
       e.currentTarget.releasePointerCapture(e.pointerId)
     }
   }, [])
-  useImperativeHandle(
-    ref,
-    () => ({
-      focusNode: (nodeId: string) => {
-        graphRef.current?.focusNode(nodeId)
-      },
-    }),
-    [],
-  )
+
   const [layout, setLayout] = useState<GraphLayout>('TB')
   const [schemas, setSchemas] = useState<BoMSchema[]>([])
   const [schemasError, setSchemasError] = useState<string | null>(null)
@@ -353,6 +372,15 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
   const [connectBusy, setConnectBusy] = useState(false)
   const [editSchema, setEditSchema] = useState<BoMSchema | null>(null)
   const [edgePropSchema, setEdgePropSchema] = useState<BoMSchema | null>(null)
+  const [migrateConfirm, setMigrateConfirm] = useState<{
+    type: string
+    version: string
+    schema: BoMSchema
+    payload: Record<string, unknown>
+    copied: number
+    dropped: number
+  } | null>(null)
+  const [schemaMigrateBusy, setSchemaMigrateBusy] = useState(false)
 
   const entitySchemaOptions = useMemo(() => latestEntitySchemas(schemas), [schemas])
 
@@ -521,6 +549,10 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
   const selectedEntityId = selectedEntity?.id ?? null
   const selectedEntityType = selectedEntity?.type ?? null
   const selectedEntityVersion = selectedEntity?.schemaVersion ?? null
+  const schemaMenuOptions = useMemo(
+    () => entitySchemasSameType(schemas, selectedEntityType),
+    [schemas, selectedEntityType],
+  )
   const selectedEdgeId = selectedEdge?.id ?? null
   const selectedEdgeType = selectedEdge?.type ?? null
   const selectedEdgeVersion = selectedEdge?.schemaVersion ?? null
@@ -753,6 +785,35 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
     }
   }, [draftState.pendingDeleteEntityIds, liveDocument.edges, liveDocument.entities, pairIds])
 
+  useImperativeHandle(
+    ref,
+    () => ({
+      focusNode: (nodeId: string) => {
+        graphRef.current?.focusNode(nodeId)
+      },
+      openNew: () => setAddOpen(true),
+      openNewLinked: () => {
+        void openLink()
+      },
+      openLink: () => {
+        void openConnect()
+      },
+    }),
+    [openConnect, openLink],
+  )
+
+  const canNewLinked =
+    pairIds.length === 1 &&
+    !!selectedEntity &&
+    !draftState.pendingDeleteEntityIds.has(selectedEntity.id)
+  const canLink =
+    pairIds.length === 2 &&
+    !pairIds.some((id) => draftState.pendingDeleteEntityIds.has(id))
+
+  useEffect(() => {
+    onCreateActionsState?.({ canNewLinked, canLink })
+  }, [canLink, canNewLinked, onCreateActionsState])
+
   async function confirmAdd() {
     if (!addType || !addVersion) return
     const schema = await getSchema(addType, addVersion)
@@ -767,6 +828,51 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
     onUpsertEntity(entity)
     selectEntityAlone(entity)
     setAddOpen(false)
+  }
+
+  function applySchemaMigrate(
+    entity: BoMEntity,
+    schema: BoMSchema,
+    payload: Record<string, unknown>,
+  ) {
+    onUpsertEntity({
+      ...entity,
+      type: schema.type,
+      schemaVersion: schema.version,
+      payload,
+    })
+    setEditSchema(schema)
+    setMigrateConfirm(null)
+  }
+
+  async function pickEntitySchema(type: string, version: string) {
+    if (!selectedEntity) return
+    if (
+      selectedEntity.type === type &&
+      (selectedEntity.schemaVersion ?? '1.0.0') === version
+    ) {
+      return
+    }
+    setSchemaMigrateBusy(true)
+    try {
+      const schema = await getSchema(type, version)
+      const source = (selectedEntity.payload ?? {}) as Record<string, unknown>
+      const migrated = migratePayloadByKey(source, schema.contentSchema)
+      if (migrateNeedsConfirm(migrated)) {
+        setMigrateConfirm({
+          type: schema.type,
+          version: schema.version,
+          schema,
+          payload: migrated.payload,
+          copied: migrated.copied,
+          dropped: migrated.dropped,
+        })
+        return
+      }
+      applySchemaMigrate(selectedEntity, schema, migrated.payload)
+    } finally {
+      setSchemaMigrateBusy(false)
+    }
   }
 
   async function confirmLinked() {
@@ -829,32 +935,6 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
     <Stack gap="sm" style={{ flex: 1, minHeight: 0, height: '100%' }}>
       <Group justify="space-between" align="center" wrap="wrap" style={{ flexShrink: 0 }}>
         <Group gap="xs" wrap="wrap">
-        <Button size="xs" onClick={() => setAddOpen(true)}>
-          Add object
-        </Button>
-        <Button
-          size="xs"
-          variant="light"
-          disabled={
-            pairIds.length !== 1 ||
-            !selectedEntity ||
-            draftState.pendingDeleteEntityIds.has(selectedEntity.id)
-          }
-          onClick={() => void openLink()}
-        >
-          Create linked
-        </Button>
-        <Button
-          size="xs"
-          variant="light"
-          disabled={
-            pairIds.length !== 2 ||
-            pairIds.some((id) => draftState.pendingDeleteEntityIds.has(id))
-          }
-          onClick={() => void openConnect()}
-        >
-          Connect existing
-        </Button>
         <Button
           size="xs"
           variant="light"
@@ -1052,7 +1132,7 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
           {displayGraph.nodes.length === 0 ? (
             <Stack p="md" gap="xs">
               <Text size="sm" c="dimmed">
-                Draft has no entities. Use Add object or Add objects….
+                Draft has no entities. Use New or Add objects….
               </Text>
             </Stack>
           ) : (
@@ -1131,7 +1211,7 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
                 setAddOpen(true)
               }}
             >
-              Add object
+              New
             </Menu.Item>
             {canvasMenuCanCreateLinked && (
               <Menu.Item
@@ -1140,7 +1220,7 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
                   void openLink()
                 }}
               >
-                Create linked
+                New linked
               </Menu.Item>
             )}
             {canvasMenuCanConnect && (
@@ -1150,7 +1230,7 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
                   void openConnect()
                 }}
               >
-                Connect existing
+                Link
               </Menu.Item>
             )}
             {canExcludeFromDraft && (
@@ -1258,8 +1338,8 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
                 </Button>
               </Group>
               <Text size="sm" c="dimmed">
-                Editing is disabled while two objects are selected. Use Connect existing or Delete
-                in the toolbar, or click a single object to edit.
+                Editing is disabled while two objects are selected. Use Link or Delete in the
+                toolbar, or click a single object to edit.
               </Text>
               <Stack gap={4}>
                 {pairIds.map((id) => {
@@ -1273,18 +1353,73 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
               </Stack>
             </Stack>
           ) : !selectedEntity && !selectedEdge ? (
-            <Text size="sm" c="dimmed">
-              Select a node or edge to edit. Ctrl+click a second node to connect two objects.
-            </Text>
+            <Stack gap="sm">
+              <Text fw={600} size="sm">
+                Graph annotations
+              </Text>
+              <Text size="xs" c="dimmed">
+                No object or edge selected. Edit this graph&apos;s header annotations, or select a
+                node/edge to edit.
+              </Text>
+              {onGraphAnnotationsChange ? (
+                <AnnotationsEditor
+                  value={graphAnnotations}
+                  onChange={onGraphAnnotationsChange}
+                  compact
+                />
+              ) : (
+                <Text size="sm" c="dimmed">
+                  Select a node or edge to edit. Ctrl+click a second node to link two objects.
+                </Text>
+              )}
+            </Stack>
           ) : (
             <ScrollArea style={{ flex: 1, minHeight: 0 }} offsetScrollbars>
               {selectedEntity && (
                 <Stack gap="xs">
                   <Group justify="space-between" align="flex-start" gap="xs">
                     <div>
-                      <Text fw={600} size="sm">
-                        Edit {selectedEntity.type}
-                      </Text>
+                      <Group gap={6} align="center" wrap="wrap">
+                        <Text fw={600} size="sm">
+                          Edit {selectedEntity.type}
+                        </Text>
+                        <Menu shadow="md" width={260} position="bottom-start" withinPortal>
+                          <Menu.Target>
+                            <Button
+                              size="compact-xs"
+                              variant="light"
+                              loading={schemaMigrateBusy}
+                              disabled={schemaMenuOptions.length <= 1}
+                              title={
+                                schemaMenuOptions.length <= 1
+                                  ? 'No other versions of this type'
+                                  : 'Migrate to another schema version'
+                              }
+                            >
+                              Schema ▾
+                            </Button>
+                          </Menu.Target>
+                          <Menu.Dropdown>
+                            <Menu.Label>Versions of {selectedEntity.type}</Menu.Label>
+                            <ScrollArea.Autosize mah={280}>
+                              {schemaMenuOptions.map((s) => {
+                                const current =
+                                  s.version === (selectedEntity.schemaVersion ?? '1.0.0')
+                                return (
+                                  <Menu.Item
+                                    key={`${s.type}@${s.version}`}
+                                    disabled={current}
+                                    onClick={() => void pickEntitySchema(s.type, s.version)}
+                                  >
+                                    {s.version}
+                                    {current ? ' (current)' : ''}
+                                  </Menu.Item>
+                                )
+                              })}
+                            </ScrollArea.Autosize>
+                          </Menu.Dropdown>
+                        </Menu>
+                      </Group>
                       <Text size="xs" mt={4}>
                         <Text span fw={600}>
                           type:{' '}
@@ -1295,6 +1430,8 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
                             selectedEntity.type,
                             selectedEntity.schemaVersion ?? '1.0.0',
                           )}
+                          target="_blank"
+                          rel="noopener noreferrer"
                           size="xs"
                         >
                           <Badge
@@ -1370,11 +1507,14 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
                         <Tabs.Panel value="payload" pt="xs">
                           {editSchema ? (
                             <PayloadInspector
+                              key={selectedEntity.id}
                               schema={editSchema.contentSchema}
                               value={(selectedEntity.payload ?? {}) as Record<string, unknown>}
                               onChange={(payload) =>
                                 onUpsertEntity({ ...selectedEntity, payload })
                               }
+                              hideChrome
+                              allowFieldDelete
                             />
                           ) : (
                             <Text size="xs" c="dimmed">
@@ -1389,6 +1529,7 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
                               onUpsertEntity({ ...selectedEntity, annotations })
                             }
                             compact
+                            hideChrome
                           />
                         </Tabs.Panel>
                       </Tabs>
@@ -1417,6 +1558,8 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
                           selectedEdge.type,
                           selectedEdge.schemaVersion ?? '1.0.0',
                         )}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         size="xs"
                       >
                         <Badge size="sm" variant="light" style={{ cursor: 'pointer' }}>
@@ -1531,7 +1674,7 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
         </Paper>
       </Group>
 
-      <Modal opened={addOpen} onClose={() => setAddOpen(false)} title="Add object">
+      <Modal opened={addOpen} onClose={() => setAddOpen(false)} title="New object">
         <Stack>
           <Select
             label="Type"
@@ -1560,7 +1703,7 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
           setLinkOptionKey(null)
           setLinkVersion(null)
         }}
-        title="Create linked object"
+        title="New linked object"
       >
         <Stack>
           {linkOptions.length === 0 ? (
@@ -1596,14 +1739,14 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
                 disabled={!linkOptionKey || !linkVersion}
                 onClick={() => void confirmLinked()}
               >
-                Create linked
+                New linked
               </Button>
             </>
           )}
         </Stack>
       </Modal>
 
-      <Modal opened={connectOpen} onClose={() => setConnectOpen(false)} title="Connect existing">
+      <Modal opened={connectOpen} onClose={() => setConnectOpen(false)} title="Link objects">
         <Stack>
           {connectBusy ? (
             <Text size="sm" c="dimmed">
@@ -1626,11 +1769,50 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
                 searchable
               />
               <Button disabled={!connectOptionKey} onClick={confirmConnect}>
-                Connect
+                Link
               </Button>
             </>
           )}
         </Stack>
+      </Modal>
+      <Modal
+        opened={migrateConfirm != null}
+        onClose={() => setMigrateConfirm(null)}
+        title="Migrate payload?"
+      >
+        {migrateConfirm && (
+          <Stack gap="sm">
+            <Text size="sm">
+              Change schema to{' '}
+              <Code>
+                {migrateConfirm.type}@{migrateConfirm.version}
+              </Code>
+              .
+            </Text>
+            <Text size="sm" c="dimmed">
+              {migrateConfirm.copied === 0
+                ? 'No fields could be copied to the new schema (unmatched keys will be dropped).'
+                : `${migrateConfirm.copied} field(s) copied, ${migrateConfirm.dropped} dropped.`}
+            </Text>
+            <Group justify="flex-end" gap="xs">
+              <Button variant="default" onClick={() => setMigrateConfirm(null)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (!selectedEntity || !migrateConfirm) return
+                  applySchemaMigrate(
+                    selectedEntity,
+                    migrateConfirm.schema,
+                    migrateConfirm.payload,
+                  )
+                }}
+              >
+                Confirm
+              </Button>
+            </Group>
+          </Stack>
+        )}
       </Modal>
     </Stack>
   )

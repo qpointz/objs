@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  ActionIcon,
   Alert,
   Badge,
   Box,
@@ -8,18 +9,27 @@ import {
   Group,
   Menu,
   Paper,
+  Popover,
   Stack,
   Table,
   Tabs,
   Text,
   Title,
+  Tooltip,
 } from '@mantine/core'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { IconHelp } from '@tabler/icons-react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { mutationShapeError, normalizeGraphMutation } from './graphDraft'
-import { putGraphMutation, validateGraphMutation, toGraphData } from './api'
+import {
+  createGraph,
+  getGraph,
+  putGraphMutation,
+  validateGraphMutation,
+  toGraphData,
+} from './api'
 import { CurrentGraphBar } from './CurrentGraphBar'
 import { JsonYamlEditor, type JsonYamlEditorHandle } from './JsonYamlEditor'
-import { NewGraphModal, type NewGraphMode } from './NewGraphModal'
+import { NewGraphModal } from './NewGraphModal'
 import { NewUuidButton } from './NewUuidButton'
 import {
   ObjectLinterVisualPanel,
@@ -39,14 +49,45 @@ import {
 
 export { graphShapeError, mutationShapeError } from './graphDraft'
 
+const COMPOSER_HELP =
+  'Add objects into the draft, edit visually or as YAML/JSON, then Validate or Save (transactional upsert + delete) into the current graph. First Save creates a graph when none is selected.'
+
+function annotationsEqual(a: Record<string, string>, b: Record<string, string>): boolean {
+  const aKeys = Object.keys(a)
+  const bKeys = Object.keys(b)
+  if (aKeys.length !== bKeys.length) return false
+  return aKeys.every((k) => a[k] === b[k])
+}
+
+function isMutationDirty(body: {
+  upsert: { entities: unknown[]; edges: unknown[] }
+  delete: { entities: unknown[]; edges: unknown[] }
+}): boolean {
+  return (
+    body.upsert.entities.length +
+      body.upsert.edges.length +
+      body.delete.entities.length +
+      body.delete.edges.length >
+    0
+  )
+}
+
 type ObjectLinterNavState = {
   matcher?: unknown
   /** Explorer handoff: merge all canvas objects (and edges) into the draft. */
   addAll?: boolean
+  /**
+   * Explorer Selection → New graph from selection: replace draft with entire canvas
+   * (ids preserved; graphId null until first Save).
+   */
+  replaceDraft?: boolean
   /** Explorer canvas snapshot — preferred over re-running matcher. */
   graphContents?: BoMGraphContents
-  /** Explorer handoff (WI-005): adopt this as the current graph if none is selected yet. */
-  graphId?: string
+  /**
+   * Graph mode → Open in Composer: load this graph from the API.
+   * Explicit `null` clears current graph (Selection → New graph from selection).
+   */
+  graphId?: string | null
 }
 
 export function ObjectLinterPage() {
@@ -87,12 +128,17 @@ export function ObjectLinterPage() {
   const [result, setResult] = useState<GraphValidationResult | null>(null)
   const [addObjectsOpen, setAddObjectsOpen] = useState(false)
   const [openGraphOpen, setOpenGraphOpen] = useState(false)
-  const [graphModal, setGraphModal] = useState<NewGraphMode | null>(null)
+  const [snapshotOpen, setSnapshotOpen] = useState(false)
   const [handoffMatcher, setHandoffMatcher] = useState<unknown | null>(null)
   const [autoSearch, setAutoSearch] = useState(false)
   const [autoAddAllResults, setAutoAddAllResults] = useState(false)
   const [addObjectsStats, setAddObjectsStats] = useState<QueryExecStats | null>(null)
   const [currentGraphId, setCurrentGraphId] = useCurrentGraphId()
+  const [graphAnnotations, setGraphAnnotations] = useState<Record<string, string>>({})
+  const [savedGraphAnnotations, setSavedGraphAnnotations] = useState<Record<string, string>>({})
+  /** True after a server create that has not yet had a successful Save of draft content. */
+  const [neverSavedSinceCreate, setNeverSavedSinceCreate] = useState(false)
+  const [createActions, setCreateActions] = useState({ canNewLinked: false, canLink: false })
 
   const graphView = useMemo(() => toGraphData(canvasDocument), [canvasDocument])
   const onFocusNode = useCallback((nodeId: string) => {
@@ -104,7 +150,15 @@ export function ObjectLinterPage() {
     onFocusNode,
   })
 
-  /** Replace the draft with a graph's stored members (Open graph / Clone). */
+  const annotationsDirty = !annotationsEqual(graphAnnotations, savedGraphAnnotations)
+  const mutationDirty = isMutationDirty(mutationBody)
+  // Annotation edits persist on first Save (create). Existing-graph header update has no API yet —
+  // pills still sync live from graphAnnotations.
+  const draftDirty = mutationDirty || (currentGraphId == null && annotationsDirty)
+  const saveEnabled = draftDirty || currentGraphId == null || neverSavedSinceCreate
+  const snapshotEnabled = currentGraphId != null && !mutationDirty && !neverSavedSinceCreate
+
+  /** Replace the draft with a graph's stored members (Open graph / Snapshot). */
   const loadGraphMembers = useCallback(
     (contents: BoMGraphContents) => {
       loadGraphContents(contents)
@@ -115,28 +169,65 @@ export function ObjectLinterPage() {
     [clearQuery, loadGraphContents],
   )
 
+  const applyGraphHeader = useCallback((id: string, annotations: Record<string, string>) => {
+    setCurrentGraphId(id)
+    setGraphAnnotations(annotations)
+    setSavedGraphAnnotations(annotations)
+    setNeverSavedSinceCreate(false)
+  }, [setCurrentGraphId])
+
   const onOpenGraph = useCallback(
     (id: string, resolved: BoMGraphResponse) => {
-      setCurrentGraphId(id)
+      applyGraphHeader(id, resolved.annotations ?? {})
       loadGraphMembers(resolved.graph)
     },
-    [loadGraphMembers, setCurrentGraphId],
+    [applyGraphHeader, loadGraphMembers],
   )
 
-  const onGraphCreated = useCallback(
+  const onSnapshotCreated = useCallback(
     (id: string, resolved: BoMGraphResponse) => {
-      setCurrentGraphId(id)
-      if (graphModal === 'clone') {
-        loadGraphMembers(resolved.graph)
-      } else {
-        clearDraft()
-        clearQuery()
-        setResult(null)
-        setError(null)
-      }
+      applyGraphHeader(id, resolved.annotations ?? {})
+      loadGraphMembers(resolved.graph)
     },
-    [clearDraft, clearQuery, graphModal, loadGraphMembers, setCurrentGraphId],
+    [applyGraphHeader, loadGraphMembers],
   )
+
+  const onNewGraphChrome = useCallback(() => {
+    clearDraft()
+    clearQuery()
+    setCurrentGraphId(null)
+    setGraphAnnotations({})
+    setSavedGraphAnnotations({})
+    setNeverSavedSinceCreate(false)
+    setResult(null)
+    setError(null)
+  }, [clearDraft, clearQuery, setCurrentGraphId])
+
+  const onCreateActionsState = useCallback((next: { canNewLinked: boolean; canLink: boolean }) => {
+    setCreateActions(next)
+  }, [])
+
+  // Wire header annotations when a persisted/open graph id is present (WI-004 / G-U3a).
+  useEffect(() => {
+    if (!currentGraphId) return
+    let cancelled = false
+    getGraph(currentGraphId)
+      .then((resolved) => {
+        if (cancelled) return
+        const ann = resolved.annotations ?? {}
+        setGraphAnnotations(ann)
+        setSavedGraphAnnotations(ann)
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setGraphAnnotations({})
+          setSavedGraphAnnotations({})
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [currentGraphId])
 
   const draftEntityIds = useMemo(
     () => new Set(document.entities.map((e) => e.id)),
@@ -264,10 +355,6 @@ export function ObjectLinterPage() {
   }
 
   async function saveGraph() {
-    if (!currentGraphId) {
-      setError('Select or create a current graph before saving.')
-      return
-    }
     const synced = await syncTextIntoDraft()
     if (!synced) return
     setBusy(true)
@@ -280,7 +367,38 @@ export function ObjectLinterPage() {
         setError('Fix validation issues before Save')
         return
       }
+
+      if (currentGraphId == null) {
+        // First Save: create header with membership for pool-backed ids, then upsert
+        // new/modified entities + all live edges into the new graph (G-U5).
+        const membershipIds = document.entities
+          .filter((e) => state.baselineEntityIds.has(e.id))
+          .map((e) => e.id)
+        const created = await createGraph({
+          annotations: graphAnnotations,
+          entityIds: membershipIds,
+        })
+        const edgeUpserts = document.edges.filter(
+          (e) => e.id != null && !state.pendingDeleteEdgeIds.has(e.id),
+        )
+        const createMutation = {
+          upsert: {
+            entities: synced.body.upsert.entities,
+            edges: edgeUpserts,
+          },
+          delete: { entities: [] as string[], edges: [] as string[] },
+        }
+        if (isMutationDirty(createMutation)) {
+          await putGraphMutation(created.id, createMutation)
+        }
+        applyGraphHeader(created.id, created.annotations ?? graphAnnotations)
+        markApplied()
+        return
+      }
+
       await putGraphMutation(currentGraphId, synced.body)
+      setSavedGraphAnnotations(graphAnnotations)
+      setNeverSavedSinceCreate(false)
       markApplied()
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -313,15 +431,47 @@ export function ObjectLinterPage() {
     if (navState == null || typeof navState !== 'object') return
     const hasMatcher = 'matcher' in navState && navState.matcher !== undefined
     const hasGraphContents = navState.graphContents != null && typeof navState.graphContents === 'object'
-    if (!hasMatcher && !hasGraphContents && !navState.graphId) return
+    const hasGraphIdKey = 'graphId' in navState
+    if (!hasMatcher && !hasGraphContents && !hasGraphIdKey) return
 
     const matcher = hasMatcher ? navState.matcher : undefined
     const addAll = navState.addAll === true
+    const replaceDraft = navState.replaceDraft === true
     const graphContents = hasGraphContents ? navState.graphContents : undefined
     navigate('.', { replace: true, state: null })
 
-    if (navState.graphId && !currentGraphId) {
-      setCurrentGraphId(navState.graphId)
+    // Selection → New graph from selection: clear id, replace draft with entire canvas.
+    if (replaceDraft && graphContents) {
+      setCurrentGraphId(null)
+      setGraphAnnotations({})
+      setSavedGraphAnnotations({})
+      setNeverSavedSinceCreate(false)
+      loadGraphMembers(graphContents)
+      setTab('visual')
+      return
+    }
+
+    // Graph → Open in Composer: set id and load members from API (no Explorer snapshot).
+    if (typeof navState.graphId === 'string' && navState.graphId.length > 0) {
+      const id = navState.graphId
+      setCurrentGraphId(id)
+      void getGraph(id)
+        .then((resolved) => {
+          applyGraphHeader(id, resolved.annotations ?? {})
+          loadGraphMembers(resolved.graph)
+          setTab('visual')
+        })
+        .catch((e: unknown) => {
+          setError(e instanceof Error ? e.message : String(e))
+        })
+      return
+    }
+
+    if (hasGraphIdKey && navState.graphId == null) {
+      setCurrentGraphId(null)
+      setGraphAnnotations({})
+      setSavedGraphAnnotations({})
+      setNeverSavedSinceCreate(false)
     }
 
     if (addAll && graphContents) {
@@ -339,30 +489,37 @@ export function ObjectLinterPage() {
       openAddObjects({ matcher, autoSearch: true, autoAddAllResults: addAll })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- handoff once per location.state
-  }, [location.state, navigate, mergeEntities, mergeEdges])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handoff once per location.state
+  }, [location.state, navigate, mergeEntities, mergeEdges, loadGraphMembers, applyGraphHeader])
 
   const valid = result != null && result.issues.length === 0
 
+  const newLinkedTooltip = createActions.canNewLinked
+    ? undefined
+    : 'Select exactly one non-deleted object'
+  const linkTooltip = createActions.canLink
+    ? undefined
+    : 'Select exactly two non-deleted objects (Ctrl+click)'
+
   return (
     <Stack gap="sm" style={{ flex: 1, minHeight: 0, height: '100%' }}>
-      <Group justify="space-between" align="flex-start" style={{ flexShrink: 0 }}>
-        <div>
-          <Title order={3}>Object linter</Title>
-          <Text size="sm" c="dimmed">
-            Add objects into the draft, edit visually or as YAML/JSON, then Validate or Save
-            (transactional upsert + delete) into the current graph.
-          </Text>
-        </div>
-        <Group>
-          <Button variant="default" component={Link} to="/model">
-            Browse schemas
-          </Button>
-          <Button
-            variant="light"
-            onClick={() => (addObjectsOpen ? closeAddObjects() : openAddObjects())}
-          >
-            {addObjectsOpen ? 'Hide add objects' : 'Add objects…'}
-          </Button>
+      <Group justify="space-between" align="center" wrap="wrap" style={{ flexShrink: 0 }}>
+        <Group gap={6} align="center">
+          <Title order={3}>Composer</Title>
+          <Popover width={380} position="bottom-start" withArrow shadow="md">
+            <Popover.Target>
+              <ActionIcon variant="subtle" color="gray" size="sm" aria-label="Composer help">
+                <IconHelp size={16} />
+              </ActionIcon>
+            </Popover.Target>
+            <Popover.Dropdown>
+              <Text size="sm" c="dimmed">
+                {COMPOSER_HELP}
+              </Text>
+            </Popover.Dropdown>
+          </Popover>
+        </Group>
+        <Group gap="xs">
           <Button variant="default" onClick={resetToRollback}>
             Reset
           </Button>
@@ -377,73 +534,128 @@ export function ObjectLinterPage() {
           >
             Clear
           </Button>
-          <Button loading={busy} variant="light" onClick={() => void validate()}>
-            Validate
-          </Button>
-          <Group gap={0} wrap="nowrap" style={{ display: 'inline-flex' }}>
-            <Button
-              loading={busy}
-              disabled={!currentGraphId}
-              title={currentGraphId ? undefined : 'Select or create a current graph first'}
-              onClick={() => void saveGraph()}
-              style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
-            >
-              Save
-            </Button>
-            <Menu shadow="md" width={200} position="bottom-end" withinPortal>
-              <Menu.Target>
-                <Button
-                  loading={busy}
-                  aria-label="Save options"
-                  px="xs"
-                  style={{
-                    borderTopLeftRadius: 0,
-                    borderBottomLeftRadius: 0,
-                    borderLeft: '1px solid var(--mantine-color-default-border)',
-                  }}
-                >
-                  ▾
-                </Button>
-              </Menu.Target>
-              <Menu.Dropdown>
-                <Menu.Item disabled={!currentGraphId} onClick={() => void saveGraph()}>
-                  Save
-                </Menu.Item>
-                <Menu.Item
-                  disabled={!currentGraphId}
-                  onClick={() => setGraphModal('clone')}
-                >
-                  Clone…
-                </Menu.Item>
-              </Menu.Dropdown>
-            </Menu>
-          </Group>
         </Group>
       </Group>
 
       <CurrentGraphBar
         graphId={currentGraphId}
+        annotations={currentGraphId != null ? graphAnnotations : null}
         onOpenGraph={() => setOpenGraphOpen(true)}
-        onNewGraph={() => setGraphModal('new')}
+        onNewGraph={onNewGraphChrome}
       />
-
-      {!currentGraphId && (
-        <Alert color="orange" title="No current graph" style={{ flexShrink: 0 }}>
-          Open an existing graph or create a new one before saving.
-        </Alert>
-      )}
 
       <Tabs
         value={tab}
         onChange={trySwitchTab}
         style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', position: 'relative' }}
       >
-        <Group justify="space-between" align="center" gap="sm" wrap="nowrap" style={{ flexShrink: 0 }}>
-          <Tabs.List style={{ flex: 1 }}>
+        <Group justify="space-between" align="center" gap="sm" wrap="wrap" style={{ flexShrink: 0 }}>
+          <Tabs.List style={{ flexShrink: 0 }}>
             <Tabs.Tab value="visual">Visual</Tabs.Tab>
             <Tabs.Tab value="text">Text</Tabs.Tab>
           </Tabs.List>
-          <Group gap={6} wrap="nowrap">
+          <Group gap={6} wrap="wrap" justify="flex-end" style={{ flex: 1 }}>
+            {tab === 'visual' && (
+              <>
+                <Group gap={0} wrap="nowrap" style={{ display: 'inline-flex' }}>
+                  <Button
+                    size="compact-sm"
+                    onClick={() => visualRef.current?.openNew()}
+                    style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
+                  >
+                    New
+                  </Button>
+                  <Menu shadow="md" width={180} position="bottom-end" withinPortal>
+                    <Menu.Target>
+                      <Button
+                        size="compact-sm"
+                        aria-label="New options"
+                        px="xs"
+                        style={{
+                          borderTopLeftRadius: 0,
+                          borderBottomLeftRadius: 0,
+                          borderLeft: '1px solid var(--mantine-color-default-border)',
+                        }}
+                      >
+                        ▾
+                      </Button>
+                    </Menu.Target>
+                    <Menu.Dropdown>
+                      <Menu.Item onClick={() => visualRef.current?.openNew()}>New</Menu.Item>
+                      <Menu.Item
+                        disabled={!createActions.canNewLinked}
+                        title={newLinkedTooltip}
+                        onClick={() => visualRef.current?.openNewLinked()}
+                      >
+                        New linked
+                      </Menu.Item>
+                    </Menu.Dropdown>
+                  </Menu>
+                </Group>
+                <Tooltip label={linkTooltip} disabled={!linkTooltip} withArrow>
+                  <span style={{ display: 'inline-flex' }}>
+                    <Button
+                      size="compact-sm"
+                      variant="light"
+                      disabled={!createActions.canLink}
+                      onClick={() => visualRef.current?.openLink()}
+                    >
+                      Link
+                    </Button>
+                  </span>
+                </Tooltip>
+                <Button
+                  size="compact-sm"
+                  variant="light"
+                  onClick={() => (addObjectsOpen ? closeAddObjects() : openAddObjects())}
+                >
+                  {addObjectsOpen ? 'Hide add objects' : 'Add objects…'}
+                </Button>
+              </>
+            )}
+            <Button size="compact-sm" loading={busy} variant="light" onClick={() => void validate()}>
+              Validate
+            </Button>
+            <Tooltip
+              label={
+                saveEnabled
+                  ? undefined
+                  : 'Nothing to save — draft is clean and the graph is already saved'
+              }
+              disabled={saveEnabled}
+              withArrow
+            >
+              <span style={{ display: 'inline-flex' }}>
+                <Button
+                  size="compact-sm"
+                  loading={busy}
+                  disabled={!saveEnabled}
+                  onClick={() => void saveGraph()}
+                >
+                  Save
+                </Button>
+              </span>
+            </Tooltip>
+            <Tooltip
+              label={
+                snapshotEnabled
+                  ? undefined
+                  : 'Snapshot requires a saved, clean graph (not dirty / not unsaved)'
+              }
+              disabled={snapshotEnabled}
+              withArrow
+            >
+              <span style={{ display: 'inline-flex' }}>
+                <Button
+                  size="compact-sm"
+                  variant="light"
+                  disabled={!snapshotEnabled}
+                  onClick={() => setSnapshotOpen(true)}
+                >
+                  Snapshot
+                </Button>
+              </span>
+            </Tooltip>
             {mutationBody.upsert.entities.length + mutationBody.upsert.edges.length > 0 && (
               <Badge color="blue" variant="light" size="sm">
                 {mutationBody.upsert.entities.length + mutationBody.upsert.edges.length} upsert
@@ -505,6 +717,9 @@ export function ObjectLinterPage() {
               setAddObjectsStats(stats)
               setResult(null)
             }}
+            graphAnnotations={graphAnnotations}
+            onGraphAnnotationsChange={setGraphAnnotations}
+            onCreateActionsState={onCreateActionsState}
           />
         </Tabs.Panel>
 
@@ -682,11 +897,11 @@ export function ObjectLinterPage() {
         onOpen={onOpenGraph}
       />
       <NewGraphModal
-        opened={graphModal != null}
-        mode={graphModal ?? 'new'}
+        opened={snapshotOpen}
+        mode="snapshot"
         cloneSourceGraphId={currentGraphId}
-        onClose={() => setGraphModal(null)}
-        onCreated={onGraphCreated}
+        onClose={() => setSnapshotOpen(false)}
+        onCreated={onSnapshotCreated}
       />
     </Stack>
   )

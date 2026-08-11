@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { defaultValueForSchema, fieldDescription, fieldLabel } from './SchemaInstanceForm'
+import {
+  defaultValueForSchema,
+  fieldDescription,
+  fieldLabel,
+  migrateNeedsConfirm,
+  migratePayloadByKey,
+} from './SchemaInstanceForm'
 import type { BoMSchemaNode } from './types'
 
 describe('defaultValueForSchema', () => {
@@ -136,5 +142,89 @@ describe('fieldDescription', () => {
         schema: { type: 'STRING', title: '', description: '  Package name  ' },
       }),
     ).toBe('Package name')
+  })
+})
+
+describe('migratePayloadByKey', () => {
+  const productV1: BoMSchemaNode = {
+    type: 'OBJECT',
+    title: 'Product',
+    description: '',
+    fields: [
+      { name: 'name', schema: { type: 'STRING', title: 'Name', description: '' } },
+      { name: 'version', schema: { type: 'STRING', title: 'Version', description: '' } },
+    ],
+  }
+
+  const productV2: BoMSchemaNode = {
+    type: 'OBJECT',
+    title: 'Product',
+    description: '',
+    fields: [
+      { name: 'name', schema: { type: 'STRING', title: 'Name', description: '' } },
+      {
+        name: 'meta',
+        schema: {
+          type: 'OBJECT',
+          title: 'Meta',
+          description: '',
+          fields: [
+            { name: 'kind', schema: { type: 'STRING', title: 'Kind', description: '' } },
+          ],
+        },
+      },
+    ],
+  }
+
+  it('shouldCopyMatchingKeys_andDropUnmatched', () => {
+    const result = migratePayloadByKey(
+      { name: 'pkg', version: '1.0', extra: true },
+      productV1,
+    )
+    expect(result.payload).toEqual({ name: 'pkg', version: '1.0' })
+    expect(result.copied).toBe(2)
+    expect(result.dropped).toBe(1)
+    expect(migrateNeedsConfirm(result)).toBe(true)
+  })
+
+  it('shouldRecurseObjectFields_andDropNestedUnmatched', () => {
+    const result = migratePayloadByKey(
+      { name: 'pkg', meta: { kind: 'lib', leftover: 1 } },
+      productV2,
+    )
+    expect(result.payload).toEqual({ name: 'pkg', meta: { kind: 'lib' } })
+    expect(result.copied).toBe(3) // name + meta object + kind
+    expect(result.dropped).toBe(1)
+    expect(migrateNeedsConfirm(result)).toBe(true)
+  })
+
+  it('shouldNeedConfirm_whenZeroCopies', () => {
+    const result = migratePayloadByKey({ other: 'x' }, productV1)
+    expect(result.payload).toEqual({})
+    expect(result.copied).toBe(0)
+    expect(result.dropped).toBe(1)
+    expect(migrateNeedsConfirm(result)).toBe(true)
+  })
+
+  it('shouldNotNeedConfirm_whenFullMatch', () => {
+    const result = migratePayloadByKey({ name: 'a', version: 'b' }, productV1)
+    expect(result.payload).toEqual({ name: 'a', version: 'b' })
+    expect(result.copied).toBe(2)
+    expect(result.dropped).toBe(0)
+    expect(migrateNeedsConfirm(result)).toBe(false)
+  })
+
+  it('shouldTreatEmptyStringAsPresentValue_notDropped', () => {
+    const result = migratePayloadByKey({ name: '', version: '1' }, productV1)
+    expect(result.payload).toEqual({ name: '', version: '1' })
+    expect(result.copied).toBe(2)
+    expect(result.dropped).toBe(0)
+  })
+
+  it('shouldNeedConfirm_whenEmptySource', () => {
+    const result = migratePayloadByKey({}, productV1)
+    expect(result.copied).toBe(0)
+    expect(result.dropped).toBe(0)
+    expect(migrateNeedsConfirm(result)).toBe(true)
   })
 })

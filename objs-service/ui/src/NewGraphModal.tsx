@@ -9,13 +9,13 @@ import {
 } from './KeyValueRowsEditor'
 import type { BoMGraphResponse } from './types'
 
-/** `new` creates an empty graph header; `clone` copies [cloneSourceGraphId]'s members + edges. */
-export type NewGraphMode = 'new' | 'clone'
+/** `new` creates an empty graph header; `clone`/`snapshot` copies [cloneSourceGraphId]'s members + edges. */
+export type NewGraphMode = 'new' | 'clone' | 'snapshot'
 
 type Props = {
   opened: boolean
   mode: NewGraphMode
-  /** Required for `clone` — the current graph being copied. */
+  /** Required for `clone` / `snapshot` — the current graph being copied. */
   cloneSourceGraphId?: string | null
   onClose: () => void
   onCreated: (graphId: string, resolved: BoMGraphResponse) => void
@@ -51,7 +51,7 @@ export function NewGraphModal({
           ? await createGraph({ annotations })
           : await (async () => {
               if (!cloneSourceGraphId) {
-                throw new Error('No current graph selected to clone')
+                throw new Error('No current graph selected to snapshot')
               }
               return cloneGraph(cloneSourceGraphId, annotations)
             })()
@@ -64,8 +64,8 @@ export function NewGraphModal({
     }
   }
 
-  const title = mode === 'new' ? 'New graph' : 'Clone graph'
-  const submitLabel = mode === 'new' ? 'Create graph' : 'Clone graph'
+  const title = mode === 'new' ? 'New graph' : 'Snapshot'
+  const submitLabel = mode === 'new' ? 'Create graph' : 'Create snapshot'
 
   return (
     <Modal opened={opened} onClose={onClose} title={title} size="md">
@@ -78,7 +78,7 @@ export function NewGraphModal({
         <Text size="sm" c="dimmed">
           {mode === 'new'
             ? 'Creates a new, empty graph header. Set as the current graph after creation.'
-            : 'Copies the current graph\'s members and graph-local edges into a new, independent graph (no lineage recorded).'}
+            : 'Copies the current graph\'s members and graph-local edges into a new, independent graph (no lineage recorded). Switches Composer to the new graph on success.'}
         </Text>
         <Text size="sm" fw={500}>
           Header annotations

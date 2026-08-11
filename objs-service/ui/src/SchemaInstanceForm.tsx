@@ -17,7 +17,7 @@ import {
   Tooltip,
 } from '@mantine/core'
 import { IconInfoCircle, IconPlus, IconTrash } from '@tabler/icons-react'
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import type { BoMSchemaField, BoMSchemaNode } from './types'
 
 /** Placeholder titles from the schema visual builder defaults — not useful as instance-form labels. */
@@ -84,6 +84,8 @@ type Props = {
   pathPrefix?: string
   /** Denser controls for side panels (Object linter). */
   compact?: boolean
+  /** Entity payload only: omit keys on delete; show (deleted); restore on value. */
+  allowFieldDelete?: boolean
 }
 
 export function defaultValueForSchema(schema: BoMSchemaNode): unknown {
@@ -118,6 +120,56 @@ export function defaultValueForSchema(schema: BoMSchemaNode): unknown {
     default:
       return null
   }
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return value != null && typeof value === 'object' && !Array.isArray(value)
+}
+
+/** Key→key payload migrate for Schema ▾ (recurse OBJECT; drop unmatched). */
+export type MigratePayloadResult = {
+  payload: Record<string, unknown>
+  /** Number of source keys copied into the target (nested OBJECT copies counted recursively). */
+  copied: number
+  /** Number of source keys dropped (no matching target field; nested drops included). */
+  dropped: number
+}
+
+export function migratePayloadByKey(
+  source: Record<string, unknown>,
+  targetSchema: BoMSchemaNode,
+): MigratePayloadResult {
+  if (targetSchema.type !== 'OBJECT') {
+    return { payload: {}, copied: 0, dropped: Object.keys(source).length }
+  }
+
+  const payload: Record<string, unknown> = {}
+  let copied = 0
+  let dropped = 0
+  const unmatched = new Set(Object.keys(source))
+
+  for (const field of targetSchema.fields ?? []) {
+    if (!(field.name in source)) continue
+    unmatched.delete(field.name)
+    const srcVal = source[field.name]
+    if (field.schema.type === 'OBJECT' && isPlainObject(srcVal)) {
+      const nested = migratePayloadByKey(srcVal, field.schema)
+      payload[field.name] = nested.payload
+      copied += 1 + nested.copied
+      dropped += nested.dropped
+    } else {
+      payload[field.name] = structuredClone(srcVal)
+      copied += 1
+    }
+  }
+
+  dropped += unmatched.size
+  return { payload, copied, dropped }
+}
+
+/** True when migrate should ask before applying (zero copies or any dropped keys). */
+export function migrateNeedsConfirm(result: MigratePayloadResult): boolean {
+  return result.copied === 0 || result.dropped > 0
 }
 
 const compactInputStyles = {
@@ -185,7 +237,24 @@ export function SchemaInstanceForm({
   onChange,
   pathPrefix = '',
   compact = false,
+  allowFieldDelete = false,
 }: Props) {
+  const [deletedKeys, setDeletedKeys] = useState<Set<string>>(() => new Set())
+
+  useEffect(() => {
+    setDeletedKeys((prev) => {
+      let changed = false
+      const next = new Set(prev)
+      for (const key of prev) {
+        if (key in value) {
+          next.delete(key)
+          changed = true
+        }
+      }
+      return changed ? next : prev
+    })
+  }, [value])
+
   if (schema.type !== 'OBJECT') {
     return (
       <Text size={compact ? 'xs' : 'sm'} c="dimmed">
@@ -204,7 +273,26 @@ export function SchemaInstanceForm({
   }
 
   function setField(name: string, nextValue: unknown) {
+    if (allowFieldDelete) {
+      setDeletedKeys((prev) => {
+        if (!prev.has(name)) return prev
+        const next = new Set(prev)
+        next.delete(name)
+        return next
+      })
+    }
     onChange({ ...value, [name]: nextValue })
+  }
+
+  function deleteField(name: string) {
+    if (!allowFieldDelete) return
+    setDeletedKeys((prev) => {
+      const next = new Set(prev)
+      next.add(name)
+      return next
+    })
+    const { [name]: _removed, ...rest } = value
+    onChange(rest)
   }
 
   if (!compact) {
@@ -215,9 +303,13 @@ export function SchemaInstanceForm({
             key={`${pathPrefix}${field.name}`}
             field={field}
             value={value[field.name]}
+            deleted={allowFieldDelete && deletedKeys.has(field.name)}
             onChange={(next) => setField(field.name, next)}
+            onDelete={allowFieldDelete ? () => deleteField(field.name) : undefined}
+            onRestore={allowFieldDelete ? (next) => setField(field.name, next) : undefined}
             path={`${pathPrefix}${field.name}`}
             compact={false}
+            allowFieldDelete={allowFieldDelete}
           />
         ))}
       </Stack>
@@ -247,35 +339,54 @@ export function SchemaInstanceForm({
             <Table.Tr>
               <Table.Th w="38%">Field</Table.Th>
               <Table.Th>Value</Table.Th>
+              {allowFieldDelete && <Table.Th w={36} />}
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {scalarFields.map((field) => (
-              <Table.Tr key={`${pathPrefix}${field.name}`}>
-                <Table.Td
-                  style={{
-                    verticalAlign: 'middle',
-                    background:
-                      'color-mix(in srgb, var(--mantine-color-default-hover) 40%, transparent)',
-                  }}
-                >
-                  <FieldName
-                    label={fieldLabel(field)}
-                    required={field.required === true}
-                    description={fieldDescription(field)}
-                  />
-                </Table.Td>
-                <Table.Td style={{ verticalAlign: 'middle' }}>
-                  <FieldControl
-                    field={field}
-                    value={value[field.name]}
-                    onChange={(next) => setField(field.name, next)}
-                    path={`${pathPrefix}${field.name}`}
-                    compact
-                  />
-                </Table.Td>
-              </Table.Tr>
-            ))}
+            {scalarFields.map((field) => {
+              const deleted = allowFieldDelete && deletedKeys.has(field.name)
+              return (
+                <Table.Tr key={`${pathPrefix}${field.name}`}>
+                  <Table.Td
+                    style={{
+                      verticalAlign: 'middle',
+                      background:
+                        'color-mix(in srgb, var(--mantine-color-default-hover) 40%, transparent)',
+                    }}
+                  >
+                    <FieldName
+                      label={fieldLabel(field)}
+                      required={field.required === true}
+                      description={fieldDescription(field)}
+                      deleted={deleted}
+                    />
+                  </Table.Td>
+                  <Table.Td style={{ verticalAlign: 'middle' }}>
+                    <FieldControl
+                      field={field}
+                      value={deleted ? undefined : value[field.name]}
+                      onChange={(next) => setField(field.name, next)}
+                      path={`${pathPrefix}${field.name}`}
+                      compact
+                    />
+                  </Table.Td>
+                  {allowFieldDelete && (
+                    <Table.Td style={{ verticalAlign: 'middle', paddingRight: 4 }}>
+                      <ActionIcon
+                        variant="subtle"
+                        color="red"
+                        size="sm"
+                        aria-label={`Delete field ${field.name}`}
+                        disabled={deleted}
+                        onClick={() => deleteField(field.name)}
+                      >
+                        <IconTrash size={14} />
+                      </ActionIcon>
+                    </Table.Td>
+                  )}
+                </Table.Tr>
+              )
+            })}
           </Table.Tbody>
         </Table>
       )}
@@ -284,9 +395,13 @@ export function SchemaInstanceForm({
           key={`${pathPrefix}${field.name}`}
           field={field}
           value={value[field.name]}
+          deleted={allowFieldDelete && deletedKeys.has(field.name)}
           onChange={(next) => setField(field.name, next)}
+          onDelete={allowFieldDelete ? () => deleteField(field.name) : undefined}
+          onRestore={allowFieldDelete ? (next) => setField(field.name, next) : undefined}
           path={`${pathPrefix}${field.name}`}
           compact
+          allowFieldDelete={allowFieldDelete}
         />
       ))}
     </Stack>
@@ -297,10 +412,12 @@ function FieldName({
   label,
   required,
   description,
+  deleted = false,
 }: {
   label: string
   required: boolean
   description?: string
+  deleted?: boolean
 }) {
   return (
     <Group gap={4} wrap="nowrap" style={{ minWidth: 0 }}>
@@ -310,6 +427,11 @@ function FieldName({
       {required && (
         <Text size="xs" c="red" fw={700} aria-hidden>
           *
+        </Text>
+      )}
+      {deleted && (
+        <Text size="xs" c="dimmed" fs="italic">
+          (deleted)
         </Text>
       )}
       {description && <FieldInfoTip description={description} />}
@@ -416,14 +538,22 @@ function FieldEditor({
   field,
   value,
   onChange,
+  onDelete,
+  onRestore,
+  deleted = false,
   path,
   compact,
+  allowFieldDelete = false,
 }: {
   field: BoMSchemaField
   value: unknown
   onChange: (next: unknown) => void
+  onDelete?: () => void
+  onRestore?: (next: unknown) => void
+  deleted?: boolean
   path: string
   compact: boolean
+  allowFieldDelete?: boolean
 }) {
   const label = fieldLabel(field)
   const description = fieldDescription(field)
@@ -439,51 +569,113 @@ function FieldEditor({
         return (
           <FieldControl
             field={field}
-            value={value}
+            value={deleted ? undefined : value}
             onChange={onChange}
             path={path}
             compact
           />
         )
       }
-      return <LabeledScalar field={field} value={value} onChange={onChange} path={path} />
+      return (
+        <Group align="flex-end" wrap="nowrap" gap={6}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {deleted && (
+              <Text size="xs" c="dimmed" fs="italic" mb={4}>
+                (deleted)
+              </Text>
+            )}
+            <LabeledScalar
+              field={field}
+              value={deleted ? undefined : value}
+              onChange={onChange}
+              path={path}
+            />
+          </div>
+          {onDelete && (
+            <ActionIcon
+              variant="subtle"
+              color="red"
+              size="md"
+              aria-label={`Delete field ${field.name}`}
+              disabled={deleted}
+              onClick={onDelete}
+              mb={4}
+            >
+              <IconTrash size={16} />
+            </ActionIcon>
+          )}
+        </Group>
+      )
     case 'OBJECT': {
-      const obj = (value && typeof value === 'object' && !Array.isArray(value)
-        ? value
-        : {}) as Record<string, unknown>
+      const obj = (
+        !deleted && value && typeof value === 'object' && !Array.isArray(value) ? value : {}
+      ) as Record<string, unknown>
       return (
         <Paper withBorder radius="sm" p={compact ? 'xs' : 'sm'} mx={compact ? 8 : 0} mb={compact ? 8 : 0}>
-          <Group gap={6} mb={compact ? 6 : 'xs'} wrap="nowrap">
-            <Text size={compact ? 'xs' : 'sm'} fw={600}>
-              {label}
-            </Text>
-            {required && (
-              <Badge size="xs" variant="light" color="red">
-                required
+          <Group justify="space-between" gap={6} mb={compact ? 6 : 'xs'} wrap="nowrap">
+            <Group gap={6} wrap="nowrap" style={{ minWidth: 0 }}>
+              <Text size={compact ? 'xs' : 'sm'} fw={600}>
+                {label}
+              </Text>
+              {required && (
+                <Badge size="xs" variant="light" color="red">
+                  required
+                </Badge>
+              )}
+              <Badge size="xs" variant="outline" color="gray">
+                object
               </Badge>
-            )}
-            <Badge size="xs" variant="outline" color="gray">
-              object
-            </Badge>
-            {description && compact && <FieldInfoTip description={description} />}
+              {deleted && (
+                <Text size="xs" c="dimmed" fs="italic">
+                  (deleted)
+                </Text>
+              )}
+              {description && compact && <FieldInfoTip description={description} />}
+            </Group>
+            <Group gap={4} wrap="nowrap">
+              {deleted && onRestore && (
+                <Button
+                  size="compact-xs"
+                  variant="light"
+                  onClick={() => onRestore({})}
+                >
+                  Restore
+                </Button>
+              )}
+              {onDelete && (
+                <ActionIcon
+                  variant="subtle"
+                  color="red"
+                  size="sm"
+                  aria-label={`Delete field ${field.name}`}
+                  disabled={deleted}
+                  onClick={onDelete}
+                >
+                  <IconTrash size={14} />
+                </ActionIcon>
+              )}
+            </Group>
           </Group>
           {description && !compact && (
             <Text size="xs" c="dimmed" mb={6}>
               {description}
             </Text>
           )}
-          <SchemaInstanceForm
-            schema={field.schema}
-            value={obj}
-            onChange={onChange}
-            pathPrefix={`${path}.`}
-            compact={compact}
-          />
+          {!deleted && (
+            <SchemaInstanceForm
+              schema={field.schema}
+              value={obj}
+              onChange={onChange}
+              pathPrefix={`${path}.`}
+              compact={compact}
+              allowFieldDelete={allowFieldDelete}
+            />
+          )}
         </Paper>
       )
     }
     case 'ARRAY': {
-      const items = Array.isArray(value) ? value : []
+      const items = !deleted && Array.isArray(value) ? value : []
       const itemSchema = field.schema.items
       return (
         <Paper withBorder radius="sm" p={compact ? 'xs' : 'sm'} mx={compact ? 8 : 0} mb={compact ? 8 : 0}>
@@ -497,28 +689,55 @@ function FieldEditor({
                   required
                 </Badge>
               )}
-              <Badge size="xs" variant="light" color="teal">
-                {items.length}
-              </Badge>
+              {!deleted && (
+                <Badge size="xs" variant="light" color="teal">
+                  {items.length}
+                </Badge>
+              )}
+              {deleted && (
+                <Text size="xs" c="dimmed" fs="italic">
+                  (deleted)
+                </Text>
+              )}
               {description && compact && <FieldInfoTip description={description} />}
             </Group>
-            <Button
-              size="compact-xs"
-              variant="light"
-              leftSection={<IconPlus size={12} />}
-              onClick={() =>
-                onChange([...items, itemSchema ? defaultValueForSchema(itemSchema) : null])
-              }
-            >
-              Add
-            </Button>
+            <Group gap={4} wrap="nowrap">
+              {deleted && onRestore ? (
+                <Button size="compact-xs" variant="light" onClick={() => onRestore([])}>
+                  Restore
+                </Button>
+              ) : (
+                <Button
+                  size="compact-xs"
+                  variant="light"
+                  leftSection={<IconPlus size={12} />}
+                  onClick={() =>
+                    onChange([...items, itemSchema ? defaultValueForSchema(itemSchema) : null])
+                  }
+                >
+                  Add
+                </Button>
+              )}
+              {onDelete && (
+                <ActionIcon
+                  variant="subtle"
+                  color="red"
+                  size="sm"
+                  aria-label={`Delete field ${field.name}`}
+                  disabled={deleted}
+                  onClick={onDelete}
+                >
+                  <IconTrash size={14} />
+                </ActionIcon>
+              )}
+            </Group>
           </Group>
           {description && !compact && (
             <Text size="xs" c="dimmed" mb={6}>
               {description}
             </Text>
           )}
-          {items.length === 0 ? (
+          {deleted ? null : items.length === 0 ? (
             <Text size="xs" c="dimmed" fs="italic">
               No items
             </Text>
@@ -552,6 +771,7 @@ function FieldEditor({
                           }}
                           pathPrefix={`${path}[${index}].`}
                           compact={compact}
+                          allowFieldDelete={allowFieldDelete}
                         />
                       ) : (
                         <FieldControl
@@ -687,22 +907,37 @@ function LabeledScalar({
   }
 }
 
-/** Compact inspector used by Composer: section chrome + Field/Value table. */
+/** Compact inspector used by Composer: optional section chrome + Field/Value table. */
 export function PayloadInspector({
   schema,
   value,
   onChange,
+  hideChrome = false,
+  allowFieldDelete = false,
 }: {
   schema: BoMSchemaNode
   value: Record<string, unknown>
   onChange: (next: Record<string, unknown>) => void
+  /** Drop Payload SectionChrome when the label already appears as tab text. */
+  hideChrome?: boolean
+  allowFieldDelete?: boolean
 }) {
   const fieldCount = schema.fields?.length ?? 0
+  const body = (
+    <Box p={!hideChrome && fieldCount > 0 ? 0 : hideChrome ? 0 : 'xs'}>
+      <SchemaInstanceForm
+        schema={schema}
+        value={value}
+        onChange={onChange}
+        compact
+        allowFieldDelete={allowFieldDelete}
+      />
+    </Box>
+  )
+  if (hideChrome) return body
   return (
     <SectionChrome title="Payload" count={fieldCount} accent="var(--mantine-color-blue-filled)">
-      <Box p={fieldCount > 0 ? 0 : 'xs'}>
-        <SchemaInstanceForm schema={schema} value={value} onChange={onChange} compact />
-      </Box>
+      {body}
     </SectionChrome>
   )
 }
@@ -711,10 +946,13 @@ export function AnnotationsEditor({
   value,
   onChange,
   compact = false,
+  hideChrome = false,
 }: {
   value: Record<string, string>
   onChange: (next: Record<string, string>) => void
   compact?: boolean
+  /** Drop Annotations SectionChrome when the label already appears as tab text. */
+  hideChrome?: boolean
 }) {
   const rows = Object.entries(value)
   const displayRows = rows.length > 0 ? rows : [['', '']]
@@ -788,93 +1026,107 @@ export function AnnotationsEditor({
   }
 
   const filledCount = rows.filter(([k]) => k.trim().length > 0).length
+  const addAction = (
+    <Button
+      size="compact-xs"
+      variant="light"
+      leftSection={<IconPlus size={12} />}
+      onClick={addRow}
+    >
+      Add
+    </Button>
+  )
+
+  const table = (
+    <Table
+      striped
+      highlightOnHover
+      withTableBorder={false}
+      withColumnBorders
+      horizontalSpacing={8}
+      verticalSpacing={4}
+      style={{ fontSize: 'var(--mantine-font-size-xs)' }}
+    >
+      <Table.Thead>
+        <Table.Tr>
+          <Table.Th w="38%">Key</Table.Th>
+          <Table.Th>Value</Table.Th>
+          <Table.Th w={36} />
+        </Table.Tr>
+      </Table.Thead>
+      <Table.Tbody>
+        {displayRows.map(([key, val], index) => (
+          <Table.Tr key={index}>
+            <Table.Td
+              style={{
+                verticalAlign: 'middle',
+                background:
+                  'color-mix(in srgb, var(--mantine-color-default-hover) 40%, transparent)',
+              }}
+            >
+              <TextInput
+                size="xs"
+                variant="unstyled"
+                value={key}
+                onChange={(e) => updateRow(index, e.currentTarget.value, val)}
+                placeholder="key"
+                styles={{
+                  input: {
+                    fontFamily:
+                      'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                    fontWeight: 700,
+                    fontSize: 'var(--mantine-font-size-xs)',
+                  },
+                }}
+              />
+            </Table.Td>
+            <Table.Td style={{ verticalAlign: 'middle' }}>
+              <TextInput
+                size="xs"
+                variant="unstyled"
+                value={val}
+                onChange={(e) => updateRow(index, key, e.currentTarget.value)}
+                placeholder="value"
+                styles={{
+                  input: { fontSize: 'var(--mantine-font-size-xs)' },
+                }}
+              />
+            </Table.Td>
+            <Table.Td style={{ verticalAlign: 'middle', paddingRight: 4 }}>
+              <ActionIcon
+                variant="subtle"
+                color="red"
+                size="sm"
+                aria-label="Remove annotation"
+                onClick={() => removeRow(index)}
+                disabled={displayRows.length <= 1 && !key && !val}
+              >
+                <IconTrash size={14} />
+              </ActionIcon>
+            </Table.Td>
+          </Table.Tr>
+        ))}
+      </Table.Tbody>
+    </Table>
+  )
+
+  if (hideChrome) {
+    return (
+      <Stack gap={6}>
+        <Group justify="flex-end">{addAction}</Group>
+        {table}
+      </Stack>
+    )
+  }
 
   return (
     <SectionChrome
       title="Annotations"
       count={filledCount}
       accent="var(--mantine-color-violet-filled)"
-      action={
-        <Button
-          size="compact-xs"
-          variant="light"
-          leftSection={<IconPlus size={12} />}
-          onClick={addRow}
-        >
-          Add
-        </Button>
-      }
+      action={addAction}
     >
-      <Table
-        striped
-        highlightOnHover
-        withTableBorder={false}
-        withColumnBorders
-        horizontalSpacing={8}
-        verticalSpacing={4}
-        style={{ fontSize: 'var(--mantine-font-size-xs)' }}
-      >
-        <Table.Thead>
-          <Table.Tr>
-            <Table.Th w="38%">Key</Table.Th>
-            <Table.Th>Value</Table.Th>
-            <Table.Th w={36} />
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
-          {displayRows.map(([key, val], index) => (
-            <Table.Tr key={index}>
-              <Table.Td
-                style={{
-                  verticalAlign: 'middle',
-                  background:
-                    'color-mix(in srgb, var(--mantine-color-default-hover) 40%, transparent)',
-                }}
-              >
-                <TextInput
-                  size="xs"
-                  variant="unstyled"
-                  value={key}
-                  onChange={(e) => updateRow(index, e.currentTarget.value, val)}
-                  placeholder="key"
-                  styles={{
-                    input: {
-                      fontFamily:
-                        'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-                      fontWeight: 700,
-                      fontSize: 'var(--mantine-font-size-xs)',
-                    },
-                  }}
-                />
-              </Table.Td>
-              <Table.Td style={{ verticalAlign: 'middle' }}>
-                <TextInput
-                  size="xs"
-                  variant="unstyled"
-                  value={val}
-                  onChange={(e) => updateRow(index, key, e.currentTarget.value)}
-                  placeholder="value"
-                  styles={{
-                    input: { fontSize: 'var(--mantine-font-size-xs)' },
-                  }}
-                />
-              </Table.Td>
-              <Table.Td style={{ verticalAlign: 'middle', paddingRight: 4 }}>
-                <ActionIcon
-                  variant="subtle"
-                  color="red"
-                  size="sm"
-                  aria-label="Remove annotation"
-                  onClick={() => removeRow(index)}
-                  disabled={displayRows.length <= 1 && !key && !val}
-                >
-                  <IconTrash size={14} />
-                </ActionIcon>
-              </Table.Td>
-            </Table.Tr>
-          ))}
-        </Table.Tbody>
-      </Table>
+      {table}
     </SectionChrome>
   )
 }
