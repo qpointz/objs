@@ -126,7 +126,6 @@ export function ObjectsPage() {
             ref={formRef}
             emptyDefaults
             defaultMode="obj-expr"
-            error={formError}
             stats={stats}
             action={
               <Button size="xs" loading={searchBusy} onClick={() => void runSearch()}>
