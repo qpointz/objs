@@ -27,10 +27,11 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`composer-draft-shopping`](completed/20260807-composer-draft-shopping/STORY.md) — Composer Add objects (side pane); `obj-expr` + `ids` matchers; draft merge/exclude; shared matcher UI + visual chain builder; Explorer handoff auto-merge (C-11).
 - [`subgraphs-materialization`](completed/20260807-subgraphs-materialization/STORY.md) — Soft-link subgraph packs (`bom_subgraph` M2M); `subg-expr` / id matchers; hard snapshot clone; Composer Save ▾ Subgraph/Snapshot; Explorer canvas handoff (C-12).
 - [`graphs-from-objects`](completed/20260811-graphs-from-objects/STORY.md) — Global `bom_entity` pool + many `bom_graph`s (no global graph); multi-graph membership; graph-local edges; matchers `all` / `graph-expr` / `obj-expr` / chained; REST `/graphs` + `/entities`; workbench Open/New graph; SBOM on graphs; pack-era cleanup; `gql-gremlin` (C-13).
+- [`workbench-chrome-regroup`](completed/20260811-workbench-chrome-regroup/STORY.md) — Explorer Graph vs Selection modes; Explore-scope; Open-graph search; Composer L2 Save/Snapshot + edit migrate; Query L2 Exec; schema `usage` scalar (U-4).
 
 ### In Progress
 
-- [`workbench-chrome-regroup`](in-progress/workbench-chrome-regroup/STORY.md) — Explorer Graph vs non-graph modes; Explore-scope fragment (Open graph ∪ Matcher); Composer/Query L2 action strips (U-4).
+_(none)_
 
 ### Planned
 

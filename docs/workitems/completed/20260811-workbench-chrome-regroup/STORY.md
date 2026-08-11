@@ -2,7 +2,8 @@
 
 **Slug:** `workbench-chrome-regroup`  
 **Branch:** `workbench-chrome-regroup` (track `origin/workbench-chrome-regroup`)  
-**Status:** in-progress  
+**Status:** completed  
+**Archive:** [`docs/workitems/completed/20260811-workbench-chrome-regroup/`](.)  
 **Backlog:** [U-4](../../BACKLOG.md)  
 **Base:** `origin/dev` (post C-13)  
 **Design:** [`ui.md`](../../../design/ui.md)  
