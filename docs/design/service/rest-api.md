@@ -5,32 +5,39 @@
 **Auth:** none (G-R15)  
 **OpenAPI:** springdoc-openapi **3.0.3** — UI via `:objs-app:run` (`/swagger-ui.html`, `/v3/api-docs`, groups `graph` / `registry` / `traverse` / …)
 
-## Graph
+## Graphs + entity pool
+
+No global graph: `/entities` is the pool (CRUD, no graph scope); `/graphs` is graph CRUD, membership,
+graph-local edges, resolve, query, and optional clone. See [`../graph/model.md`](../graph/model.md) and
+[`../graph/annotations-and-matchers.md`](../graph/annotations-and-matchers.md).
 
 | Method | Path | Behaviour | Module |
 |--------|------|-----------|--------|
-| `PUT` | `/graph` | Mutate `BoMGraphMutation` (`upsert.entities` / `upsert.edges`, `delete.entities` / `delete.edges` ids) in one TX; return upsert `BoMGraph` with assigned ids; `400` + issues if invalid. Empty delete = upsert-only. | `:objs-service` |
-| `POST` | `/graph/validate` | Dry-run of the same mutation body; always `200` + `BoMValidationResult` | `:objs-service` |
-| `POST` | `/graph/query` | JSON/YAML matcher DSL → subgraph (induced edges, or stored pack members for `subgraph` / `subg-expr`); sole **matcher** graph query endpoint | `:objs-service` |
-| `GET` | `/graph/subgraphs` | List soft-link packs (`id`, `annotations`, `entityCount`, `edgeCount`) | `:objs-service` |
-| `POST` | `/graph/subgraphs` | Create soft-link pack (`annotations`, `entityIds`, `edgeIds`; optional `id`) → `201` + resolved members | `:objs-service` |
-| `GET` | `/graph/subgraphs/{id}` | Header + resolved live members; `404` if missing | `:objs-service` |
-| `PUT` | `/graph/subgraphs/{id}` | Replace annotations and membership | `:objs-service` |
-| `DELETE` | `/graph/subgraphs/{id}` | Drop header + membership; graph objects remain; `204` | `:objs-service` |
-| `POST` | `/graph/subgraphs/{id}/snapshot` | Hard clone: body `{ "annotations": {…} }` **required**; new ids + new pack → `201` | `:objs-service` |
-| `POST` | `/graph/traverse/gremlin` | Matcher + gremlin-lang script → `BoMGremlinResult` (OpenAPI tag **`traverse`**) | `:objs-gremlin-service` |
-| `POST` | `/graph/import?format=seeds` | Multipart Graph seed YAML (MERGE); catalog kinds rejected | `:objs-service` |
-| `GET` | `/graph/export?format=seeds` | Bounded Graph seed YAML; annotation filter required (`FILTER_EMPTY` if missing) | `:objs-service` |
-| `DELETE` | `/graph` | **Deprecated** shim over mutate delete lists; body `{ entityIds?, edgeIds? }`; `204` / `404` / `400` | `:objs-service` |
+| `GET` | `/entities` | List/query pool entities (optional `obj-expr` filter) | `:objs-service` |
+| `POST` | `/entities` | Create an entity in the pool only (no graph membership) | `:objs-service` |
+| `GET` | `/entities/{id}` | Fetch one pool entity; `404` if missing | `:objs-service` |
+| `PUT` | `/entities/{id}` | Update payload/annotations | `:objs-service` |
+| `DELETE` | `/entities/{id}` | Remove from pool; cascades membership rows and incident edges | `:objs-service` |
+| `GET` | `/graphs` | List graph headers (`id`, `annotations`, member/edge counts) | `:objs-service` |
+| `POST` | `/graphs` | Create graph header (`annotations`); optional `entityIds` to seed membership → `201` | `:objs-service` |
+| `GET` | `/graphs/{id}` | Header + resolved members + graph-local edges; `404` if missing | `:objs-service` |
+| `PUT` | `/graphs/{id}` | Mutate this graph in one TX: `upsert.entities` (pool upsert + auto-membership), `upsert.edges` (`graph_id = id`; both ends must be members), `delete.entities`/`delete.edges` (membership/edge rows) | `:objs-service` |
+| `DELETE` | `/graphs/{id}` | Drop header + membership + edges (CASCADE); pool entities kept; `204` | `:objs-service` |
+| `POST`/`DELETE` | `/graphs/{id}/members/{entityId}` | Attach / detach an existing pool entity id (membership row only; pool entity kept on detach) | `:objs-service` |
+| `POST` | `/graphs/{id}/query` | Matcher DSL (`obj-expr` / chained) scoped to this graph's members; edges induced within scope | `:objs-service` |
+| `POST` | `/graphs/query` | Matcher DSL (`all`, `graph-expr`, or chained starting with either) over graph headers → matching graphs' stored members + graph-local edges (distinct by id) | `:objs-service` |
+| `POST` | `/graphs/{id}/clone` | Optional: copy members + edges into a **new** independent graph (new ids); source unchanged; no parent/lineage link stored | `:objs-service` |
+| `POST` | `/graph/traverse/gremlin` | Matcher + gremlin-lang script → `BoMGremlinResult` (OpenAPI tag **`traverse`**); matcher DSL scoping rules as above | `:objs-gremlin-service` |
 
-### Traverse (Gremlin)
+**Fail closed:** bare `obj-expr` with no graph path and no stage-0 `all` / `graph-expr` → `400`
+(lock G-G16). Retired keys `anno` / `anno-expr` / `ids` / `subgraph` / `subg-expr` are rejected
+(`MATCHER_DSL_RETIRED_KEY`) — see the retirement table in
+[`../graph/annotations-and-matchers.md`](../graph/annotations-and-matchers.md#retired-matchers-parity-with-pre-c-13-keys).
 
-Body: `{ "matcher", "script", "strategy?", "bindings?", "traversalOptions?" }`.
-Matcher DSL matches `/graph/query`. See [`../graph/gremlin.md`](../graph/gremlin.md).
+Matcher DSL root is one matcher object (`all` / `graph-expr` / `obj-expr`) or an ordered array of matcher
+objects (chained).
 
-`BoMGraphMutation` keeps deletes explicit so seed MERGE semantics stay “omission never deletes”. Persist order: validate projected state → explicit edge deletes → entity deletes (cascade incident edges) → upserts. Same id in delete and upsert: upsert wins.
-
-JSON shape:
+`PUT /graphs/{id}` mutation body mirrors today's `BoMGraphMutation` shape, scoped to the path graph:
 
 ```json
 {
@@ -39,24 +46,9 @@ JSON shape:
 }
 ```
 
-`delete.entities` / `delete.edges` are id arrays.
-
-Matcher DSL root is one matcher object (`anno`, `anno-expr`, `obj-expr`, `ids`, `subgraph`, `subg-expr`, …) or an ordered array of matcher
-objects (chained). See [`../graph/annotations-and-subgraphs.md`](../graph/annotations-and-subgraphs.md).
-
-Soft-link pack create/replace body:
-
-```json
-{
-  "annotations": { "decisionId": "D-42" },
-  "entityIds": ["11111111-1111-1111-1111-111111111111"],
-  "edgeIds": ["22222222-2222-2222-2222-222222222222"]
-}
-```
-
-Response shape `{ "id", "annotations", "subgraph": { "entities", "edges" } }`. Edge membership write requires both endpoints already in the entity membership set. Snapshot without `annotations` → `400` (`SUBGRAPH_SNAPSHOT_ANNOTATIONS`).
-
-Entity delete removes incident edges (store behaviour) and cascades pack membership rows.
+Persist order: validate projected state → explicit edge deletes → entity/membership deletes → upserts
+(entity upsert lands in the pool and this graph's membership; edge upsert is stamped with this
+graph's id). Same id in delete and upsert: upsert wins.
 
 ## Registry
 
@@ -92,3 +84,4 @@ JSON Schema export options (C-10): defaults are `dialect=2020-12`, `includeEdges
 - Gremlin traverse: [`docs/design/graph/gremlin.md`](../graph/gremlin.md)
 - Registry/graph I/O formats: backlog **C-7**
 - Catalog persistence: backlog **C-3** / **C-4** (done); cardinality **C-6**
+- Pool/graph inversion, minimal matchers: backlog **C-13** — [`docs/workitems/in-progress/graphs-from-objects/STORY.md`](../../workitems/in-progress/graphs-from-objects/STORY.md) (Stages 1–4 landed; Stage 5 cleanup remaining)

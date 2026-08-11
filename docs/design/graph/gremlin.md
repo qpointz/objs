@@ -109,14 +109,14 @@ Content-Type: application/json
 
 ```json
 {
-  "matcher": { "anno": { "app": "app-00001" } },
+  "matcher": { "graph-expr": "a.app == 'payments-api' && a.appVersion == '2.3.1'" },
   "script": "g.V().hasLabel('Service', 'Policy')",
   "strategy": "envelope",
   "traversalOptions": { "timeoutSeconds": 60, "language": "gremlin-lang" }
 }
 ```
 
-- **`matcher`** — same DSL as `POST /graph/query` (anno / anno-expr / chained).
+- **`matcher`** — same DSL as `POST /graphs/query` / `POST /graphs/{id}/query` (`graph-expr` / `obj-expr` / chained).
 - **`script`** — gremlin-lang text (required, non-blank).
 - Owning module: **`:objs-gremlin-service`** (OpenAPI tag **`traverse`**).
 - `200` + `BoMGremlinResult`; `400` + `{ "error": "…" }` or matcher `issues`.
@@ -151,5 +151,5 @@ Ready-to-run scripts (Product↔Database, Service/Policy tables, paths): [`greml
 ## Related
 
 - Example scripts: [`gremlin-examples.md`](gremlin-examples.md)
-- Matchers / induced subgraphs: [`annotations-and-subgraphs.md`](annotations-and-subgraphs.md)
+- Matchers / induced subgraphs: [`annotations-and-matchers.md`](annotations-and-matchers.md)
 - Story: [`../../workitems/completed/20260806-gremlin-subgraph-traversal/STORY.md`](../../workitems/completed/20260806-gremlin-subgraph-traversal/STORY.md)

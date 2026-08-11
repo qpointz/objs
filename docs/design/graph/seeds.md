@@ -43,7 +43,28 @@ Unsupported `apiVersion` or `kind` values fail the whole resource.
 - Graph entities/edges use stable textual `key` values. Default ids are **UUIDv5** over
   `graphName/entity|edge/key` in the Objs seed namespace. Optional explicit `id` overrides that
   (used by REST export of existing rows).
+- Each `kind: Graph` document creates/uses one **`bom_graph`**: optional document-level `id`
+  (graph UUID; default UUIDv3 from `graph-seed:<name>`) and `annotations` (header). Entities are
+  attached as members; edges are stamped with that `graph_id`.
 - Omission never deletes (`MERGE` only; no `REPLACE` in v1).
+
+Example:
+
+```yaml
+apiVersion: objs.poc.org/v1
+kind: Graph
+name: demo-prod
+annotations:
+  env: prod
+entities:
+  - key: p1
+    type: Person
+    schemaVersion: "1"
+    annotations: {}
+    payload:
+      name: Ada
+edges: []
+```
 
 The Schemas workbench **Full schema** overview uses catalog-only export
 (`GET /api/v1/objs/registry/export?format=seeds`) and import
@@ -80,8 +101,8 @@ Ontology and graph instance I/O are **separated**. Both use a required `format` 
 | `POST` | `/api/v1/objs/registry/import?format=seeds` | Multipart YAML; catalog kinds only (`ObjectSchema`, `AllowedEdgeRule`); no ledger write |
 | `GET` | `/api/v1/objs/registry/export?format=seeds` | Catalog YAML only |
 | `GET` | `/api/v1/objs/registry/export?format=json-schema` | Full-catalog JSON Schema (`dialect`, `includeEdges`, `includeEdgePropertySchemas` optional; see object-schema-dsl) |
-| `POST` | `/api/v1/objs/graph/import?format=seeds` | Multipart YAML; `Graph` kind only |
-| `GET` | `/api/v1/objs/graph/export?format=seeds` | Requires annotation filter; never dumps the whole graph |
+| `POST` | `/api/v1/objs/graph/import?format=seeds` | Multipart YAML; `Graph` kind only (each doc → one `bom_graph`) |
+| `GET` | `/api/v1/objs/graph/export?format=seeds` | Requires `graphId`; exports that graph's members/edges |
 
 Former `/api/v1/objs/seeds/**` paths are removed.
 
@@ -93,7 +114,7 @@ The importer discovers handlers by kind; export uses the canonical serializer re
 ## SBOM example
 
 Canonical ontology YAML (`classpath:seeds/sbom-ontology.yaml`) is the registry source of truth at
-runtime. `objs-app` configures SBOM seed resources explicitly in its `sbom` Spring profile.
-Typed `SbomRegistry.pack()` remains for builders and parity tests. Add
-`classpath:seeds/sbom-demo-graph.yaml` to the profile's ordered resource list when sample data is
-wanted.
+runtime. `objs-app` configures SBOM seed resources explicitly in its `sbom` Spring profile
+(ontology + demo graphs). Typed `SbomRegistry.pack()` remains for builders and parity tests. The
+demo file `classpath:seeds/sbom-demo-graph.yaml` contains one `kind: Graph` document per
+`(app, appVersion)` snapshot (header annotations + members + graph-local edges).

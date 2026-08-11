@@ -9,9 +9,9 @@
 
 | Layer | What it is | Examples |
 |-------|------------|----------|
-| **Foundation** | Generic, domain-agnostic graph platform | Typed JSON entities, role edges, annotation subgraphs, schema/allow-list catalogs, `BoMGraphStore`, `/api/v1/objs/**` |
+| **Foundation** | Generic, domain-agnostic graph platform | Typed JSON entities, role edges, entity pool + `bom_graph`, schema/allow-list catalogs, `BoMGraphStore` / `BoMSubgraphStore`, `/api/v1/objs/**` |
 | **Canonical ontology** | Technology-neutral software graph types & relationships | Product, Component, Build, … — [`canonical-spec.md`](canonical-spec.md) |
-| **Concrete app (this example)** | SBOM product on that ontology + foundation | `app`/`appVersion`/provenance/`origin` annotations, `SbomService`, `/api/v1/example/sbom` |
+| **Concrete app (this example)** | SBOM product on that ontology + foundation | `app`/`appVersion`/provenance/`origin` annotations, **one graph per app-version**, `SbomService`, `/api/v1/example/sbom` |
 
 ### Mapping (summary)
 
@@ -21,7 +21,7 @@
 | `name`, `description`, `labels`, `attributes`, type fields | Entity **payload** |
 | Edge `id` / relationship name | `BoMEdge.id` / `BoMEdge.role` |
 | Edge `createdAt`, `source`, `confidence`, `attributes` | Edge **properties** via shared schema `CanonicalEdge` |
-| Multi-app BOM partition | Entity **annotations** `app`, `appVersion`, … (not payload) |
+| Multi-app BOM partition | **One `bom_graph` per `(app, appVersion)`** (header annotations); entity annotations still carry the same keys for provenance filters |
 
 **Ontology coverage:** classpath seed `seeds/sbom-ontology.yaml` registers the **entire** draft ontology (Waves A–D): 23 entity types + shared `CanonicalEdge` + all 28 relationship triples from [`canonical-spec.md`](canonical-spec.md). Typed `SbomRegistry.pack()` remains the parity/builder companion.
 
@@ -40,9 +40,11 @@ The foundation stays domain-agnostic. The **concrete app** maps this domain onto
 ### Gremlin / Query smoke
 
 `:objs-sbom-example` ontology and APIs are unchanged by Gremlin. When `:objs-app` runs with the
-**sbom** profile (demo graph seeded), use workbench **Query** or
-`POST /api/v1/objs/graph/traverse/gremlin` with a matcher such as `{ "anno": { "app": "app-00001" } }`
-and scripts like `g.V().hasLabel('Service', 'Policy')`. Design: [`../graph/gremlin.md`](../graph/gremlin.md).
+**sbom** profile (demo graphs seeded), use workbench **Query** or
+`POST /api/v1/objs/graph/traverse/gremlin` with a matcher such as
+`{ "graph-expr": "a.app == 'payments-api' && a.appVersion == '2.3.1'" }`
+(or chained `graph-expr` then `obj-expr`) and scripts like `g.V().hasLabel('Service', 'Policy')`.
+Design: [`../graph/gremlin.md`](../graph/gremlin.md).
 
 ---
 
@@ -53,22 +55,25 @@ flowchart TB
   rest[SbomController /api/v1/example/sbom]
   domain[SbomGraphBuilder + typed Component]
   graph[BoMGraph]
+  svc[SbomService]
+  graphs[BoMSubgraphStore]
   store[BoMGraphStore]
-  db[(bom_graph_entity / bom_graph_edge)]
-  fetch[SbomService]
-  rest --> fetch
+  db[(bom_entity / bom_graph / bom_graph_entity / bom_graph_edge)]
+  rest --> svc
   domain --> graph
-  graph --> fetch
-  fetch --> store
+  graph --> svc
+  svc --> graphs
+  svc --> store
+  graphs --> db
   store --> db
 ```
 
 | Layer | Responsibility |
 |-------|----------------|
 | **Payload** | Business fields of a graph object (e.g. Component name, version, purl) — JSON Schema validated |
-| **Annotations** | BOM identity, provenance, and **caller channel** (`origin`) — used for subgraph selection (match-all) |
-| **Edges** | Relationships (`DEPENDS_ON`, …) — allow-list; not annotated (foundation rule) |
-| **Storage** | Only foundation entity/edge tables — **no** parallel SBOM schema |
+| **Annotations** | BOM identity on **graph headers** + entity provenance / caller channel — selection via `graph-expr` / `obj-expr` |
+| **Edges** | Relationships (`DEPENDS_ON`, …) — allow-list; graph-local (`graph_id`); not annotated (foundation rule) |
+| **Storage** | Foundation pool + graphs — **no** parallel SBOM schema; one graph per `(app, appVersion)` |
 | **REST** | Thin SBOM façade (`/api/v1/example/sbom`) over `SbomService` — not a second persistence model |
 
 Reusable conversion/assembly helpers live in `objs-core` (`org.poc.objs.core.typed`); SBOM vocabulary lives only in `objs-sbom-example`.
@@ -112,22 +117,22 @@ capturedBy=alice
 ### Why annotations (not payload)
 
 - Same Component **type** appears in many apps/versions; membership is contextual.
-- `POST /api/v1/objs/graph/query` selects by matcher DSL (`anno`, `anno-expr`, or chained).
-+ `POST /api/v1/objs/graph/query` selects by matcher DSL (`anno`, `anno-expr`, or chained).
+- Foundation selection uses matcher DSL (`graph-expr` on headers, `obj-expr` on entities) —
+  see [`../graph/annotations-and-matchers.md`](../graph/annotations-and-matchers.md).
 - Payload stays aligned with supply-chain object schemas; partition keys stay orthogonal.
 
 ---
 
 ## Fetch and update via SBOM REST
 
-Base path: **`/api/v1/example/sbom`** — the `/example/` segment flags this as the concrete demo app, distinct from foundation `/api/v1/objs/**`. Persistence still goes through `BoMGraphStore`.
+Base path: **`/api/v1/example/sbom`** — the `/example/` segment flags this as the concrete demo app, distinct from foundation `/api/v1/objs/**`. Persistence goes through `SbomService` → `BoMSubgraphStore` / `BoMGraphStore` (one `bom_graph` per app-version).
 
 | Method | Path | Behaviour |
 |--------|------|-----------|
-| `GET` | `/apps` | Distinct applications and their versions (sorted), from entity `app` / `appVersion` annotations |
-| `GET` | `/apps/{appId}` | Induced subgraph for annotation filter `{app=appId}` — **all versions** for that app. Optional extra query annotations narrow the slice (e.g. `origin=batch`, `source=manual`). |
-| `GET` | `/apps/{appId}/versions/{version}` | Subgraph for `{app, appVersion=version}` (+ optional extra annotation query params). |
-| `PUT` | `/apps/{appId}/versions/{version}` | Upsert body **`BoMGraph`** (`entities` + `edges`, same as foundation `/graph`). Path sets `app` / `appVersion`. Query annotation params are **defaults**; **body entity annotations override** on conflict. Free-form `origin` (e.g. `ui`, `batch`) and other keys supported. Upsert-only — does not delete omitted objects. |
+| `GET` | `/apps` | Distinct applications and their versions (sorted), from **graph header** `app` / `appVersion` |
+| `GET` | `/apps/{appId}` | Union of members/edges for every graph whose header matches `a.app == appId` (`graph-expr`). Optional extra query annotations narrow via chained `obj-expr`. |
+| `GET` | `/apps/{appId}/versions/{version}` | Members/edges for the `(app, appVersion)` graph (+ optional `obj-expr` filters). |
+| `PUT` | `/apps/{appId}/versions/{version}` | Upsert body **`BoMGraph`** into that app-version graph (create header lazily). Path sets `app` / `appVersion`. Query annotation params are **defaults**; **body entity annotations override** on conflict. Upsert-only — does not delete omitted objects. |
 
 ### Examples
 
@@ -144,17 +149,17 @@ Content-Type: application/json
 { "entities": [ … ], "edges": [ … ] }
 ```
 
-**PUT semantics:** body is foundation `BoMGraph`; upsert batch only (no prune). Query annotations default onto entities; body annotations win on key conflict.
+**PUT semantics:** body is foundation `BoMGraph`; upsert into the app-version graph (membership + graph-local edges). Query annotations default onto entities; body annotations win on key conflict.
 
-**Query annotations:** optional filters/defaults (`source`, `origin`, `sourceDetail`, `capturedBy`, or any other key). Leave them blank in Swagger — do not send placeholder `additionalProp*` values; those are ignored server-side because they would otherwise empty match-all GETs.
+**Query annotations:** optional filters/defaults (`source`, `origin`, `sourceDetail`, `capturedBy`, or any other key). Leave them blank in Swagger — do not send placeholder `additionalProp*` values; those are ignored server-side.
 
 **Service layer:** `SbomService.listApplications()`, `getSbom(app, appVersion?)`, `save(…)`, plus filter overlays for extra annotations. Controllers delegate here.
 
-**Generic foundation REST** remains available (`POST /api/v1/objs/graph/query` with matcher DSL) for low-level access; SBOM REST is the domain-facing API.
+**Generic foundation REST** remains available (`POST /api/v1/objs/graphs/query` with `graph-expr` / chained) for low-level access; SBOM REST is the domain-facing API.
 
 ### Isolation guarantee
 
-One store holds many apps and versions. After writing fixtures for ≥2 apps × ≥2 versions, versioned GET returns **only** that BOM’s entities and induced edges.
+One store holds many apps and versions as **separate graphs**. After writing fixtures for ≥2 apps × ≥2 versions, versioned GET returns **only** that BOM’s entities and edges.
 
 ---
 
@@ -250,6 +255,6 @@ python objs-sbom-example/scripts/random_sbom_crud.py get --app demo-app --versio
 - Canonical ontology: [`canonical-spec.md`](canonical-spec.md)
 - Story: [`docs/workitems/completed/20260728-sbom-typed-example/`](../../workitems/completed/20260728-sbom-typed-example/STORY.md)
 - Gaps: [`GAPS.md`](../../workitems/completed/20260728-sbom-typed-example/GAPS.md)
-- Annotations design: [`../graph/annotations-and-subgraphs.md`](../graph/annotations-and-subgraphs.md) (ephemeral annotation selection + soft-link packs; this example does **not** ship a pack demo seed)
+- Annotations / matchers: [`../graph/annotations-and-matchers.md`](../graph/annotations-and-matchers.md) (`graph-expr` on BOM identity headers; optional `obj-expr` filters)
 - Persistence / lazy reads: [`../graph/persistence.md`](../graph/persistence.md)
 - Typed toolkit (when written): [`../graph/typed-domain.md`](../graph/typed-domain.md)

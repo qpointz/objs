@@ -12,11 +12,10 @@ Entity SDK + validation + JPA/Flyway persistence for the entity store.
 | Package | Types | Responsibility |
 |---------|-------|----------------|
 | `org.poc.objs.core` | `ObjsCore` | Module marker |
-| `…domain` | `BoMEntity`, `BoMEdge`, `BoMGraph`, `BoMSubgraph`, `BoMSchema*`, `BoAllowedEdge*` | In-memory domain + catalogs |
-| `…match` | `BoMMatcher`, `BoMSourceCapableMatcher`, `BoMCandidateSource`, `MatchAllAnnotationMatcher`, `BoMMatchExpression` | Annotation matching + candidate sources |
-| `…subgraph` | `BoMSubgraphSelector` | Induced subgraph selection |
+| `…domain` | `BoMEntity`, `BoMEdge`, `BoMGraph`, `BoMGraphContents`, `BoMSchema*`, `BoAllowedEdge*` | In-memory domain + catalogs |
+| `…match` | `BoMMatcher`, `BoMSourceCapableMatcher`, `BoMObjExprMatcher`, `BoMGraphExprMatcher`, `BoMAllGraphsMatcher`, `BoMChainedMatcher` | Matcher DSL + candidate sources |
 | `…validation` | `BoMValidator`, `BoMPersistGate`, `BoMValidationResult` | Schema + allow-list; two-stage persist gate |
-| `…persistence` | `BoMEntityRecord`, `BoMEdgeRecord`, repos, `BoMGraphStore`, autoconfig | JPA + Flyway + store facade |
+| `…persistence` | `BoMEntityRecord`, `BoMEdgeRecord`, `BoMGraphRecord`, repos, `BoMGraphStore`, `BoMNamedGraphStore`, autoconfig | JPA + Flyway + store facade |
 
 ## Key behaviours
 

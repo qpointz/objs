@@ -11,6 +11,20 @@ The product is an **entity store**: it persists and manages informational elemen
 - Entities are **independent**: created, edited, and managed on their own (not only as part of a larger aggregate).
 - Entities of **different types / schemas coexist** in one system.
 
+## Pool vs graphs
+
+There is **no global graph**. Two distinct concepts share the store:
+
+| Concept | Role |
+|---------|------|
+| **Entity pool** | All entities (`BoMEntity`), regardless of graph membership. Building blocks only — not itself a queryable graph. |
+| **Graph** | A durable header (`id` + `annotations`, nothing else) plus its **member** entities and its **own** edges. The graph is what you open, query, and edit. |
+
+- An entity may belong to **zero, one, or many** graphs (M2M membership). Zero graphs = **orphan**; orphans are allowed.
+- An edge belongs to **exactly one** graph (`graph_id` NOT NULL) — edges are never shared across graphs. Both the source and target entity must already be members of that graph.
+- A graph header carries **no** parent/lineage columns. An optional **clone** operation copies a graph's members and edges into a new, independent graph (new ids); any lineage tracking is an **application-level** concern (e.g. annotations), not part of this foundation model.
+- See [persistence.md](persistence.md) for tables and [annotations-and-matchers.md](annotations-and-matchers.md) for how graphs and objects are selected.
+
 ### Why “Entity” not “Object”
 
 Domain concept is **entity**; Java type is **`BoMEntity`** (and edges **`BoMEdge`**) — `Bo` prefix avoids clashes with `java.lang.Object` and `jakarta.persistence.Entity`. Domain docs still say entity / edge; code uses the `Bo*` types.
@@ -23,7 +37,7 @@ Every entity (`BoMEntity`) has:
 |--------|-------------|
 | **Type + version** | Identifies the authoritative object-schema DSL definition for the payload |
 | **Payload** | A **JSON object** (JSON document) |
-| **Annotations** | Caller-defined metadata used for subgraph selection — see [annotations-and-subgraphs.md](annotations-and-subgraphs.md) |
+| **Annotations** | Caller-defined metadata used for graph/object selection — see [annotations-and-matchers.md](annotations-and-matchers.md) |
 
 Identity: plain **`UUID`**. Runtime creates use `UUID.randomUUID()`; configuration seeds use
 deterministic **UUIDv5** from stable textual keys (see [seeds.md](seeds.md)).
@@ -43,6 +57,7 @@ deterministic **UUIDv5** from stable textual keys (see [seeds.md](seeds.md)).
 ## Relation / edge
 
 - Entities form a **graph** via **relations (edges)** — Java type **`BoMEdge`**.
+- Each edge is **graph-local**: it belongs to exactly one graph (persisted `graph_id` NOT NULL) — there is no shared/global edge pool. Both **source** and **target** must already be members of that same graph.
 - Each edge has: **source**, **target**, **role**, and optionally **type + version** + **properties** (JSON).
 - Prefer terminology **source** / **target** (directed); avoid “endpoints” in APIs and docs.
 - **Bare edges** (no properties) are first-class: some roles are links only, in the graph-theory sense.
@@ -75,6 +90,6 @@ deterministic **UUIDv5** from stable textual keys (see [seeds.md](seeds.md)).
 | Edge / relation | `BoMEdge` |
 | Schema catalog entry | `BoMSchema` — type + version + authoritative `BoMSchemaNode` DSL |
 | Annotations map | Prefer plain key-value on `BoMEntity` |
-| Annotation matcher | `BoMMatcher` / `BoMSourceCapableMatcher`; DSL `anno` (`MatchAllAnnotationMatcher`) is source-capable on Postgres |
+| Matcher | `BoMMatcher` / `BoMSourceCapableMatcher`; DSL forms **`all`** / **`graph-expr`** / **`obj-expr`** / chained — see [annotations-and-matchers.md](annotations-and-matchers.md) |
 
 Annotation type name may still avoid `java.lang.annotation` clash if a dedicated class is introduced.

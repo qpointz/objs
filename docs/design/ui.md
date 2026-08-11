@@ -3,6 +3,23 @@
 The Objs workbench is a browser UI for exploring stored graphs, inspecting registered schemas,
 and authoring object-schema DSL definitions.
 
+## Current graph
+
+There is **no global graph** and **no pack chrome**. The workbench works against **one graph at a
+time** — a durable `bom_graph` header + its member entities + its graph-local edges (see
+[`graph/model.md`](graph/model.md)):
+
+| Surface | Behaviour |
+|---------|-----------|
+| Explorer | Query **inside** the selected graph (`obj-expr`) or select graphs (`graph-expr`) |
+| Composer | Save = mutate the **current graph** (`PUT /graphs/{id}`); optional Clone |
+| Matchers | **`all`** / **`graph-expr`** / **`obj-expr`** / **chained** only |
+| Schema catalog | Unchanged (global, not graph-scoped) |
+
+**Must have:** a visible current-graph context (persisted as `objs.ui.currentGraphId`); Open / New /
+Save graph; no whole-store Exec/Save. Snapshot hierarchy UI is **not** part of the objs workbench —
+that is an application concern (e.g. SBOM).
+
 ## Start and open
 
 Start `objs-app`, then open:
@@ -23,8 +40,8 @@ dark/light toggle on the right:
 
 | View | Path | Purpose |
 |------|------|---------|
-| **Explorer** | `/workbench/explorer` | Query and inspect a stored subgraph |
-| **Composer** | `/workbench/composer` | Draft workspace: Add objects, Visual/Text edit, Validate / Save (+ Subgraph / Snapshot) |
+| **Explorer** | `/workbench/explorer` | Query and inspect entities/edges within the current graph |
+| **Composer** | `/workbench/composer` | Draft workspace for the current graph: Add objects, Visual/Text edit, Validate / Save (+ optional Clone) |
 | **Query** | `/workbench/query` | Tabs Query (script) / Matcher / Options; Exec → traverse API; Structured / Raw results |
 | **Schema** | `/workbench/model` | Browse and edit object/edge schemas |
 
@@ -32,28 +49,30 @@ Legacy `/ui/**` URLs redirect into `/workbench/**` (e.g. `/ui/graph` → `/workb
 
 ## Graph explorer
 
-Graph explorer loads entities and induced edges through
-`POST /api/v1/objs/graph/query`. Matcher controls are shared with Object linter
-(`MatcherQueryForm`): a compact **Matcher** select (`anno` / `anno-expr` / `obj-expr` / `chained`) plus mode
-fields, with **Exec** on the same row. In Explorer the matcher is **collapsible** (chevron; preference
-persisted) so the canvas keeps vertical space; collapsed shows mode + a one-line summary while Exec
-stays available.
+Graph explorer loads entities and edges of the **current graph** through
+`POST /api/v1/objs/graphs/{id}/query` (or `POST /api/v1/objs/graphs/query` to select graph(s) by
+header). Matcher controls are shared with Object linter (`MatcherQueryForm`): a compact **Matcher**
+select (**`all`** / **`graph-expr`** / **`obj-expr`** / **chained**) plus mode fields, with **Exec** on the same
+row. In Explorer the matcher is **collapsible** (chevron; preference persisted) so the canvas keeps
+vertical space; collapsed shows mode + a one-line summary while Exec stays available.
 
-- **`anno`** — key/value rows. Every pair must match the entity annotation map.
-- **`anno-expr`** — one JEXL Boolean expression using annotation keys as variables,
-  for example `app == 'payments-api' && appVersion == '2.3.1'`.
+- **`all`** — union of stored members/edges across every graph (distinct by id); orphans excluded.
+  Stage-0 scope matcher (boolean `true` only).
+- **`graph-expr`** — one JEXL Boolean expression over graph header `id` and `a.*` (header
+  annotations), for example `a.env == 'prod'`. Matching graph(s) contribute their **stored** member
+  entities and graph-local edges (union; not re-induced). Used to **open/select** a graph.
 - **`obj-expr`** — one JEXL Boolean expression over `id`, `type`, `schemaVersion`, `a.*` (annotations),
-  `p.*` (payload), for example `type == 'Product' && a.app == 'payments-api'`.
-- **`subg-expr`** — one JEXL Boolean expression over soft-link pack headers (`id`, `a.*` annotations);
-  matching packs contribute their **stored** member entities and edges (union; not re-induced).
+  `p.*` (payload), for example `type == 'Product' && a.app == 'payments-api'`. Filters entities
+  **within the current graph**; a bare `obj-expr` with no current graph fails closed.
 - **chained** — **Visual** builder (ordered stages; each stage uses the same editor as its standalone
-  mode) or **JSON** for the full chain array. Matchers execute in order.
+  mode) or **JSON** for the full chain array. Stage 0 is typically `all` / `graph-expr` (select the graph);
+  later stages are `obj-expr` filters.
 
 The UI sends the selected mode as matcher DSL:
 
 ```json
 [
-  { "anno": { "app": "payments-api" } },
+  { "graph-expr": "a.env == 'prod'" },
   { "obj-expr": "type == 'Component' && p.kind == 'library'" }
 ]
 ```
@@ -404,17 +423,17 @@ On an existing schema detail:
 
 ## Object linter
 
-Object linter is a **graph draft workspace**: add store objects into the draft, manipulate it
-visually or as YAML/JSON, then **Validate** or **Save**.
+Object linter is the **draft workspace for the current graph**: add store objects into the draft,
+manipulate it visually or as YAML/JSON, then **Validate** or **Save** against that graph.
 
 | Action | API |
 |--------|-----|
-| Add objects / Search | `POST /api/v1/objs/graph/query` (matcher DSL: `anno` / `anno-expr` / `obj-expr` / `subg-expr` / `ids` / chained) |
-| Done (edge refresh) | `POST /api/v1/objs/graph/query` with `{ "ids": […] }` among store-backed draft entity ids |
+| Add objects / Search | `POST /api/v1/objs/graphs/{id}/query` (matcher DSL: `obj-expr` / chained) |
+| Done (edge refresh) | `POST /api/v1/objs/graphs/{id}/query` re-matching store-backed draft entity ids |
 | Validate | `POST /api/v1/objs/graph/validate` with `BoMGraphMutation` |
-| Save (split: **Save**) | `PUT /api/v1/objs/graph` with the same mutation body (`upsert` + `delete`) |
-| Save → **Subgraph** / **Snapshot** | Soft-link or hard-clone pack from the whole draft; header annotations via key/value rows (same UI as matcher `anno`) |
-| Open packs… | `GET /api/v1/objs/graph/subgraphs` + `GET …/{id}` → **replace** Composer draft |
+| Save (split: **Save**) | `PUT /api/v1/objs/graphs/{id}` with the same mutation body (`upsert` + `delete`), scoped to the current graph |
+| Save → **Clone** (optional) | Copy the whole current graph (members + edges) into a **new**, independent graph; no lineage recorded by objs |
+| Open graph… | `POST /api/v1/objs/graphs/query` (`graph-expr`) or `GET /api/v1/objs/graphs/{id}` → **replace** Composer draft and set it as the current graph |
 
 **New UUID** (clipboard + toast, auto-hides after 3s) sits on the Text tab toolbar next to Format /
 Rollback.
@@ -441,7 +460,7 @@ Invalid Text blocks switching to Visual; the last good draft is preserved.
 8. On the Visual canvas, draft status icons appear on object headers: **+** new, **pencil** modified, **−** deleted (Delete path only).
 9. Deleting a **new** (non-baseline) object/edge removes it from the canvas. Deleting a **loaded** object/edge soft-deletes it: it stays visible and marked deleted until Apply, and can be undone (restore) or have modifications reverted from the side panel.
 10. **Reset** restores the last rollback snapshot; **Clear** empties the draft.
-11. **Open packs…** lists soft-link packs and opens one with **replace**. Create via Save ▾ → **Subgraph** (soft) or **Snapshot** (hard clone); header annotations use key/value rows like matcher `anno`.
+11. **Open graph…** lists graphs (by `graph-expr` or list) and opens one with **replace**, setting it as the current graph. Optional **Clone** (Save ▾) copies the whole current graph into a new independent graph; no lineage is recorded by objs.
 
 Optional **Copy annotations from source** when creating a linked object.
 
@@ -449,7 +468,7 @@ Optional **Copy annotations from source** when creating a linked object.
 
 1. Open **Object linter**.
 2. Optionally **Add objects…**, or start from an empty draft in Visual/Text.
-3. Select **Validate** (dry-run mutation) or **Save** (persist mutation). Save ▾ also offers Subgraph / Snapshot for packs.
+3. Select **Validate** (dry-run mutation) or **Save** (persist mutation to the current graph). Save ▾ also offers optional **Clone** to copy the current graph into a new independent graph.
 
 Save clears pending deletes and refreshes the baseline on success.
 
@@ -471,8 +490,8 @@ property-schema reference, and properties are validated against the current regi
 
 | Message or condition | Resolution |
 |----------------------|------------|
-| Graph query returns no nodes | Verify `anno` / `anno-expr` / `obj-expr` criteria exist on stored entities and that chained stages retain results |
-| Matcher query is rejected | Correct the matcher shape: one `anno`/`anno-expr`/`obj-expr`/`subg-expr`/`ids` object or a non-empty JSON array of matcher objects |
+| Graph query returns no nodes | Verify `graph-expr` / `obj-expr` criteria exist on stored graphs/entities and that chained stages retain results |
+| Matcher query is rejected | Correct the matcher shape: one `graph-expr`/`obj-expr` object or a non-empty JSON array of matcher objects; bare `obj-expr` needs a current graph or a stage-0 `graph-expr` |
 | Schema cannot be loaded | Confirm the selected type and version still exist |
 | Source document is invalid | Correct YAML/JSON syntax before switching to Schema mode or saving |
 | `SCHEMA_DEFINITION_INVALID` | Correct the field named in the lint message |
