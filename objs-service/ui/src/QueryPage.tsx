@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import {
+  ActionIcon,
   Alert,
   Box,
   Button,
@@ -7,6 +8,7 @@ import {
   Group,
   NumberInput,
   Paper,
+  Popover,
   ScrollArea,
   Stack,
   Table,
@@ -14,6 +16,7 @@ import {
   Text,
   Title,
 } from '@mantine/core'
+import { IconHelp } from '@tabler/icons-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   type BoMGremlinResult,
@@ -31,13 +34,16 @@ import { NewGraphModal } from './NewGraphModal'
 import { OpenGraphModal } from './OpenGraphModal'
 import { formatQueryDuration } from './queryExecStats'
 import { SyntaxCodeEditor } from './SyntaxCodeEditor'
-import type { GraphLink, GraphNode } from './types'
+import type { BoMGraphContents, GraphLink, GraphNode } from './types'
 import { useCurrentGraphId } from './useCurrentGraph'
 
 const SCRIPT_STORAGE_KEY = 'objs.ui.query.script'
 const MATCHER_STORAGE_KEY = 'objs.ui.query.matcher'
 const OPTIONS_STORAGE_KEY = 'objs.ui.query.options'
 const TOP_PANE_HEIGHT_KEY = 'objs.ui.query.topPaneHeight'
+
+const QUERY_HELP =
+  'Matcher selects graph contents (bare obj-expr is scoped to the current graph); gremlin-lang script runs via POST /api/v1/objs/graph/traverse/gremlin.'
 
 const DEFAULT_SCRIPT = `g.V().hasLabel('Service', 'Policy').project('type', 'name', 'protocol')
   .by(label)
@@ -52,6 +58,10 @@ const SPLITTER_HEIGHT = 8
 
 type QueryNavState = {
   matcher?: unknown
+  /** Explorer Open in Query: entire canvas as traverse seed / result preview. */
+  graphContents?: BoMGraphContents
+  /** Adopt current graph when handed off from Explorer Graph mode. */
+  graphId?: string
 }
 
 type QueryOptions = {
@@ -180,13 +190,33 @@ export function QueryPage() {
 
   useEffect(() => {
     const navState = location.state as QueryNavState | null
-    if (navState == null || typeof navState !== 'object' || !('matcher' in navState)) return
-    if (navState.matcher === undefined) return
-    setMatcher(navState.matcher)
-    saveStoredMatcher(navState.matcher)
-    setTopTab('matcher')
+    if (navState == null || typeof navState !== 'object') return
+    const hasMatcher = 'matcher' in navState && navState.matcher !== undefined
+    const hasGraphContents =
+      navState.graphContents != null && typeof navState.graphContents === 'object'
+    const hasGraphId = typeof navState.graphId === 'string' && navState.graphId.length > 0
+    if (!hasMatcher && !hasGraphContents && !hasGraphId) return
+
     navigate('.', { replace: true, state: null })
-  }, [location.state, navigate])
+
+    if (hasGraphId) {
+      setCurrentGraphId(navState.graphId!)
+    }
+
+    if (hasMatcher) {
+      setMatcher(navState.matcher)
+      saveStoredMatcher(navState.matcher)
+      setTopTab('matcher')
+    }
+
+    if (hasGraphContents) {
+      const graph = toGraphData(navState.graphContents!)
+      setNodes(graph.nodes)
+      setLinks(graph.links)
+      setResult(null)
+      setResultTab('structured')
+    }
+  }, [location.state, navigate, setCurrentGraphId])
 
   useEffect(() => {
     saveStoredScript(script)
@@ -205,7 +235,6 @@ export function QueryPage() {
     [result],
   )
 
-  const graphContents = result?.contents ?? result?.views.graph ?? null
   const table = result?.views.table ?? null
   const scalar = result?.views.scalar
 
@@ -303,23 +332,21 @@ export function QueryPage() {
 
   return (
     <Stack gap="sm" style={{ flex: 1, minHeight: 0, height: '100%' }}>
-      <Group justify="space-between" align="flex-end" wrap="wrap" style={{ flexShrink: 0 }}>
-        <div>
+      <Group justify="space-between" align="center" wrap="wrap" style={{ flexShrink: 0 }}>
+        <Group gap={6} align="center">
           <Title order={3}>Query</Title>
-          <Text size="sm" c="dimmed">
-            Matcher selects graph contents (bare <Code>obj-expr</Code> is scoped to the current graph);
-            gremlin-lang script runs via <Code>POST /api/v1/objs/graph/traverse/gremlin</Code>.
-          </Text>
-        </div>
-        <Group gap="xs">
-          {result != null && (
-            <Text size="xs" c="dimmed">
-              {formatGremlinStats(result)}
-            </Text>
-          )}
-          <Button loading={loading} onClick={() => void onExec()}>
-            Exec
-          </Button>
+          <Popover width={420} position="bottom-start" withArrow shadow="md">
+            <Popover.Target>
+              <ActionIcon variant="subtle" color="gray" size="sm" aria-label="Query help">
+                <IconHelp size={16} />
+              </ActionIcon>
+            </Popover.Target>
+            <Popover.Dropdown>
+              <Text size="sm" c="dimmed">
+                {QUERY_HELP}
+              </Text>
+            </Popover.Dropdown>
+          </Popover>
         </Group>
       </Group>
 
@@ -355,11 +382,29 @@ export function QueryPage() {
             onChange={setTopTab}
             style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}
           >
-            <Tabs.List style={{ flexShrink: 0 }}>
-              <Tabs.Tab value="query">Query</Tabs.Tab>
-              <Tabs.Tab value="matcher">Matcher</Tabs.Tab>
-              <Tabs.Tab value="options">Options</Tabs.Tab>
-            </Tabs.List>
+            <Group
+              justify="space-between"
+              align="center"
+              gap="sm"
+              wrap="wrap"
+              style={{ flexShrink: 0 }}
+            >
+              <Tabs.List style={{ flexShrink: 0 }}>
+                <Tabs.Tab value="query">Query</Tabs.Tab>
+                <Tabs.Tab value="matcher">Matcher</Tabs.Tab>
+                <Tabs.Tab value="options">Options</Tabs.Tab>
+              </Tabs.List>
+              <Group gap="xs" wrap="nowrap">
+                {result != null && (
+                  <Text size="xs" c="dimmed">
+                    {formatGremlinStats(result)}
+                  </Text>
+                )}
+                <Button size="compact-sm" loading={loading} onClick={() => void onExec()}>
+                  Exec
+                </Button>
+              </Group>
+            </Group>
 
             <Tabs.Panel
               value="query"
@@ -466,12 +511,7 @@ export function QueryPage() {
               pt="sm"
               style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}
             >
-              {result == null ? (
-                <Text size="sm" c="dimmed">
-                  Run Exec to see a tactical structured view (graph / table / scalar). Result UX is
-                  demo-grade for now.
-                </Text>
-              ) : graphContents != null && nodes.length > 0 ? (
+              {nodes.length > 0 ? (
                 <div style={{ flex: 1, minHeight: 0 }}>
                   <GraphCanvas
                     ref={graphRef}
@@ -482,6 +522,11 @@ export function QueryPage() {
                     layout="TB"
                   />
                 </div>
+              ) : result == null ? (
+                <Text size="sm" c="dimmed">
+                  Run Exec to see a tactical structured view (graph / table / scalar). Result UX is
+                  demo-grade for now.
+                </Text>
               ) : table != null ? (
                 <ScrollArea style={{ flex: 1, minHeight: 0 }}>
                   <Table striped highlightOnHover withTableBorder withColumnBorders>

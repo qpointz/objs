@@ -101,7 +101,7 @@ function truncate(text: string, max = 56): string {
   return `${t.slice(0, max - 1)}…`
 }
 
-function matcherSummary(
+export function matcherSummary(
   mode: MatcherMode,
   graphExprText: string,
   objExprText: string,
@@ -127,6 +127,27 @@ function matcherSummary(
     }
   }
   return `chained · ${chainStages.length} stage${chainStages.length === 1 ? '' : 's'}`
+}
+
+/** One-line matcher description for Explore-scope Selection summary. */
+export function matcherBodyOneLiner(body: unknown | null | undefined): string {
+  if (body == null) return 'no matcher'
+  const hydrated = hydrateFromMatcher(body)
+  if (!hydrated) {
+    try {
+      return truncate(JSON.stringify(body), 72)
+    } catch {
+      return 'matcher'
+    }
+  }
+  return matcherSummary(
+    hydrated.mode,
+    hydrated.graphExprText,
+    hydrated.objExprText,
+    hydrated.chainStages,
+    hydrated.chainedJson,
+    hydrated.chainView,
+  )
 }
 
 export function buildMatcherBody(
