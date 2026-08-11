@@ -107,6 +107,20 @@ class ObjsGraphsController(
         return ResponseEntity.ok(resolved.toResponse())
     }
 
+    @PutMapping("/{id}/annotations")
+    @Operation(summary = "Replace graph header annotations (membership unchanged)")
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "Updated graph"),
+        ApiResponse(responseCode = "404", description = "Graph not found"),
+    )
+    fun updateAnnotations(
+        @PathVariable id: UUID,
+        @RequestBody body: GraphWriteBody,
+    ): ResponseEntity<GraphResponse> {
+        val updated = namedGraphs.updateAnnotations(id, body.annotations)
+        return ResponseEntity.ok(updated.toResponse())
+    }
+
     @PutMapping("/{id}")
     @Operation(
         summary = "Mutate this graph in one transaction",

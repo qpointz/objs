@@ -10,7 +10,7 @@ import {
   Table,
   Text,
 } from '@mantine/core'
-import { queryInGraph } from './api'
+import { queryAddObjects, queryInGraph } from './api'
 import {
   MatcherQueryForm,
   type MatcherQueryFormHandle,
@@ -61,7 +61,7 @@ export function scalarPayloadColumns(entities: BoMEntity[], max = MAX_PAYLOAD_CO
 export type AddObjectsPanelProps = {
   /** When false, panel unmount effects reset auto-search state. */
   active: boolean
-  /** Current graph (WI-005): Search / induced-edge refresh are scoped to this graph's members. */
+  /** Current graph: Search scopes to its members; when null, Search runs across all graphs. */
   graphId: string | null
   onClose: () => void
   /** Hydrate matcher form (Explorer handoff). */
@@ -171,12 +171,9 @@ export function AddObjectsPanel({
       if (body === undefined) {
         throw new Error('Matcher form is not ready')
       }
-      if (!graphId) {
-        throw new Error('Select or create a current graph before searching.')
-      }
       setSearchBusy(true)
       const started = performance.now()
-      const subgraph = await queryInGraph(graphId, body)
+      const subgraph = await queryAddObjects(body, graphId)
       const durationMs = performance.now() - started
       const entities = subgraph.entities ?? []
       const edges = subgraph.edges ?? []
@@ -282,8 +279,9 @@ export function AddObjectsPanel({
       <ScrollArea style={{ flex: 1, minHeight: 0 }} offsetScrollbars type="auto">
         <Stack gap="xs" pb="xs">
           {!graphId && (
-            <Alert color="orange" p="xs" title="No current graph">
-              Select or create a current graph before searching.
+            <Alert color="gray" p="xs" title="No current graph">
+              Search runs across all graphs (union of members; orphan pool entities are not
+              included). Open or save a graph to scope Search to one graph.
             </Alert>
           )}
           <MatcherQueryForm
@@ -294,12 +292,7 @@ export function AddObjectsPanel({
             error={formError}
             stats={stats}
             action={
-              <Button
-                size="xs"
-                loading={searchBusy}
-                disabled={!graphId}
-                onClick={() => void runSearch()}
-              >
+              <Button size="xs" loading={searchBusy} onClick={() => void runSearch()}>
                 Search
               </Button>
             }

@@ -1,20 +1,22 @@
 import { useEffect, useState } from 'react'
 import {
   Alert,
+  Box,
   Button,
-  Collapse,
   Group,
+  Loader,
   Modal,
   Stack,
-  Table,
+  Tabs,
   Text,
   Textarea,
   TextInput,
-  UnstyledButton,
+  Title,
 } from '@mantine/core'
 import { useDebouncedValue } from '@mantine/hooks'
-import { IconChevronDown, IconChevronRight } from '@tabler/icons-react'
+import { IconAffiliate, IconCode, IconSearch } from '@tabler/icons-react'
 import { getGraph, searchGraphs } from './api'
+import { GRAPH_HEADER_COMPACT_ROW_HEIGHT, GraphHeaderReadout } from './GraphHeaderReadout'
 import type { BoMGraphHeader, BoMGraphResponse } from './types'
 
 type Props = {
@@ -24,17 +26,24 @@ type Props = {
   onOpen: (graphId: string, resolved: BoMGraphResponse) => void
 }
 
+type SearchTab = 'search' | 'expression'
+
 const SEARCH_LIMIT = 15
 const DEBOUNCE_MS = 250
+const HIT_GAP = 6
+const HIT_PAD = 6
+/** Tall enough for all SEARCH_LIMIT compact rows without scrolling. */
+const RESULTS_PANE_HEIGHT =
+  SEARCH_LIMIT * GRAPH_HEADER_COMPACT_ROW_HEIGHT + (SEARCH_LIMIT - 1) * HIT_GAP + HIT_PAD * 2
 
 /** Shared "Open graph…" dialog (WI-007 / G-U10): debounced search, never lists the full catalog. */
 export function OpenGraphModal({ opened, onClose, onOpen }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [searching, setSearching] = useState(false)
+  const [tab, setTab] = useState<SearchTab>('search')
   const [q, setQ] = useState('')
   const [expr, setExpr] = useState('')
-  const [exprOpen, setExprOpen] = useState(false)
   const [items, setItems] = useState<BoMGraphHeader[]>([])
   const [debouncedQ] = useDebouncedValue(q, DEBOUNCE_MS)
   const [debouncedExpr] = useDebouncedValue(expr, DEBOUNCE_MS)
@@ -42,16 +51,16 @@ export function OpenGraphModal({ opened, onClose, onOpen }: Props) {
   useEffect(() => {
     if (!opened) return
     setError(null)
+    setTab('search')
     setQ('')
     setExpr('')
-    setExprOpen(false)
     setItems([])
   }, [opened])
 
   useEffect(() => {
     if (!opened) return
-    const trimmedQ = debouncedQ.trim()
-    const trimmedExpr = debouncedExpr.trim()
+    const trimmedQ = tab === 'search' ? debouncedQ.trim() : ''
+    const trimmedExpr = tab === 'expression' ? debouncedExpr.trim() : ''
     if (!trimmedQ && !trimmedExpr) {
       setItems([])
       setSearching(false)
@@ -60,7 +69,11 @@ export function OpenGraphModal({ opened, onClose, onOpen }: Props) {
     let cancelled = false
     setSearching(true)
     setError(null)
-    void searchGraphs({ q: trimmedQ || undefined, expr: trimmedExpr || undefined, limit: SEARCH_LIMIT })
+    void searchGraphs({
+      q: trimmedQ || undefined,
+      expr: trimmedExpr || undefined,
+      limit: SEARCH_LIMIT,
+    })
       .then((res) => {
         if (!cancelled) setItems(res.items)
       })
@@ -76,7 +89,7 @@ export function OpenGraphModal({ opened, onClose, onOpen }: Props) {
     return () => {
       cancelled = true
     }
-  }, [opened, debouncedQ, debouncedExpr])
+  }, [opened, tab, debouncedQ, debouncedExpr])
 
   async function onOpenRow(id: string) {
     setBusy(true)
@@ -92,90 +105,194 @@ export function OpenGraphModal({ opened, onClose, onOpen }: Props) {
     }
   }
 
-  const hasCriteria = q.trim().length > 0 || expr.trim().length > 0
+  const hasCriteria =
+    (tab === 'search' && q.trim().length > 0) ||
+    (tab === 'expression' && expr.trim().length > 0)
 
   return (
-    <Modal opened={opened} onClose={onClose} title="Open graph" size="lg">
+    <Modal
+      opened={opened}
+      onClose={onClose}
+      size="xl"
+      radius="md"
+      padding="md"
+      title={
+        <Group gap="xs" wrap="nowrap">
+          <Box
+            aria-hidden
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 8,
+              display: 'grid',
+              placeItems: 'center',
+              background:
+                'color-mix(in srgb, var(--mantine-color-blue-filled) 16%, var(--mantine-color-body))',
+              color: 'var(--mantine-color-blue-filled)',
+              border:
+                '1px solid color-mix(in srgb, var(--mantine-color-blue-filled) 28%, transparent)',
+            }}
+          >
+            <IconAffiliate size={16} stroke={1.6} />
+          </Box>
+          <Stack gap={0}>
+            <Title order={5} style={{ lineHeight: 1.2 }}>
+              Open graph
+            </Title>
+            <Text size="xs" c="dimmed">
+              Search or graph-expr — empty never lists the catalog
+            </Text>
+          </Stack>
+        </Group>
+      }
+    >
       <Stack gap="sm">
         {error && (
-          <Alert color="red" title="Error">
+          <Alert color="red" title="Error" py="xs">
             {error}
           </Alert>
         )}
-        <Text size="sm" c="dimmed">
-          Search by graph id (UUID / prefix) or annotation text. Optional expression narrows with
-          graph-expr. Empty query does not list all graphs.
-        </Text>
-        <TextInput
-          label="Search"
-          placeholder="Id, UUID prefix, or annotation text…"
-          value={q}
-          onChange={(e) => setQ(e.currentTarget.value)}
-          autoFocus
-        />
-        <div>
-          <UnstyledButton onClick={() => setExprOpen((o) => !o)} aria-expanded={exprOpen}>
-            <Group gap={4}>
-              {exprOpen ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />}
-              <Text size="sm">Expression (graph-expr)</Text>
-            </Group>
-          </UnstyledButton>
-          <Collapse in={exprOpen}>
+
+        <Tabs
+          value={tab}
+          onChange={(v) => setTab((v as SearchTab) ?? 'search')}
+          variant="pills"
+          radius="md"
+        >
+          <Tabs.List grow mb="xs">
+            <Tabs.Tab value="search" leftSection={<IconSearch size={14} />}>
+              Search
+            </Tabs.Tab>
+            <Tabs.Tab value="expression" leftSection={<IconCode size={14} />}>
+              Expression
+            </Tabs.Tab>
+          </Tabs.List>
+
+          <Tabs.Panel value="search">
+            <TextInput
+              label="Search"
+              description="Graph id, UUID prefix, or annotation text"
+              placeholder="prod, a1b2c3d4, env…"
+              value={q}
+              onChange={(e) => setQ(e.currentTarget.value)}
+              autoFocus
+              leftSection={<IconSearch size={14} />}
+              size="sm"
+              radius="md"
+            />
+          </Tabs.Panel>
+
+          <Tabs.Panel value="expression">
             <Textarea
-              mt="xs"
-              minRows={2}
-              placeholder={"e.g. a.env == 'prod'"}
+              label="graph-expr"
+              description="JEXL over graph header id and a.* annotations"
+              placeholder={"a.env == 'prod' && id != null"}
               value={expr}
               onChange={(e) => setExpr(e.currentTarget.value)}
+              minRows={2}
+              maxRows={4}
               autosize
+              radius="md"
+              size="sm"
+              styles={{
+                input: {
+                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                  fontSize: 12,
+                },
+              }}
             />
-          </Collapse>
-        </div>
-        {!hasCriteria && (
-          <Text size="sm" c="dimmed">
-            Type to search…
-          </Text>
-        )}
-        {hasCriteria && searching && (
-          <Text size="sm" c="dimmed">
-            Searching…
-          </Text>
-        )}
-        {hasCriteria && !searching && items.length === 0 && !error && (
-          <Text size="sm" c="dimmed">
-            No matching graphs.
-          </Text>
-        )}
-        {items.length > 0 && (
-          <Table striped highlightOnHover withTableBorder>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Id</Table.Th>
-                <Table.Th>Annotations</Table.Th>
-                <Table.Th />
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
+          </Tabs.Panel>
+        </Tabs>
+
+        <Box
+          style={{
+            borderRadius: 10,
+            border: '1px solid var(--mantine-color-default-border)',
+            background:
+              'color-mix(in srgb, var(--mantine-color-default-hover) 55%, var(--mantine-color-body))',
+            height: RESULTS_PANE_HEIGHT,
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          {!hasCriteria && (
+            <Stack align="center" justify="center" gap={4} style={{ flex: 1 }} px="md">
+              <IconAffiliate
+                size={22}
+                stroke={1.4}
+                color="var(--mantine-color-dimmed)"
+                aria-hidden
+              />
+              <Text size="sm" c="dimmed" ta="center">
+                Type to search…
+              </Text>
+              <Text size="xs" c="dimmed" ta="center" maw={280}>
+                Compact hit rows — scroll if there are many matches.
+              </Text>
+            </Stack>
+          )}
+
+          {hasCriteria && searching && (
+            <Stack align="center" justify="center" gap="xs" style={{ flex: 1 }}>
+              <Loader size="sm" />
+              <Text size="sm" c="dimmed">
+                Searching…
+              </Text>
+            </Stack>
+          )}
+
+          {hasCriteria && !searching && items.length === 0 && !error && (
+            <Stack align="center" justify="center" gap={4} style={{ flex: 1 }} px="md">
+              <Text size="sm" c="dimmed">
+                No matching graphs.
+              </Text>
+              <Text size="xs" c="dimmed">
+                Try a shorter UUID prefix or a different annotation fragment.
+              </Text>
+            </Stack>
+          )}
+
+          {items.length > 0 && (
+            <Stack
+              gap={HIT_GAP}
+              p={HIT_PAD}
+              style={{
+                flex: 1,
+                minHeight: 0,
+                overflowY: 'auto',
+                overflowX: 'hidden',
+              }}
+            >
               {items.map((item) => (
-                <Table.Tr key={item.id}>
-                  <Table.Td>
-                    <Text size="xs" ff="monospace">
-                      {item.id}
-                    </Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Text size="xs">{JSON.stringify(item.annotations)}</Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Button size="xs" variant="light" loading={busy} onClick={() => void onOpenRow(item.id)}>
+                <GraphHeaderReadout
+                  key={item.id}
+                  graphId={item.id}
+                  annotations={item.annotations}
+                  compactId
+                  density="compact"
+                  interactive
+                  onClick={() => {
+                    if (!busy) void onOpenRow(item.id)
+                  }}
+                  action={
+                    <Button
+                      size="xs"
+                      variant="filled"
+                      loading={busy}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        void onOpenRow(item.id)
+                      }}
+                    >
                       Open
                     </Button>
-                  </Table.Td>
-                </Table.Tr>
+                  }
+                />
               ))}
-            </Table.Tbody>
-          </Table>
-        )}
+            </Stack>
+          )}
+        </Box>
       </Stack>
     </Modal>
   )

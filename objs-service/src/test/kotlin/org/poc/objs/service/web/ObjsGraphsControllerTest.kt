@@ -155,6 +155,39 @@ class ObjsGraphsControllerTest {
     }
 
     @Test
+    fun shouldUpdateAnnotations_returningResolvedGraph() {
+        val id = UUID.randomUUID()
+        given(namedGraphs.updateAnnotations(eqObj(id), eqObj(mapOf("env" to "prod"))))
+            .willReturn(
+                BoMResolvedGraph(id, mapOf("env" to "prod"), BoMGraphContents(emptyList(), emptyList())),
+            )
+
+        mockMvc.perform(
+            put("/api/v1/objs/graphs/$id/annotations")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"annotations":{"env":"prod"}}"""),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.id").value(id.toString()))
+            .andExpect(jsonPath("$.annotations.env").value("prod"))
+    }
+
+    @Test
+    fun shouldReturn404_whenUpdatingAnnotationsOnMissingGraph() {
+        val id = UUID.randomUUID()
+        willThrow(BoMGraphException("GRAPH_NOT_FOUND", "Subgraph not found: $id"))
+            .given(namedGraphs).updateAnnotations(eqObj(id), anyObj())
+
+        mockMvc.perform(
+            put("/api/v1/objs/graphs/$id/annotations")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"annotations":{"env":"prod"}}"""),
+        )
+            .andExpect(status().isNotFound)
+            .andExpect(jsonPath("$.code").value("GRAPH_NOT_FOUND"))
+    }
+
+    @Test
     fun shouldMutateGraph_returningResolvedGraph() {
         val id = UUID.randomUUID()
         given(namedGraphs.mutate(anyObj(), anyObj())).willReturn(BoMValidationResult.ok())

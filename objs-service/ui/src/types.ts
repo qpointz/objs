@@ -116,6 +116,8 @@ export type BoMSchemaField = {
   name: string
   schema: BoMSchemaNode
   required?: boolean
+  identifier?: boolean
+  searchable?: boolean
   stereotype?: string[]
 }
 
@@ -127,7 +129,6 @@ export type BoMSchemaNode = {
   items?: BoMSchemaNode
   values?: BoMEnumValue[]
   format?: string | null
-  required?: string[]
   default?: unknown
 }
 

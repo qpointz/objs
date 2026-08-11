@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { execMatcher, graphSearchQuery, scopeMatcherToGraph, searchGraphs } from './api'
+import {
+  execMatcher,
+  graphSearchQuery,
+  scopeAddObjectsMatcher,
+  scopeMatcherToGraph,
+  searchGraphs,
+} from './api'
 
 describe('execMatcher (WI-005 graph-scoped routing)', () => {
   afterEach(() => {
@@ -22,10 +28,23 @@ describe('execMatcher (WI-005 graph-scoped routing)', () => {
     )
   })
 
-  it('rejects obj-expr without a current graph', async () => {
-    await expect(
-      execMatcher('obj-expr', { 'obj-expr': "type == 'X'" }, null),
-    ).rejects.toThrow(/current graph/)
+  it('wraps bare obj-expr with all when no current graph', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ entities: [], edges: [] }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const body = { 'obj-expr': "type == 'X'" }
+    await execMatcher('obj-expr', body, null)
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/objs/graphs/query',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify([{ all: true }, body]),
+      }),
+    )
   })
 
   it('routes graph-expr / all / chained to the header query endpoint regardless of current graph', async () => {
@@ -42,6 +61,30 @@ describe('execMatcher (WI-005 graph-scoped routing)', () => {
       '/api/v1/objs/graphs/query',
       expect.objectContaining({ method: 'POST' }),
     )
+  })
+})
+
+describe('scopeAddObjectsMatcher (Composer Add objects)', () => {
+  it('scopes to the current graph when one is selected', () => {
+    const body = { 'obj-expr': "type == 'X'" }
+    expect(scopeAddObjectsMatcher(body, 'graph-1')).toEqual({
+      kind: 'in-graph',
+      graphId: 'graph-1',
+      body,
+    })
+  })
+
+  it('wraps bare obj-expr with all when no current graph', () => {
+    const body = { 'obj-expr': "type == 'Component'" }
+    expect(scopeAddObjectsMatcher(body, null)).toEqual({
+      kind: 'graphs',
+      body: [{ all: true }, body],
+    })
+  })
+
+  it('passes graph-scoped matchers through to graphs/query when no current graph', () => {
+    const body = { all: true }
+    expect(scopeAddObjectsMatcher(body, null)).toEqual({ kind: 'graphs', body })
   })
 })
 

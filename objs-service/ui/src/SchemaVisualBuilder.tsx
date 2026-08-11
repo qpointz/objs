@@ -13,8 +13,9 @@ import {
   TextInput,
   Textarea,
   Title,
+  Tooltip,
 } from '@mantine/core'
-import type { BoMSchemaNode, BoMSchemaType } from './types'
+import type { BoMSchemaField, BoMSchemaNode, BoMSchemaType } from './types'
 import {
   SchemaPath,
   addFieldAt,
@@ -136,11 +137,33 @@ function TreeRows({
                 }}
                 onClick={() => onSelect({ kind: 'field', path, fieldIndex: index })}
               >
-                <Text size="sm" fw={600} style={{ flex: 1 }} truncate>
-                  {field.name}
-                  {field.required === false ? '' : ' *'}
-                </Text>
-                <Badge size="xs" variant="outline">
+                <Group gap={4} wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
+                  <Text size="sm" fw={600} truncate style={{ flexShrink: 1, minWidth: 0 }}>
+                    {field.name}
+                  </Text>
+                  {field.required !== false && (
+                    <Tooltip label="Required" withArrow>
+                      <Badge size="xs" variant="light" color="red" px={4} style={{ flexShrink: 0 }}>
+                        *
+                      </Badge>
+                    </Tooltip>
+                  )}
+                  {field.identifier === true && (
+                    <Tooltip label="Identifier" withArrow>
+                      <Badge size="xs" variant="light" color="blue" px={4} style={{ flexShrink: 0 }}>
+                        id
+                      </Badge>
+                    </Tooltip>
+                  )}
+                  {field.searchable === true && (
+                    <Tooltip label="Searchable" withArrow>
+                      <Badge size="xs" variant="light" color="teal" px={4} style={{ flexShrink: 0 }}>
+                        s
+                      </Badge>
+                    </Tooltip>
+                  )}
+                </Group>
+                <Badge size="xs" variant="outline" style={{ flexShrink: 0 }}>
                   {field.schema.type}
                 </Badge>
                 <ActionIcon
@@ -383,28 +406,62 @@ function Inspector({
             }}
           />
         </Group>
-        <Checkbox
-          label="Required"
-          checked={field.required !== false}
-          onChange={(e) =>
-            onChange(
-              updateFieldAt(root, selection.path, selection.fieldIndex, (f) => ({
-                ...f,
-                required: e.currentTarget.checked,
-              })),
-            )
-          }
-        />
+        <Group gap="md" wrap="wrap">
+          <Checkbox
+            label="Required"
+            checked={field.required !== false}
+            onChange={(e) =>
+              onChange(
+                updateFieldAt(root, selection.path, selection.fieldIndex, (f) => ({
+                  ...f,
+                  required: e.currentTarget.checked,
+                })),
+              )
+            }
+          />
+          {field.schema.type !== 'ARRAY' && field.schema.type !== 'OBJECT' ? (
+            <>
+              <Checkbox
+                label="Identifier"
+                checked={field.identifier === true}
+                onChange={(e) =>
+                  onChange(
+                    updateFieldAt(root, selection.path, selection.fieldIndex, (f) => ({
+                      ...f,
+                      identifier: e.currentTarget.checked,
+                    })),
+                  )
+                }
+              />
+              <Checkbox
+                label="Searchable"
+                checked={field.searchable === true}
+                onChange={(e) =>
+                  onChange(
+                    updateFieldAt(root, selection.path, selection.fieldIndex, (f) => ({
+                      ...f,
+                      searchable: e.currentTarget.checked,
+                    })),
+                  )
+                }
+              />
+            </>
+          ) : null}
+        </Group>
         <NodeFields
           node={field.schema}
           hideTitle
           hideType
           onChange={(schema) =>
             onChange(
-              updateFieldAt(root, selection.path, selection.fieldIndex, (f) => ({
-                ...f,
-                schema,
-              })),
+              updateFieldAt(root, selection.path, selection.fieldIndex, (f) => {
+                const next: BoMSchemaField = { ...f, schema }
+                if (schema.type === 'ARRAY' || schema.type === 'OBJECT') {
+                  next.identifier = false
+                  next.searchable = false
+                }
+                return next
+              }),
             )
           }
         />

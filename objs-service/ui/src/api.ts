@@ -210,6 +210,18 @@ export async function createGraph(body: {
   return parseResponse<BoMGraphResponse>(res)
 }
 
+export async function putGraphAnnotations(
+  id: string,
+  annotations: Record<string, string>,
+): Promise<BoMGraphResponse> {
+  const res = await fetch(`/api/v1/objs/graphs/${encodeURIComponent(id)}/annotations`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ annotations }),
+  })
+  return parseResponse<BoMGraphResponse>(res)
+}
+
 export async function deleteGraph(id: string): Promise<void> {
   const res = await fetch(`/api/v1/objs/graphs/${encodeURIComponent(id)}`, { method: 'DELETE' })
   if (res.status === 204) return
@@ -248,10 +260,52 @@ export async function queryGraphs(matcherBody: unknown): Promise<BoMGraphContent
   return parseResponse<BoMGraphContents>(res)
 }
 
+/** True when [body] is a bare `{ "obj-expr": "..." }` object (not a chain). */
+export function isBareObjExprMatcher(body: unknown): boolean {
+  return (
+    body != null &&
+    typeof body === 'object' &&
+    !Array.isArray(body) &&
+    typeof (body as Record<string, unknown>)['obj-expr'] === 'string'
+  )
+}
+
 /**
- * Route a built matcher body to the right graph-scoped query endpoint (WI-005). `obj-expr`
- * requires a current graph and is scoped through [queryInGraph]; `all` / `graph-expr` / `chained`
- * select graph(s) by header through [queryGraphs] (backend requires stage-0 `all` or `graph-expr`).
+ * Composer Add objects Search routing (ui.md: graph query, or cross-graph when none selected).
+ * With [graphId]: `POST …/graphs/{id}/query`. Without: `POST …/graphs/query`, wrapping a bare
+ * `obj-expr` as `[{ all: true }, obj-expr]` so stage-0 graph scope is satisfied (orphans excluded).
+ */
+export function scopeAddObjectsMatcher(body: unknown, graphId: string | null): {
+  kind: 'in-graph' | 'graphs'
+  graphId?: string
+  body: unknown
+} {
+  if (graphId) {
+    return { kind: 'in-graph', graphId, body }
+  }
+  if (isBareObjExprMatcher(body)) {
+    return { kind: 'graphs', body: [{ all: true }, body] }
+  }
+  return { kind: 'graphs', body }
+}
+
+/** Run Add objects Search against the current graph or across all graphs when none is selected. */
+export async function queryAddObjects(
+  body: unknown,
+  graphId: string | null,
+): Promise<BoMGraphContents> {
+  const scoped = scopeAddObjectsMatcher(body, graphId)
+  if (scoped.kind === 'in-graph') {
+    return queryInGraph(scoped.graphId!, scoped.body)
+  }
+  return queryGraphs(scoped.body)
+}
+
+/**
+ * Route a built matcher body to the right query endpoint (WI-005 / Explorer / Query helpers).
+ * With a current graph, bare `obj-expr` uses `POST …/graphs/{id}/query`. Without one, bare
+ * `obj-expr` is wrapped as `[{ all: true }, obj-expr]` on `POST …/graphs/query` (union of graph
+ * members; orphans excluded) — same fallback as Composer Add objects.
  */
 export async function execMatcher(
   mode: MatcherMode,
@@ -259,12 +313,11 @@ export async function execMatcher(
   currentGraphId: string | null,
 ): Promise<BoMGraphContents> {
   if (mode === 'obj-expr') {
-    if (!currentGraphId) {
-      throw new Error(
-        'Select or create a current graph before running a bare obj-expr matcher (or use graph-expr to open one).',
-      )
+    if (currentGraphId) {
+      return queryInGraph(currentGraphId, body)
     }
-    return queryInGraph(currentGraphId, body)
+    const scoped = isBareObjExprMatcher(body) ? [{ all: true }, body] : body
+    return queryGraphs(scoped)
   }
   return queryGraphs(body)
 }

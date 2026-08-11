@@ -22,9 +22,11 @@ member entities and graph-local edges (see [`graph/model.md`](graph/model.md)).
 | Level | Role |
 |-------|------|
 | **L0** | App view nav (`AppLayout`) — unchanged |
-| **L1** | Short title + help-icon **popover** (inline subtitle copy only; **no docs links**) \| Explorer **Explore-scope**; Composer/Query graph context strip |
-| **L2** | Workspace actions (Open in… / layout / Save / Snapshot / Exec) |
+| **L1** | Short title (`Title order={3}`) + help-icon **popover** (or Schema subtitle) \| primary actions **`size="sm"`** on the right \| Explorer Explore-scope / Composer·Query graph strip |
+| **L2** | Tabs alone (Visual/Text/…) when present; workspace handoffs / canvas toolbars use **`size="xs"`** (Schema Format/Lint pattern). Schema catalog puts Apply layout / Import on L1 at `sm`. |
 | **L3** | Canvas / draft / script / results |
+
+**Size baseline (Schema):** page-header actions `sm`; in-panel / canvas toolbars `xs`; avoid `compact-sm` / `compact-xs` for shared chrome.
 
 ## Start and open
 
@@ -69,11 +71,14 @@ Switching mode **resets** the previous mode’s view.
 
 ### Explore-scope fragment
 
-**Open graph** and **Matcher** share one always-visible block (not a separate distant graph bar).
-Shows **Mode**, Open graph…, Matcher + Exec, and:
+Pill switcher **Graph | Selection** (same optical pattern as Open graph Search | Expression).
+Each mode shows **only** its active content:
 
-- **Graph:** full graph **id** (copy) + annotation **pills** (truncate + expand; empty → **No annotations**)
-- **Selection:** N objects / M edges + matcher one-liner
+- **Graph:** **Open graph…** + opened-graph readout (id + annotation pills), or empty prompt
+- **Selection:** Matcher + **Exec**, then N objects / M edges + matcher one-liner
+
+Open graph / Exec still flip the active mode (and canvas). The switcher can also change mode
+directly; either/or canvas rules below still apply.
 
 Title row: short **Graph explorer** + help-icon popover (former subtitle copy; no docs links).
 
@@ -81,7 +86,8 @@ Matchers use shared `MatcherQueryForm` (**`all`** / **`graph-expr`** / **`obj-ex
 
 - **`all`** — union of stored members/edges across every graph (distinct by id); orphans excluded.
 - **`graph-expr`** — JEXL over graph header `id` and `a.*`; matching graphs contribute stored members/edges.
-- **`obj-expr`** — JEXL over entity fields **within the current graph** when in Graph mode; bare `obj-expr` with no opened graph fails closed.
+- **`obj-expr`** — JEXL over entity fields. With an opened graph: scoped to that graph. With **no**
+  opened graph: wrapped as `[{ all: true }, obj-expr]` (union of graph members; orphans excluded).
 - **chained** — Visual builder or JSON array of stages.
 
 ```json
@@ -451,13 +457,13 @@ workspace** for editing graph membership and payloads. There is **no Browse sche
 |--------|-----------|
 | **Open graph…** | Shared search dialog (`GET …/graphs/search`); loads members; sets current graph |
 | **New graph** | Clears draft and clears graph id (empty edit session) — does **not** create a server graph |
-| **Add objects…** | Visual L2 only; side pane search (same matcher as Explorer) |
+| **Add objects…** | Visual canvas toolbar; side pane search (same matcher as Explorer) |
 | **Validate** | Dry-run mutation |
 | **Save** | Enabled when dirty or `graphId == null` (or never-saved). With **no** graph id: **creates** graph (`entityIds` membership + edge upserts). With id: `PUT …/graphs/{id}` mutation |
 | **Snapshot** | Enabled only when saved + clean; clone dialog → new independent graph; switches to new id |
 
-L1: title + help popover; **Reset** / **Clear** secondary.  
-Visual L2: **New** ▾ (**New** / **New linked**) + **Link** + **Add objects…**; both tabs: **Validate** / **Save** / **Snapshot**.
+L1: title + help popover; **Reset** / **Clear** / **Validate** / **Save** / **Snapshot** (`size="sm"`, same row).  
+Tabs: Visual / Text only. Visual L2 toolbar: **New** ▾ / **Link** / **Add objects…** + draft actions + **N on canvas** / last-search badges (`size="xs"`).
 
 Empty selection: side pane may edit **graph-level annotations**.
 
@@ -465,12 +471,14 @@ Edit form: no duplicate Payload/Annotations section titles; per-field **delete**
 
 | API | |
 |-----|--|
-| Add objects / Search | `POST /api/v1/objs/graphs/{id}/query` (or pool query when no graph) |
+| Add objects / Search | With current graph: `POST /api/v1/objs/graphs/{id}/query`. With **no** graph: `POST /api/v1/objs/graphs/query` — bare `obj-expr` is wrapped as `[{ all: true }, obj-expr]` (union of graph members; orphans excluded) |
 | Validate | `BoMGraphMutation` dry-run |
 | Save (existing graph) | `PUT /api/v1/objs/graphs/{id}` |
 | Save (no graph id) | `POST /api/v1/objs/graphs` with `entityIds` + edge upserts |
 | Snapshot | Clone semantics (`POST …/graphs/{id}/clone` or equivalent) |
 | Open graph… | `GET /api/v1/objs/graphs/search` then `GET …/graphs/{id}` |
+
+Returning to Composer / Explorer with a persisted current graph id **reloads** that graph’s members into the canvas (not annotations only), so chrome and Visual stay consistent. If the graph is missing, the current-graph selection is cleared.
 
 **New UUID** (clipboard + toast) sits on the Text tab toolbar next to Format / Rollback.
 
@@ -478,14 +486,14 @@ Edit form: no duplicate Payload/Annotations section titles; per-field **delete**
 
 | Tab | Role |
 |-----|------|
-| **Visual** | React Flow canvas with resizable right side pane (edit form or Add objects); L2 create actions + layout |
+| **Visual** | React Flow canvas with resizable right side pane (edit form or Add objects); canvas toolbar create/draft actions + layout |
 | **Text** | YAML/JSON of the **mutation only** (`upsert` + `delete`). Unchanged baseline objects stay on Visual but are omitted from Text until edited, created, or deleted. |
 
 Invalid Text blocks switching to Visual; the last good draft is preserved.
 
 ### Add objects / exclude vs delete
 
-1. Open **Add objects…** (Visual L2) — search UI in the **right side pane**. Defaults matcher mode to **`obj-expr`**.
+1. Open **Add objects…** (Visual canvas toolbar) — search UI in the **right side pane**. Defaults matcher mode to **`obj-expr`**.
 2. Drag the vertical splitter between canvas and side pane (width persisted).
 3. **Search** fills a results table; paginate locally at **20** rows. Successful Search mints a new **`qid`**.
 4. **Add** / **In draft** toggles merge or exclude; merges induced edges among store-backed draft ids.
@@ -495,7 +503,7 @@ Invalid Text blocks switching to Visual; the last good draft is preserved.
 8. Draft status icons: **+** new, **pencil** modified, **−** deleted.
 9. **Reset** restores the last rollback snapshot; **Clear** empties the draft.
 
-Optional **Copy annotations from source** when creating a linked object.
+**New linked** always copies annotations from the selected source object (including when empty). **New** seeds from graph-header annotations.
 
 ### Validate and Save
 
@@ -530,12 +538,15 @@ GET /api/v1/objs/graphs/search?q={text}&limit=15&expr={graph-expr}
 Empty `q` without `expr` → empty list (never dump all graphs). Response `{ "items": [ { "id", "annotations" } ] }`.
 v1 match: id / UUID-prefix + case-insensitive substring on id and annotation strings. Extensible later (additive fields/params; FTS deferred).
 
+Hit list uses **compact fixed-height** graph rows (single-line id + pills; list scrolls). Bars
+(Composer / Explorer / Query) keep the comfortable multi-line `GraphHeaderReadout`.
+
 ## Common errors
 
 | Message or condition | Resolution |
 |----------------------|------------|
 | Graph query returns no nodes | Verify `graph-expr` / `obj-expr` criteria exist on stored graphs/entities and that chained stages retain results |
-| Matcher query is rejected | Correct the matcher shape: one `graph-expr`/`obj-expr` object or a non-empty JSON array of matcher objects; bare `obj-expr` needs a current graph or a stage-0 `graph-expr` |
+| Matcher query is rejected | Correct the matcher shape: one `graph-expr`/`obj-expr` object or a non-empty JSON array of matcher objects; without a current graph, bare `obj-expr` is auto-wrapped with `all` |
 | Schema cannot be loaded | Confirm the selected type and version still exist |
 | Source document is invalid | Correct YAML/JSON syntax before switching to Schema mode or saving |
 | `SCHEMA_DEFINITION_INVALID` | Correct the field named in the lint message |

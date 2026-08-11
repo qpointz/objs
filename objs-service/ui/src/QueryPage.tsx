@@ -332,7 +332,7 @@ export function QueryPage() {
 
   return (
     <Stack gap="sm" style={{ flex: 1, minHeight: 0, height: '100%' }}>
-      <Group justify="space-between" align="center" wrap="wrap" style={{ flexShrink: 0 }}>
+      <Group justify="space-between" align="flex-start" wrap="wrap" style={{ flexShrink: 0 }}>
         <Group gap={6} align="center">
           <Title order={3}>Query</Title>
           <Popover width={420} position="bottom-start" withArrow shadow="md">
@@ -347,6 +347,16 @@ export function QueryPage() {
               </Text>
             </Popover.Dropdown>
           </Popover>
+        </Group>
+        <Group gap="xs" wrap="nowrap">
+          {result != null && (
+            <Text size="xs" c="dimmed" style={{ alignSelf: 'center' }}>
+              {formatGremlinStats(result)}
+            </Text>
+          )}
+          <Button size="sm" loading={loading} onClick={() => void onExec()}>
+            Exec
+          </Button>
         </Group>
       </Group>
 
@@ -382,29 +392,11 @@ export function QueryPage() {
             onChange={setTopTab}
             style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}
           >
-            <Group
-              justify="space-between"
-              align="center"
-              gap="sm"
-              wrap="wrap"
-              style={{ flexShrink: 0 }}
-            >
-              <Tabs.List style={{ flexShrink: 0 }}>
-                <Tabs.Tab value="query">Query</Tabs.Tab>
-                <Tabs.Tab value="matcher">Matcher</Tabs.Tab>
-                <Tabs.Tab value="options">Options</Tabs.Tab>
-              </Tabs.List>
-              <Group gap="xs" wrap="nowrap">
-                {result != null && (
-                  <Text size="xs" c="dimmed">
-                    {formatGremlinStats(result)}
-                  </Text>
-                )}
-                <Button size="compact-sm" loading={loading} onClick={() => void onExec()}>
-                  Exec
-                </Button>
-              </Group>
-            </Group>
+            <Tabs.List style={{ flexShrink: 0 }}>
+              <Tabs.Tab value="query">Query</Tabs.Tab>
+              <Tabs.Tab value="matcher">Matcher</Tabs.Tab>
+              <Tabs.Tab value="options">Options</Tabs.Tab>
+            </Tabs.List>
 
             <Tabs.Panel
               value="query"

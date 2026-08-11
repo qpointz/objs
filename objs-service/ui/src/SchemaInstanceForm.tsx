@@ -17,7 +17,7 @@ import {
   Tooltip,
 } from '@mantine/core'
 import { IconInfoCircle, IconPlus, IconTrash } from '@tabler/icons-react'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { BoMSchemaField, BoMSchemaNode } from './types'
 
 /** Placeholder titles from the schema visual builder defaults — not useful as instance-form labels. */
@@ -86,6 +86,11 @@ type Props = {
   compact?: boolean
   /** Entity payload only: omit keys on delete; show (deleted); restore on value. */
   allowFieldDelete?: boolean
+  /**
+   * Dotted identity paths frozen on the stored/baseline document (G-15).
+   * Identifier fields whose path is not in this set stay editable (missing/null/blank).
+   */
+  lockedIdentifierPaths?: ReadonlySet<string>
 }
 
 export function defaultValueForSchema(schema: BoMSchemaNode): unknown {
@@ -179,7 +184,7 @@ const compactInputStyles = {
   },
 } as const
 
-function SectionChrome({
+export function SectionChrome({
   title,
   count,
   accent,
@@ -238,6 +243,7 @@ export function SchemaInstanceForm({
   pathPrefix = '',
   compact = false,
   allowFieldDelete = false,
+  lockedIdentifierPaths,
 }: Props) {
   const [deletedKeys, setDeletedKeys] = useState<Set<string>>(() => new Set())
 
@@ -344,7 +350,10 @@ export function SchemaInstanceForm({
           </Table.Thead>
           <Table.Tbody>
             {scalarFields.map((field) => {
+              const fieldPath = `${pathPrefix}${field.name}`
               const deleted = allowFieldDelete && deletedKeys.has(field.name)
+              const identifierLocked =
+                field.identifier === true && lockedIdentifierPaths?.has(fieldPath) === true
               return (
                 <Table.Tr key={`${pathPrefix}${field.name}`}>
                   <Table.Td
@@ -366,8 +375,9 @@ export function SchemaInstanceForm({
                       field={field}
                       value={deleted ? undefined : value[field.name]}
                       onChange={(next) => setField(field.name, next)}
-                      path={`${pathPrefix}${field.name}`}
+                      path={fieldPath}
                       compact
+                      readOnly={identifierLocked}
                     />
                   </Table.Td>
                   {allowFieldDelete && (
@@ -377,7 +387,7 @@ export function SchemaInstanceForm({
                         color="red"
                         size="sm"
                         aria-label={`Delete field ${field.name}`}
-                        disabled={deleted}
+                        disabled={deleted || identifierLocked}
                         onClick={() => deleteField(field.name)}
                       >
                         <IconTrash size={14} />
@@ -402,6 +412,7 @@ export function SchemaInstanceForm({
           path={`${pathPrefix}${field.name}`}
           compact
           allowFieldDelete={allowFieldDelete}
+          lockedIdentifierPaths={lockedIdentifierPaths}
         />
       ))}
     </Stack>
@@ -445,12 +456,14 @@ function FieldControl({
   onChange,
   path,
   compact,
+  readOnly = false,
 }: {
   field: BoMSchemaField
   value: unknown
   onChange: (next: unknown) => void
   path: string
   compact: boolean
+  readOnly?: boolean
 }) {
   const size = compact ? 'xs' : undefined
   const multiline = field.stereotype?.includes('multiline') === true
@@ -467,6 +480,7 @@ function FieldControl({
           autosize
           maxRows={6}
           styles={compactInputStyles}
+          disabled={readOnly}
         />
       ) : (
         <TextInput
@@ -475,6 +489,7 @@ function FieldControl({
           onChange={(e) => onChange(e.currentTarget.value)}
           placeholder={field.schema.format ?? undefined}
           styles={compactInputStyles}
+          disabled={readOnly}
         />
       )
     case 'NUMBER':
@@ -493,6 +508,7 @@ function FieldControl({
           allowDecimal={field.schema.type === 'NUMBER'}
           hideControls={compact}
           styles={compactInputStyles}
+          disabled={readOnly}
         />
       )
     case 'BOOLEAN':
@@ -503,11 +519,13 @@ function FieldControl({
           onChange={(e) => onChange(e.currentTarget.checked)}
           label={value === true ? 'true' : value === false ? 'false' : 'unset'}
           labelPosition="left"
+          disabled={readOnly}
         />
       ) : (
         <Checkbox
           checked={Boolean(value)}
           onChange={(e) => onChange(e.currentTarget.checked)}
+          disabled={readOnly}
         />
       )
     case 'ENUM':
@@ -521,8 +539,9 @@ function FieldControl({
           value={typeof value === 'string' && value.length > 0 ? value : null}
           onChange={(v) => onChange(v ?? undefined)}
           searchable
-          clearable={!required}
+          clearable={!required && !readOnly}
           styles={compactInputStyles}
+          disabled={readOnly}
         />
       )
     default:
@@ -544,6 +563,7 @@ function FieldEditor({
   path,
   compact,
   allowFieldDelete = false,
+  lockedIdentifierPaths,
 }: {
   field: BoMSchemaField
   value: unknown
@@ -554,10 +574,13 @@ function FieldEditor({
   path: string
   compact: boolean
   allowFieldDelete?: boolean
+  lockedIdentifierPaths?: ReadonlySet<string>
 }) {
   const label = fieldLabel(field)
   const description = fieldDescription(field)
   const required = field.required === true
+  const identifierLocked =
+    field.identifier === true && lockedIdentifierPaths?.has(path) === true
 
   switch (field.schema.type) {
     case 'STRING':
@@ -573,6 +596,7 @@ function FieldEditor({
             onChange={onChange}
             path={path}
             compact
+            readOnly={identifierLocked}
           />
         )
       }
@@ -669,6 +693,7 @@ function FieldEditor({
               pathPrefix={`${path}.`}
               compact={compact}
               allowFieldDelete={allowFieldDelete}
+              lockedIdentifierPaths={lockedIdentifierPaths}
             />
           )}
         </Paper>
@@ -914,6 +939,7 @@ export function PayloadInspector({
   onChange,
   hideChrome = false,
   allowFieldDelete = false,
+  lockedIdentifierPaths,
 }: {
   schema: BoMSchemaNode
   value: Record<string, unknown>
@@ -921,6 +947,7 @@ export function PayloadInspector({
   /** Drop Payload SectionChrome when the label already appears as tab text. */
   hideChrome?: boolean
   allowFieldDelete?: boolean
+  lockedIdentifierPaths?: ReadonlySet<string>
 }) {
   const fieldCount = schema.fields?.length ?? 0
   const body = (
@@ -931,6 +958,7 @@ export function PayloadInspector({
         onChange={onChange}
         compact
         allowFieldDelete={allowFieldDelete}
+        lockedIdentifierPaths={lockedIdentifierPaths}
       />
     </Box>
   )
@@ -942,6 +970,40 @@ export function PayloadInspector({
   )
 }
 
+type AnnRow = { id: string; key: string; value: string }
+
+function newAnnotationRowId(): string {
+  return crypto.randomUUID()
+}
+
+function annotationsFingerprint(record: Record<string, string>): string {
+  return JSON.stringify(
+    Object.keys(record)
+      .sort()
+      .map((k) => [k, record[k]]),
+  )
+}
+
+function annotationsRecordToRows(record: Record<string, string>): AnnRow[] {
+  const entries = Object.entries(record)
+  if (entries.length === 0) return [{ id: newAnnotationRowId(), key: '', value: '' }]
+  return entries.map(([key, val]) => ({ id: newAnnotationRowId(), key, value: val }))
+}
+
+function annotationsRowsToRecord(list: AnnRow[]): Record<string, string> {
+  const next: Record<string, string> = {}
+  for (const row of list) {
+    const k = row.key.trim()
+    if (!k) continue
+    next[k] = row.value
+  }
+  return next
+}
+
+/**
+ * Key/value annotation editor. Rows use stable ids so typing a new key that temporarily
+ * prefixes an existing key (e.g. `app` → `appVersion`) does not collapse via Object map collision.
+ */
 export function AnnotationsEditor({
   value,
   onChange,
@@ -954,50 +1016,53 @@ export function AnnotationsEditor({
   /** Drop Annotations SectionChrome when the label already appears as tab text. */
   hideChrome?: boolean
 }) {
-  const rows = Object.entries(value)
-  const displayRows = rows.length > 0 ? rows : [['', '']]
+  const [rows, setRows] = useState<AnnRow[]>(() => annotationsRecordToRows(value))
+  const lastEmittedFp = useRef(annotationsFingerprint(value))
+
+  useEffect(() => {
+    const incoming = annotationsFingerprint(value)
+    if (incoming === lastEmittedFp.current) return
+    lastEmittedFp.current = incoming
+    setRows(annotationsRecordToRows(value))
+  }, [value])
+
+  function emit(nextRows: AnnRow[]) {
+    setRows(nextRows)
+    const next = annotationsRowsToRecord(nextRows)
+    lastEmittedFp.current = annotationsFingerprint(next)
+    onChange(next)
+  }
 
   function updateRow(index: number, key: string, val: string) {
-    const nextEntries = displayRows.map(([k, v], i) => (i === index ? [key, val] : [k, v]))
-    const next: Record<string, string> = {}
-    for (const [k, v] of nextEntries) {
-      if (!k.trim()) continue
-      next[k.trim()] = v
-    }
-    onChange(next)
+    emit(rows.map((row, i) => (i === index ? { ...row, key, value: val } : row)))
   }
 
   function removeRow(index: number) {
-    const nextEntries = displayRows.filter((_, i) => i !== index)
-    const next: Record<string, string> = {}
-    for (const [k, v] of nextEntries) {
-      if (!k.trim()) continue
-      next[k.trim()] = v
-    }
-    onChange(next)
+    const next = rows.filter((_, i) => i !== index)
+    emit(next.length > 0 ? next : [{ id: newAnnotationRowId(), key: '', value: '' }])
   }
 
   function addRow() {
-    onChange({ ...value, '': value[''] ?? '' })
+    emit([...rows, { id: newAnnotationRowId(), key: '', value: '' }])
   }
 
   if (!compact) {
     return (
       <Stack gap="xs">
-        {displayRows.map(([key, val], index) => (
-          <Group key={index} align="flex-end" wrap="nowrap" gap={6}>
+        {rows.map((row, index) => (
+          <Group key={row.id} align="flex-end" wrap="nowrap" gap={6}>
             <TextInput
               label={index === 0 ? 'Key' : undefined}
               size="sm"
-              value={key}
-              onChange={(e) => updateRow(index, e.currentTarget.value, val)}
+              value={row.key}
+              onChange={(e) => updateRow(index, e.currentTarget.value, row.value)}
               style={{ flex: 1 }}
             />
             <TextInput
               label={index === 0 ? 'Value' : undefined}
               size="sm"
-              value={val}
-              onChange={(e) => updateRow(index, key, e.currentTarget.value)}
+              value={row.value}
+              onChange={(e) => updateRow(index, row.key, e.currentTarget.value)}
               style={{ flex: 1 }}
             />
             <ActionIcon
@@ -1006,7 +1071,7 @@ export function AnnotationsEditor({
               size="md"
               aria-label="Remove annotation"
               onClick={() => removeRow(index)}
-              disabled={displayRows.length <= 1 && !key && !val}
+              disabled={rows.length <= 1 && !row.key && !row.value}
               mb={4}
             >
               <IconTrash size={16} />
@@ -1025,7 +1090,7 @@ export function AnnotationsEditor({
     )
   }
 
-  const filledCount = rows.filter(([k]) => k.trim().length > 0).length
+  const filledCount = rows.filter((r) => r.key.trim().length > 0).length
   const addAction = (
     <Button
       size="compact-xs"
@@ -1055,8 +1120,8 @@ export function AnnotationsEditor({
         </Table.Tr>
       </Table.Thead>
       <Table.Tbody>
-        {displayRows.map(([key, val], index) => (
-          <Table.Tr key={index}>
+        {rows.map((row, index) => (
+          <Table.Tr key={row.id}>
             <Table.Td
               style={{
                 verticalAlign: 'middle',
@@ -1067,8 +1132,8 @@ export function AnnotationsEditor({
               <TextInput
                 size="xs"
                 variant="unstyled"
-                value={key}
-                onChange={(e) => updateRow(index, e.currentTarget.value, val)}
+                value={row.key}
+                onChange={(e) => updateRow(index, e.currentTarget.value, row.value)}
                 placeholder="key"
                 styles={{
                   input: {
@@ -1084,8 +1149,8 @@ export function AnnotationsEditor({
               <TextInput
                 size="xs"
                 variant="unstyled"
-                value={val}
-                onChange={(e) => updateRow(index, key, e.currentTarget.value)}
+                value={row.value}
+                onChange={(e) => updateRow(index, row.key, e.currentTarget.value)}
                 placeholder="value"
                 styles={{
                   input: { fontSize: 'var(--mantine-font-size-xs)' },
@@ -1099,7 +1164,7 @@ export function AnnotationsEditor({
                 size="sm"
                 aria-label="Remove annotation"
                 onClick={() => removeRow(index)}
-                disabled={displayRows.length <= 1 && !key && !val}
+                disabled={rows.length <= 1 && !row.key && !row.value}
               >
                 <IconTrash size={14} />
               </ActionIcon>

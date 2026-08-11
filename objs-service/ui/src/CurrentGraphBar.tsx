@@ -19,32 +19,36 @@ type Props = {
  */
 export function CurrentGraphBar({ graphId, onOpenGraph, onNewGraph, annotations, extra }: Props) {
   return (
-    <Stack gap={6}>
+    <Stack gap={8}>
       <Group gap="xs" align="center" wrap="wrap">
-        <Text size="sm" fw={500} style={{ flexShrink: 0 }}>
-          Graph:
+        <Text size="sm" fw={600} style={{ flexShrink: 0 }}>
+          Graph
         </Text>
-        {graphId && annotations == null ? (
-          <Tooltip label={graphId} withArrow>
-            <Badge variant="light" size="lg" style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}>
-              {shortGraphId(graphId)}
-            </Badge>
-          </Tooltip>
-        ) : !graphId ? (
+        {!graphId ? (
           <Badge variant="outline" color="orange" size="lg">
             No graph selected
           </Badge>
+        ) : annotations == null ? (
+          <Tooltip label={graphId} withArrow>
+            <Badge
+              variant="light"
+              size="lg"
+              style={{ fontFamily: 'var(--mantine-font-family-monospace)' }}
+            >
+              {shortGraphId(graphId)}
+            </Badge>
+          </Tooltip>
         ) : null}
-        <Button size="compact-xs" variant="light" onClick={onOpenGraph}>
+        <Button size="xs" variant="light" onClick={onOpenGraph}>
           Open graph…
         </Button>
-        <Button size="compact-xs" variant="default" onClick={onNewGraph}>
+        <Button size="xs" variant="default" onClick={onNewGraph}>
           New graph
         </Button>
         {extra}
       </Group>
       {graphId && annotations != null && (
-        <GraphHeaderReadout graphId={graphId} annotations={annotations} />
+        <GraphHeaderReadout graphId={graphId} annotations={annotations} compactId />
       )}
     </Stack>
   )

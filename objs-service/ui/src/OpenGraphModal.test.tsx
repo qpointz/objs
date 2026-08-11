@@ -62,7 +62,7 @@ describe('OpenGraphModal (WI-007 smoke)', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     renderModal()
-    await user.type(screen.getByLabelText('Search'), 'prod')
+    await user.type(screen.getByPlaceholderText(/prod, a1b2c3d4/i), 'prod')
 
     await waitFor(
       () => {
@@ -75,7 +75,7 @@ describe('OpenGraphModal (WI-007 smoke)', () => {
       { timeout: 2000 },
     )
 
-    expect(await screen.findByText('aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Open' })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Open' })).toBeTruthy()
+    expect(screen.getByText(/aaaaaaaa/)).toBeTruthy()
   })
 })

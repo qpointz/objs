@@ -48,10 +48,12 @@ const GRAPH_SESSION_STORAGE_KEY = 'objs.ui.graphExplorer.session'
 
 const EXPLORER_HELP = (
   <>
-    <Code>obj-expr</Code> queries the current graph (<Code>POST .../graphs/{'{id}'}/query</Code>);
-    <Code>graph-expr</Code> / chained select graph(s) by header (
-    <Code>POST .../graphs/query</Code>). Click type pills to highlight matching objects; the
-    selected object’s type pill opens its schema in a new tab.
+    With an opened graph, <Code>obj-expr</Code> queries that graph (
+    <Code>POST .../graphs/{'{id}'}/query</Code>). Without one, bare <Code>obj-expr</Code> runs
+    across all graphs as <Code>[{'{'} all: true {'}'}, obj-expr]</Code> (
+    <Code>POST .../graphs/query</Code>). <Code>graph-expr</Code> / chained always select graph(s)
+    by header. Click type pills to highlight matching objects; the selected object’s type pill
+    opens its schema in a new tab.
   </>
 )
 
@@ -200,21 +202,42 @@ export function GraphExplorerPage() {
     }
   }, [])
 
-  // Restore graph-header annotations when reloading Graph mode with a persisted id.
+  // Keep Graph-mode canvas in sync with the opened graph id (shared with Composer).
+  // Annotations-only restore left an empty canvas after navigating away and back.
   useEffect(() => {
     if (exploreMode !== 'graph' || !currentGraphId) return
     let cancelled = false
+    setLoading(true)
+    setError(null)
     getGraph(currentGraphId)
       .then((resolved) => {
-        if (!cancelled) setGraphAnnotations(resolved.annotations ?? {})
+        if (cancelled) return
+        setGraphAnnotations(resolved.annotations ?? {})
+        const graph = toGraphData(resolved.graph)
+        setNodes(graph.nodes)
+        setLinks(graph.links)
+        setHighlightedTypes(new Set())
+        const qid = beginQueryResult()
+        persistSession(graph.nodes, graph.links, layoutRef.current, qid)
+        setCanvasEpoch((n) => n + 1)
       })
       .catch(() => {
-        if (!cancelled) setGraphAnnotations({})
+        if (cancelled) return
+        setCurrentGraphId(null)
+        setGraphAnnotations({})
+        setNodes([])
+        setLinks([])
+        clearStoredGraphSession()
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
       })
     return () => {
       cancelled = true
     }
-  }, [currentGraphId, exploreMode])
+    // beginQueryResult / persistSession are stable enough for mount hydration
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentGraphId, exploreMode, setCurrentGraphId])
 
   const fieldKindsByTypeVersion = useMemo(
     () => payloadFieldKindsByTypeVersion(schemas),
@@ -421,7 +444,7 @@ export function GraphExplorerPage() {
 
   return (
     <Stack gap="sm" style={{ flex: 1, minHeight: 0 }}>
-      <Group justify="space-between" align="center" wrap="wrap">
+      <Group justify="space-between" align="flex-start" wrap="wrap" style={{ flexShrink: 0 }}>
         <Group gap={6} align="center">
           <Title order={3}>Explorer</Title>
           <Popover width={360} position="bottom-start" withArrow shadow="md">
@@ -441,7 +464,8 @@ export function GraphExplorerPage() {
 
       <ExploreScopeBar
         mode={exploreMode}
-        graphId={exploreMode === 'graph' ? currentGraphId : null}
+        onModeChange={setExploreMode}
+        graphId={currentGraphId}
         graphAnnotations={graphAnnotations}
         objectCount={nodes.length}
         edgeCount={links.length}
@@ -458,6 +482,7 @@ export function GraphExplorerPage() {
       <Group gap="xs" wrap="wrap">
         {exploreMode === 'graph' ? (
           <Button
+            size="sm"
             variant="light"
             disabled={!currentGraphId}
             onClick={onOpenInComposer}
@@ -466,6 +491,7 @@ export function GraphExplorerPage() {
           </Button>
         ) : (
           <Button
+            size="sm"
             variant="light"
             disabled={!canvasNonEmpty}
             onClick={onNewGraphFromSelection}
@@ -473,11 +499,17 @@ export function GraphExplorerPage() {
             New graph from selection
           </Button>
         )}
-        <Button variant="light" disabled={!canvasNonEmpty} onClick={onOpenInQuery}>
+        <Button
+          size="sm"
+          variant="light"
+          disabled={!canvasNonEmpty}
+          onClick={onOpenInQuery}
+        >
           Open in Query
         </Button>
         <Group gap={0}>
           <Button
+            size="sm"
             variant="light"
             disabled={nodes.length === 0}
             onClick={() => graphRef.current?.applyLayout()}
@@ -488,6 +520,7 @@ export function GraphExplorerPage() {
           <Menu position="bottom-end" withinPortal>
             <Menu.Target>
               <Button
+                size="sm"
                 variant="light"
                 disabled={nodes.length === 0}
                 aria-label="Choose graph layout"
@@ -591,7 +624,7 @@ export function GraphExplorerPage() {
             >
               <Loader size="md" />
               <Text size="sm" c="dimmed">
-                Fetching graph…
+                Loading graph…
               </Text>
             </Stack>
           )}

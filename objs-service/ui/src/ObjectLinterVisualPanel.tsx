@@ -16,9 +16,9 @@ import {
   Badge,
   Box,
   Button,
-  Checkbox,
   Code,
   Group,
+  Loader,
   Menu,
   Modal,
   Paper,
@@ -52,6 +52,7 @@ import {
   migrateNeedsConfirm,
   migratePayloadByKey,
 } from './SchemaInstanceForm'
+import { projectIdentityPaths } from './identityProjection'
 import { applyTypeHighlightDimming, toggleTypeInSet } from './typeHighlightDimming'
 import type {
   BoMAllowedEdgeRule,
@@ -178,7 +179,9 @@ type Props = {
   invalidEdgeIds?: ReadonlySet<string>
   /** Add objects side panel (replaces edit form while open). */
   addObjectsOpen?: boolean
-  /** Current graph (WI-005): Add objects Search / induced-edge refresh are scoped to it. */
+  /** Toggle Add objects side pane (Visual toolbar). */
+  onToggleAddObjects?: () => void
+  /** Current graph: Add objects Search scopes to members; when null, Search runs across all graphs. */
   graphId?: string | null
   onCloseAddObjects?: () => void
   addObjectsMatcher?: unknown | null
@@ -188,11 +191,13 @@ type Props = {
   onMergeEntities?: (entities: BoMEntity[]) => void
   onMergeEdges?: (edges: BoMEdge[]) => void
   onAddObjectsSearchSuccess?: (matcherBody: unknown, stats: QueryExecStats) => void
+  /** Last Add objects Search stats (Visual L2 badge). */
+  addObjectsStats?: QueryExecStats | null
+  /** True while the opened graph is loading into the Visual canvas. */
+  canvasLoading?: boolean
   /** Graph-header annotations (empty selection side pane). */
   graphAnnotations?: Record<string, string>
   onGraphAnnotationsChange?: (next: Record<string, string>) => void
-  /** Report Visual L2 New linked / Link enablement to the page chrome. */
-  onCreateActionsState?: (state: { canNewLinked: boolean; canLink: boolean }) => void
 }
 
 export type ObjectLinterVisualPanelHandle = {
@@ -242,6 +247,7 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
       invalidEntityIds,
       invalidEdgeIds,
       addObjectsOpen = false,
+      onToggleAddObjects,
       graphId = null,
       onCloseAddObjects,
       addObjectsMatcher = null,
@@ -251,9 +257,10 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
       onMergeEntities,
       onMergeEdges,
       onAddObjectsSearchSuccess,
+      addObjectsStats = null,
+      canvasLoading = false,
       graphAnnotations = {},
       onGraphAnnotationsChange,
-      onCreateActionsState,
     },
     ref,
   ) {
@@ -357,7 +364,6 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
   const [linkOptions, setLinkOptions] = useState<LinkOption[]>([])
   const [linkOptionKey, setLinkOptionKey] = useState<string | null>(null)
   const [linkVersion, setLinkVersion] = useState<string | null>(null)
-  const [copyAnnotations, setCopyAnnotations] = useState(true)
   const [annotationBuffer, setAnnotationBuffer] = useState<Record<string, string> | null>(null)
   const [pairIds, setPairIds] = useState<string[]>([])
   const [canvasMenu, setCanvasMenu] = useState<{
@@ -549,13 +555,54 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
   const selectedEntityId = selectedEntity?.id ?? null
   const selectedEntityType = selectedEntity?.type ?? null
   const selectedEntityVersion = selectedEntity?.schemaVersion ?? null
+  const selectedEdgeId = selectedEdge?.id ?? null
+  const selectedEdgeType = selectedEdge?.type ?? null
+  const selectedEdgeVersion = selectedEdge?.schemaVersion ?? null
   const schemaMenuOptions = useMemo(
     () => entitySchemasSameType(schemas, selectedEntityType),
     [schemas, selectedEntityType],
   )
-  const selectedEdgeId = selectedEdge?.id ?? null
-  const selectedEdgeType = selectedEdge?.type ?? null
-  const selectedEdgeVersion = selectedEdge?.schemaVersion ?? null
+  /** Frozen identity paths from baseline (stored) schema+payload — unset/blank stay editable (G-15). */
+  const lockedEntityIdentifierPaths = useMemo(() => {
+    if (!selectedEntityId || !draftState.baselineEntityIds.has(selectedEntityId)) {
+      return new Set<string>()
+    }
+    const baseline = draftState.baselineEntities.get(selectedEntityId)
+    if (!baseline) return new Set<string>()
+    const baselineSchema = schemas.find(
+      (s) => s.type === baseline.type && s.version === (baseline.schemaVersion ?? '1.0.0'),
+    )
+    if (!baselineSchema) return new Set<string>()
+    return projectIdentityPaths(
+      baselineSchema.contentSchema,
+      (baseline.payload ?? {}) as Record<string, unknown>,
+    )
+  }, [
+    draftState.baselineEntities,
+    draftState.baselineEntityIds,
+    schemas,
+    selectedEntityId,
+  ])
+  const lockedEdgeIdentifierPaths = useMemo(() => {
+    if (!selectedEdgeId || !draftState.baselineEdgeIds.has(selectedEdgeId)) {
+      return new Set<string>()
+    }
+    const baseline = draftState.baselineEdges.get(selectedEdgeId)
+    if (!baseline?.type || !baseline.schemaVersion) return new Set<string>()
+    const baselineSchema = schemas.find(
+      (s) => s.type === baseline.type && s.version === baseline.schemaVersion,
+    )
+    if (!baselineSchema) return new Set<string>()
+    return projectIdentityPaths(
+      baselineSchema.contentSchema,
+      (baseline.properties ?? {}) as Record<string, unknown>,
+    )
+  }, [
+    draftState.baselineEdgeIds,
+    draftState.baselineEdges,
+    schemas,
+    selectedEdgeId,
+  ])
 
   useEffect(() => {
     let cancelled = false
@@ -809,10 +856,12 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
   const canLink =
     pairIds.length === 2 &&
     !pairIds.some((id) => draftState.pendingDeleteEntityIds.has(id))
-
-  useEffect(() => {
-    onCreateActionsState?.({ canNewLinked, canLink })
-  }, [canLink, canNewLinked, onCreateActionsState])
+  const newLinkedTooltip = canNewLinked
+    ? undefined
+    : 'Select exactly one non-deleted object'
+  const linkTooltip = canLink
+    ? undefined
+    : 'Select exactly two non-deleted objects (Ctrl+click)'
 
   async function confirmAdd() {
     if (!addType || !addVersion) return
@@ -823,7 +872,7 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
       type: addType,
       schemaVersion: addVersion,
       payload,
-      annotations: {},
+      annotations: { ...graphAnnotations },
     }
     onUpsertEntity(entity)
     selectEntityAlone(entity)
@@ -889,7 +938,7 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
       type: option.createType,
       schemaVersion: linkVersion,
       payload: defaultValueForSchema(schema.contentSchema) as Record<string, unknown>,
-      annotations: copyAnnotations ? { ...(selectedEntity.annotations ?? {}) } : {},
+      annotations: { ...(selectedEntity.annotations ?? {}) },
     }
     const edge: BoMEdge = {
       id: newEntityId(),
@@ -935,6 +984,58 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
     <Stack gap="sm" style={{ flex: 1, minHeight: 0, height: '100%' }}>
       <Group justify="space-between" align="center" wrap="wrap" style={{ flexShrink: 0 }}>
         <Group gap="xs" wrap="wrap">
+        <Group gap={0} wrap="nowrap" style={{ display: 'inline-flex' }}>
+          <Button
+            size="xs"
+            onClick={() => setAddOpen(true)}
+            style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
+          >
+            New
+          </Button>
+          <Menu shadow="md" width={180} position="bottom-end" withinPortal>
+            <Menu.Target>
+              <Button
+                size="xs"
+                aria-label="New options"
+                px="xs"
+                style={{
+                  borderTopLeftRadius: 0,
+                  borderBottomLeftRadius: 0,
+                  borderLeft: '1px solid var(--mantine-color-default-border)',
+                }}
+              >
+                ▾
+              </Button>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Item onClick={() => setAddOpen(true)}>New</Menu.Item>
+              <Menu.Item
+                disabled={!canNewLinked}
+                title={newLinkedTooltip}
+                onClick={() => void openLink()}
+              >
+                New linked
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
+        </Group>
+        <Tooltip label={linkTooltip} disabled={!linkTooltip} withArrow>
+          <span style={{ display: 'inline-flex' }}>
+            <Button
+              size="xs"
+              variant="light"
+              disabled={!canLink}
+              onClick={() => void openConnect()}
+            >
+              Link
+            </Button>
+          </span>
+        </Tooltip>
+        {onToggleAddObjects && (
+          <Button size="xs" variant="light" onClick={onToggleAddObjects}>
+            {addObjectsOpen ? 'Hide add objects' : 'Add objects…'}
+          </Button>
+        )}
         <Button
           size="xs"
           variant="light"
@@ -1054,12 +1155,22 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
           </Text>
         )}
         </Group>
-        <Switch
-          size="xs"
-          label="Changes only"
-          checked={changesOnly}
-          onChange={(e) => setChangesOnly(e.currentTarget.checked)}
-        />
+        <Group gap="xs" wrap="wrap" align="center" style={{ flexShrink: 0 }}>
+          <Badge variant="light" size="sm">
+            {document.entities.length} on canvas
+          </Badge>
+          {addObjectsStats != null && (
+            <Badge variant="outline" size="sm">
+              last search {addObjectsStats.nodes} nodes
+            </Badge>
+          )}
+          <Switch
+            size="xs"
+            label="Changes only"
+            checked={changesOnly}
+            onChange={(e) => setChangesOnly(e.currentTarget.checked)}
+          />
+        </Group>
       </Group>
 
       {graphView.nodes.length > 0 && (
@@ -1129,13 +1240,31 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
             displayGraph.nodes.length === 0 ? onCanvasPaneContextMenu : undefined
           }
         >
-          {displayGraph.nodes.length === 0 ? (
+          {canvasLoading && (
+            <Stack
+              align="center"
+              justify="center"
+              gap="sm"
+              style={{
+                position: 'absolute',
+                inset: 0,
+                zIndex: 5,
+                background: 'color-mix(in srgb, var(--mantine-color-body) 82%, transparent)',
+              }}
+            >
+              <Loader size="md" />
+              <Text size="sm" c="dimmed">
+                Loading graph…
+              </Text>
+            </Stack>
+          )}
+          {displayGraph.nodes.length === 0 && !canvasLoading ? (
             <Stack p="md" gap="xs">
               <Text size="sm" c="dimmed">
                 Draft has no entities. Use New or Add objects….
               </Text>
             </Stack>
-          ) : (
+          ) : displayGraph.nodes.length === 0 ? null : (
             <GraphCanvas
               ref={graphRef}
               nodes={displayGraph.nodes}
@@ -1515,6 +1644,7 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
                               }
                               hideChrome
                               allowFieldDelete
+                              lockedIdentifierPaths={lockedEntityIdentifierPaths}
                             />
                           ) : (
                             <Text size="xs" c="dimmed">
@@ -1659,6 +1789,7 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
                             onUpsertEdge({ ...selectedEdge, properties })
                           }
                           compact
+                          lockedIdentifierPaths={lockedEdgeIdentifierPaths}
                         />
                       ) : (
                         <Text size="xs" c="dimmed">
@@ -1730,11 +1861,9 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
                 onChange={setLinkVersion}
                 disabled={!linkCreateType}
               />
-              <Checkbox
-                label="Copy annotations from selected"
-                checked={copyAnnotations}
-                onChange={(e) => setCopyAnnotations(e.currentTarget.checked)}
-              />
+              <Text size="xs" c="dimmed">
+                Annotations are copied from the selected object (including when empty).
+              </Text>
               <Button
                 disabled={!linkOptionKey || !linkVersion}
                 onClick={() => void confirmLinked()}
