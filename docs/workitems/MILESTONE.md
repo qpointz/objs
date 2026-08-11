@@ -30,7 +30,7 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 
 ### In Progress
 
-_(none)_
+- [`workbench-chrome-regroup`](in-progress/workbench-chrome-regroup/STORY.md) — Explorer Graph vs non-graph modes; Explore-scope fragment (Open graph ∪ Matcher); Composer/Query L2 action strips (U-4).
 
 ### Planned
 
