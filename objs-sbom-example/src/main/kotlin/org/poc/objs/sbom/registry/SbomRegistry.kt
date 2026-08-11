@@ -64,17 +64,9 @@ object SbomRegistry {
     private val dateTimeProp = BoMSchemaDsl.string("Date and time", "ISO-8601 timestamp", format = "date-time")
     private val numberProp = BoMSchemaDsl.number("Number", "Numeric value")
     private val integerProp = BoMSchemaDsl.integer("Integer", "Whole-number value")
-    private val arrayOfString = BoMSchemaDsl.array(
-        "Text list",
-        "Ordered list of text values",
-        BoMSchemaDsl.string("Text item", "One text value"),
-    )
-    private val objectProp = BoMSchemaDsl.obj("Attributes", "Open attributes object")
 
     private val commonOptional = mapOf(
         "description" to stringProp,
-        "labels" to arrayOfString,
-        "attributes" to objectProp,
     )
 
     private fun edgeRule(
@@ -145,7 +137,6 @@ object SbomRegistry {
                 ),
                 BoMSchemaDsl.field("source", stringProp, required = false),
                 BoMSchemaDsl.field("confidence", numberProp, required = false),
-                BoMSchemaDsl.field("attributes", objectProp, required = false),
             ),
         )
 

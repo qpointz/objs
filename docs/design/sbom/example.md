@@ -18,9 +18,9 @@
 | Canonical | objs foundation |
 |-----------|-----------------|
 | Object `id` / `type` | `BoMEntity.id` / `BoMEntity.type` (schema `1.0.0`) |
-| `name`, `description`, `labels`, `attributes`, type fields | Entity **payload** |
+| `name`, `description`, type-specific fields | Entity **payload** |
 | Edge `id` / relationship name | `BoMEdge.id` / `BoMEdge.role` |
-| Edge `createdAt`, `source`, `confidence`, `attributes` | Edge **properties** via shared schema `CanonicalEdge` |
+| Edge `createdAt`, `source`, `confidence` | Edge **properties** via shared schema `CanonicalEdge` |
 | Multi-app BOM partition | **One `bom_graph` per `(app, appVersion)`** (header annotations); entity annotations still carry the same keys for provenance filters |
 
 **Ontology coverage:** classpath seed `seeds/sbom-ontology.yaml` registers the **entire** draft ontology (Waves A–D): 23 entity types + shared `CanonicalEdge` + all 28 relationship triples from [`canonical-spec.md`](canonical-spec.md). Typed `SbomRegistry.pack()` remains the parity/builder companion.
@@ -167,7 +167,7 @@ One store holds many apps and versions as **separate graphs**. After writing fix
 
 All types and the relationship table live in [`canonical-spec.md`](canonical-spec.md). Example: Component requires `name`, `version`, `ecosystem`, `kind`; licenses via edge `LICENSED_UNDER` only.
 
-Edges use shared **`CanonicalEdge`** properties (`createdAt`, `source`, `confidence`, `attributes`); empty properties allowed. Allow-list matches the canonical relationship table exactly.
+Edges use shared **`CanonicalEdge`** properties (`createdAt`, `source`, `confidence`); empty properties allowed. Allow-list matches the canonical relationship table exactly.
 
 ---
 
@@ -229,15 +229,19 @@ Build: Gradle `:objs-service` builds the UI into `static/ui/` unless `-PskipUi=t
 ```bash
 python objs-sbom-example/scripts/random_sbom_crud.py apps
 python objs-sbom-example/scripts/random_sbom_crud.py bulk
+python objs-sbom-example/scripts/random_sbom_crud.py bulk --apps 5000
 python objs-sbom-example/scripts/random_sbom_crud.py bulk --apps 100 --max-versions 5
 python objs-sbom-example/scripts/random_sbom_crud.py bulk --tiny --apps 20000 --max-versions 30
 python objs-sbom-example/scripts/random_sbom_crud.py bulk --app-number 500 --max-versions-per-app 10
+python objs-sbom-example/scripts/random_sbom_crud.py bulk --apps 5000 --no-create-graphs
 python objs-sbom-example/scripts/random_sbom_crud.py demo
 python objs-sbom-example/scripts/random_sbom_crud.py seed --app demo-app --entities 24 --edges 18
 python objs-sbom-example/scripts/random_sbom_crud.py get --app demo-app --version 1.0.0 --summary
 ```
 
 `bulk` defaults to **20 000 apps**, each with a random **1–30** versions; **each version is a random ontology graph** (8–20 entities, 6–16 allow-listed edges by default — same generator as `seed`/`demo`). Use `--tiny` for the old 2-node Product→Component stub when you only need partition volume. 16 concurrent workers.
+
+**Graphs:** by default each successful `app@version` PUT creates **one `bom_graph`** (header annotations `app` + `appVersion`) via `SbomService.ensureGraph` — searchable in Open graph as e.g. `app-` or `a.app == 'app-00000'`. Pass `--no-create-graphs` to write pool entities only (no headers, no edges). `--create-graphs` is the explicit default.
 
 ---
 

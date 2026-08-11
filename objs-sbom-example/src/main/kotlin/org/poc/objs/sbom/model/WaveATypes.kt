@@ -10,9 +10,7 @@ data class ProductPayload(
     val supplier: String? = null,
     val lifecycle: String? = null,
     val homepage: String? = null,
-    val description: String? = null,
-    val labels: List<String>? = null,
-    val attributes: Map<String, Any?>? = null,
+    val description: String? = null
 )
 
 object ProductType {
@@ -26,9 +24,7 @@ data class OrganizationPayload(
     val domain: String? = null,
     val website: String? = null,
     val country: String? = null,
-    val description: String? = null,
-    val labels: List<String>? = null,
-    val attributes: Map<String, Any?>? = null,
+    val description: String? = null
 )
 
 object OrganizationType {
@@ -41,9 +37,7 @@ data class LicensePayload(
     val name: String,
     val spdxId: String,
     val url: String? = null,
-    val description: String? = null,
-    val labels: List<String>? = null,
-    val attributes: Map<String, Any?>? = null,
+    val description: String? = null
 )
 
 object LicenseType {
@@ -57,9 +51,7 @@ data class VulnerabilityPayload(
     val cve: String,
     val severity: String,
     val cvss: Double? = null,
-    val description: String? = null,
-    val labels: List<String>? = null,
-    val attributes: Map<String, Any?>? = null,
+    val description: String? = null
 )
 
 object VulnerabilityType {
@@ -73,9 +65,7 @@ data class BuildPayload(
     val buildNumber: String,
     val status: String,
     val builder: String? = null,
-    val description: String? = null,
-    val labels: List<String>? = null,
-    val attributes: Map<String, Any?>? = null,
+    val description: String? = null
 )
 
 object BuildType {

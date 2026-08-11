@@ -41,8 +41,6 @@ A technology-neutral ontology for representing software systems. SBOMs, deployme
 | type | String | Object type |
 | name | String | Display name |
 | description | String | Human description |
-| labels | List\<String\> | Tags |
-| attributes | Map\<String, Object\> | Extensions |
 
 ## Foundation edge properties (canonical)
 
@@ -52,7 +50,6 @@ A technology-neutral ontology for representing software systems. SBOMs, deployme
 | createdAt | Instant | Creation time |
 | source | String | Discovery source |
 | confidence | Decimal | Confidence 0..1 |
-| attributes | Map\<String, Object\> | Extensions |
 
 ---
 
@@ -64,7 +61,6 @@ Common notes for all types:
 - **Identity rules:** object-specific natural key combined with version where applicable; importers should merge objects with identical identities *(merge behaviour is not implemented by the objs foundation in this story)*.
 - **Enumerations:** use listed values where applicable; implementations may allow open strings for forward compatibility *(full value lists often still TBD)*.
 - **Lifecycle:** created, versioned if applicable, immutable after publication, superseded by newer revisions.
-- **Extensions:** additional domain-specific attributes may be stored in `attributes` without changing the canonical schema.
 - **`id`:** listed for human clarity; objs maps it to `BoMEntity.id` / `BoMEdge.id` (envelope), not duplicated as a required JSON-Schema payload field.
 
 ## Product
@@ -82,8 +78,6 @@ Common notes for all types:
 | lifecycle | Enum | | Development, Active, Deprecated, Retired |
 | homepage | URI | | Product home |
 | description | String | | Human-readable description |
-| labels | List\<String\> | | User tags |
-| attributes | Map\<String, Object\> | | Custom extension properties |
 
 **Outgoing:** `CONTAINS` → Component; `CONTAINS` → Artifact; `RUNS_ON` → Runtime; `CALLS` → API; `CONNECTS_TO` → Database; `OWNED_BY` → Organization; `COMPLIES_WITH` → Policy
 
@@ -102,8 +96,6 @@ Common notes for all types:
 | kind | Enum | ✓ | library / framework / sdk / etc. |
 | coordinates | String | | Package identifier |
 | description | String | | Human-readable description |
-| labels | List\<String\> | | User tags |
-| attributes | Map\<String, Object\> | | Custom extension properties |
 
 **Outgoing:** `DEPENDS_ON` → Component; `PROVIDED_BY` → Organization; `LICENSED_UNDER` → License; `HAS_VULNERABILITY` → Vulnerability  
 
@@ -123,8 +115,6 @@ Common notes for all types:
 | website | URI | | Website |
 | country | String | | Country |
 | description | String | | Human-readable description |
-| labels | List\<String\> | | User tags |
-| attributes | Map\<String, Object\> | | Custom extension properties |
 
 **Incoming:** `PROVIDED_BY` ← Component; `OWNED_BY` ← Product
 
@@ -141,8 +131,6 @@ Common notes for all types:
 | spdxId | String | ✓ | SPDX identifier |
 | url | URI | | License URL |
 | description | String | | Human-readable description |
-| labels | List\<String\> | | User tags |
-| attributes | Map\<String, Object\> | | Custom extension properties |
 
 **Incoming:** `LICENSED_UNDER` ← Component
 
@@ -160,8 +148,6 @@ Common notes for all types:
 | severity | Enum | ✓ | Critical / High / Medium / Low |
 | cvss | Decimal | | CVSS score |
 | description | String | | Human-readable description |
-| labels | List\<String\> | | User tags |
-| attributes | Map\<String, Object\> | | Custom extension properties |
 
 **Incoming:** `HAS_VULNERABILITY` ← Component; `HAS_VULNERABILITY` ← Container Image
 
@@ -179,8 +165,6 @@ Common notes for all types:
 | builder | String | | CI system |
 | status | Enum | ✓ | Result |
 | description | String | | Human-readable description |
-| labels | List\<String\> | | User tags |
-| attributes | Map\<String, Object\> | | Custom extension properties |
 
 **Outgoing:** `BUILDS` → Artifact; `BUILDS` → Container Image; `USES` → Component
 
@@ -198,8 +182,6 @@ Common notes for all types:
 | revision | Git SHA | | Commit |
 | branch | String | | Branch |
 | description | String | | Human-readable description |
-| labels | List\<String\> | | User tags |
-| attributes | Map\<String, Object\> | | Custom extension properties |
 
 **Outgoing:** `CONTAINS` → Source Module
 
@@ -216,8 +198,6 @@ Common notes for all types:
 | path | String | ✓ | Module path |
 | language | Enum | | Primary language |
 | description | String | | Human-readable description |
-| labels | List\<String\> | | User tags |
-| attributes | Map\<String, Object\> | | Custom extension properties |
 
 **Outgoing:** `PRODUCES` → Artifact  
 **Incoming:** `CONTAINS` ← Source Repository
@@ -236,8 +216,6 @@ Common notes for all types:
 | checksum | SHA-256 | | Hash |
 | size | Long | | Bytes |
 | description | String | | Human-readable description |
-| labels | List\<String\> | | User tags |
-| attributes | Map\<String, Object\> | | Custom extension properties |
 
 **Incoming:** `CONTAINS` ← Product; `PRODUCES` ← Source Module; `BUILDS` ← Build; `PACKAGES` ← Container Image
 
@@ -255,8 +233,6 @@ Common notes for all types:
 | digest | SHA-256 | | OCI digest |
 | registry | URI | | Registry |
 | description | String | | Human-readable description |
-| labels | List\<String\> | | User tags |
-| attributes | Map\<String, Object\> | | Custom extension properties |
 
 **Outgoing:** `CONTAINS` → Container Layer; `PACKAGES` → Artifact; `BASED_ON` → Operating System; `HAS_VULNERABILITY` → Vulnerability  
 **Incoming:** `BUILDS` ← Build; `DEPLOYS` ← Deployment
@@ -272,8 +248,6 @@ Common notes for all types:
 | digest | SHA-256 | ✓ | Layer digest |
 | size | Long | | Bytes |
 | description | String | | Human-readable description |
-| labels | List\<String\> | | User tags |
-| attributes | Map\<String, Object\> | | Custom extension properties |
 
 **Incoming:** `CONTAINS` ← Container Image
 
@@ -290,8 +264,6 @@ Common notes for all types:
 | runtimeType | Enum | ✓ | Runtime |
 | version | String | | Version |
 | description | String | | Human-readable description |
-| labels | List\<String\> | | User tags |
-| attributes | Map\<String, Object\> | | Custom extension properties |
 
 **Outgoing:** `RUNS_ON` → Operating System  
 **Incoming:** `RUNS_ON` ← Product
@@ -310,8 +282,6 @@ Common notes for all types:
 | version | String | | Version |
 | architecture | String | | CPU arch |
 | description | String | | Human-readable description |
-| labels | List\<String\> | | User tags |
-| attributes | Map\<String, Object\> | | Custom extension properties |
 
 **Incoming:** `BASED_ON` ← Container Image; `RUNS_ON` ← Runtime
 
@@ -329,8 +299,6 @@ Common notes for all types:
 | replicas | Integer | | Replica count |
 | deployedAt | Instant | | Timestamp |
 | description | String | | Human-readable description |
-| labels | List\<String\> | | User tags |
-| attributes | Map\<String, Object\> | | Custom extension properties |
 
 **Outgoing:** `DEPLOYS` → Container Image; `TARGETS` → Environment; `RUNS_ON` → Host; `LOCATED_IN` → Namespace
 
@@ -346,8 +314,6 @@ Common notes for all types:
 | name | String | ✓ | Human-readable name |
 | environment | Enum | ✓ | Environment |
 | description | String | | Human-readable description |
-| labels | List\<String\> | | User tags |
-| attributes | Map\<String, Object\> | | Custom extension properties |
 
 **Incoming:** `TARGETS` ← Deployment
 
@@ -365,8 +331,6 @@ Common notes for all types:
 | ip | IPAddress | | IP |
 | provider | String | | Cloud/provider |
 | description | String | | Human-readable description |
-| labels | List\<String\> | | User tags |
-| attributes | Map\<String, Object\> | | Custom extension properties |
 
 **Outgoing:** `MEMBER_OF` → Kubernetes Cluster  
 **Incoming:** `RUNS_ON` ← Deployment
@@ -383,8 +347,6 @@ Common notes for all types:
 | name | String | ✓ | Human-readable name |
 | version | String | | K8s version |
 | description | String | | Human-readable description |
-| labels | List\<String\> | | User tags |
-| attributes | Map\<String, Object\> | | Custom extension properties |
 
 **Incoming:** `MEMBER_OF` ← Host
 
@@ -400,8 +362,6 @@ Common notes for all types:
 | name | String | ✓ | Human-readable name |
 | namespace | String | ✓ | Namespace |
 | description | String | | Human-readable description |
-| labels | List\<String\> | | User tags |
-| attributes | Map\<String, Object\> | | Custom extension properties |
 
 **Incoming:** `LOCATED_IN` ← Deployment
 
@@ -418,8 +378,6 @@ Common notes for all types:
 | protocol | Enum | | HTTP / gRPC |
 | endpoint | URI | | Endpoint |
 | description | String | | Human-readable description |
-| labels | List\<String\> | | User tags |
-| attributes | Map\<String, Object\> | | Custom extension properties |
 
 **Outgoing:** `IMPLEMENTS` → API
 
@@ -436,8 +394,6 @@ Common notes for all types:
 | protocol | Enum | ✓ | REST / gRPC / GraphQL |
 | version | String | | API version |
 | description | String | | Human-readable description |
-| labels | List\<String\> | | User tags |
-| attributes | Map\<String, Object\> | | Custom extension properties |
 
 **Incoming:** `IMPLEMENTS` ← Service; `CALLS` ← Product
 
@@ -454,8 +410,6 @@ Common notes for all types:
 | engine | Enum | ✓ | Database engine |
 | version | String | | Engine version |
 | description | String | | Human-readable description |
-| labels | List\<String\> | | User tags |
-| attributes | Map\<String, Object\> | | Custom extension properties |
 
 **Outgoing:** `CONTAINS` → Dataset  
 **Incoming:** `CONNECTS_TO` ← Product
@@ -473,8 +427,6 @@ Common notes for all types:
 | datasetType | Enum | ✓ | Table / Bucket / Topic |
 | classification | String | | Sensitivity |
 | description | String | | Human-readable description |
-| labels | List\<String\> | | User tags |
-| attributes | Map\<String, Object\> | | Custom extension properties |
 
 **Incoming:** `CONTAINS` ← Database
 
@@ -491,8 +443,6 @@ Common notes for all types:
 | policyType | Enum | | Security / Compliance |
 | version | String | | Policy version |
 | description | String | | Human-readable description |
-| labels | List\<String\> | | User tags |
-| attributes | Map\<String, Object\> | | Custom extension properties |
 
 **Incoming:** `COMPLIES_WITH` ← Product
 

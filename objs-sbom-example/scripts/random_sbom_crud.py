@@ -12,9 +12,11 @@ Examples:
   python random_sbom_crud.py apps
   python random_sbom_crud.py seed --app demo-app --version 1.0.0 --entities 24 --edges 18
   python random_sbom_crud.py bulk
+  python random_sbom_crud.py bulk --apps 5000
   python random_sbom_crud.py bulk --apps 100 --max-versions 5 --min-entities 8 --max-entities 20
   python random_sbom_crud.py bulk --tiny --apps 20000
   python random_sbom_crud.py bulk --app-number 500 --max-versions-per-app 10 --workers 16
+  python random_sbom_crud.py bulk --apps 5000 --no-create-graphs
   python random_sbom_crud.py get --app demo-app --version 1.0.0
   python random_sbom_crud.py update --app demo-app --version 1.0.0 --count 3
   python random_sbom_crud.py delete --app demo-app --version 1.0.0 --entities 2 --edges 1
@@ -207,7 +209,6 @@ def _payload(type_name: str) -> dict[str, Any]:
         raise KeyError(f"Unknown type: {type_name}")
     payload = makers[type_name]()
     payload["description"] = f"random {_token()}"
-    payload["labels"] = [random.choice(["demo", "generated", "sample"])]
     return payload
 
 
@@ -318,6 +319,17 @@ class ObjsClient:
             return self._request("GET", f"/api/v1/example/sbom/apps/{app_q}")
         ver_q = urllib.parse.quote(version, safe="")
         return self._request("GET", f"/api/v1/example/sbom/apps/{app_q}/versions/{ver_q}")
+
+    def entity_create(self, entity: dict[str, Any], *, raise_http: bool = True) -> Any:
+        """POST /api/v1/objs/entities — pool only (no bom_graph membership)."""
+        body = {
+            "id": entity.get("id"),
+            "type": entity["type"],
+            "schemaVersion": entity.get("schemaVersion") or SCHEMA_VERSION,
+            "payload": entity.get("payload") or {},
+            "annotations": entity.get("annotations") or {},
+        }
+        return self._request("POST", "/api/v1/objs/entities", body=body, raise_http=raise_http)
 
     def graph_delete(
         self,
@@ -458,8 +470,22 @@ def _version_label(index: int) -> str:
     return f"{major}.{minor}.{patch}"
 
 
+def _stamp_app_version(graph: dict[str, Any], app: str, version: str) -> None:
+    """Stamp BOM identity annotations on every entity (pool-only path; SBOM PUT also stamps server-side)."""
+    for ent in graph.get("entities") or []:
+        ann = dict(ent.get("annotations") or {})
+        ann["app"] = app
+        ann["appVersion"] = version
+        ent["annotations"] = ann
+
+
 def cmd_bulk(client: ObjsClient, args: argparse.Namespace) -> None:
-    """Create many apps with 1..N versions each; each version is a random graph by default."""
+    """Create many apps with 1..N versions each; each version is a random graph by default.
+
+    By default each successful app@version write creates one ``bom_graph`` header
+    (annotations ``app`` + ``appVersion``) via SBOM PUT → SbomService.ensureGraph.
+    Pass ``--no-create-graphs`` to write entities into the pool only (no headers, no edges).
+    """
     if args.entities is not None:
         args.min_entities = args.entities
         args.max_entities = args.entities
@@ -476,6 +502,7 @@ def cmd_bulk(client: ObjsClient, args: argparse.Namespace) -> None:
         raise SystemExit("--min-edges/--max-edges invalid")
 
     prefix = args.prefix
+    create_graphs = bool(args.create_graphs)
     jobs: list[tuple[str, str]] = []
     for i in range(args.apps):
         app = f"{prefix}{i:05d}"
@@ -493,10 +520,15 @@ def cmd_bulk(client: ObjsClient, args: argparse.Namespace) -> None:
             f"edges {args.min_edges}-{args.max_edges})"
         )
     )
+    graph_mode = (
+        "one bom_graph per app@version (SBOM PUT)"
+        if create_graphs
+        else "pool entities only (--no-create-graphs; no edges)"
+    )
     print(
-        f"bulk: {args.apps} apps, {total} app@version puts "
+        f"bulk: {args.apps} apps, {total} app@version jobs "
         f"(versions {args.min_versions}-{args.max_versions}), "
-        f"{mode}, workers={args.workers}",
+        f"{mode}, {graph_mode}, workers={args.workers}",
         flush=True,
     )
     started = time.time()
@@ -515,9 +547,17 @@ def cmd_bulk(client: ObjsClient, args: argparse.Namespace) -> None:
             min_edges=args.min_edges,
             max_edges=args.max_edges,
         )
-        result = client.sbom_put(app, version, graph, raise_http=False)
-        if isinstance(result, dict) and result.get("_error"):
-            return False, f"{app}@{version}: {result.get('status')} {result.get('body')}"
+        if create_graphs:
+            result = client.sbom_put(app, version, graph, raise_http=False)
+            if isinstance(result, dict) and result.get("_error"):
+                return False, f"{app}@{version}: {result.get('status')} {result.get('body')}"
+            return True, f"{app}@{version}"
+
+        _stamp_app_version(graph, app, version)
+        for ent in graph.get("entities") or []:
+            result = client.entity_create(ent, raise_http=False)
+            if isinstance(result, dict) and result.get("_error"):
+                return False, f"{app}@{version}: {result.get('status')} {result.get('body')}"
         return True, f"{app}@{version}"
 
     with ThreadPoolExecutor(max_workers=args.workers) as pool:
@@ -538,7 +578,7 @@ def cmd_bulk(client: ObjsClient, args: argparse.Namespace) -> None:
                 rate = done / elapsed if elapsed > 0 else 0
                 print(
                     f"  progress {done}/{total} ok={ok} fail={failed} "
-                    f"({rate:.1f} puts/s, {elapsed:.0f}s)",
+                    f"({rate:.1f} jobs/s, {elapsed:.0f}s)",
                     flush=True,
                 )
 
@@ -546,12 +586,13 @@ def cmd_bulk(client: ObjsClient, args: argparse.Namespace) -> None:
     summary = {
         "action": "bulk",
         "apps": args.apps,
-        "puts": total,
+        "jobs": total,
+        "createGraphs": create_graphs,
         "mode": "tiny" if args.tiny else "random",
         "ok": ok,
         "failed": failed,
         "seconds": round(elapsed, 1),
-        "putsPerSecond": round(ok / elapsed, 2) if elapsed > 0 else 0,
+        "jobsPerSecond": round(ok / elapsed, 2) if elapsed > 0 else 0,
         "errorsSample": errors,
     }
     print(json.dumps(summary, indent=2))
@@ -612,7 +653,6 @@ def cmd_update(client: ObjsClient, args: argparse.Namespace) -> None:
     for ent in sample:
         payload = dict(ent.get("payload") or {})
         payload["description"] = f"updated-{_token()}"
-        payload["labels"] = list(set((payload.get("labels") or []) + ["updated"]))
         if "name" in payload and isinstance(payload["name"], str):
             payload["name"] = f"{payload['name']}-u{_token(3)}"
         updated.append(
@@ -720,7 +760,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser(
         "bulk",
-        help="CREATE many apps/versions; each version is a random ontology graph (or --tiny)",
+        help=(
+            "CREATE many apps/versions; each version is a random ontology graph (or --tiny). "
+            "Default: one bom_graph per app@version (SBOM PUT)."
+        ),
     )
     s.add_argument(
         "--apps",
@@ -731,6 +774,25 @@ def build_parser() -> argparse.ArgumentParser:
         dest="apps",
         metavar="N",
         help="Number of applications to create (default: 20000). Alias: --app-number, -n",
+    )
+    graphs = s.add_mutually_exclusive_group()
+    graphs.add_argument(
+        "--create-graphs",
+        dest="create_graphs",
+        action="store_true",
+        help=(
+            "Create one bom_graph per app@version via SBOM PUT "
+            "(header annotations app + appVersion). Default."
+        ),
+    )
+    graphs.add_argument(
+        "--no-create-graphs",
+        dest="create_graphs",
+        action="store_false",
+        help=(
+            "Write entities to the pool only (POST /entities); no bom_graph headers and no edges "
+            "(edges require a graph)."
+        ),
     )
     s.add_argument(
         "--min-versions",
@@ -793,7 +855,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Fixed edge count per version (sets min=max; ignored with --tiny)",
     )
-    s.set_defaults(func=cmd_bulk)
+    s.set_defaults(func=cmd_bulk, create_graphs=True)
 
     s = sub.add_parser("get", help="RETRIEVE SBOM subgraph")
     s.add_argument("--app", default="random-app")

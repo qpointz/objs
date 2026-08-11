@@ -11,9 +11,7 @@ data class ComponentPayload(
     val ecosystem: String,
     val kind: String,
     val coordinates: String? = null,
-    val description: String? = null,
-    val labels: List<String>? = null,
-    val attributes: Map<String, Any?>? = null,
+    val description: String? = null
 )
 
 object ComponentType {
@@ -36,8 +34,7 @@ object ComponentType {
 data class CanonicalEdgePayload(
     val createdAt: String? = null,
     val source: String? = null,
-    val confidence: Double? = null,
-    val attributes: Map<String, Any?>? = null,
+    val confidence: Double? = null
 )
 
 object CanonicalEdgeType {

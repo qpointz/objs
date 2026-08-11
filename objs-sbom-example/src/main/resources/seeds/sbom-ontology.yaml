@@ -32,26 +32,6 @@ contentSchema:
       title: "Text"
       description: "Text value"
     required: false
-  - name: "labels"
-    schema:
-      type: "ARRAY"
-      title: "Text list"
-      description: "Ordered list of text values"
-      items:
-        type: "STRING"
-        title: "Text item"
-        description: "One text value"
-    required: false
-  - name: "attributes"
-    schema:
-      type: "OBJECT"
-      title: "Attributes"
-      description: "Open attributes object"
-      fields: []
-    required: false
-  required:
-  - "name"
-  - "protocol"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -93,26 +73,6 @@ contentSchema:
       title: "Text"
       description: "Text value"
     required: false
-  - name: "labels"
-    schema:
-      type: "ARRAY"
-      title: "Text list"
-      description: "Ordered list of text values"
-      items:
-        type: "STRING"
-        title: "Text item"
-        description: "One text value"
-    required: false
-  - name: "attributes"
-    schema:
-      type: "OBJECT"
-      title: "Attributes"
-      description: "Open attributes object"
-      fields: []
-    required: false
-  required:
-  - "name"
-  - "artifactType"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -154,27 +114,6 @@ contentSchema:
       title: "Text"
       description: "Text value"
     required: false
-  - name: "labels"
-    schema:
-      type: "ARRAY"
-      title: "Text list"
-      description: "Ordered list of text values"
-      items:
-        type: "STRING"
-        title: "Text item"
-        description: "One text value"
-    required: false
-  - name: "attributes"
-    schema:
-      type: "OBJECT"
-      title: "Attributes"
-      description: "Open attributes object"
-      fields: []
-    required: false
-  required:
-  - "name"
-  - "buildNumber"
-  - "status"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -205,13 +144,6 @@ contentSchema:
       type: "NUMBER"
       title: "Number"
       description: "Numeric value"
-    required: false
-  - name: "attributes"
-    schema:
-      type: "OBJECT"
-      title: "Attributes"
-      description: "Open attributes object"
-      fields: []
     required: false
 ---
 ---
@@ -260,28 +192,6 @@ contentSchema:
       title: "Text"
       description: "Text value"
     required: false
-  - name: "labels"
-    schema:
-      type: "ARRAY"
-      title: "Text list"
-      description: "Ordered list of text values"
-      items:
-        type: "STRING"
-        title: "Text item"
-        description: "One text value"
-    required: false
-  - name: "attributes"
-    schema:
-      type: "OBJECT"
-      title: "Attributes"
-      description: "Open attributes object"
-      fields: []
-    required: false
-  required:
-  - "name"
-  - "version"
-  - "ecosystem"
-  - "kind"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -323,26 +233,6 @@ contentSchema:
       title: "Text"
       description: "Text value"
     required: false
-  - name: "labels"
-    schema:
-      type: "ARRAY"
-      title: "Text list"
-      description: "Ordered list of text values"
-      items:
-        type: "STRING"
-        title: "Text item"
-        description: "One text value"
-    required: false
-  - name: "attributes"
-    schema:
-      type: "OBJECT"
-      title: "Attributes"
-      description: "Open attributes object"
-      fields: []
-    required: false
-  required:
-  - "name"
-  - "tag"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -378,26 +268,6 @@ contentSchema:
       title: "Text"
       description: "Text value"
     required: false
-  - name: "labels"
-    schema:
-      type: "ARRAY"
-      title: "Text list"
-      description: "Ordered list of text values"
-      items:
-        type: "STRING"
-        title: "Text item"
-        description: "One text value"
-    required: false
-  - name: "attributes"
-    schema:
-      type: "OBJECT"
-      title: "Attributes"
-      description: "Open attributes object"
-      fields: []
-    required: false
-  required:
-  - "name"
-  - "digest"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -433,26 +303,6 @@ contentSchema:
       title: "Text"
       description: "Text value"
     required: false
-  - name: "labels"
-    schema:
-      type: "ARRAY"
-      title: "Text list"
-      description: "Ordered list of text values"
-      items:
-        type: "STRING"
-        title: "Text item"
-        description: "One text value"
-    required: false
-  - name: "attributes"
-    schema:
-      type: "OBJECT"
-      title: "Attributes"
-      description: "Open attributes object"
-      fields: []
-    required: false
-  required:
-  - "name"
-  - "engine"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -488,26 +338,6 @@ contentSchema:
       title: "Text"
       description: "Text value"
     required: false
-  - name: "labels"
-    schema:
-      type: "ARRAY"
-      title: "Text list"
-      description: "Ordered list of text values"
-      items:
-        type: "STRING"
-        title: "Text item"
-        description: "One text value"
-    required: false
-  - name: "attributes"
-    schema:
-      type: "OBJECT"
-      title: "Attributes"
-      description: "Open attributes object"
-      fields: []
-    required: false
-  required:
-  - "name"
-  - "datasetType"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -550,25 +380,6 @@ contentSchema:
       title: "Text"
       description: "Text value"
     required: false
-  - name: "labels"
-    schema:
-      type: "ARRAY"
-      title: "Text list"
-      description: "Ordered list of text values"
-      items:
-        type: "STRING"
-        title: "Text item"
-        description: "One text value"
-    required: false
-  - name: "attributes"
-    schema:
-      type: "OBJECT"
-      title: "Attributes"
-      description: "Open attributes object"
-      fields: []
-    required: false
-  required:
-  - "name"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -598,26 +409,6 @@ contentSchema:
       title: "Text"
       description: "Text value"
     required: false
-  - name: "labels"
-    schema:
-      type: "ARRAY"
-      title: "Text list"
-      description: "Ordered list of text values"
-      items:
-        type: "STRING"
-        title: "Text item"
-        description: "One text value"
-    required: false
-  - name: "attributes"
-    schema:
-      type: "OBJECT"
-      title: "Attributes"
-      description: "Open attributes object"
-      fields: []
-    required: false
-  required:
-  - "name"
-  - "environment"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -659,26 +450,6 @@ contentSchema:
       title: "Text"
       description: "Text value"
     required: false
-  - name: "labels"
-    schema:
-      type: "ARRAY"
-      title: "Text list"
-      description: "Ordered list of text values"
-      items:
-        type: "STRING"
-        title: "Text item"
-        description: "One text value"
-    required: false
-  - name: "attributes"
-    schema:
-      type: "OBJECT"
-      title: "Attributes"
-      description: "Open attributes object"
-      fields: []
-    required: false
-  required:
-  - "name"
-  - "hostname"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -708,25 +479,6 @@ contentSchema:
       title: "Text"
       description: "Text value"
     required: false
-  - name: "labels"
-    schema:
-      type: "ARRAY"
-      title: "Text list"
-      description: "Ordered list of text values"
-      items:
-        type: "STRING"
-        title: "Text item"
-        description: "One text value"
-    required: false
-  - name: "attributes"
-    schema:
-      type: "OBJECT"
-      title: "Attributes"
-      description: "Open attributes object"
-      fields: []
-    required: false
-  required:
-  - "name"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -763,26 +515,6 @@ contentSchema:
       title: "Text"
       description: "Text value"
     required: false
-  - name: "labels"
-    schema:
-      type: "ARRAY"
-      title: "Text list"
-      description: "Ordered list of text values"
-      items:
-        type: "STRING"
-        title: "Text item"
-        description: "One text value"
-    required: false
-  - name: "attributes"
-    schema:
-      type: "OBJECT"
-      title: "Attributes"
-      description: "Open attributes object"
-      fields: []
-    required: false
-  required:
-  - "name"
-  - "spdxId"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -812,26 +544,6 @@ contentSchema:
       title: "Text"
       description: "Text value"
     required: false
-  - name: "labels"
-    schema:
-      type: "ARRAY"
-      title: "Text list"
-      description: "Ordered list of text values"
-      items:
-        type: "STRING"
-        title: "Text item"
-        description: "One text value"
-    required: false
-  - name: "attributes"
-    schema:
-      type: "OBJECT"
-      title: "Attributes"
-      description: "Open attributes object"
-      fields: []
-    required: false
-  required:
-  - "name"
-  - "namespace"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -873,26 +585,6 @@ contentSchema:
       title: "Text"
       description: "Text value"
     required: false
-  - name: "labels"
-    schema:
-      type: "ARRAY"
-      title: "Text list"
-      description: "Ordered list of text values"
-      items:
-        type: "STRING"
-        title: "Text item"
-        description: "One text value"
-    required: false
-  - name: "attributes"
-    schema:
-      type: "OBJECT"
-      title: "Attributes"
-      description: "Open attributes object"
-      fields: []
-    required: false
-  required:
-  - "name"
-  - "distribution"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -935,25 +627,6 @@ contentSchema:
       title: "Text"
       description: "Text value"
     required: false
-  - name: "labels"
-    schema:
-      type: "ARRAY"
-      title: "Text list"
-      description: "Ordered list of text values"
-      items:
-        type: "STRING"
-        title: "Text item"
-        description: "One text value"
-    required: false
-  - name: "attributes"
-    schema:
-      type: "OBJECT"
-      title: "Attributes"
-      description: "Open attributes object"
-      fields: []
-    required: false
-  required:
-  - "name"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -989,25 +662,6 @@ contentSchema:
       title: "Text"
       description: "Text value"
     required: false
-  - name: "labels"
-    schema:
-      type: "ARRAY"
-      title: "Text list"
-      description: "Ordered list of text values"
-      items:
-        type: "STRING"
-        title: "Text item"
-        description: "One text value"
-    required: false
-  - name: "attributes"
-    schema:
-      type: "OBJECT"
-      title: "Attributes"
-      description: "Open attributes object"
-      fields: []
-    required: false
-  required:
-  - "name"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -1056,26 +710,6 @@ contentSchema:
       title: "Text"
       description: "Text value"
     required: false
-  - name: "labels"
-    schema:
-      type: "ARRAY"
-      title: "Text list"
-      description: "Ordered list of text values"
-      items:
-        type: "STRING"
-        title: "Text item"
-        description: "One text value"
-    required: false
-  - name: "attributes"
-    schema:
-      type: "OBJECT"
-      title: "Attributes"
-      description: "Open attributes object"
-      fields: []
-    required: false
-  required:
-  - "name"
-  - "version"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -1111,26 +745,6 @@ contentSchema:
       title: "Text"
       description: "Text value"
     required: false
-  - name: "labels"
-    schema:
-      type: "ARRAY"
-      title: "Text list"
-      description: "Ordered list of text values"
-      items:
-        type: "STRING"
-        title: "Text item"
-        description: "One text value"
-    required: false
-  - name: "attributes"
-    schema:
-      type: "OBJECT"
-      title: "Attributes"
-      description: "Open attributes object"
-      fields: []
-    required: false
-  required:
-  - "name"
-  - "runtimeType"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -1167,25 +781,6 @@ contentSchema:
       title: "Text"
       description: "Text value"
     required: false
-  - name: "labels"
-    schema:
-      type: "ARRAY"
-      title: "Text list"
-      description: "Ordered list of text values"
-      items:
-        type: "STRING"
-        title: "Text item"
-        description: "One text value"
-    required: false
-  - name: "attributes"
-    schema:
-      type: "OBJECT"
-      title: "Attributes"
-      description: "Open attributes object"
-      fields: []
-    required: false
-  required:
-  - "name"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -1221,26 +816,6 @@ contentSchema:
       title: "Text"
       description: "Text value"
     required: false
-  - name: "labels"
-    schema:
-      type: "ARRAY"
-      title: "Text list"
-      description: "Ordered list of text values"
-      items:
-        type: "STRING"
-        title: "Text item"
-        description: "One text value"
-    required: false
-  - name: "attributes"
-    schema:
-      type: "OBJECT"
-      title: "Attributes"
-      description: "Open attributes object"
-      fields: []
-    required: false
-  required:
-  - "name"
-  - "path"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -1283,26 +858,6 @@ contentSchema:
       title: "Text"
       description: "Text value"
     required: false
-  - name: "labels"
-    schema:
-      type: "ARRAY"
-      title: "Text list"
-      description: "Ordered list of text values"
-      items:
-        type: "STRING"
-        title: "Text item"
-        description: "One text value"
-    required: false
-  - name: "attributes"
-    schema:
-      type: "OBJECT"
-      title: "Attributes"
-      description: "Open attributes object"
-      fields: []
-    required: false
-  required:
-  - "name"
-  - "url"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -1344,27 +899,6 @@ contentSchema:
       title: "Text"
       description: "Text value"
     required: false
-  - name: "labels"
-    schema:
-      type: "ARRAY"
-      title: "Text list"
-      description: "Ordered list of text values"
-      items:
-        type: "STRING"
-        title: "Text item"
-        description: "One text value"
-    required: false
-  - name: "attributes"
-    schema:
-      type: "OBJECT"
-      title: "Attributes"
-      description: "Open attributes object"
-      fields: []
-    required: false
-  required:
-  - "name"
-  - "cve"
-  - "severity"
 ---
 ---
 apiVersion: "objs.poc.org/v1"

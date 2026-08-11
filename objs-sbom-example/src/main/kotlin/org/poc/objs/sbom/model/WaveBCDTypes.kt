@@ -11,9 +11,7 @@ data class SourceRepositoryPayload(
     val url: String,
     val revision: String? = null,
     val branch: String? = null,
-    val description: String? = null,
-    val labels: List<String>? = null,
-    val attributes: Map<String, Any?>? = null,
+    val description: String? = null
 )
 
 object SourceRepositoryType {
@@ -26,9 +24,7 @@ data class SourceModulePayload(
     val name: String,
     val path: String,
     val language: String? = null,
-    val description: String? = null,
-    val labels: List<String>? = null,
-    val attributes: Map<String, Any?>? = null,
+    val description: String? = null
 )
 
 object SourceModuleType {
@@ -42,9 +38,7 @@ data class ArtifactPayload(
     val artifactType: String,
     val checksum: String? = null,
     val size: Long? = null,
-    val description: String? = null,
-    val labels: List<String>? = null,
-    val attributes: Map<String, Any?>? = null,
+    val description: String? = null
 )
 
 object ArtifactType {
@@ -58,9 +52,7 @@ data class ContainerImagePayload(
     val tag: String,
     val digest: String? = null,
     val registry: String? = null,
-    val description: String? = null,
-    val labels: List<String>? = null,
-    val attributes: Map<String, Any?>? = null,
+    val description: String? = null
 )
 
 object ContainerImageType {
@@ -73,9 +65,7 @@ data class ContainerLayerPayload(
     val name: String,
     val digest: String,
     val size: Long? = null,
-    val description: String? = null,
-    val labels: List<String>? = null,
-    val attributes: Map<String, Any?>? = null,
+    val description: String? = null
 )
 
 object ContainerLayerType {
@@ -90,9 +80,7 @@ data class RuntimePayload(
     val name: String,
     val runtimeType: String,
     val version: String? = null,
-    val description: String? = null,
-    val labels: List<String>? = null,
-    val attributes: Map<String, Any?>? = null,
+    val description: String? = null
 )
 
 object RuntimeType {
@@ -106,9 +94,7 @@ data class OperatingSystemPayload(
     val distribution: String,
     val version: String? = null,
     val architecture: String? = null,
-    val description: String? = null,
-    val labels: List<String>? = null,
-    val attributes: Map<String, Any?>? = null,
+    val description: String? = null
 )
 
 object OperatingSystemType {
@@ -122,9 +108,7 @@ data class DeploymentPayload(
     val status: String? = null,
     val replicas: Int? = null,
     val deployedAt: String? = null,
-    val description: String? = null,
-    val labels: List<String>? = null,
-    val attributes: Map<String, Any?>? = null,
+    val description: String? = null
 )
 
 object DeploymentType {
@@ -136,9 +120,7 @@ object DeploymentType {
 data class EnvironmentPayload(
     val name: String,
     val environment: String,
-    val description: String? = null,
-    val labels: List<String>? = null,
-    val attributes: Map<String, Any?>? = null,
+    val description: String? = null
 )
 
 object EnvironmentType {
@@ -152,9 +134,7 @@ data class HostPayload(
     val hostname: String,
     val ip: String? = null,
     val provider: String? = null,
-    val description: String? = null,
-    val labels: List<String>? = null,
-    val attributes: Map<String, Any?>? = null,
+    val description: String? = null
 )
 
 object HostType {
@@ -166,9 +146,7 @@ object HostType {
 data class KubernetesClusterPayload(
     val name: String,
     val version: String? = null,
-    val description: String? = null,
-    val labels: List<String>? = null,
-    val attributes: Map<String, Any?>? = null,
+    val description: String? = null
 )
 
 object KubernetesClusterType {
@@ -180,9 +158,7 @@ object KubernetesClusterType {
 data class NamespacePayload(
     val name: String,
     val namespace: String,
-    val description: String? = null,
-    val labels: List<String>? = null,
-    val attributes: Map<String, Any?>? = null,
+    val description: String? = null
 )
 
 object NamespaceType {
@@ -197,9 +173,7 @@ data class ServicePayload(
     val name: String,
     val protocol: String? = null,
     val endpoint: String? = null,
-    val description: String? = null,
-    val labels: List<String>? = null,
-    val attributes: Map<String, Any?>? = null,
+    val description: String? = null
 )
 
 object ServiceType {
@@ -212,9 +186,7 @@ data class ApiPayload(
     val name: String,
     val protocol: String,
     val version: String? = null,
-    val description: String? = null,
-    val labels: List<String>? = null,
-    val attributes: Map<String, Any?>? = null,
+    val description: String? = null
 )
 
 object ApiType {
@@ -227,9 +199,7 @@ data class DatabasePayload(
     val name: String,
     val engine: String,
     val version: String? = null,
-    val description: String? = null,
-    val labels: List<String>? = null,
-    val attributes: Map<String, Any?>? = null,
+    val description: String? = null
 )
 
 object DatabaseType {
@@ -242,9 +212,7 @@ data class DatasetPayload(
     val name: String,
     val datasetType: String,
     val classification: String? = null,
-    val description: String? = null,
-    val labels: List<String>? = null,
-    val attributes: Map<String, Any?>? = null,
+    val description: String? = null
 )
 
 object DatasetType {
@@ -257,9 +225,7 @@ data class PolicyPayload(
     val name: String,
     val policyType: String? = null,
     val version: String? = null,
-    val description: String? = null,
-    val labels: List<String>? = null,
-    val attributes: Map<String, Any?>? = null,
+    val description: String? = null
 )
 
 object PolicyType {
