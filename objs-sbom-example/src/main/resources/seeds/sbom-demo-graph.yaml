@@ -1,6 +1,9 @@
 apiVersion: objs.poc.org/v1
 kind: Graph
-name: sbom-demo
+name: sbom-demo-payments-231
+annotations:
+  app: payments-api
+  appVersion: "2.3.1"
 entities:
     - key: payments-product
       type: Product
@@ -61,19 +64,6 @@ entities:
         version: "2.17.0"
         ecosystem: Maven
         kind: library
-    - key: billing-guava
-      type: Component
-      schemaVersion: "1.0.0"
-      annotations:
-        app: billing-api
-        appVersion: "1.0.0"
-        source: enriched
-        sourceDetail: catalog1
-      payload:
-        name: Guava
-        version: "33.0.0"
-        ecosystem: Maven
-        kind: library
 edges:
     - key: payments-product-contains-boot
       source: payments-product
@@ -110,3 +100,25 @@ edges:
       type: CanonicalEdge
       schemaVersion: "1.0.0"
       properties: {}
+---
+apiVersion: objs.poc.org/v1
+kind: Graph
+name: sbom-demo-billing-100
+annotations:
+  app: billing-api
+  appVersion: "1.0.0"
+entities:
+    - key: billing-guava
+      type: Component
+      schemaVersion: "1.0.0"
+      annotations:
+        app: billing-api
+        appVersion: "1.0.0"
+        source: enriched
+        sourceDetail: catalog1
+      payload:
+        name: Guava
+        version: "33.0.0"
+        ecosystem: Maven
+        kind: library
+edges: []

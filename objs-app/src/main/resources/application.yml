@@ -39,8 +39,7 @@ objs:
     enabled: true
     resources:
       - classpath:seeds/sbom-ontology.yaml
-      # Include the graph only when sample data is wanted:
-      # - classpath:seeds/sbom-demo-graph.yaml
+      - classpath:seeds/sbom-demo-graph.yaml
 
 ---
 # PostgreSQL persistence. Start PostgreSQL separately, then run with:

@@ -9,6 +9,7 @@ import org.poc.objs.core.domain.BoMSchemaCatalog
 import org.poc.objs.core.persistence.BoMAllowedEdgeRuleRepository
 import org.poc.objs.core.persistence.BoMGraphStore
 import org.poc.objs.core.persistence.BoMSchemaCatalogRepository
+import org.poc.objs.core.persistence.BoMNamedGraphStore
 import org.poc.objs.core.persistence.ObjsCoreAutoConfiguration
 import org.poc.objs.sbom.annotations.Provenance
 import org.poc.objs.sbom.annotations.SbomContext
@@ -25,7 +26,7 @@ import org.springframework.test.context.TestPropertySource
 
 @DataJpaTest
 @ImportAutoConfiguration(ObjsCoreAutoConfiguration::class)
-@Import(BoMGraphStore::class, SbomService::class)
+@Import(BoMGraphStore::class, BoMNamedGraphStore::class, SbomService::class)
 @TestPropertySource(
     properties = [
         "spring.datasource.url=jdbc:h2:mem:sbom;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",

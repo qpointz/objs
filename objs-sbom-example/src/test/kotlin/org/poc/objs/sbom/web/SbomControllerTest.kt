@@ -10,7 +10,7 @@ import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
 import org.poc.objs.core.domain.BoMEntity
 import org.poc.objs.core.domain.BoMGraph
-import org.poc.objs.core.domain.BoMSubgraph
+import org.poc.objs.core.domain.BoMGraphContents
 import org.poc.objs.core.validation.BoMValidationResult
 import org.poc.objs.sbom.annotations.SbomContext
 import org.poc.objs.sbom.model.SbomApplicationCatalog
@@ -63,7 +63,7 @@ class SbomControllerTest {
     @Test
     fun shouldGetByAppAndVersion() {
         given(sbom.getSbom(anyString(), anyString(), anyMap())).willReturn(
-            BoMSubgraph(
+            BoMGraphContents(
                 entities = listOf(
                     BoMEntity(
                         type = "Component",
@@ -84,7 +84,7 @@ class SbomControllerTest {
     @Test
     fun shouldGetByApp() {
         given(sbom.getSbom(anyString(), isNull(), anyMap())).willReturn(
-            BoMSubgraph(entities = emptyList(), edges = emptyList()),
+            BoMGraphContents(entities = emptyList(), edges = emptyList()),
         )
 
         mockMvc.perform(get("/api/v1/example/sbom/apps/payments-api"))

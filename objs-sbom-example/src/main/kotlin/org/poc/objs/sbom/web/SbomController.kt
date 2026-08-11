@@ -10,7 +10,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.poc.objs.core.domain.BoMGraph
-import org.poc.objs.core.domain.BoMSubgraph
+import org.poc.objs.core.domain.BoMGraphContents
 import org.poc.objs.sbom.annotations.SbomContext
 import org.poc.objs.sbom.model.SbomApplicationCatalog
 import org.poc.objs.sbom.service.SbomService
@@ -80,7 +80,7 @@ class SbomController(
     fun getByApp(
         @PathVariable appId: String,
         @Parameter(hidden = true) @RequestParam params: Map<String, String>,
-    ): BoMSubgraph {
+    ): BoMGraphContents {
         return sbom.getSbom(app = appId, appVersion = null, extra = SbomQueryAnnotations.fromRequestParams(params))
     }
 
@@ -125,7 +125,7 @@ class SbomController(
         @PathVariable appId: String,
         @PathVariable version: String,
         @Parameter(hidden = true) @RequestParam params: Map<String, String>,
-    ): BoMSubgraph {
+    ): BoMGraphContents {
         return sbom.getSbom(
             app = appId,
             appVersion = version,
