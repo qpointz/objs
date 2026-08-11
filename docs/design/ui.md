@@ -5,20 +5,26 @@ and authoring object-schema DSL definitions.
 
 ## Current graph
 
-There is **no global graph** and **no pack chrome**. The workbench works against **one graph at a
-time** — a durable `bom_graph` header + its member entities + its graph-local edges (see
-[`graph/model.md`](graph/model.md)):
+There is **no global graph** and **no pack chrome**. Graphs are durable `bom_graph` headers with
+member entities and graph-local edges (see [`graph/model.md`](graph/model.md)).
 
 | Surface | Behaviour |
 |---------|-----------|
-| Explorer | Query **inside** the selected graph (`obj-expr`) or select graphs (`graph-expr`) |
-| Composer | Save = mutate the **current graph** (`PUT /graphs/{id}`); optional Clone |
+| **Explorer** | **Read-only.** Two exclusive modes: **Graph** (one opened graph) or **Selection** (matcher result set). Never mutates the store. |
+| **Composer** | Draft workspace; **Save** / **Snapshot**; owns all writes (including first Save that creates a graph from a Selection handoff). |
 | Matchers | **`all`** / **`graph-expr`** / **`obj-expr`** / **chained** only |
 | Schema catalog | Unchanged (global, not graph-scoped) |
 
-**Must have:** a visible current-graph context (persisted as `objs.ui.currentGraphId`); Open / New /
-Save graph; no whole-store Exec/Save. Snapshot hierarchy UI is **not** part of the objs workbench —
-that is an application concern (e.g. SBOM).
+**Must have:** visible graph / explore-scope context; Open graph search (incremental, ≤15 hits — not a full catalog list); no whole-store Exec/Save. Snapshot hierarchy UI is **not** part of the objs workbench — that is an application concern (e.g. SBOM). Composer **Snapshot** (copy clean graph → new independent graph) is separate from Save.
+
+### Chrome levels (Explorer / Composer / Query)
+
+| Level | Role |
+|-------|------|
+| **L0** | App view nav (`AppLayout`) — unchanged |
+| **L1** | Short title + help-icon **popover** (inline subtitle copy only; **no docs links**) \| Explorer **Explore-scope**; Composer/Query graph context strip |
+| **L2** | Workspace actions (Open in… / layout / Save / Snapshot / Exec) |
+| **L3** | Canvas / draft / script / results |
 
 ## Start and open
 
@@ -40,8 +46,8 @@ dark/light toggle on the right:
 
 | View | Path | Purpose |
 |------|------|---------|
-| **Explorer** | `/workbench/explorer` | Query and inspect entities/edges within the current graph |
-| **Composer** | `/workbench/composer` | Draft workspace for the current graph: Add objects, Visual/Text edit, Validate / Save (+ optional Clone) |
+| **Explorer** | `/workbench/explorer` | Read-only explore: Graph mode or Selection mode; hand off to Composer / Query |
+| **Composer** | `/workbench/composer` | Draft workspace: Visual/Text edit, Validate / Save / Snapshot |
 | **Query** | `/workbench/query` | Tabs Query (script) / Matcher / Options; Exec → traverse API; Structured / Raw results |
 | **Schema** | `/workbench/model` | Browse and edit object/edge schemas |
 
@@ -49,26 +55,34 @@ Legacy `/ui/**` URLs redirect into `/workbench/**` (e.g. `/ui/graph` → `/workb
 
 ## Graph explorer
 
-Graph explorer loads entities and edges of the **current graph** through
-`POST /api/v1/objs/graphs/{id}/query` (or `POST /api/v1/objs/graphs/query` to select graph(s) by
-header). Matcher controls are shared with Object linter (`MatcherQueryForm`): a compact **Matcher**
-select (**`all`** / **`graph-expr`** / **`obj-expr`** / **chained**) plus mode fields, with **Exec** on the same
-row. In Explorer the matcher is **collapsible** (chevron; preference persisted) so the canvas keeps
-vertical space; collapsed shows mode + a one-line summary while Exec stays available.
+Explorer is **read-only**: it may open graphs, run matchers, and display results. It does **not**
+call create / mutate / delete graph APIs. All writes happen in **Composer**.
+
+### Modes (either/or)
+
+| Mode | Entered by | Canvas | Clears |
+|------|------------|--------|--------|
+| **Graph** | **Open graph…** | Members of one `bom_graph` | Selection canvas / matcher result |
+| **Selection** | Matcher **Exec** | Matcher hit set (may span graphs) | Opened graph id / Graph-mode header |
+
+Switching mode **resets** the previous mode’s view.
+
+### Explore-scope fragment
+
+**Open graph** and **Matcher** share one always-visible block (not a separate distant graph bar).
+Shows **Mode**, Open graph…, Matcher + Exec, and:
+
+- **Graph:** full graph **id** (copy) + annotation **pills** (truncate + expand; empty → **No annotations**)
+- **Selection:** N objects / M edges + matcher one-liner
+
+Title row: short **Graph explorer** + help-icon popover (former subtitle copy; no docs links).
+
+Matchers use shared `MatcherQueryForm` (**`all`** / **`graph-expr`** / **`obj-expr`** / **chained**):
 
 - **`all`** — union of stored members/edges across every graph (distinct by id); orphans excluded.
-  Stage-0 scope matcher (boolean `true` only).
-- **`graph-expr`** — one JEXL Boolean expression over graph header `id` and `a.*` (header
-  annotations), for example `a.env == 'prod'`. Matching graph(s) contribute their **stored** member
-  entities and graph-local edges (union; not re-induced). Used to **open/select** a graph.
-- **`obj-expr`** — one JEXL Boolean expression over `id`, `type`, `schemaVersion`, `a.*` (annotations),
-  `p.*` (payload), for example `type == 'Product' && a.app == 'payments-api'`. Filters entities
-  **within the current graph**; a bare `obj-expr` with no current graph fails closed.
-- **chained** — **Visual** builder (ordered stages; each stage uses the same editor as its standalone
-  mode) or **JSON** for the full chain array. Stage 0 is typically `all` / `graph-expr` (select the graph);
-  later stages are `obj-expr` filters.
-
-The UI sends the selected mode as matcher DSL:
+- **`graph-expr`** — JEXL over graph header `id` and `a.*`; matching graphs contribute stored members/edges.
+- **`obj-expr`** — JEXL over entity fields **within the current graph** when in Graph mode; bare `obj-expr` with no opened graph fails closed.
+- **chained** — Visual builder or JSON array of stages.
 
 ```json
 [
@@ -77,18 +91,23 @@ The UI sends the selected mode as matcher DSL:
 ]
 ```
 
-1. Configure the matcher.
-2. Select **Exec** (shows a loading overlay while the query runs).
-3. Select a node or edge on the canvas to inspect it. Edge source/target links jump to that node.
-4. Select **Apply layout** to recalculate the graph layout.
-5. After a successful query, **Open in…** (split control) opens a menu: **Composer** merges **all
-   current canvas entities and edges** into the draft (append — never replaces); **Query** opens the
-   Query view with the same matcher.
+1. Configure the matcher (or Open graph…).
+2. **Exec** / Open graph loads the canvas (mode switch as above).
+3. Select a node or edge to inspect. Schema type links open in a **new browser tab**.
+4. **L2:** **Apply layout ▾**; mode exits below.
 
-The last successful matcher is kept in `localStorage` (`objs.ui.graphExplorer.matcher`). The last
-executed graph, layout direction, node positions, and query id are kept in
-`objs.ui.graphExplorer.session` so navigating away (e.g. to Schemas) and back restores the canvas.
-A new **Exec** replaces that session; a failed **Exec** clears it.
+### L2 handoffs (entire canvas)
+
+| Action | When | Behaviour |
+|--------|------|-----------|
+| **Open in Composer** | Graph mode | Navigate with `graphId`; Composer loads members from API |
+| **New graph from selection** | Selection mode | Navigate with `graphId = null`, draft = **entire** canvas; **always replaces** Composer draft. First **Save** in Composer creates the graph (membership of same entity ids + edge upserts). |
+| **Open in Query** | Canvas non-empty | Pass entire canvas (+ matcher context) as traverse input |
+
+Empty canvas: **Open in Query** disabled.
+
+The last successful matcher may be kept in `localStorage` (`objs.ui.graphExplorer.matcher`). Session
+restore for the Selection canvas may use `objs.ui.graphExplorer.session`.
 
 After **Exec**, the matcher row shows wall-clock query time plus node/edge counts.
 
@@ -97,7 +116,7 @@ After **Exec**, the matcher row shows wall-clock query time plus node/edge count
 Node and edge selection is stored in the URL (`?qid=<uuid>&node=<id>` or `&edge=<id>`). Each
 successful **Exec** mints a new `qid` (also persisted in the session). Browser **Back** / **Forward**
 restores selection only when the URL `qid` matches the current result set; otherwise the inspector
-clears. Entity-type badges above the graph open that type in Schema explorer.
+clears.
 
 ### Inspect a node
 
@@ -107,8 +126,7 @@ Selecting a node shows:
 - annotations used for graph selection;
 - JSON payload.
 
-Select **Open object model in Schema explorer** to inspect the exact schema version used by the
-entity.
+Type / schema links open the schema detail in a **new browser tab**.
 
 ### Inspect an edge
 
@@ -118,6 +136,8 @@ Selecting an edge shows:
 - source and target IDs;
 - edge properties.
 
+Schema links open in a **new browser tab**.
+
 When the edge has a property schema, select **Open edge property schema** to inspect it.
 
 ## Query
@@ -125,8 +145,8 @@ When the edge has a property schema, select **Open edge property schema** to ins
 Query runs a **gremlin-lang** script against the subgraph selected by a matcher
 (`POST /api/v1/objs/graph/traverse/gremlin`). See [`graph/gremlin.md`](graph/gremlin.md).
 
-1. Open `/workbench/query` (or **Open in… → Query** from Explorer).
-2. Top tabs:
+1. Open `/workbench/query` (or **Open in Query** from Explorer with a non-empty canvas).
+2. Top tabs (**L2** hosts **Exec** + stats beside the tab strip):
    - **Query** — script editor only (Groovy highlighting; wire language remains `gremlin-lang`).
    - **Matcher** — shared `MatcherQueryForm` (same modes as Explorer / Composer).
    - **Options** — eval timeout (`traversalOptions.timeoutSeconds`, default 60).
@@ -219,7 +239,7 @@ Schema explorer lists all persisted schema definitions. Use the tabs above the l
 
 - **Entity** — schemas used for entity payloads;
 - **Edge props** — schemas used for edge properties;
-- **All** — both usages.
+- **All** — entity and edge-property schemas.
 
 Use the search field to filter by type or version. Each schema type can have multiple versions;
 select a version badge to open that exact definition.
@@ -351,7 +371,7 @@ An entity schema document has this shape:
 ```yaml
 type: Component
 version: 1.0.0
-usages: [ENTITY]
+usage: ENTITY
 contentSchema:
   type: OBJECT
   title: Component
@@ -359,11 +379,11 @@ contentSchema:
   fields: []
 ```
 
-For an edge-property schema, use `usages: [EDGE_PROPERTIES]` and the same `contentSchema` shape.
+For an edge-property schema, use `usage: EDGE_PROPERTIES` and the same `contentSchema` shape.
 Allowed edge rules are managed on the object **Edges** tab (and registry edge endpoints), not in
 the YAML/JSON document.
 
-For a new draft, type, version, usages, and content definition can all be edited directly.
+For a new draft, type, version, usage, and content definition can all be edited directly.
 When editing an existing schema, the text document requires type and version to remain equal to
 the opened catalog entry; use **Create version** for a new version.
 
@@ -391,7 +411,7 @@ that reference the version will be validated against the updated definition on s
 From the standalone Schema linter:
 
 1. enter a new type and initial version;
-2. choose one or both usages;
+2. choose usage (`ENTITY` or `EDGE_PROPERTIES`);
 3. author and lint the definition;
 4. select **Create schema**.
 
@@ -421,54 +441,67 @@ On an existing schema detail:
   source or target (`DELETE .../schemas/{type}`). Confirm by typing the type name. Returns to Full
   schema.
 
-## Object linter
+## Composer
 
-Object linter is the **draft workspace for the current graph**: add store objects into the draft,
-manipulate it visually or as YAML/JSON, then **Validate** or **Save** against that graph.
+Composer (route `/workbench/composer`; title **Composer**, not “Object linter”) is the **draft
+workspace** for editing graph membership and payloads. There is **no Browse schemas** on this page
+(use L0 Schema). Selected object/edge schema links open in a **new browser tab**.
 
-| Action | API |
-|--------|-----|
-| Add objects / Search | `POST /api/v1/objs/graphs/{id}/query` (matcher DSL: `obj-expr` / chained) |
-| Done (edge refresh) | `POST /api/v1/objs/graphs/{id}/query` re-matching store-backed draft entity ids |
-| Validate | `POST /api/v1/objs/graph/validate` with `BoMGraphMutation` |
-| Save (split: **Save**) | `PUT /api/v1/objs/graphs/{id}` with the same mutation body (`upsert` + `delete`), scoped to the current graph |
-| Save → **Clone** (optional) | Copy the whole current graph (members + edges) into a **new**, independent graph; no lineage recorded by objs |
-| Open graph… | `POST /api/v1/objs/graphs/query` (`graph-expr`) or `GET /api/v1/objs/graphs/{id}` → **replace** Composer draft and set it as the current graph |
+| Action | Behaviour |
+|--------|-----------|
+| **Open graph…** | Shared search dialog (`GET …/graphs/search`); loads members; sets current graph |
+| **New graph** | Clears draft and clears graph id (empty edit session) — does **not** create a server graph |
+| **Add objects…** | Visual L2 only; side pane search (same matcher as Explorer) |
+| **Validate** | Dry-run mutation |
+| **Save** | Enabled when dirty or `graphId == null` (or never-saved). With **no** graph id: **creates** graph (`entityIds` membership + edge upserts). With id: `PUT …/graphs/{id}` mutation |
+| **Snapshot** | Enabled only when saved + clean; clone dialog → new independent graph; switches to new id |
 
-**New UUID** (clipboard + toast, auto-hides after 3s) sits on the Text tab toolbar next to Format /
-Rollback.
+L1: title + help popover; **Reset** / **Clear** secondary.  
+Visual L2: **New** ▾ (**New** / **New linked**) + **Link** + **Add objects…**; both tabs: **Validate** / **Save** / **Snapshot**.
+
+Empty selection: side pane may edit **graph-level annotations**.
+
+Edit form: no duplicate Payload/Annotations section titles; per-field **delete** omits payload keys (shows **deleted**); **Schema ▾** migrates to another **version of the same type** only (key→key; confirm on zero/partial).
+
+| API | |
+|-----|--|
+| Add objects / Search | `POST /api/v1/objs/graphs/{id}/query` (or pool query when no graph) |
+| Validate | `BoMGraphMutation` dry-run |
+| Save (existing graph) | `PUT /api/v1/objs/graphs/{id}` |
+| Save (no graph id) | `POST /api/v1/objs/graphs` with `entityIds` + edge upserts |
+| Snapshot | Clone semantics (`POST …/graphs/{id}/clone` or equivalent) |
+| Open graph… | `GET /api/v1/objs/graphs/search` then `GET …/graphs/{id}` |
+
+**New UUID** (clipboard + toast) sits on the Text tab toolbar next to Format / Rollback.
 
 ### Tabs
 
 | Tab | Role |
 |-----|------|
-| **Visual** | React Flow canvas with resizable right side pane (edit form or Add objects); toolbar: add / create linked / connect / **Remove from draft** / **Delete** / layout |
-| **Text** | YAML/JSON of the **mutation only** (`upsert.entities` / `upsert.edges` + `delete.entities` / `delete.edges` ids). Unchanged baseline objects stay on Visual but are omitted from Text until edited, created, or deleted. |
+| **Visual** | React Flow canvas with resizable right side pane (edit form or Add objects); L2 create actions + layout |
+| **Text** | YAML/JSON of the **mutation only** (`upsert` + `delete`). Unchanged baseline objects stay on Visual but are omitted from Text until edited, created, or deleted. |
 
 Invalid Text blocks switching to Visual; the last good draft is preserved.
 
 ### Add objects / exclude vs delete
 
-1. Open **Add objects…** — search UI appears in the **right side pane** (same slot as the edit form; canvas stays visible). Defaults matcher mode to **`obj-expr`**; same shared `MatcherQueryForm` as Explorer / Query.
-2. Drag the **vertical splitter** between canvas and side pane to resize (width persisted). Opening Add objects bumps a narrow pane to a usable width once.
-3. **Search** runs the matcher and fills a results table (`id`, `type`, ≤6 scalar payload columns). Results paginate **locally** at **20** rows per page. Successful Search mints a new selection **`qid`**.
-4. **Add** / **In draft** toggles **immediately** merge or exclude that entity (id conflict keeps the draft copy) and merges **induced edges** among store-backed draft ids (from the last Search hit set plus an `ids` refresh). Multi-select supports Add selected / Remove selected from draft.
-5. **Done** re-runs induced-edge merge among store-backed draft ids, then closes the panel (edit form returns). Search never wipes the draft.
-6. Graph explorer **Open in… → Composer** merges the **current Explorer canvas** (entities + edges)
-   into the draft (append), without re-running Search.
-7. **Remove from draft** (toolbar / context menu) excludes the selection: drops from document/baseline with **no** pending-delete chrome. **Delete** still soft-deletes baseline ids for Apply.
-8. On the Visual canvas, draft status icons appear on object headers: **+** new, **pencil** modified, **−** deleted (Delete path only).
-9. Deleting a **new** (non-baseline) object/edge removes it from the canvas. Deleting a **loaded** object/edge soft-deletes it: it stays visible and marked deleted until Apply, and can be undone (restore) or have modifications reverted from the side panel.
-10. **Reset** restores the last rollback snapshot; **Clear** empties the draft.
-11. **Open graph…** lists graphs (by `graph-expr` or list) and opens one with **replace**, setting it as the current graph. Optional **Clone** (Save ▾) copies the whole current graph into a new independent graph; no lineage is recorded by objs.
+1. Open **Add objects…** (Visual L2) — search UI in the **right side pane**. Defaults matcher mode to **`obj-expr`**.
+2. Drag the vertical splitter between canvas and side pane (width persisted).
+3. **Search** fills a results table; paginate locally at **20** rows. Successful Search mints a new **`qid`**.
+4. **Add** / **In draft** toggles merge or exclude; merges induced edges among store-backed draft ids.
+5. **Done** refreshes induced edges and closes the panel.
+6. Explorer **Open in Composer** (Graph) loads that graph by id. Explorer **New graph from selection** **replaces** the draft with the entire canvas and clears graph id.
+7. **Remove from draft** excludes without pending-delete chrome. **Delete** soft-deletes baseline ids for Apply.
+8. Draft status icons: **+** new, **pencil** modified, **−** deleted.
+9. **Reset** restores the last rollback snapshot; **Clear** empties the draft.
 
 Optional **Copy annotations from source** when creating a linked object.
 
 ### Validate and Save
 
-1. Open **Object linter**.
-2. Optionally **Add objects…**, or start from an empty draft in Visual/Text.
-3. Select **Validate** (dry-run mutation) or **Save** (persist mutation to the current graph). Save ▾ also offers optional **Clone** to copy the current graph into a new independent graph.
+1. Open Composer.
+2. Optionally **Add objects…**, Open graph, or receive an Explorer handoff.
+3. **Validate** or **Save**. Use **Snapshot** only on a clean saved graph.
 
 Save clears pending deletes and refreshes the baseline on success.
 
@@ -485,6 +518,17 @@ Loaded baseline objects appear in Text only after they are modified, newly creat
 
 Entities that are referenced by mutation edges need explicit UUIDs. Edge source/target types, role,
 property-schema reference, and properties are validated against the current registry.
+
+### Open graph search (all views)
+
+Shared dialog on Explorer / Composer / Query:
+
+```http
+GET /api/v1/objs/graphs/search?q={text}&limit=15&expr={graph-expr}
+```
+
+Empty `q` without `expr` → empty list (never dump all graphs). Response `{ "items": [ { "id", "annotations" } ] }`.
+v1 match: id / UUID-prefix + case-insensitive substring on id and annotation strings. Extensible later (additive fields/params; FTS deferred).
 
 ## Common errors
 
