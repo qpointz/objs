@@ -28,10 +28,11 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`subgraphs-materialization`](completed/20260807-subgraphs-materialization/STORY.md) — Soft-link subgraph packs (`bom_subgraph` M2M); `subg-expr` / id matchers; hard snapshot clone; Composer Save ▾ Subgraph/Snapshot; Explorer canvas handoff (C-12).
 - [`graphs-from-objects`](completed/20260811-graphs-from-objects/STORY.md) — Global `bom_entity` pool + many `bom_graph`s (no global graph); multi-graph membership; graph-local edges; matchers `all` / `graph-expr` / `obj-expr` / chained; REST `/graphs` + `/entities`; workbench Open/New graph; SBOM on graphs; pack-era cleanup; `gql-gremlin` (C-13).
 - [`workbench-chrome-regroup`](completed/20260811-workbench-chrome-regroup/STORY.md) — Explorer Graph vs Selection modes; Explore-scope; Open-graph search; Composer L2 Save/Snapshot + edit migrate; Query L2 Exec; schema `usage` scalar (U-4).
+- [`schema-field-identifiers`](completed/20260811-schema-field-identifiers/STORY.md) — Drop OBJECT-level `required` list; field `identifier` + `searchable`; identity projection + create-only immutability; graph-header annotation pushdown (C-14).
 
 ### In Progress
 
-- [`schema-field-identifiers`](in-progress/schema-field-identifiers/STORY.md) — Drop OBJECT-level `required` list; field `identifier` + `searchable`; identity projection + create-only immutability (C-14).
+_(none)_
 
 ### Planned
 

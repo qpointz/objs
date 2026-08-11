@@ -1,8 +1,9 @@
 # Story: Schema field identifiers (and related flags)
 
 **Slug:** `schema-field-identifiers`  
-**Branch:** `schema-field-identifiers`  
-**Status:** in-progress  
+**Branch:** `schema-field-identifiers` (track `origin/schema-field-identifiers`)  
+**Status:** closed  
+**Archive:** [`docs/workitems/completed/20260811-schema-field-identifiers/`](.)  
 **Backlog:** [C-14](../../BACKLOG.md)  
 **Base:** `origin/dev` (post U-4)  
 **Design:** [`object-schema-dsl.md`](../../../design/graph/object-schema-dsl.md)  

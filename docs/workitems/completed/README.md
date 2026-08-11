@@ -10,6 +10,7 @@ docs/workitems/completed/YYYYMMDD-<story-slug>/
 
 ## Index (optional, newest first)
 
+- [`20260811-schema-field-identifiers`](20260811-schema-field-identifiers/STORY.md) — Field `identifier`/`searchable`; drop OBJECT `required` list; identity immutability; graph-header pushdown (C-14)
 - [`20260811-workbench-chrome-regroup`](20260811-workbench-chrome-regroup/STORY.md) — Explorer Graph/Selection chrome; Explore-scope; Open-graph search; Composer Save/Snapshot; Query L2 (U-4)
 - [`20260811-graphs-from-objects`](20260811-graphs-from-objects/STORY.md) — Global entity pool + many graphs; graph-local edges; `all`/`graph-expr`/`obj-expr` (C-13)
 - [`20260807-subgraphs-materialization`](20260807-subgraphs-materialization/STORY.md) — Soft-link subgraph packs + snapshot + Composer Save/Subgraph/Snapshot (C-12)
