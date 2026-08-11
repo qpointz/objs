@@ -6,10 +6,12 @@ import org.mockito.BDDMockito.given
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
 import org.poc.objs.core.domain.BoMEntity
-import org.poc.objs.core.domain.BoMSubgraph
+import org.poc.objs.core.domain.BoMResolvedGraph
+import org.poc.objs.core.domain.BoMGraphContents
 import org.poc.objs.core.domain.InMemoryBoMAllowedEdgeCatalog
 import org.poc.objs.core.domain.InMemoryBoMSchemaCatalog
 import org.poc.objs.core.persistence.BoMGraphStore
+import org.poc.objs.core.persistence.BoMNamedGraphStore
 import org.poc.objs.core.seed.AllowedEdgeRuleSeedHandler
 import org.poc.objs.core.seed.CanonicalSeedSerializer
 import org.poc.objs.core.seed.GRAPH_SEED_KINDS
@@ -40,6 +42,7 @@ class ObjsGraphIoControllerTest {
     private lateinit var mockMvc: MockMvc
     private lateinit var importer: SeedImporter
     private lateinit var graphStore: BoMGraphStore
+    private lateinit var namedGraphs: BoMNamedGraphStore
     private lateinit var serializer: CanonicalSeedSerializer
 
     @Suppress("UNCHECKED_CAST")
@@ -49,6 +52,7 @@ class ObjsGraphIoControllerTest {
     fun setUp() {
         importer = mock(SeedImporter::class.java)
         graphStore = mock(BoMGraphStore::class.java)
+        namedGraphs = mock(BoMNamedGraphStore::class.java)
         val schemas = InMemoryBoMSchemaCatalog()
         val rules = InMemoryBoMAllowedEdgeCatalog()
         serializer = CanonicalSeedSerializer(
@@ -56,10 +60,10 @@ class ObjsGraphIoControllerTest {
             rules,
             ObjectSchemaSeedHandler(schemas),
             AllowedEdgeRuleSeedHandler(rules),
-            GraphSeedHandler(graphStore),
+            GraphSeedHandler(namedGraphs),
         )
         mockMvc = MockMvcBuilders
-            .standaloneSetup(ObjsGraphController(graphStore, importer, serializer))
+            .standaloneSetup(ObjsGraphController(graphStore, importer, serializer, namedGraphs))
             .setMessageConverters(
                 JacksonJsonHttpMessageConverter(JsonMapper.builder().findAndAddModules().build()),
                 StringHttpMessageConverter(StandardCharsets.UTF_8),
@@ -121,33 +125,50 @@ class ObjsGraphIoControllerTest {
     }
 
     @Test
-    fun shouldRejectUnboundedGraphExport() {
+    fun shouldRejectExport_whenGraphIdMissing() {
         mockMvc.perform(get("/api/v1/objs/graph/export").param("format", "seeds"))
             .andExpect(status().isBadRequest)
-            .andExpect(jsonPath("$.issues[0].code").value("FILTER_EMPTY"))
+            .andExpect(jsonPath("$.issues[0].code").value("GRAPH_ID_REQUIRED"))
+    }
+
+    @Test
+    fun shouldReturn404_whenExportGraphMissing() {
+        val graphId = UUID.randomUUID()
+        given(namedGraphs.get(graphId)).willReturn(null)
+        mockMvc.perform(
+            get("/api/v1/objs/graph/export")
+                .param("format", "seeds")
+                .param("graphId", graphId.toString()),
+        )
+            .andExpect(status().isNotFound)
     }
 
     @Test
     fun shouldExportBoundedGraph() {
+        val graphId = UUID.randomUUID()
         val id = UUID.randomUUID()
-        given(graphStore.selectSubgraphMatchAll(org.mockito.ArgumentMatchers.anyMap())).willReturn(
-            BoMSubgraph(
-                entities = listOf(
-                    BoMEntity(
-                        id = id,
-                        type = "Person",
-                        schemaVersion = "1",
-                        payload = mutableMapOf("name" to "Ada"),
-                        annotations = mutableMapOf("app" to "demo"),
+        given(namedGraphs.get(graphId)).willReturn(
+            BoMResolvedGraph(
+                id = graphId,
+                annotations = mapOf("app" to "demo"),
+                contents = BoMGraphContents(
+                    entities = listOf(
+                        BoMEntity(
+                            id = id,
+                            type = "Person",
+                            schemaVersion = "1",
+                            payload = mutableMapOf("name" to "Ada"),
+                            annotations = mutableMapOf("app" to "demo"),
+                        ),
                     ),
+                    edges = emptyList(),
                 ),
-                edges = emptyList(),
             ),
         )
         val result = mockMvc.perform(
             get("/api/v1/objs/graph/export")
                 .param("format", "seeds")
-                .param("app", "demo"),
+                .param("graphId", graphId.toString()),
         )
             .andExpect(status().isOk)
             .andExpect(content().contentTypeCompatibleWith(MediaType.parseMediaType("application/yaml")))

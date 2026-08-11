@@ -1,0 +1,342 @@
+package org.poc.objs.service.web
+
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.mockito.BDDMockito.given
+import org.mockito.BDDMockito.willThrow
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.verify
+import org.poc.objs.core.domain.BoMEntity
+import org.poc.objs.core.domain.BoMResolvedGraph
+import org.poc.objs.core.domain.BoMGraphContents
+import org.poc.objs.core.domain.BoMGraphException
+import org.poc.objs.core.domain.BoMGraphListItem
+import org.poc.objs.core.match.BoMMatcher
+import org.poc.objs.core.persistence.BoMGraphStore
+import org.poc.objs.core.persistence.BoMNamedGraphStore
+import org.poc.objs.core.validation.BoMValidationException
+import org.poc.objs.core.validation.BoMValidationIssue
+import org.poc.objs.core.validation.BoMValidationResult
+import org.springframework.http.MediaType
+import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter
+import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import org.springframework.test.web.servlet.setup.MockMvcBuilders
+import tools.jackson.databind.json.JsonMapper
+import java.util.UUID
+
+class ObjsGraphsControllerTest {
+
+    private lateinit var mockMvc: MockMvc
+    private lateinit var namedGraphs: BoMNamedGraphStore
+    private lateinit var graphStore: BoMGraphStore
+
+    @Suppress("UNCHECKED_CAST")
+    private fun <T> anyObj(): T = org.mockito.ArgumentMatchers.any() as T
+
+    /**
+     * [org.mockito.ArgumentMatchers.eq] always returns `null` at stub-registration time (the
+     * matcher itself is recorded on Mockito's thread-local stack as a side effect); fall back to
+     * the real [value] so Kotlin's non-null generic return type doesn't trip a platform-type
+     * assertion when this is one of several arguments to a call.
+     */
+    private fun <T> eqObj(value: T): T = org.mockito.ArgumentMatchers.eq(value) ?: value
+
+    @BeforeEach
+    fun setUp() {
+        namedGraphs = mock(BoMNamedGraphStore::class.java)
+        graphStore = mock(BoMGraphStore::class.java)
+        mockMvc = MockMvcBuilders
+            .standaloneSetup(ObjsGraphsController(namedGraphs, graphStore))
+            .setMessageConverters(JacksonJsonHttpMessageConverter(JsonMapper.builder().findAndAddModules().build()))
+            .build()
+    }
+
+    @Test
+    fun shouldListGraphs() {
+        val id = UUID.randomUUID()
+        given(namedGraphs.list()).willReturn(listOf(BoMGraphListItem(id, mapOf("p" to "1"), 2, 1)))
+
+        mockMvc.perform(get("/api/v1/objs/graphs"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$[0].id").value(id.toString()))
+            .andExpect(jsonPath("$[0].entityCount").value(2))
+    }
+
+    @Test
+    fun shouldCreateGraph_usingGraphFieldName() {
+        val id = UUID.randomUUID()
+        val entityId = UUID.randomUUID()
+        given(namedGraphs.create(anyObj())).willReturn(
+            BoMResolvedGraph(
+                id = id,
+                annotations = mapOf("env" to "prod"),
+                contents = BoMGraphContents(
+                    entities = listOf(BoMEntity(id = entityId, type = "Person", schemaVersion = "1")),
+                    edges = emptyList(),
+                ),
+            ),
+        )
+
+        mockMvc.perform(
+            post("/api/v1/objs/graphs")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"annotations":{"env":"prod"},"entityIds":["$entityId"]}"""),
+        )
+            .andExpect(status().isCreated)
+            .andExpect(jsonPath("$.id").value(id.toString()))
+            .andExpect(jsonPath("$.graph.entities[0].id").value(entityId.toString()))
+    }
+
+    @Test
+    fun shouldGetGraphById() {
+        val id = UUID.randomUUID()
+        given(namedGraphs.get(id)).willReturn(
+            BoMResolvedGraph(id, emptyMap(), BoMGraphContents(emptyList(), emptyList())),
+        )
+        mockMvc.perform(get("/api/v1/objs/graphs/$id"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.id").value(id.toString()))
+    }
+
+    @Test
+    fun shouldReturn404_whenGraphMissing() {
+        val id = UUID.randomUUID()
+        given(namedGraphs.get(id)).willReturn(null)
+        mockMvc.perform(get("/api/v1/objs/graphs/$id"))
+            .andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun shouldMutateGraph_returningResolvedGraph() {
+        val id = UUID.randomUUID()
+        given(namedGraphs.mutate(anyObj(), anyObj())).willReturn(BoMValidationResult.ok())
+        given(namedGraphs.get(id)).willReturn(
+            BoMResolvedGraph(id, mapOf("env" to "prod"), BoMGraphContents(emptyList(), emptyList())),
+        )
+
+        mockMvc.perform(
+            put("/api/v1/objs/graphs/$id")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """{"upsert":{"entities":[],"edges":[]},"delete":{"entities":[],"edges":[]}}""",
+                ),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.annotations.env").value("prod"))
+    }
+
+    @Test
+    fun shouldRejectMutate_whenInvalid() {
+        val id = UUID.randomUUID()
+        given(namedGraphs.mutate(anyObj(), anyObj())).willReturn(
+            BoMValidationResult.of(BoMValidationIssue("EDGE_ENDPOINT_NOT_MEMBER", "bad")),
+        )
+
+        mockMvc.perform(
+            put("/api/v1/objs/graphs/$id")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"upsert":{"entities":[],"edges":[]},"delete":{"entities":[],"edges":[]}}"""),
+        )
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.issues[0].code").value("EDGE_ENDPOINT_NOT_MEMBER"))
+    }
+
+    @Test
+    fun shouldReturn404_whenMutatingMissingGraph() {
+        val id = UUID.randomUUID()
+        willThrow(BoMGraphException("GRAPH_NOT_FOUND", "Graph not found: $id"))
+            .given(namedGraphs).mutate(anyObj(), anyObj())
+
+        mockMvc.perform(
+            put("/api/v1/objs/graphs/$id")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"upsert":{"entities":[],"edges":[]},"delete":{"entities":[],"edges":[]}}"""),
+        )
+            .andExpect(status().isNotFound)
+            .andExpect(jsonPath("$.code").value("GRAPH_NOT_FOUND"))
+    }
+
+    @Test
+    fun shouldValidateGraphMutation() {
+        val id = UUID.randomUUID()
+        given(namedGraphs.validateMutate(anyObj(), anyObj())).willReturn(
+            BoMValidationResult.of(BoMValidationIssue("EDGE_ENDPOINT_NOT_MEMBER", "bad")),
+        )
+
+        mockMvc.perform(
+            post("/api/v1/objs/graphs/$id/validate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"upsert":{"entities":[],"edges":[]},"delete":{"entities":[],"edges":[]}}"""),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.issues[0].code").value("EDGE_ENDPOINT_NOT_MEMBER"))
+    }
+
+    @Test
+    fun shouldDeleteGraph() {
+        val id = UUID.randomUUID()
+        mockMvc.perform(delete("/api/v1/objs/graphs/$id"))
+            .andExpect(status().isNoContent)
+        verify(namedGraphs).delete(id)
+    }
+
+    @Test
+    fun shouldReturn404_whenDeletingMissingGraph() {
+        val id = UUID.randomUUID()
+        willThrow(BoMGraphException("GRAPH_NOT_FOUND", "not found"))
+            .given(namedGraphs).delete(id)
+
+        mockMvc.perform(delete("/api/v1/objs/graphs/$id"))
+            .andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun shouldAttachMember() {
+        val id = UUID.randomUUID()
+        val entityId = UUID.randomUUID()
+        given(namedGraphs.get(id)).willReturn(
+            BoMResolvedGraph(id, emptyMap(), BoMGraphContents(listOf(BoMEntity(id = entityId, type = "Person", schemaVersion = "1")), emptyList())),
+        )
+
+        mockMvc.perform(post("/api/v1/objs/graphs/$id/members/$entityId"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.graph.entities[0].id").value(entityId.toString()))
+        verify(namedGraphs).attach(id, entityId)
+    }
+
+    @Test
+    fun shouldReturn404_whenAttachingMissingEntity() {
+        val id = UUID.randomUUID()
+        val entityId = UUID.randomUUID()
+        willThrow(BoMGraphException("GRAPH_ENTITY_MISSING", "missing"))
+            .given(namedGraphs).attach(id, entityId)
+
+        mockMvc.perform(post("/api/v1/objs/graphs/$id/members/$entityId"))
+            .andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun shouldDetachMember() {
+        val id = UUID.randomUUID()
+        val entityId = UUID.randomUUID()
+        mockMvc.perform(delete("/api/v1/objs/graphs/$id/members/$entityId"))
+            .andExpect(status().isNoContent)
+        verify(namedGraphs).detach(id, entityId)
+    }
+
+    @Test
+    fun shouldQueryInGraph_withObjExpr() {
+        val id = UUID.randomUUID()
+        given(graphStore.selectInGraph(eqObj(id), anyObj<BoMMatcher>())).willReturn(
+            BoMGraphContents(entities = emptyList(), edges = emptyList()),
+        )
+
+        mockMvc.perform(
+            post("/api/v1/objs/graphs/$id/query")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"obj-expr":"type == 'Person'"}"""),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.entities").isArray)
+    }
+
+    @Test
+    fun shouldQueryInGraph_withChainedObjExpr() {
+        val id = UUID.randomUUID()
+        given(graphStore.selectInGraph(eqObj(id), anyObj<BoMMatcher>())).willReturn(
+            BoMGraphContents(entities = emptyList(), edges = emptyList()),
+        )
+
+        mockMvc.perform(
+            post("/api/v1/objs/graphs/$id/query")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""[{"obj-expr":"type == 'Person'"},{"obj-expr":"a.env == 'prod'"}]"""),
+        )
+            .andExpect(status().isOk)
+    }
+
+    @Test
+    fun shouldReturn404_whenQueryingMissingGraph() {
+        val id = UUID.randomUUID()
+        given(graphStore.selectInGraph(eqObj(id), anyObj<BoMMatcher>())).willThrow(
+            BoMValidationException(
+                "graph",
+                BoMValidationResult.of(BoMValidationIssue("GRAPH_NOT_FOUND", "not found")),
+            ),
+        )
+
+        mockMvc.perform(
+            post("/api/v1/objs/graphs/$id/query")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"obj-expr":"type == 'Person'"}"""),
+        )
+            .andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun shouldRejectRetiredKey_onGraphQuery() {
+        val id = UUID.randomUUID()
+        mockMvc.perform(
+            post("/api/v1/objs/graphs/$id/query")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"anno":{"env":"prod"}}"""),
+        )
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.issues[0].code").value("MATCHER_DSL_RETIRED_KEY"))
+    }
+
+    @Test
+    fun shouldQueryGraphs_withGraphExpr() {
+        given(graphStore.select(anyObj<BoMMatcher>())).willReturn(
+            BoMGraphContents(entities = emptyList(), edges = emptyList()),
+        )
+
+        mockMvc.perform(
+            post("/api/v1/objs/graphs/query")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"graph-expr":"a.env == 'prod'"}"""),
+        )
+            .andExpect(status().isOk)
+    }
+
+    @Test
+    fun shouldRejectQueryGraphs_whenBareObjExpr() {
+        given(graphStore.select(anyObj<BoMMatcher>())).willThrow(
+            BoMValidationException(
+                "matcher-dsl",
+                BoMValidationResult.of(BoMValidationIssue("MATCHER_GRAPH_SCOPE_REQUIRED", "no scope")),
+            ),
+        )
+
+        mockMvc.perform(
+            post("/api/v1/objs/graphs/query")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"obj-expr":"type == 'Person'"}"""),
+        )
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.issues[0].code").value("MATCHER_GRAPH_SCOPE_REQUIRED"))
+    }
+
+    @Test
+    fun shouldCloneGraph() {
+        val sourceId = UUID.randomUUID()
+        val cloneId = UUID.randomUUID()
+        given(namedGraphs.clone(eqObj(sourceId), anyObj())).willReturn(
+            BoMResolvedGraph(cloneId, mapOf("decisionId" to "D-9"), BoMGraphContents(emptyList(), emptyList())),
+        )
+
+        mockMvc.perform(
+            post("/api/v1/objs/graphs/$sourceId/clone")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"annotations":{"decisionId":"D-9"}}"""),
+        )
+            .andExpect(status().isCreated)
+            .andExpect(jsonPath("$.id").value(cloneId.toString()))
+    }
+}

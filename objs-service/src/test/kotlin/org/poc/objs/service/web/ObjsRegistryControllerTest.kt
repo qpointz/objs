@@ -54,7 +54,7 @@ class ObjsRegistryControllerTest {
             edgeRules,
             objectHandler,
             ruleHandler,
-            GraphSeedHandler(mock(BoMGraphStore::class.java)),
+            GraphSeedHandler(mock(org.poc.objs.core.persistence.BoMNamedGraphStore::class.java)),
         )
         mockMvc = MockMvcBuilders
             .standaloneSetup(

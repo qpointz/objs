@@ -14,7 +14,15 @@ class ObjsOpenApiConfiguration {
     fun objsGraphApi(): GroupedOpenApi =
         GroupedOpenApi.builder()
             .group("graph")
-            .pathsToMatch("/api/v1/objs/graph", "/api/v1/objs/graph/**", "/api/v1/objs/status")
+            .pathsToMatch(
+                "/api/v1/objs/graph",
+                "/api/v1/objs/graph/**",
+                "/api/v1/objs/graphs",
+                "/api/v1/objs/graphs/**",
+                "/api/v1/objs/entities",
+                "/api/v1/objs/entities/**",
+                "/api/v1/objs/status",
+            )
             .build()
 
     @Bean
