@@ -11,7 +11,8 @@ member entities and graph-local edges (see [`graph/model.md`](graph/model.md)).
 | Surface | Behaviour |
 |---------|-----------|
 | **Explorer** | **Read-only.** Two exclusive modes: **Graph** (one opened graph) or **Selection** (matcher result set). Never mutates the store. |
-| **Composer** | Draft workspace; **Save** / **Snapshot**; owns all writes (including first Save that creates a graph from a Selection handoff). |
+| **Objects** | **Read-only.** Pool/cross-graph object search; client **shelf**; **New graph from shelf** → Composer (replace draft). |
+| **Composer** | Draft workspace; **Save** / **Snapshot**; owns all writes (including first Save that creates a graph from a Selection / shelf handoff). |
 | Matchers | **`all`** / **`graph-expr`** / **`obj-expr`** / **chained** only |
 | Schema catalog | Unchanged (global, not graph-scoped) |
 
@@ -49,6 +50,7 @@ dark/light toggle on the right:
 | View | Path | Purpose |
 |------|------|---------|
 | **Explorer** | `/workbench/explorer` | Read-only explore: Graph mode or Selection mode; hand off to Composer / Query |
+| **Objects** | `/workbench/objects` | Pool object search + shelf; **New graph from shelf** → Composer |
 | **Composer** | `/workbench/composer` | Draft workspace: Visual/Text edit, Validate / Save / Snapshot |
 | **Query** | `/workbench/query` | Tabs Query (script) / Matcher / Options; Exec → traverse API; Structured / Raw results |
 | **Schema** | `/workbench/model` | Browse and edit object/edge schemas |

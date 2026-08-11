@@ -40,6 +40,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | U-2 | Schemas full-catalog overview + seed import/export | feature | done | [`completed/20260803-schemas-catalog-overview/`](completed/20260803-schemas-catalog-overview/STORY.md) |
 | U-3 | Object linter visual workspace + transactional graph mutate | feature | done | [`completed/20260805-object-linter-visual/`](completed/20260805-object-linter-visual/STORY.md) |
 | U-4 | Workbench chrome: Explorer Graph vs non-graph + Explore-scope fragment | improvement | done | [`completed/20260811-workbench-chrome-regroup/`](completed/20260811-workbench-chrome-regroup/STORY.md) |
+| U-5 | Objects top-level view + shelf → New graph in Composer | feature | planned | [`planned/objects-shelf/`](planned/objects-shelf/STORY.md) |
 
 ---
 
@@ -56,6 +57,6 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | Status | Count |
 |--------|------:|
 | backlog | 0 |
-| planned | 0 |
-| in-progress | 1 |
+| planned | 1 |
+| in-progress | 0 |
 | done | 17 |

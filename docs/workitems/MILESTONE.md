@@ -36,4 +36,4 @@ _(none)_
 
 ### Planned
 
-_(none)_
+- [`objects-shelf`](planned/objects-shelf/STORY.md) — Objects top-level view (pool search + shelf) → New graph in Composer (U-5).
