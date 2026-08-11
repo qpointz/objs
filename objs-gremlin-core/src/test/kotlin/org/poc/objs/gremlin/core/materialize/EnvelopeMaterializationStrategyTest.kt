@@ -5,7 +5,7 @@ import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.poc.objs.core.domain.BoMEdge
 import org.poc.objs.core.domain.BoMEntity
-import org.poc.objs.core.domain.BoMSubgraph
+import org.poc.objs.core.domain.BoMGraphContents
 import java.util.UUID
 
 class EnvelopeMaterializationStrategyTest {
@@ -17,7 +17,7 @@ class EnvelopeMaterializationStrategyTest {
         val a = UUID.fromString("11111111-1111-1111-1111-111111111111")
         val b = UUID.fromString("22222222-2222-2222-2222-222222222222")
         val e = UUID.fromString("33333333-3333-3333-3333-333333333333")
-        val subgraph = BoMSubgraph(
+        val subgraph = BoMGraphContents(
             entities = listOf(
                 BoMEntity(
                     id = a,
@@ -79,7 +79,7 @@ class EnvelopeMaterializationStrategyTest {
     fun shouldDefaultToEnvelope_whenStrategyOmitted() {
         val id = UUID.randomUUID()
         val graph = materializer.materialize(
-            BoMSubgraph(
+            BoMGraphContents(
                 entities = listOf(BoMEntity(id = id, type = "X", schemaVersion = "1")),
                 edges = emptyList(),
             ),
@@ -91,7 +91,7 @@ class EnvelopeMaterializationStrategyTest {
     fun shouldFail_whenUnknownStrategy() {
         assertThatThrownBy {
             materializer.materialize(
-                BoMSubgraph(entities = emptyList(), edges = emptyList()),
+                BoMGraphContents(entities = emptyList(), edges = emptyList()),
                 strategy = "flatten",
             )
         }.isInstanceOf(IllegalArgumentException::class.java)
@@ -102,7 +102,7 @@ class EnvelopeMaterializationStrategyTest {
     fun shouldFail_whenEntityIdNull() {
         assertThatThrownBy {
             materializer.materialize(
-                BoMSubgraph(
+                BoMGraphContents(
                     entities = listOf(BoMEntity(type = "X", schemaVersion = "1")),
                     edges = emptyList(),
                 ),

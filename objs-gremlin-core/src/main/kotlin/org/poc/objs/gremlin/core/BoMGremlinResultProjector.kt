@@ -7,7 +7,7 @@ import org.apache.tinkerpop.gremlin.structure.Vertex
 import org.apache.tinkerpop.gremlin.structure.VertexProperty
 import org.poc.objs.core.domain.BoMEdge
 import org.poc.objs.core.domain.BoMEntity
-import org.poc.objs.core.domain.BoMSubgraph
+import org.poc.objs.core.domain.BoMGraphContents
 import org.poc.objs.gremlin.core.materialize.EnvelopeMaterializationStrategy
 import java.util.UUID
 
@@ -38,7 +38,7 @@ object BoMGremlinResultProjector {
             else -> BoMGremlinItem.Scalar(value.toString())
         }
 
-    fun buildSubgraph2(items: List<BoMGremlinItem>, subgraph1: BoMSubgraph): BoMSubgraph? {
+    fun buildSubgraph2(items: List<BoMGremlinItem>, subgraph1: BoMGraphContents): BoMGraphContents? {
         val entitiesById = LinkedHashMap<UUID, BoMEntity>()
         val edgesById = LinkedHashMap<UUID, BoMEdge>()
         var sawEdgeElement = false
@@ -96,13 +96,13 @@ object BoMGremlinResultProjector {
             return null
         }
 
-        return BoMSubgraph(
+        return BoMGraphContents(
             entities = entitiesById.values.toList(),
             edges = edges,
         )
     }
 
-    fun inferPrimary(items: List<BoMGremlinItem>, subgraph: BoMSubgraph?): String {
+    fun inferPrimary(items: List<BoMGremlinItem>, subgraph: BoMGraphContents?): String {
         if (subgraph != null) return "graph"
         if (items.isEmpty()) return "list"
         if (items.size == 1) {

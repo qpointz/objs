@@ -5,7 +5,7 @@ import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.poc.objs.core.domain.BoMEdge
 import org.poc.objs.core.domain.BoMEntity
-import org.poc.objs.core.domain.BoMSubgraph
+import org.poc.objs.core.domain.BoMGraphContents
 import java.util.UUID
 
 class BoMGremlinEngineTest {
@@ -16,8 +16,8 @@ class BoMGremlinEngineTest {
     private val b = UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
     private val e = UUID.fromString("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee")
 
-    private fun sampleSubgraph(): BoMSubgraph =
-        BoMSubgraph(
+    private fun sampleSubgraph(): BoMGraphContents =
+        BoMGraphContents(
             entities = listOf(
                 BoMEntity(
                     id = a,
@@ -47,11 +47,11 @@ class BoMGremlinEngineTest {
     fun shouldReturnGraphSubgraph_whenVerticesSelected() {
         val result = engine.eval(sampleSubgraph(), "g.V().hasLabel('Component')")
         assertThat(result.primary).isEqualTo("graph")
-        assertThat(result.subgraph).isNotNull
-        assertThat(result.subgraph!!.entities).hasSize(2)
-        assertThat(result.subgraph!!.edges).hasSize(1)
-        assertThat(result.subgraph!!.edges[0].id).isEqualTo(e)
-        assertThat(result.views.graph).isEqualTo(result.subgraph)
+        assertThat(result.contents).isNotNull
+        assertThat(result.contents!!.entities).hasSize(2)
+        assertThat(result.contents!!.edges).hasSize(1)
+        assertThat(result.contents!!.edges[0].id).isEqualTo(e)
+        assertThat(result.views.graph).isEqualTo(result.contents)
         assertThat(result.meta.language).isEqualTo("gremlin-lang")
         assertThat(result.meta.strategy).isEqualTo("envelope")
     }
@@ -60,7 +60,7 @@ class BoMGremlinEngineTest {
     fun shouldReturnScalar_whenCount() {
         val result = engine.eval(sampleSubgraph(), "g.V().count()")
         assertThat(result.primary).isEqualTo("scalar")
-        assertThat(result.subgraph).isNull()
+        assertThat(result.contents).isNull()
         assertThat(result.views.scalar).isEqualTo(2L)
     }
 
@@ -98,6 +98,6 @@ class BoMGremlinEngineTest {
     @Test
     fun shouldInduceEdges_whenVertexOnlyHits() {
         val result = engine.eval(sampleSubgraph(), "g.V().hasLabel('Component')")
-        assertThat(result.subgraph!!.edges.map { it.id }).containsExactly(e)
+        assertThat(result.contents!!.edges.map { it.id }).containsExactly(e)
     }
 }

@@ -52,7 +52,7 @@ jackson-core = { module = "tools.jackson.core:jackson-core", version.ref = "jack
 jackson-databind = { module = "tools.jackson.core:jackson-databind", version.ref = "jackson" }
 jackson-dataformat-yaml = { module = "tools.jackson.dataformat:jackson-dataformat-yaml", version.ref = "jackson" }
 jackson-module-kotlin = { module = "tools.jackson.module:jackson-module-kotlin", version.ref = "jackson" }
-jackson-annotations-v2 = { module = "com.fasterxml.jackson.core:jackson-annotations", version = "2.19.2" }
+jackson-annotations-v2 = { module = "com.fasterxml.jackson.core:jackson-annotations", version = "2.21" }
 
 json-schema-validator = { module = "com.networknt:json-schema-validator", version.ref = "jsonSchemaValidator" }
 commons-jexl = { module = "org.apache.commons:commons-jexl3", version.ref = "commonsJexl" }
@@ -65,6 +65,7 @@ kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "
 gremlin-core = { module = "org.apache.tinkerpop:gremlin-core", version.ref = "tinkerpop" }
 tinkergraph-gremlin = { module = "org.apache.tinkerpop:tinkergraph-gremlin", version.ref = "tinkerpop" }
 gremlin-language = { module = "org.apache.tinkerpop:gremlin-language", version.ref = "tinkerpop" }
+gql-gremlin = { module = "org.apache.tinkerpop:gql-gremlin", version.ref = "tinkerpop" }
 
 [bundles]
 jackson = ["jackson-databind", "jackson-dataformat-yaml", "jackson-module-kotlin"]

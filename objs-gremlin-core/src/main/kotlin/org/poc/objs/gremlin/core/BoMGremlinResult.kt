@@ -1,6 +1,6 @@
 package org.poc.objs.gremlin.core
 
-import org.poc.objs.core.domain.BoMSubgraph
+import org.poc.objs.core.domain.BoMGraphContents
 
 /**
  * Projected Gremlin evaluation result. Never exposes TinkerPop types.
@@ -8,15 +8,15 @@ import org.poc.objs.core.domain.BoMSubgraph
 data class BoMGremlinResult(
     val primary: String,
     val items: List<BoMGremlinItem>,
-    val subgraph: BoMSubgraph?,
+    val contents: BoMGraphContents?,
     val views: BoMGremlinViews,
     val meta: BoMGremlinMeta,
 ) {
-    fun subgraphOrNull(): BoMSubgraph? = subgraph
+    fun contentsOrNull(): BoMGraphContents? = contents
 }
 
 data class BoMGremlinViews(
-    val graph: BoMSubgraph? = null,
+    val graph: BoMGraphContents? = null,
     val table: BoMGremlinTable? = null,
     val scalar: Any? = null,
 )

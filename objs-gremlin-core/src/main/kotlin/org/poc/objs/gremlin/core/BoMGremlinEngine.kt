@@ -2,7 +2,7 @@ package org.poc.objs.gremlin.core
 
 import org.apache.tinkerpop.gremlin.jsr223.GremlinLangScriptEngine
 import org.apache.tinkerpop.gremlin.process.traversal.Traversal
-import org.poc.objs.core.domain.BoMSubgraph
+import org.poc.objs.core.domain.BoMGraphContents
 import org.poc.objs.core.match.BoMMatcher
 import org.poc.objs.core.persistence.BoMGraphStore
 import org.poc.objs.gremlin.core.materialize.BoMGremlinMaterializer
@@ -20,7 +20,7 @@ class BoMGremlinEngine(
     private val materializer: BoMGremlinMaterializer = BoMGremlinMaterializer(),
 ) {
     /**
-     * Explorer/Composer parity: run [matcher] via [BoMGraphStore.selectSubgraph], then [eval].
+     * Explorer/Composer parity: run [matcher] via [BoMGraphStore.select], then [eval].
      */
     fun selectAndEval(
         store: BoMGraphStore,
@@ -31,7 +31,7 @@ class BoMGremlinEngine(
         options: BoMGremlinTraversalOptions? = null,
     ): BoMGremlinResult =
         eval(
-            subgraph = store.selectSubgraph(matcher),
+            subgraph = store.select(matcher),
             script = script,
             bindings = bindings,
             strategy = strategy,
@@ -39,7 +39,7 @@ class BoMGremlinEngine(
         )
 
     fun eval(
-        subgraph: BoMSubgraph,
+        subgraph: BoMGraphContents,
         script: String,
         bindings: Map<String, Any?>? = null,
         strategy: String = EnvelopeMaterializationStrategy.NAME,
@@ -87,7 +87,7 @@ class BoMGremlinEngine(
         return BoMGremlinResult(
             primary = primary,
             items = items,
-            subgraph = subgraph2,
+            contents = subgraph2,
             views = BoMGremlinViews(
                 graph = subgraph2,
                 table = table,

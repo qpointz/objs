@@ -83,7 +83,7 @@ internal fun BoMGremlinResult.toApiMap(): Map<String, Any?> =
     linkedMapOf(
         "primary" to primary,
         "items" to items.map { it.toApiMap() },
-        "subgraph" to subgraph,
+        "contents" to contents,
         "views" to linkedMapOf(
             "graph" to views.graph,
             "table" to views.table?.let {

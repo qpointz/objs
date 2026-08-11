@@ -1,7 +1,7 @@
 package org.poc.objs.gremlin.core.materialize
 
 import org.apache.tinkerpop.gremlin.structure.Graph
-import org.poc.objs.core.domain.BoMSubgraph
+import org.poc.objs.core.domain.BoMGraphContents
 
 /**
  * Pluggable mapping from a BoM subgraph to an in-memory TinkerPop [Graph].
@@ -12,5 +12,5 @@ import org.poc.objs.core.domain.BoMSubgraph
 interface BoMGremlinMaterializationStrategy {
     val name: String
 
-    fun materialize(subgraph: BoMSubgraph): Graph
+    fun materialize(subgraph: BoMGraphContents): Graph
 }

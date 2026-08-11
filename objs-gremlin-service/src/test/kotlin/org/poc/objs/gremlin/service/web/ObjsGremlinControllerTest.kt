@@ -7,7 +7,7 @@ import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
 import org.poc.objs.core.domain.BoMEdge
 import org.poc.objs.core.domain.BoMEntity
-import org.poc.objs.core.domain.BoMSubgraph
+import org.poc.objs.core.domain.BoMGraphContents
 import org.poc.objs.core.match.BoMMatcher
 import org.poc.objs.core.persistence.BoMGraphStore
 import org.poc.objs.gremlin.core.BoMGremlinEngine
@@ -33,8 +33,8 @@ class ObjsGremlinControllerTest {
     private val b = UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
     private val e = UUID.fromString("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee")
 
-    private fun sampleSubgraph(): BoMSubgraph =
-        BoMSubgraph(
+    private fun sampleContents(): BoMGraphContents =
+        BoMGraphContents(
             entities = listOf(
                 BoMEntity(
                     id = a,
@@ -68,8 +68,8 @@ class ObjsGremlinControllerTest {
     }
 
     @Test
-    fun shouldTraverse_whenAnnoMatcherAndScript() {
-        given(store.selectSubgraph(anyObj<BoMMatcher>())).willReturn(sampleSubgraph())
+    fun shouldTraverse_whenAllMatcherAndScript() {
+        given(store.select(anyObj<BoMMatcher>())).willReturn(sampleContents())
 
         mockMvc.perform(
             post("/api/v1/objs/graph/traverse/gremlin")
@@ -77,7 +77,7 @@ class ObjsGremlinControllerTest {
                 .content(
                     """
                     {
-                      "matcher": { "anno": { "env": "test" } },
+                      "matcher": { "all": true },
                       "script": "g.V().hasLabel('Component')"
                     }
                     """.trimIndent(),
@@ -85,10 +85,10 @@ class ObjsGremlinControllerTest {
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.primary").value("graph"))
-            .andExpect(jsonPath("$.subgraph.entities").isArray)
+            .andExpect(jsonPath("$.contents.entities").isArray)
             .andExpect(jsonPath("$.meta.language").value("gremlin-lang"))
 
-        verify(store).selectSubgraph(anyObj<BoMMatcher>())
+        verify(store).select(anyObj<BoMMatcher>())
     }
 
     @Test
@@ -99,7 +99,7 @@ class ObjsGremlinControllerTest {
                 .content(
                     """
                     {
-                      "matcher": { "anno": { "env": "test" } },
+                      "matcher": { "all": true },
                       "script": "   "
                     }
                     """.trimIndent(),
@@ -128,7 +128,7 @@ class ObjsGremlinControllerTest {
 
     @Test
     fun shouldReturnScalar_whenCount() {
-        given(store.selectSubgraph(anyObj<BoMMatcher>())).willReturn(sampleSubgraph())
+        given(store.select(anyObj<BoMMatcher>())).willReturn(sampleContents())
 
         mockMvc.perform(
             post("/api/v1/objs/graph/traverse/gremlin")
@@ -136,7 +136,7 @@ class ObjsGremlinControllerTest {
                 .content(
                     """
                     {
-                      "matcher": { "anno": { "env": "test" } },
+                      "matcher": { "all": true },
                       "script": "g.V().count()"
                     }
                     """.trimIndent(),
@@ -149,7 +149,7 @@ class ObjsGremlinControllerTest {
 
     @Test
     fun shouldAcceptChainedMatcher() {
-        given(store.selectSubgraph(anyObj<BoMMatcher>())).willReturn(sampleSubgraph())
+        given(store.select(anyObj<BoMMatcher>())).willReturn(sampleContents())
 
         mockMvc.perform(
             post("/api/v1/objs/graph/traverse/gremlin")
@@ -158,8 +158,8 @@ class ObjsGremlinControllerTest {
                     """
                     {
                       "matcher": [
-                        { "anno": { "env": "test" } },
-                        { "anno-expr": "annotations['env'] == 'test'" }
+                        { "all": true },
+                        { "obj-expr": "a.env == 'test'" }
                       ],
                       "script": "g.E().count()"
                     }

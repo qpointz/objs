@@ -1,7 +1,7 @@
 package org.poc.objs.gremlin.core.materialize
 
 import org.apache.tinkerpop.gremlin.structure.Graph
-import org.poc.objs.core.domain.BoMSubgraph
+import org.poc.objs.core.domain.BoMGraphContents
 
 /**
  * Resolves a [BoMGremlinMaterializationStrategy] by name and materializes a subgraph.
@@ -14,7 +14,7 @@ class BoMGremlinMaterializer(
         strategies.associateBy { it.name }
 
     fun materialize(
-        subgraph: BoMSubgraph,
+        subgraph: BoMGraphContents,
         strategy: String = EnvelopeMaterializationStrategy.NAME,
     ): Graph {
         val impl = byName[strategy]

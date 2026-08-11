@@ -19,6 +19,8 @@ dependencies {
     api(libs.gremlin.core)
     api(libs.tinkergraph.gremlin)
     api(libs.gremlin.language)
+    // TinkerGQL: match("MATCH …") declarative patterns — https://tinkerpop.apache.org/docs/4.0.0-beta.3/reference/#tinkergql
+    api(libs.gql.gremlin)
     api(libs.kotlin.stdlib)
     api(libs.kotlin.reflect)
     implementation(libs.bundles.logging)
