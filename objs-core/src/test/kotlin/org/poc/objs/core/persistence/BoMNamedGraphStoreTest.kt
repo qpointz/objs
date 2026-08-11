@@ -29,7 +29,7 @@ import org.springframework.test.context.TestPropertySource
 
 @DataJpaTest
 @ImportAutoConfiguration(ObjsCoreAutoConfiguration::class)
-@Import(BoMGraphStore::class, BoMNamedGraphStore::class)
+@Import(BoMGraphStore::class, BoMNamedGraphStore::class, BoMPoolEntityReader::class)
 @TestPropertySource(
     properties = [
         "spring.datasource.url=jdbc:h2:mem:objs-named-graph-store;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",

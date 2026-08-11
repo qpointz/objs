@@ -18,6 +18,7 @@ import org.poc.objs.core.domain.BoMPropertiesPolicy
 import org.poc.objs.core.domain.BoMSchema
 import org.poc.objs.core.domain.BoMSchemaCatalog
 import org.poc.objs.core.domain.BoMSchemaDsl
+import org.poc.objs.core.match.BoMAllGraphsMatcher
 import org.poc.objs.core.match.BoMObjExprMatcher
 import org.poc.objs.core.validation.BoMValidationException
 import org.springframework.beans.factory.annotation.Autowired
@@ -29,7 +30,7 @@ import org.springframework.test.context.TestPropertySource
 
 @DataJpaTest
 @ImportAutoConfiguration(ObjsCoreAutoConfiguration::class)
-@Import(BoMGraphStore::class)
+@Import(BoMGraphStore::class, BoMNamedGraphStore::class, BoMPoolEntityReader::class)
 @TestPropertySource(
     properties = [
         "spring.datasource.url=jdbc:h2:mem:objs;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",
@@ -57,6 +58,9 @@ class BoMGraphStoreTest {
 
     @Autowired
     lateinit var graphRepository: BoMGraphRepository
+
+    @Autowired
+    lateinit var namedGraphs: BoMNamedGraphStore
 
     /** Edges require an owning graph (`graph_id` NOT NULL); every edge in this file shares [graphId]. */
     private lateinit var graphId: UUID
@@ -157,10 +161,36 @@ class BoMGraphStoreTest {
         val ex = catchThrowableOfType(BoMValidationException::class.java) {
             store.select(BoMObjExprMatcher("type == 'Person'"))
         }
-        assertThat(ex).isNotNull()
-        assertThat(ex.result.issues).anySatisfy { issue ->
-            assertThat(issue.code).isEqualTo("MATCHER_GRAPH_SCOPE_REQUIRED")
+        assertThat(ex.result.issues.map { it.code }).contains("MATCHER_GRAPH_SCOPE_REQUIRED")
+    }
+
+    @Test
+    fun shouldSelectFromPool_includingOrphans_byType() {
+        val orphan = UUID.randomUUID()
+        val member = UUID.randomUUID()
+        assertThat(
+            store.write(
+                BoMGraph(
+                    entities = mutableListOf(
+                        BoMEntity(id = orphan, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "Orphan")),
+                        BoMEntity(id = member, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "Member")),
+                    ),
+                ),
+            ).isValid,
+        ).isTrue()
+        namedGraphs.attach(graphId, member)
+
+        val hit = store.selectFromPool(BoMObjExprMatcher("type == 'Person'"))
+        assertThat(hit.entities.map { it.id }).containsExactlyInAnyOrder(orphan, member)
+        assertThat(hit.edges).isEmpty()
+    }
+
+    @Test
+    fun shouldRejectSelectFromPool_whenGraphScopeMatcher() {
+        val ex = catchThrowableOfType(BoMValidationException::class.java) {
+            store.selectFromPool(BoMAllGraphsMatcher)
         }
+        assertThat(ex.result.issues.map { it.code }).contains("MATCHER_POOL_OBJ_EXPR_ONLY")
     }
 
     @Test

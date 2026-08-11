@@ -181,7 +181,7 @@ type Props = {
   addObjectsOpen?: boolean
   /** Toggle Add objects side pane (Visual toolbar). */
   onToggleAddObjects?: () => void
-  /** Current graph: Add objects Search scopes to members; when null, Search runs across all graphs. */
+  /** Current graph: Add objects Search scopes to members; when null, obj-expr Search uses the pool. */
   graphId?: string | null
   onCloseAddObjects?: () => void
   addObjectsMatcher?: unknown | null

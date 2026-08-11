@@ -28,7 +28,7 @@ describe('execMatcher (WI-005 graph-scoped routing)', () => {
     )
   })
 
-  it('wraps bare obj-expr with all when no current graph', async () => {
+  it('routes bare obj-expr to the pool query endpoint when no current graph', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ entities: [], edges: [] }),
@@ -39,10 +39,10 @@ describe('execMatcher (WI-005 graph-scoped routing)', () => {
     await execMatcher('obj-expr', body, null)
 
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/v1/objs/graphs/query',
+      '/api/v1/objs/entities/query',
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify([{ all: true }, body]),
+        body: JSON.stringify(body),
       }),
     )
   })
@@ -74,11 +74,11 @@ describe('scopeAddObjectsMatcher (Composer Add objects)', () => {
     })
   })
 
-  it('wraps bare obj-expr with all when no current graph', () => {
+  it('routes bare obj-expr to the pool when no current graph', () => {
     const body = { 'obj-expr': "type == 'Component'" }
     expect(scopeAddObjectsMatcher(body, null)).toEqual({
-      kind: 'graphs',
-      body: [{ all: true }, body],
+      kind: 'pool',
+      body,
     })
   })
 

@@ -13,7 +13,8 @@ graph-local edges, resolve, query, and optional clone. See [`../graph/model.md`]
 
 | Method | Path | Behaviour | Module |
 |--------|------|-----------|--------|
-| `GET` | `/entities` | List/query pool entities (optional `obj-expr` filter) | `:objs-service` |
+| `GET` | `/entities` | List pool entities | `:objs-service` |
+| `POST` | `/entities/query` | Matcher DSL (`obj-expr` / chain of `obj-expr`) over the **pool** (orphans included); edges empty; equality/`&&` SQL pushdown | `:objs-service` |
 | `POST` | `/entities` | Create an entity in the pool only (no graph membership) | `:objs-service` |
 | `GET` | `/entities/{id}` | Fetch one pool entity; `404` if missing | `:objs-service` |
 | `PUT` | `/entities/{id}` | Update payload/annotations | `:objs-service` |
@@ -29,8 +30,9 @@ graph-local edges, resolve, query, and optional clone. See [`../graph/model.md`]
 | `POST` | `/graphs/{id}/clone` | Optional: copy members + edges into a **new** independent graph (new ids); source unchanged; no parent/lineage link stored | `:objs-service` |
 | `POST` | `/graph/traverse/gremlin` | Matcher + gremlin-lang script → `BoMGremlinResult` (OpenAPI tag **`traverse`**); matcher DSL scoping rules as above | `:objs-gremlin-service` |
 
-**Fail closed:** bare `obj-expr` with no graph path and no stage-0 `all` / `graph-expr` → `400`
-(lock G-G16). Retired keys `anno` / `anno-expr` / `ids` / `subgraph` / `subg-expr` are rejected
+**Fail closed:** bare `obj-expr` on `/graphs/query` with no stage-0 `all` / `graph-expr` → `400`
+(lock G-G16). Pool-wide `obj-expr` (orphans included) uses `POST /entities/query` instead.
+Retired keys `anno` / `anno-expr` / `ids` / `subgraph` / `subg-expr` are rejected
 (`MATCHER_DSL_RETIRED_KEY`) — see the retirement table in
 [`../graph/annotations-and-matchers.md`](../graph/annotations-and-matchers.md#retired-matchers-parity-with-pre-c-13-keys).
 

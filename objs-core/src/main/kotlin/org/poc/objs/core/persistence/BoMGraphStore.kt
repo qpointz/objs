@@ -13,6 +13,7 @@ import org.poc.objs.core.match.BoMChainedMatcher
 import org.poc.objs.core.match.BoMEntityDomainCandidate
 import org.poc.objs.core.match.BoMGraphExprMatcher
 import org.poc.objs.core.match.BoMMatcher
+import org.poc.objs.core.match.BoMObjExprMatcher
 import org.poc.objs.core.validation.BoMEntityTypeLookup
 import org.poc.objs.core.validation.BoMPersistGate
 import org.poc.objs.core.validation.BoMValidationException
@@ -28,6 +29,7 @@ import java.util.UUID
  *
  * [select] / `selectInGraph` enforce G-G16 (no whole-pool-as-a-graph): a bare `obj-expr`
  * (or any matcher whose first stage is not `all` / `graph-expr`) is rejected — see [select].
+ * Pool-wide object search (orphans included) uses [selectFromPool] instead.
  */
 @Service
 class BoMGraphStore(
@@ -36,6 +38,7 @@ class BoMGraphStore(
     private val validator: BoMValidator,
     private val entityManager: EntityManager,
     private val namedGraphs: BoMNamedGraphStore,
+    private val poolReader: BoMPoolEntityReader,
 ) {
     private fun gate(): BoMPersistGate = BoMPersistGate(
         validator = validator,
@@ -220,6 +223,48 @@ class BoMGraphStore(
     /** List all pool entities, ungrouped by graph membership (WI-004: `GET /entities`). */
     @Transactional(readOnly = true)
     fun listEntities(): List<BoMEntity> = entityRepository.findAll().map { it.toDomain() }
+
+    /**
+     * Filter the entity **pool** with `obj-expr` (or a chain of `obj-expr` stages).
+     * Includes orphans (no graph membership). Returns entities only — edges are graph-local
+     * and are never induced across the whole pool (G-G16).
+     *
+     * Rejects stage-0 `all` / `graph-expr` (use [select] / [selectInGraph] for those).
+     */
+    @Transactional(readOnly = true)
+    fun selectFromPool(matcher: BoMMatcher): BoMGraphContents {
+        entityManager.flush()
+        val stages = flattenStages(matcher)
+        if (stages.isEmpty()) {
+            throw BoMValidationException(
+                "matcher-dsl",
+                BoMValidationResult.of(
+                    BoMValidationIssue(
+                        code = "MATCHER_OBJ_EXPR_REQUIRED",
+                        message = "pool query requires at least one obj-expr stage",
+                        path = "$",
+                    ),
+                ),
+            )
+        }
+        for (stage in stages) {
+            if (stage !is BoMObjExprMatcher) {
+                throw BoMValidationException(
+                    "matcher-dsl",
+                    BoMValidationResult.of(
+                        BoMValidationIssue(
+                            code = "MATCHER_POOL_OBJ_EXPR_ONLY",
+                            message = "pool query accepts only obj-expr (or a chain of obj-expr); " +
+                                "use /graphs/query for all / graph-expr",
+                            path = "$",
+                        ),
+                    ),
+                )
+            }
+        }
+        val entities = poolReader.selectEntities(matcher).map { it.toDomain() }
+        return BoMGraphContents(entities = entities, edges = emptyList())
+    }
 
     /**
      * Entity-only pool upsert (no edges, no membership). Shared by [applyUpserts] and

@@ -271,25 +271,50 @@ export function isBareObjExprMatcher(body: unknown): boolean {
 }
 
 /**
- * Composer Add objects Search routing (ui.md: graph query, or cross-graph when none selected).
- * With [graphId]: `POST …/graphs/{id}/query`. Without: `POST …/graphs/query`, wrapping a bare
- * `obj-expr` as `[{ all: true }, obj-expr]` so stage-0 graph scope is satisfied (orphans excluded).
+ * Composer Add objects Search routing.
+ * With [graphId]: `POST …/graphs/{id}/query`. Without: bare `obj-expr` (or obj-expr-only chain)
+ * hits `POST …/entities/query` (whole pool, orphans included, SQL pushdown). `all` / `graph-expr`
+ * still use `POST …/graphs/query`.
  */
 export function scopeAddObjectsMatcher(body: unknown, graphId: string | null): {
-  kind: 'in-graph' | 'graphs'
+  kind: 'in-graph' | 'graphs' | 'pool'
   graphId?: string
   body: unknown
 } {
   if (graphId) {
     return { kind: 'in-graph', graphId, body }
   }
-  if (isBareObjExprMatcher(body)) {
-    return { kind: 'graphs', body: [{ all: true }, body] }
+  if (isPoolObjExprMatcher(body)) {
+    return { kind: 'pool', body }
   }
   return { kind: 'graphs', body }
 }
 
-/** Run Add objects Search against the current graph or across all graphs when none is selected. */
+/** True when [body] is bare obj-expr or a non-empty chain of only obj-expr stages. */
+export function isPoolObjExprMatcher(body: unknown): boolean {
+  if (isBareObjExprMatcher(body)) return true
+  if (!Array.isArray(body) || body.length === 0) return false
+  return body.every(
+    (stage) =>
+      stage != null &&
+      typeof stage === 'object' &&
+      !Array.isArray(stage) &&
+      typeof (stage as Record<string, unknown>)['obj-expr'] === 'string' &&
+      Object.keys(stage as object).length === 1,
+  )
+}
+
+/** Matcher DSL over the entity pool (orphans included); edges always empty. */
+export async function queryEntities(matcherBody: unknown): Promise<BoMGraphContents> {
+  const res = await fetch('/api/v1/objs/entities/query', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(matcherBody),
+  })
+  return parseResponse<BoMGraphContents>(res)
+}
+
+/** Run Add objects Search against the current graph, the pool, or across graphs. */
 export async function queryAddObjects(
   body: unknown,
   graphId: string | null,
@@ -298,14 +323,16 @@ export async function queryAddObjects(
   if (scoped.kind === 'in-graph') {
     return queryInGraph(scoped.graphId!, scoped.body)
   }
+  if (scoped.kind === 'pool') {
+    return queryEntities(scoped.body)
+  }
   return queryGraphs(scoped.body)
 }
 
 /**
- * Route a built matcher body to the right query endpoint (WI-005 / Explorer / Query helpers).
+ * Route a built matcher body to the right query endpoint (Explorer / Query helpers).
  * With a current graph, bare `obj-expr` uses `POST …/graphs/{id}/query`. Without one, bare
- * `obj-expr` is wrapped as `[{ all: true }, obj-expr]` on `POST …/graphs/query` (union of graph
- * members; orphans excluded) — same fallback as Composer Add objects.
+ * `obj-expr` uses `POST …/entities/query` (pool, orphans included) — same as Composer Add objects.
  */
 export async function execMatcher(
   mode: MatcherMode,
@@ -316,8 +343,7 @@ export async function execMatcher(
     if (currentGraphId) {
       return queryInGraph(currentGraphId, body)
     }
-    const scoped = isBareObjExprMatcher(body) ? [{ all: true }, body] : body
-    return queryGraphs(scoped)
+    return queryEntities(body)
   }
   return queryGraphs(body)
 }

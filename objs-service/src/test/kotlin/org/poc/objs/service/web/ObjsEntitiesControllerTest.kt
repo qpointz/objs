@@ -51,6 +51,28 @@ class ObjsEntitiesControllerTest {
     }
 
     @Test
+    fun shouldQueryPool_withObjExpr() {
+        val id = UUID.randomUUID()
+        given(store.selectFromPool(anyObj())).willReturn(
+            org.poc.objs.core.domain.BoMGraphContents(
+                entities = listOf(BoMEntity(id = id, type = "Person", schemaVersion = "1")),
+                edges = emptyList(),
+            ),
+        )
+
+        mockMvc.perform(
+            post("/api/v1/objs/entities/query")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"obj-expr":"type == 'Person'"}"""),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.entities[0].id").value(id.toString()))
+            .andExpect(jsonPath("$.edges").isEmpty)
+
+        verify(store).selectFromPool(anyObj())
+    }
+
+    @Test
     fun shouldCreateEntity_inPoolOnly() {
         given(store.write(anyObj())).willReturn(BoMValidationResult.ok())
 

@@ -66,9 +66,11 @@ obj-expr: "type == 'Component' && a.app == 'payments' && p.kind == 'library'"
 - Ordered DSL arrays decode to `BoMChainedMatcher`. Only the first child may provide a candidate
   source; later children always filter in memory. Edges resolve after the final entity stage, scoped
   to the graph(s) selected by a stage-0 `all` / `graph-expr` (or the graph fixed by the request path).
-- **Scope rule (fail closed):** with no global graph, bare `obj-expr` is **not** "scan the whole pool
-  as a graph". A request must fix the graph — either the API path (`/graphs/{id}/query`) or a stage-0
-  `all` / `graph-expr` in a chained array. Bare `obj-expr` without either → rejected (`400`), lock G-G16.
+- **Scope rule (fail closed):** with no global graph, bare `obj-expr` on `/graphs/query` is **not**
+  "scan the whole pool as a graph". A request must fix the graph — either the API path
+  (`/graphs/{id}/query`) or a stage-0 `all` / `graph-expr` in a chained array. Bare `obj-expr`
+  without either → rejected (`400`), lock G-G16. **Pool search** (orphans included) uses
+  `POST /entities/query` with `obj-expr` instead — that is entity selection, not a whole-pool graph.
 
 ### Retired matchers (parity with pre-C-13 keys)
 
@@ -82,8 +84,10 @@ Superseded by the four forms above; retired keys reject with `MATCHER_DSL_RETIRE
 | `anno-expr: "k == 'v'"` | `obj-expr: "a.k == 'v'"` (annotation keys live under `a`, not top-level) |
 | `ids: […]` | `obj-expr: "id == '…' \|\| id == '…'"` (or chained equals) |
 
-HTTP query uses `POST /api/v1/objs/graphs/query` (header-scoped, `graph-expr`/chained) or
-`POST /api/v1/objs/graphs/{id}/query` (fixed graph, `obj-expr`/chained) — see [rest-api.md](../service/rest-api.md).
+HTTP query uses `POST /api/v1/objs/graphs/query` (header-scoped, `graph-expr`/chained),
+`POST /api/v1/objs/graphs/{id}/query` (fixed graph, `obj-expr`/chained), or
+`POST /api/v1/objs/entities/query` (pool `obj-expr`, orphans included, no edges) — see
+[rest-api.md](../service/rest-api.md).
 
 ## Graphs (persisted)
 

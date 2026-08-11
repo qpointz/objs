@@ -6,13 +6,20 @@ import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
+import jakarta.servlet.http.HttpServletRequest
 import org.poc.objs.core.domain.BoMEntity
 import org.poc.objs.core.domain.BoMGraph
+import org.poc.objs.core.domain.BoMGraphContents
+import org.poc.objs.core.match.BoMMatcherDsl
+import org.poc.objs.core.match.BoMMatcherFormat
 import org.poc.objs.core.persistence.BoMGraphStore
+import org.poc.objs.core.validation.BoMValidationException
 import org.poc.objs.core.validation.BoMValidationResult
 import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
+import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -20,6 +27,7 @@ import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import java.nio.charset.StandardCharsets
 import java.util.UUID
 
 /**
@@ -31,6 +39,7 @@ import java.util.UUID
 @Tag(name = "entities")
 class ObjsEntitiesController(
     private val store: BoMGraphStore,
+    private val matcherDsl: BoMMatcherDsl = BoMMatcherDsl.create(),
 ) {
     @Schema(description = "Pool entity write body")
     data class EntityWriteBody(
@@ -44,6 +53,38 @@ class ObjsEntitiesController(
     @GetMapping
     @Operation(summary = "List pool entities")
     fun list(): List<BoMEntity> = store.listEntities()
+
+    @PostMapping(
+        "/query",
+        consumes = [
+            MediaType.APPLICATION_JSON_VALUE,
+            "application/yaml",
+            "text/yaml",
+            "application/x-yaml",
+        ],
+    )
+    @Operation(
+        summary = "Matcher DSL (obj-expr) over the entity pool",
+        description = "Includes orphans (no graph membership). Accepts bare obj-expr or a chain of " +
+            "obj-expr only. Equality/`&&` pushdown uses SQL (`type = ?`, …). Edges are not returned " +
+            "(graph-local). Use /graphs/{id}/query or /graphs/query for graph-scoped selection.",
+    )
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "Matching pool entities (edges empty)",
+            content = [Content(schema = Schema(implementation = BoMGraphContents::class))],
+        ),
+        ApiResponse(
+            responseCode = "400",
+            description = "Invalid matcher DSL or non-obj-expr stage",
+            content = [Content(schema = Schema(implementation = BoMValidationResult::class))],
+        ),
+    )
+    fun query(request: HttpServletRequest): ResponseEntity<Any> {
+        val matcher = matcherDsl.decode(readBody(request), resolveFormat(request))
+        return ResponseEntity.ok(store.selectFromPool(matcher))
+    }
 
     @PostMapping
     @Operation(summary = "Create an entity in the pool only (no graph membership)")
@@ -120,6 +161,10 @@ class ObjsEntitiesController(
         return ResponseEntity.noContent().build()
     }
 
+    @ExceptionHandler(BoMValidationException::class)
+    fun handleValidation(ex: BoMValidationException): ResponseEntity<BoMValidationResult> =
+        ResponseEntity.badRequest().body(ex.result)
+
     private fun EntityWriteBody.toEntity() = BoMEntity(
         id = id,
         type = type,
@@ -127,4 +172,16 @@ class ObjsEntitiesController(
         payload = payload,
         annotations = annotations,
     )
+
+    private fun readBody(request: HttpServletRequest): String =
+        request.inputStream.readBytes().toString(StandardCharsets.UTF_8)
+
+    private fun resolveFormat(request: HttpServletRequest): BoMMatcherFormat {
+        val subtype = request.contentType?.let { MediaType.parseMediaType(it) }?.subtype?.lowercase().orEmpty()
+        return if (subtype.contains("yaml") || subtype.contains("yml")) {
+            BoMMatcherFormat.YAML
+        } else {
+            BoMMatcherFormat.JSON
+        }
+    }
 }

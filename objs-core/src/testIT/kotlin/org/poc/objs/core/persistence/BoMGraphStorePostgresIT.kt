@@ -32,7 +32,7 @@ import java.util.UUID
  */
 @DataJpaTest
 @ImportAutoConfiguration(ObjsCoreAutoConfiguration::class)
-@Import(BoMGraphStore::class, BoMNamedGraphStore::class)
+@Import(BoMGraphStore::class, BoMNamedGraphStore::class, BoMPoolEntityReader::class)
 @Testcontainers
 class BoMGraphStorePostgresIT {
 

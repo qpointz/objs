@@ -87,7 +87,8 @@ Matchers use shared `MatcherQueryForm` (**`all`** / **`graph-expr`** / **`obj-ex
 - **`all`** — union of stored members/edges across every graph (distinct by id); orphans excluded.
 - **`graph-expr`** — JEXL over graph header `id` and `a.*`; matching graphs contribute stored members/edges.
 - **`obj-expr`** — JEXL over entity fields. With an opened graph: scoped to that graph. With **no**
-  opened graph: wrapped as `[{ all: true }, obj-expr]` (union of graph members; orphans excluded).
+  opened graph: `POST /entities/query` over the **pool** (orphans included; equality/`&&` SQL
+  pushdown). `all` / `graph-expr` still use `/graphs/query`.
 - **chained** — Visual builder or JSON array of stages.
 
 ```json
@@ -471,7 +472,7 @@ Edit form: no duplicate Payload/Annotations section titles; per-field **delete**
 
 | API | |
 |-----|--|
-| Add objects / Search | With current graph: `POST /api/v1/objs/graphs/{id}/query`. With **no** graph: `POST /api/v1/objs/graphs/query` — bare `obj-expr` is wrapped as `[{ all: true }, obj-expr]` (union of graph members; orphans excluded) |
+| Add objects / Search | With current graph: `POST /api/v1/objs/graphs/{id}/query`. With **no** graph + `obj-expr`: `POST /api/v1/objs/entities/query` (pool, orphans included). `all` / `graph-expr`: `POST /api/v1/objs/graphs/query` |
 | Validate | `BoMGraphMutation` dry-run |
 | Save (existing graph) | `PUT /api/v1/objs/graphs/{id}` |
 | Save (no graph id) | `POST /api/v1/objs/graphs` with `entityIds` + edge upserts |

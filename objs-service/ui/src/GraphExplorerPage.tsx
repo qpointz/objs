@@ -49,11 +49,10 @@ const GRAPH_SESSION_STORAGE_KEY = 'objs.ui.graphExplorer.session'
 const EXPLORER_HELP = (
   <>
     With an opened graph, <Code>obj-expr</Code> queries that graph (
-    <Code>POST .../graphs/{'{id}'}/query</Code>). Without one, bare <Code>obj-expr</Code> runs
-    across all graphs as <Code>[{'{'} all: true {'}'}, obj-expr]</Code> (
-    <Code>POST .../graphs/query</Code>). <Code>graph-expr</Code> / chained always select graph(s)
-    by header. Click type pills to highlight matching objects; the selected object’s type pill
-    opens its schema in a new tab.
+    <Code>POST .../graphs/{'{id}'}/query</Code>). Without one, bare <Code>obj-expr</Code> queries
+    the entity pool (<Code>POST .../entities/query</Code>, orphans included). <Code>graph-expr</Code>{' '}
+    / <Code>all</Code> / chained with those stages select graph(s) by header. Click type pills to
+    highlight matching objects; the selected object’s type pill opens its schema in a new tab.
   </>
 )
 

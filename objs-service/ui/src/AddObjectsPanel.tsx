@@ -61,7 +61,7 @@ export function scalarPayloadColumns(entities: BoMEntity[], max = MAX_PAYLOAD_CO
 export type AddObjectsPanelProps = {
   /** When false, panel unmount effects reset auto-search state. */
   active: boolean
-  /** Current graph: Search scopes to its members; when null, Search runs across all graphs. */
+  /** Current graph: Search scopes to its members; when null, obj-expr Search uses the pool. */
   graphId: string | null
   onClose: () => void
   /** Hydrate matcher form (Explorer handoff). */
@@ -280,8 +280,8 @@ export function AddObjectsPanel({
         <Stack gap="xs" pb="xs">
           {!graphId && (
             <Alert color="gray" p="xs" title="No current graph">
-              Search runs across all graphs (union of members; orphan pool entities are not
-              included). Open or save a graph to scope Search to one graph.
+              obj-expr Search runs over the entity pool (includes orphans). Open or save a graph
+              to scope Search to one graph; all / graph-expr still select across graphs.
             </Alert>
           )}
           <MatcherQueryForm
