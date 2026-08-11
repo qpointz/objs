@@ -1,21 +1,23 @@
 import { useEffect, useState } from 'react'
 import { Alert, Button, Modal, Stack, Text, Table } from '@mantine/core'
-import { getSoftLinkSubgraph, listSoftLinkSubgraphs } from './api'
-import type { BoMSubgraph, SoftLinkSubgraphListItem } from './types'
+import { getGraph, listGraphs } from './api'
+import type { BoMGraphListItem, BoMGraphResponse } from './types'
 
 type Props = {
   opened: boolean
   onClose: () => void
-  onOpenPack: (subgraph: BoMSubgraph) => void
+  /** Called with the opened graph's id + resolved header/members. */
+  onOpen: (graphId: string, resolved: BoMGraphResponse) => void
 }
 
-export function SubgraphPacksModal({ opened, onClose, onOpenPack }: Props) {
+/** "Open graph…" (WI-005): lists `bom_graph` headers and resolves the chosen one. */
+export function OpenGraphModal({ opened, onClose, onOpen }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [items, setItems] = useState<SoftLinkSubgraphListItem[]>([])
+  const [items, setItems] = useState<BoMGraphListItem[]>([])
 
   async function refreshList() {
-    const listed = await listSoftLinkSubgraphs()
+    const listed = await listGraphs()
     setItems(listed)
   }
 
@@ -25,12 +27,12 @@ export function SubgraphPacksModal({ opened, onClose, onOpenPack }: Props) {
     void refreshList().catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
   }, [opened])
 
-  async function onOpen(id: string) {
+  async function onOpenRow(id: string) {
     setBusy(true)
     setError(null)
     try {
-      const pack = await getSoftLinkSubgraph(id)
-      onOpenPack(pack.subgraph)
+      const resolved = await getGraph(id)
+      onOpen(id, resolved)
       onClose()
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e))
@@ -40,7 +42,7 @@ export function SubgraphPacksModal({ opened, onClose, onOpenPack }: Props) {
   }
 
   return (
-    <Modal opened={opened} onClose={onClose} title="Open subgraph pack" size="lg">
+    <Modal opened={opened} onClose={onClose} title="Open graph" size="lg">
       <Stack gap="sm">
         {error && (
           <Alert color="red" title="Error">
@@ -48,8 +50,8 @@ export function SubgraphPacksModal({ opened, onClose, onOpenPack }: Props) {
           </Alert>
         )}
         <Text size="sm" c="dimmed">
-          Opens with replace (draft baselines reset to pack members). Create packs via Save →
-          Subgraph / Snapshot.
+          Opens with replace (draft baselines reset to this graph's members). Create a graph via
+          New graph, or Save ▾ → Clone.
         </Text>
         <Table striped highlightOnHover withTableBorder>
           <Table.Thead>
@@ -75,7 +77,7 @@ export function SubgraphPacksModal({ opened, onClose, onOpenPack }: Props) {
                   {item.entityCount}e / {item.edgeCount}E
                 </Table.Td>
                 <Table.Td>
-                  <Button size="xs" variant="light" loading={busy} onClick={() => void onOpen(item.id)}>
+                  <Button size="xs" variant="light" loading={busy} onClick={() => void onOpenRow(item.id)}>
                     Open
                   </Button>
                 </Table.Td>
@@ -85,7 +87,7 @@ export function SubgraphPacksModal({ opened, onClose, onOpenPack }: Props) {
         </Table>
         {items.length === 0 && (
           <Text size="sm" c="dimmed">
-            No packs yet.
+            No graphs yet.
           </Text>
         )}
       </Stack>

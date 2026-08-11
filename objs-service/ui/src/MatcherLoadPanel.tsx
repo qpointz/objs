@@ -4,7 +4,7 @@ import { MatcherQueryForm, type MatcherQueryFormHandle } from './MatcherQueryFor
 import type { QueryExecStats } from './queryExecStats'
 
 export { buildMatcherBody, hydrateFromMatcher } from './MatcherQueryForm'
-export type { MatcherMode, AnnoRow } from './MatcherQueryForm'
+export type { MatcherMode } from './MatcherQueryForm'
 
 type Props = {
   loading?: boolean

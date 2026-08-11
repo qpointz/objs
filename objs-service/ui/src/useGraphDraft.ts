@@ -7,7 +7,7 @@ import {
   cloneDocument,
   deleteEdgeFromDraft,
   deleteEntityFromDraft,
-  draftFromSubgraph,
+  draftFromGraphContents,
   emptyDraftState,
   EMPTY_GRAPH,
   excludeEdgeFromDraft,
@@ -25,7 +25,7 @@ import {
   type GraphDraftState,
   type GraphMutationDocument,
 } from './graphDraft'
-import type { BoMEdge, BoMEntity, BoMSubgraph } from './types'
+import type { BoMEdge, BoMEntity, BoMGraphContents } from './types'
 
 export function useGraphDraft(initial: GraphDraftDocument = EMPTY_GRAPH) {
   const [state, setState] = useState<GraphDraftState>(() => emptyDraftState(initial))
@@ -54,8 +54,8 @@ export function useGraphDraft(initial: GraphDraftDocument = EMPTY_GRAPH) {
     return null
   }, [])
 
-  const loadSubgraph = useCallback((subgraph: BoMSubgraph) => {
-    const next = draftFromSubgraph(subgraph)
+  const loadGraphContents = useCallback((contents: BoMGraphContents) => {
+    const next = draftFromGraphContents(contents)
     setState(next)
     setRollbackDocument(cloneDocument(next.document))
   }, [])
@@ -163,7 +163,7 @@ export function useGraphDraft(initial: GraphDraftDocument = EMPTY_GRAPH) {
     emptyMutation: EMPTY_MUTATION as GraphMutationDocument,
     setDocument,
     applyParsedMutation,
-    loadSubgraph,
+    loadGraphContents,
     resetToRollback,
     clearDraft,
     upsertEntity,

@@ -171,6 +171,8 @@ type Props = {
   invalidEdgeIds?: ReadonlySet<string>
   /** Add objects side panel (replaces edit form while open). */
   addObjectsOpen?: boolean
+  /** Current graph (WI-005): Add objects Search / induced-edge refresh are scoped to it. */
+  graphId?: string | null
   onCloseAddObjects?: () => void
   addObjectsMatcher?: unknown | null
   addObjectsAutoSearch?: boolean
@@ -216,6 +218,7 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
       invalidEntityIds,
       invalidEdgeIds,
       addObjectsOpen = false,
+      graphId = null,
       onCloseAddObjects,
       addObjectsMatcher = null,
       addObjectsAutoSearch = false,
@@ -1234,6 +1237,7 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
           {addObjectsOpen && onCloseAddObjects && onMergeEntities && onMergeEdges ? (
             <AddObjectsPanel
               active={addObjectsOpen}
+              graphId={graphId}
               onClose={onCloseAddObjects}
               matcher={addObjectsMatcher}
               autoSearch={addObjectsAutoSearch}

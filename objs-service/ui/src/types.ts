@@ -16,19 +16,20 @@ export type BoMEdge = {
   properties?: Record<string, unknown>
 }
 
-export type BoMSubgraph = {
+export type BoMGraphContents = {
   entities: BoMEntity[]
   edges: BoMEdge[]
 }
 
-/** Soft-link / evidence-pack subgraph header + resolved members. */
-export type SoftLinkSubgraph = {
+/** Graph header (`bom_graph`) + resolved member entities and graph-local edges. */
+export type BoMGraphResponse = {
   id: string
   annotations: Record<string, string>
-  subgraph: BoMSubgraph
+  graph: BoMGraphContents
 }
 
-export type SoftLinkSubgraphListItem = {
+/** `GET /api/v1/objs/graphs` list row with membership counts. */
+export type BoMGraphListItem = {
   id: string
   annotations: Record<string, string>
   entityCount: number

@@ -27,108 +27,70 @@ import {
   IconPlus,
   IconTrash,
 } from '@tabler/icons-react'
-import {
-  EMPTY_KEY_VALUE_ROWS,
-  KeyValueRowsEditor,
-  rowsToStringMap,
-  type KeyValueRow,
-} from './KeyValueRowsEditor'
 import { formatQueryExecStats, type QueryExecStats } from './queryExecStats'
 
-export type MatcherMode = 'anno' | 'anno-expr' | 'obj-expr' | 'subg-expr' | 'chained'
-export type AnnoRow = KeyValueRow
+/** Matcher modes: `all` / `graph-expr` / `obj-expr` / chained. */
+export type MatcherMode = 'all' | 'graph-expr' | 'obj-expr' | 'chained'
 
-type ChainStageKind = 'anno' | 'anno-expr' | 'obj-expr' | 'subg-expr'
+type ChainStageKind = 'all' | 'graph-expr' | 'obj-expr'
 type ChainStage =
-  | { kind: 'anno'; rows: AnnoRow[] }
-  | { kind: 'anno-expr'; expr: string }
+  | { kind: 'all' }
+  | { kind: 'graph-expr'; expr: string }
   | { kind: 'obj-expr'; expr: string }
-  | { kind: 'subg-expr'; expr: string }
 
-const SAMPLE_ANNO_ROWS: AnnoRow[] = [
-  { key: 'app', value: 'payments-api' },
-  { key: 'appVersion', value: '2.3.1' },
-]
-
-const SAMPLE_EXPR = "app == 'payments-api' && appVersion == '2.3.1'"
+const SAMPLE_GRAPH_EXPR = "a.env == 'prod'"
 const SAMPLE_OBJ_EXPR = "type == 'Product' && a.app == 'payments-api'"
-const SAMPLE_SUBG_EXPR = "a.decisionId == 'D-1'"
 
-const EMPTY_ANNO_ROWS: AnnoRow[] = EMPTY_KEY_VALUE_ROWS.map((row) => ({ ...row }))
 const EMPTY_EXPR = ''
 
 const MODE_OPTIONS = [
-  { value: 'anno', label: 'anno' },
-  { value: 'anno-expr', label: 'anno-expr' },
+  { value: 'all', label: 'all' },
+  { value: 'graph-expr', label: 'graph-expr' },
   { value: 'obj-expr', label: 'obj-expr' },
-  { value: 'subg-expr', label: 'subg-expr' },
   { value: 'chained', label: 'chained' },
 ]
 
 const STAGE_KIND_OPTIONS = [
-  { value: 'anno', label: 'anno' },
-  { value: 'anno-expr', label: 'anno-expr' },
+  { value: 'all', label: 'all' },
+  { value: 'graph-expr', label: 'graph-expr' },
   { value: 'obj-expr', label: 'obj-expr' },
-  { value: 'subg-expr', label: 'subg-expr' },
 ]
 
 const inputMono = { input: { fontFamily: 'var(--mantine-font-family-monospace)', fontSize: 12 } }
 
 export type MatcherFormState = {
   mode: MatcherMode
-  annoRows: AnnoRow[]
-  exprText: string
+  graphExprText: string
   objExprText: string
-  subgExprText: string
   chainStages: ChainStage[]
   chainedJson: string
   chainView: 'visual' | 'json'
 }
 
-function emptyStage(kind: ChainStageKind = 'anno'): ChainStage {
-  if (kind === 'anno') return { kind: 'anno', rows: [{ key: '', value: '' }] }
-  if (kind === 'anno-expr') return { kind: 'anno-expr', expr: '' }
-  if (kind === 'subg-expr') return { kind: 'subg-expr', expr: '' }
+function emptyStage(kind: ChainStageKind = 'graph-expr'): ChainStage {
+  if (kind === 'all') return { kind: 'all' }
+  if (kind === 'graph-expr') return { kind: 'graph-expr', expr: '' }
   return { kind: 'obj-expr', expr: '' }
 }
 
 function stageToMatcher(stage: ChainStage): unknown {
-  if (stage.kind === 'anno') {
-    const filter = rowsToStringMap(stage.rows)
-    if (Object.keys(filter).length === 0) {
-      throw new Error('Each anno stage needs at least one annotation key/value')
-    }
-    return { anno: filter }
-  }
+  if (stage.kind === 'all') return { all: true }
   const expression = stage.expr.trim()
   if (!expression) {
     throw new Error(`Provide a non-blank ${stage.kind} expression`)
   }
-  return stage.kind === 'anno-expr'
-    ? { 'anno-expr': expression }
-    : stage.kind === 'subg-expr'
-      ? { 'subg-expr': expression }
-      : { 'obj-expr': expression }
+  return stage.kind === 'graph-expr' ? { 'graph-expr': expression } : { 'obj-expr': expression }
 }
 
 function matcherToStage(body: unknown): ChainStage | null {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return null
   const obj = body as Record<string, unknown>
-  if (obj.anno != null && typeof obj.anno === 'object' && !Array.isArray(obj.anno)) {
-    const entries = Object.entries(obj.anno as Record<string, unknown>).map(([key, value]) => ({
-      key,
-      value: String(value ?? ''),
-    }))
-    return { kind: 'anno', rows: entries.length > 0 ? entries : [{ key: '', value: '' }] }
-  }
-  if (typeof obj['anno-expr'] === 'string') {
-    return { kind: 'anno-expr', expr: obj['anno-expr'] }
+  if (obj.all === true) return { kind: 'all' }
+  if (typeof obj['graph-expr'] === 'string') {
+    return { kind: 'graph-expr', expr: obj['graph-expr'] }
   }
   if (typeof obj['obj-expr'] === 'string') {
     return { kind: 'obj-expr', expr: obj['obj-expr'] }
-  }
-  if (typeof obj['subg-expr'] === 'string') {
-    return { kind: 'subg-expr', expr: obj['subg-expr'] }
   }
   return null
 }
@@ -141,29 +103,20 @@ function truncate(text: string, max = 56): string {
 
 function matcherSummary(
   mode: MatcherMode,
-  annoRows: AnnoRow[],
-  exprText: string,
+  graphExprText: string,
   objExprText: string,
-  subgExprText: string,
   chainStages: ChainStage[],
   chainedJson: string,
   chainView: 'visual' | 'json',
 ): string {
-  if (mode === 'anno') {
-    const n = Object.keys(rowsToStringMap(annoRows)).length
-    return n > 0 ? `anno · ${n} key${n === 1 ? '' : 's'}` : 'anno'
-  }
-  if (mode === 'anno-expr') {
-    const e = exprText.trim()
-    return e ? `anno-expr · ${truncate(e)}` : 'anno-expr'
+  if (mode === 'all') return 'all · every graph'
+  if (mode === 'graph-expr') {
+    const e = graphExprText.trim()
+    return e ? `graph-expr · ${truncate(e)}` : 'graph-expr'
   }
   if (mode === 'obj-expr') {
     const e = objExprText.trim()
     return e ? `obj-expr · ${truncate(e)}` : 'obj-expr'
-  }
-  if (mode === 'subg-expr') {
-    const e = subgExprText.trim()
-    return e ? `subg-expr · ${truncate(e)}` : 'subg-expr'
   }
   if (chainView === 'json') {
     try {
@@ -178,35 +131,24 @@ function matcherSummary(
 
 export function buildMatcherBody(
   mode: MatcherMode,
-  annoRows: AnnoRow[],
-  exprText: string,
+  graphExprText: string,
   objExprText: string,
-  subgExprText: string,
   chainStages: ChainStage[],
   chainedJson: string,
   chainView: 'visual' | 'json',
 ): unknown {
-  if (mode === 'anno') {
-    const filter = rowsToStringMap(annoRows)
-    if (Object.keys(filter).length === 0) {
-      throw new Error('Provide at least one annotation key/value')
-    }
-    return { anno: filter }
+  if (mode === 'all') {
+    return { all: true }
   }
-  if (mode === 'anno-expr') {
-    const expression = exprText.trim()
-    if (!expression) throw new Error('Provide a non-blank anno-expr expression')
-    return { 'anno-expr': expression }
+  if (mode === 'graph-expr') {
+    const expression = graphExprText.trim()
+    if (!expression) throw new Error('Provide a non-blank graph-expr expression')
+    return { 'graph-expr': expression }
   }
   if (mode === 'obj-expr') {
     const expression = objExprText.trim()
     if (!expression) throw new Error('Provide a non-blank obj-expr expression')
     return { 'obj-expr': expression }
-  }
-  if (mode === 'subg-expr') {
-    const expression = subgExprText.trim()
-    if (!expression) throw new Error('Provide a non-blank subg-expr expression')
-    return { 'subg-expr': expression }
   }
   if (chainView === 'json') {
     let parsed: unknown
@@ -233,10 +175,8 @@ export function hydrateFromMatcher(body: unknown): MatcherFormState | null {
     if (stages.some((s) => s == null)) {
       return {
         mode: 'chained',
-        annoRows: EMPTY_ANNO_ROWS.map((row) => ({ ...row })),
-        exprText: EMPTY_EXPR,
+        graphExprText: EMPTY_EXPR,
         objExprText: EMPTY_EXPR,
-        subgExprText: EMPTY_EXPR,
         chainStages: [emptyStage()],
         chainedJson: JSON.stringify(body, null, 2),
         chainView: 'json',
@@ -244,10 +184,8 @@ export function hydrateFromMatcher(body: unknown): MatcherFormState | null {
     }
     return {
       mode: 'chained',
-      annoRows: EMPTY_ANNO_ROWS.map((row) => ({ ...row })),
-      exprText: EMPTY_EXPR,
+      graphExprText: EMPTY_EXPR,
       objExprText: EMPTY_EXPR,
-      subgExprText: EMPTY_EXPR,
       chainStages: stages as ChainStage[],
       chainedJson: JSON.stringify(body, null, 2),
       chainView: 'visual',
@@ -255,29 +193,21 @@ export function hydrateFromMatcher(body: unknown): MatcherFormState | null {
   }
   if (!body || typeof body !== 'object') return null
   const obj = body as Record<string, unknown>
-  if (obj.anno != null && typeof obj.anno === 'object' && !Array.isArray(obj.anno)) {
-    const entries = Object.entries(obj.anno as Record<string, unknown>).map(([key, value]) => ({
-      key,
-      value: String(value ?? ''),
-    }))
+  if (obj.all === true) {
     return {
-      mode: 'anno',
-      annoRows: entries.length > 0 ? entries : [{ key: '', value: '' }],
-      exprText: EMPTY_EXPR,
+      mode: 'all',
+      graphExprText: EMPTY_EXPR,
       objExprText: EMPTY_EXPR,
-      subgExprText: EMPTY_EXPR,
       chainStages: [emptyStage()],
       chainedJson: '[]',
       chainView: 'visual',
     }
   }
-  if (typeof obj['anno-expr'] === 'string') {
+  if (typeof obj['graph-expr'] === 'string') {
     return {
-      mode: 'anno-expr',
-      annoRows: EMPTY_ANNO_ROWS.map((row) => ({ ...row })),
-      exprText: obj['anno-expr'],
+      mode: 'graph-expr',
+      graphExprText: obj['graph-expr'],
       objExprText: EMPTY_EXPR,
-      subgExprText: EMPTY_EXPR,
       chainStages: [emptyStage()],
       chainedJson: '[]',
       chainView: 'visual',
@@ -286,22 +216,8 @@ export function hydrateFromMatcher(body: unknown): MatcherFormState | null {
   if (typeof obj['obj-expr'] === 'string') {
     return {
       mode: 'obj-expr',
-      annoRows: EMPTY_ANNO_ROWS.map((row) => ({ ...row })),
-      exprText: EMPTY_EXPR,
+      graphExprText: EMPTY_EXPR,
       objExprText: obj['obj-expr'],
-      subgExprText: EMPTY_EXPR,
-      chainStages: [emptyStage()],
-      chainedJson: '[]',
-      chainView: 'visual',
-    }
-  }
-  if (typeof obj['subg-expr'] === 'string') {
-    return {
-      mode: 'subg-expr',
-      annoRows: EMPTY_ANNO_ROWS.map((row) => ({ ...row })),
-      exprText: EMPTY_EXPR,
-      objExprText: EMPTY_EXPR,
-      subgExprText: obj['subg-expr'],
       chainStages: [emptyStage()],
       chainedJson: '[]',
       chainView: 'visual',
@@ -312,6 +228,7 @@ export function hydrateFromMatcher(body: unknown): MatcherFormState | null {
 
 export type MatcherQueryFormHandle = {
   build: () => unknown
+  getMode: () => MatcherMode
 }
 
 type MatcherQueryFormProps = {
@@ -385,7 +302,7 @@ export const MatcherQueryForm = forwardRef<MatcherQueryFormHandle, MatcherQueryF
       error,
       matcher,
       emptyDefaults = false,
-      defaultMode = 'anno',
+      defaultMode = 'obj-expr',
       collapsible = false,
       defaultCollapsed = false,
       collapseStorageKey,
@@ -393,19 +310,13 @@ export const MatcherQueryForm = forwardRef<MatcherQueryFormHandle, MatcherQueryF
     ref,
   ) {
     const [mode, setMode] = useState<MatcherMode>(defaultMode)
-    const [annoRows, setAnnoRows] = useState<AnnoRow[]>(() =>
-      emptyDefaults
-        ? EMPTY_ANNO_ROWS.map((row) => ({ ...row }))
-        : SAMPLE_ANNO_ROWS.map((row) => ({ ...row })),
+    const [graphExprText, setGraphExprText] = useState(() =>
+      emptyDefaults ? EMPTY_EXPR : SAMPLE_GRAPH_EXPR,
     )
-    const [exprText, setExprText] = useState(() => (emptyDefaults ? EMPTY_EXPR : SAMPLE_EXPR))
     const [objExprText, setObjExprText] = useState(() =>
       emptyDefaults ? EMPTY_EXPR : SAMPLE_OBJ_EXPR,
     )
-    const [subgExprText, setSubgExprText] = useState(() =>
-      emptyDefaults ? EMPTY_EXPR : SAMPLE_SUBG_EXPR,
-    )
-    const [chainStages, setChainStages] = useState<ChainStage[]>(() => [emptyStage('anno')])
+    const [chainStages, setChainStages] = useState<ChainStage[]>(() => [emptyStage('graph-expr')])
     const [chainedJson, setChainedJson] = useState('[]')
     const [chainView, setChainView] = useState<'visual' | 'json'>('visual')
     const [chainJsonError, setChainJsonError] = useState<string | null>(null)
@@ -418,10 +329,8 @@ export const MatcherQueryForm = forwardRef<MatcherQueryFormHandle, MatcherQueryF
       const hydrated = hydrateFromMatcher(matcher)
       if (!hydrated) return
       setMode(hydrated.mode)
-      setAnnoRows(hydrated.annoRows)
-      setExprText(hydrated.exprText)
+      setGraphExprText(hydrated.graphExprText)
       setObjExprText(hydrated.objExprText)
-      setSubgExprText(hydrated.subgExprText)
       setChainStages(hydrated.chainStages)
       setChainedJson(hydrated.chainedJson)
       setChainView(hydrated.chainView)
@@ -431,19 +340,10 @@ export const MatcherQueryForm = forwardRef<MatcherQueryFormHandle, MatcherQueryF
     useImperativeHandle(
       ref,
       () => ({
-        build: () =>
-          buildMatcherBody(
-            mode,
-            annoRows,
-            exprText,
-            objExprText,
-            subgExprText,
-            chainStages,
-            chainedJson,
-            chainView,
-          ),
+        build: () => buildMatcherBody(mode, graphExprText, objExprText, chainStages, chainedJson, chainView),
+        getMode: () => mode,
       }),
-      [mode, annoRows, exprText, objExprText, subgExprText, chainStages, chainedJson, chainView],
+      [mode, graphExprText, objExprText, chainStages, chainedJson, chainView],
     )
 
     function setCollapsedPersist(next: boolean) {
@@ -482,9 +382,7 @@ export const MatcherQueryForm = forwardRef<MatcherQueryFormHandle, MatcherQueryF
         }
         const stages = parsed.map(matcherToStage)
         if (stages.some((s) => s == null)) {
-          setChainJsonError(
-            'JSON chain stages must be anno / anno-expr / obj-expr / subg-expr objects',
-          )
+          setChainJsonError('JSON chain stages must be all / graph-expr / obj-expr objects')
           return
         }
         setChainStages(stages as ChainStage[])
@@ -495,26 +393,22 @@ export const MatcherQueryForm = forwardRef<MatcherQueryFormHandle, MatcherQueryF
       }
     }
 
-    const summary = matcherSummary(
-      mode,
-      annoRows,
-      exprText,
-      objExprText,
-      subgExprText,
-      chainStages,
-      chainedJson,
-      chainView,
-    )
+    const summary = matcherSummary(mode, graphExprText, objExprText, chainStages, chainedJson, chainView)
 
     const editors = (
       <Stack gap={6}>
-        {mode === 'anno' && <KeyValueRowsEditor rows={annoRows} onChange={setAnnoRows} />}
+        {mode === 'all' && (
+          <Text size="xs" c="dimmed">
+            Selects every graph; returns the union of members and graph-local edges (distinct by id).
+            Orphan pool entities are not included.
+          </Text>
+        )}
 
-        {mode === 'anno-expr' && (
+        {mode === 'graph-expr' && (
           <ExprEditor
-            placeholder="anno-expr (e.g. app == 'x')"
-            value={exprText}
-            onChange={setExprText}
+            placeholder="graph-expr (id, a.* graph header annotations)"
+            value={graphExprText}
+            onChange={setGraphExprText}
           />
         )}
 
@@ -523,14 +417,6 @@ export const MatcherQueryForm = forwardRef<MatcherQueryFormHandle, MatcherQueryF
             placeholder="obj-expr (id, type, schemaVersion, a.*, p.*)"
             value={objExprText}
             onChange={setObjExprText}
-          />
-        )}
-
-        {mode === 'subg-expr' && (
-          <ExprEditor
-            placeholder="subg-expr (id, a.* pack header annotations)"
-            value={subgExprText}
-            onChange={setSubgExprText}
           />
         )}
 
@@ -566,7 +452,7 @@ export const MatcherQueryForm = forwardRef<MatcherQueryFormHandle, MatcherQueryF
                         data={STAGE_KIND_OPTIONS}
                         value={stage.kind}
                         onChange={(v) => {
-                          const kind = (v as ChainStageKind) ?? 'anno'
+                          const kind = (v as ChainStageKind) ?? 'graph-expr'
                           const next = [...chainStages]
                           next[index] = emptyStage(kind)
                           setChainStages(next)
@@ -618,23 +504,18 @@ export const MatcherQueryForm = forwardRef<MatcherQueryFormHandle, MatcherQueryF
                         </ActionIcon>
                       </Group>
                     </Group>
-                    {stage.kind === 'anno' && (
-                      <KeyValueRowsEditor
-                        rows={stage.rows}
-                        onChange={(rows) => {
-                          const next = [...chainStages]
-                          next[index] = { kind: 'anno', rows }
-                          setChainStages(next)
-                        }}
-                      />
+                    {stage.kind === 'all' && (
+                      <Text size="xs" c="dimmed">
+                        all graphs (union, distinct by id)
+                      </Text>
                     )}
-                    {stage.kind === 'anno-expr' && (
+                    {stage.kind === 'graph-expr' && (
                       <ExprEditor
-                        placeholder="anno-expr"
+                        placeholder="graph-expr"
                         value={stage.expr}
                         onChange={(expr) => {
                           const next = [...chainStages]
-                          next[index] = { kind: 'anno-expr', expr }
+                          next[index] = { kind: 'graph-expr', expr }
                           setChainStages(next)
                         }}
                       />
@@ -650,17 +531,6 @@ export const MatcherQueryForm = forwardRef<MatcherQueryFormHandle, MatcherQueryF
                         }}
                       />
                     )}
-                    {stage.kind === 'subg-expr' && (
-                      <ExprEditor
-                        placeholder="subg-expr"
-                        value={stage.expr}
-                        onChange={(expr) => {
-                          const next = [...chainStages]
-                          next[index] = { kind: 'subg-expr', expr }
-                          setChainStages(next)
-                        }}
-                      />
-                    )}
                   </Paper>
                 ))}
                 <Button
@@ -670,7 +540,7 @@ export const MatcherQueryForm = forwardRef<MatcherQueryFormHandle, MatcherQueryF
                   px={4}
                   leftSection={<IconPlus size={11} />}
                   onClick={() => {
-                    const next = [...chainStages, emptyStage('anno')]
+                    const next = [...chainStages, emptyStage('obj-expr')]
                     setChainStages(next)
                   }}
                 >

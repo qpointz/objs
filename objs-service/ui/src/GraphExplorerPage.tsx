@@ -24,8 +24,10 @@ import {
   type GraphLayout,
   type GraphNodePositions,
 } from './GraphCanvas'
-import { queryGraph, listSchemas, schemaDetailPath, subgraphFromGraphView, toGraphData } from './api'
+import { execMatcher, graphContentsFromGraphView, listSchemas, schemaDetailPath, toGraphData } from './api'
 import { colorForType } from './color'
+import { NewGraphModal } from './NewGraphModal'
+import { OpenGraphModal } from './OpenGraphModal'
 import {
   EntityAnnotationsView,
   EntityPayloadView,
@@ -34,10 +36,12 @@ import {
   MatcherQueryForm,
   type MatcherQueryFormHandle,
 } from './MatcherQueryForm'
+import { CurrentGraphBar } from './CurrentGraphBar'
 import { payloadFieldKindsByTypeVersion } from './payloadFieldKinds'
 import type { QueryExecStats } from './queryExecStats'
-import type { BoMSchema, GraphLink, GraphNode, GraphSelection } from './types'
+import type { BoMGraphResponse, BoMSchema, GraphLink, GraphNode, GraphSelection } from './types'
 import { applyTypeHighlightDimming, toggleTypeInSet } from './typeHighlightDimming'
+import { useCurrentGraphId } from './useCurrentGraph'
 import { newGraphQueryId, useGraphSelectionHistory } from './useGraphSelectionHistory'
 
 const GRAPH_MATCHER_STORAGE_KEY = 'objs.ui.graphExplorer.matcher'
@@ -141,6 +145,9 @@ export function GraphExplorerPage() {
   const [layout, setLayout] = useState<GraphLayout>(() => storedSession?.layout ?? 'TB')
   const [lastMatcher, setLastMatcher] = useState<unknown>(() => storedMatcher)
   const [canvasEpoch, setCanvasEpoch] = useState(0)
+  const [currentGraphId, setCurrentGraphId] = useCurrentGraphId()
+  const [openGraphOpen, setOpenGraphOpen] = useState(false)
+  const [newGraphOpen, setNewGraphOpen] = useState(false)
   const linksRef = useRef(links)
   linksRef.current = links
   const layoutRef = useRef(layout)
@@ -263,14 +270,15 @@ export function GraphExplorerPage() {
     setError(null)
     setFormError(null)
     try {
+      const mode = matcherRef.current?.getMode()
       const body = matcherRef.current?.build()
-      if (body === undefined) {
+      if (body === undefined || mode === undefined) {
         throw new Error('Matcher form is not ready')
       }
       const started = performance.now()
-      const subgraph = await queryGraph(body)
+      const contents = await execMatcher(mode, body, currentGraphId)
       const durationMs = performance.now() - started
-      const graph = toGraphData(subgraph)
+      const graph = toGraphData(contents)
       const qid = beginQueryResult()
       setExecStats({
         durationMs,
@@ -293,8 +301,7 @@ export function GraphExplorerPage() {
       clearStoredGraphSession()
       const message = e instanceof Error ? e.message : String(e)
       if (
-        message.includes('annotation') ||
-        message.includes('anno-expr') ||
+        message.includes('current graph') ||
         message.includes('Chained') ||
         message.includes('JSON') ||
         message.includes('Matcher form') ||
@@ -313,11 +320,29 @@ export function GraphExplorerPage() {
     if (nodes.length === 0) return
     navigate('/composer', {
       state: {
-        subgraph: subgraphFromGraphView(nodes, links),
+        graphContents: graphContentsFromGraphView(nodes, links),
         matcher: lastMatcher,
         addAll: true,
+        graphId: currentGraphId,
       },
     })
+  }
+
+  function onOpenGraph(id: string, resolved: BoMGraphResponse) {
+    setCurrentGraphId(id)
+    const graph = toGraphData(resolved.graph)
+    setNodes(graph.nodes)
+    setLinks(graph.links)
+    setHighlightedTypes(new Set())
+    setExecStats(null)
+    clearStoredGraphSession()
+    const qid = beginQueryResult()
+    persistSession(graph.nodes, graph.links, layout, qid)
+    setCanvasEpoch((n) => n + 1)
+  }
+
+  function onNewGraph(id: string) {
+    setCurrentGraphId(id)
   }
 
   function onOpenInQuery() {
@@ -349,8 +374,10 @@ export function GraphExplorerPage() {
         <div>
           <Title order={3}>Graph explorer</Title>
           <Text size="sm" c="dimmed">
-            Query <Code>POST /api/v1/objs/graph/query</Code>. Click type pills to highlight matching
-            objects; the selected object’s type pill opens its schema.
+            <Code>obj-expr</Code> queries the current graph (<Code>POST .../graphs/{'{id}'}/query</Code>);
+            <Code>graph-expr</Code> / chained select graph(s) by header (
+            <Code>POST .../graphs/query</Code>). Click type pills to highlight matching objects; the
+            selected object’s type pill opens its schema.
           </Text>
         </div>
         <Group gap="xs">
@@ -420,6 +447,12 @@ export function GraphExplorerPage() {
           </Group>
         </Group>
       </Group>
+
+      <CurrentGraphBar
+        graphId={currentGraphId}
+        onOpenGraph={() => setOpenGraphOpen(true)}
+        onNewGraph={() => setNewGraphOpen(true)}
+      />
 
       <Paper withBorder p="xs">
         <MatcherQueryForm
@@ -507,13 +540,13 @@ export function GraphExplorerPage() {
             >
               <Loader size="md" />
               <Text size="sm" c="dimmed">
-                Fetching subgraph…
+                Fetching graph…
               </Text>
             </Stack>
           )}
           {nodes.length === 0 && !loading ? (
             <Text c="dimmed" p="md">
-              Press Exec to load a subgraph.
+              Press Exec to load a graph.
             </Text>
           ) : (
             <GraphCanvas
@@ -675,6 +708,18 @@ export function GraphExplorerPage() {
           </ScrollArea>
         </Paper>
       </Group>
+
+      <OpenGraphModal
+        opened={openGraphOpen}
+        onClose={() => setOpenGraphOpen(false)}
+        onOpen={onOpenGraph}
+      />
+      <NewGraphModal
+        opened={newGraphOpen}
+        mode="new"
+        onClose={() => setNewGraphOpen(false)}
+        onCreated={onNewGraph}
+      />
     </Stack>
   )
 }

@@ -1,4 +1,4 @@
-import type { BoMEdge, BoMEntity, BoMSubgraph } from './types'
+import type { BoMEdge, BoMEntity, BoMGraphContents } from './types'
 
 export type GraphDraftDocument = {
   entities: BoMEntity[]
@@ -345,10 +345,10 @@ export function emptyDraftState(document: GraphDraftDocument = EMPTY_GRAPH): Gra
   }
 }
 
-export function draftFromSubgraph(subgraph: BoMSubgraph): GraphDraftState {
+export function draftFromGraphContents(contents: BoMGraphContents): GraphDraftState {
   const document: GraphDraftDocument = {
-    entities: (subgraph.entities ?? []).map(cloneEntity),
-    edges: (subgraph.edges ?? []).map((edge) =>
+    entities: (contents.entities ?? []).map(cloneEntity),
+    edges: (contents.edges ?? []).map((edge) =>
       cloneEdge({
         ...edge,
         id: edge.id ?? crypto.randomUUID(),

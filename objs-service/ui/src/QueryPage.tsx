@@ -17,17 +17,22 @@ import {
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   type BoMGremlinResult,
+  scopeMatcherToGraph,
   toGraphData,
   traverseGremlin,
 } from './api'
+import { CurrentGraphBar } from './CurrentGraphBar'
 import { GraphCanvas, type GraphCanvasHandle } from './GraphCanvas'
 import {
   MatcherQueryForm,
   type MatcherQueryFormHandle,
 } from './MatcherQueryForm'
+import { NewGraphModal } from './NewGraphModal'
+import { OpenGraphModal } from './OpenGraphModal'
 import { formatQueryDuration } from './queryExecStats'
 import { SyntaxCodeEditor } from './SyntaxCodeEditor'
 import type { GraphLink, GraphNode } from './types'
+import { useCurrentGraphId } from './useCurrentGraph'
 
 const SCRIPT_STORAGE_KEY = 'objs.ui.query.script'
 const MATCHER_STORAGE_KEY = 'objs.ui.query.matcher'
@@ -169,6 +174,9 @@ export function QueryPage() {
   const [result, setResult] = useState<BoMGremlinResult | null>(null)
   const [nodes, setNodes] = useState<GraphNode[]>([])
   const [links, setLinks] = useState<GraphLink[]>([])
+  const [currentGraphId, setCurrentGraphId] = useCurrentGraphId()
+  const [openGraphOpen, setOpenGraphOpen] = useState(false)
+  const [newGraphOpen, setNewGraphOpen] = useState(false)
 
   useEffect(() => {
     const navState = location.state as QueryNavState | null
@@ -197,7 +205,7 @@ export function QueryPage() {
     [result],
   )
 
-  const graphSubgraph = result?.subgraph ?? result?.views.graph ?? null
+  const graphContents = result?.contents ?? result?.views.graph ?? null
   const table = result?.views.table ?? null
   const scalar = result?.views.scalar
 
@@ -237,16 +245,19 @@ export function QueryPage() {
     setLoading(true)
     try {
       let matcherBody: unknown
+      let scopedMatcher: unknown
       try {
         matcherBody = matcherRef.current?.build()
+        const mode = matcherRef.current?.getMode()
+        if (matcherBody === undefined || mode === undefined) {
+          setMatcherError('Matcher is not ready')
+          setTopTab('matcher')
+          return
+        }
+        scopedMatcher = scopeMatcherToGraph(mode, matcherBody, currentGraphId)
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e)
         setMatcherError(message)
-        setTopTab('matcher')
-        return
-      }
-      if (matcherBody === undefined) {
-        setMatcherError('Matcher is not ready')
         setTopTab('matcher')
         return
       }
@@ -261,7 +272,7 @@ export function QueryPage() {
       setMatcher(matcherBody)
 
       const next = await traverseGremlin({
-        matcher: matcherBody,
+        matcher: scopedMatcher,
         script: trimmed,
         traversalOptions: {
           timeoutSeconds: options.timeoutSeconds,
@@ -271,7 +282,7 @@ export function QueryPage() {
       setResult(next)
       setResultTab('structured')
 
-      const sg = next.subgraph ?? next.views.graph ?? null
+      const sg = next.contents ?? next.views.graph ?? null
       if (sg != null) {
         const graph = toGraphData(sg)
         setNodes(graph.nodes)
@@ -296,8 +307,8 @@ export function QueryPage() {
         <div>
           <Title order={3}>Query</Title>
           <Text size="sm" c="dimmed">
-            Matcher selects a subgraph; gremlin-lang script runs via{' '}
-            <Code>POST /api/v1/objs/graph/traverse/gremlin</Code>.
+            Matcher selects graph contents (bare <Code>obj-expr</Code> is scoped to the current graph);
+            gremlin-lang script runs via <Code>POST /api/v1/objs/graph/traverse/gremlin</Code>.
           </Text>
         </div>
         <Group gap="xs">
@@ -311,6 +322,12 @@ export function QueryPage() {
           </Button>
         </Group>
       </Group>
+
+      <CurrentGraphBar
+        graphId={currentGraphId}
+        onOpenGraph={() => setOpenGraphOpen(true)}
+        onNewGraph={() => setNewGraphOpen(true)}
+      />
 
       <Box
         ref={splitHostRef}
@@ -454,7 +471,7 @@ export function QueryPage() {
                   Run Exec to see a tactical structured view (graph / table / scalar). Result UX is
                   demo-grade for now.
                 </Text>
-              ) : graphSubgraph != null && nodes.length > 0 ? (
+              ) : graphContents != null && nodes.length > 0 ? (
                 <div style={{ flex: 1, minHeight: 0 }}>
                   <GraphCanvas
                     ref={graphRef}
@@ -528,6 +545,18 @@ export function QueryPage() {
           </Tabs>
         </Paper>
       </Box>
+
+      <OpenGraphModal
+        opened={openGraphOpen}
+        onClose={() => setOpenGraphOpen(false)}
+        onOpen={(id) => setCurrentGraphId(id)}
+      />
+      <NewGraphModal
+        opened={newGraphOpen}
+        mode="new"
+        onClose={() => setNewGraphOpen(false)}
+        onCreated={(id) => setCurrentGraphId(id)}
+      />
     </Stack>
   )
 }

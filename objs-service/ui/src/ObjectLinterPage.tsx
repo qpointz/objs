@@ -17,16 +17,18 @@ import {
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { mutationShapeError, normalizeGraphMutation } from './graphDraft'
 import { putGraphMutation, validateGraphMutation, toGraphData } from './api'
-import { CreateSubgraphModal, type CreateSubgraphMode } from './CreateSubgraphModal'
+import { CurrentGraphBar } from './CurrentGraphBar'
 import { JsonYamlEditor, type JsonYamlEditorHandle } from './JsonYamlEditor'
+import { NewGraphModal, type NewGraphMode } from './NewGraphModal'
 import { NewUuidButton } from './NewUuidButton'
 import {
   ObjectLinterVisualPanel,
   type ObjectLinterVisualPanelHandle,
 } from './ObjectLinterVisualPanel'
+import { OpenGraphModal } from './OpenGraphModal'
 import type { QueryExecStats } from './queryExecStats'
-import { SubgraphPacksModal } from './SubgraphPacksModal'
-import type { BoMSubgraph, BoMValidationIssue, GraphValidationResult } from './types'
+import type { BoMGraphResponse, BoMGraphContents, BoMValidationIssue, GraphValidationResult } from './types'
+import { useCurrentGraphId } from './useCurrentGraph'
 import { useGraphDraft } from './useGraphDraft'
 import { useGraphSelectionHistory } from './useGraphSelectionHistory'
 import {
@@ -42,7 +44,9 @@ type ObjectLinterNavState = {
   /** Explorer handoff: merge all canvas objects (and edges) into the draft. */
   addAll?: boolean
   /** Explorer canvas snapshot — preferred over re-running matcher. */
-  subgraph?: BoMSubgraph
+  graphContents?: BoMGraphContents
+  /** Explorer handoff (WI-005): adopt this as the current graph if none is selected yet. */
+  graphId?: string
 }
 
 export function ObjectLinterPage() {
@@ -55,7 +59,7 @@ export function ObjectLinterPage() {
     emptyMutation,
     state,
     applyParsedMutation,
-    loadSubgraph,
+    loadGraphContents,
     resetToRollback,
     clearDraft,
     upsertEntity,
@@ -82,17 +86,13 @@ export function ObjectLinterPage() {
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<GraphValidationResult | null>(null)
   const [addObjectsOpen, setAddObjectsOpen] = useState(false)
-  const [packsOpen, setPacksOpen] = useState(false)
-  const [createPack, setCreatePack] = useState<CreateSubgraphMode | null>(null)
+  const [openGraphOpen, setOpenGraphOpen] = useState(false)
+  const [graphModal, setGraphModal] = useState<NewGraphMode | null>(null)
   const [handoffMatcher, setHandoffMatcher] = useState<unknown | null>(null)
   const [autoSearch, setAutoSearch] = useState(false)
   const [autoAddAllResults, setAutoAddAllResults] = useState(false)
   const [addObjectsStats, setAddObjectsStats] = useState<QueryExecStats | null>(null)
-
-  const draftSubgraph = useMemo<BoMSubgraph>(
-    () => ({ entities: document.entities, edges: document.edges }),
-    [document.entities, document.edges],
-  )
+  const [currentGraphId, setCurrentGraphId] = useCurrentGraphId()
 
   const graphView = useMemo(() => toGraphData(canvasDocument), [canvasDocument])
   const onFocusNode = useCallback((nodeId: string) => {
@@ -104,14 +104,38 @@ export function ObjectLinterPage() {
     onFocusNode,
   })
 
-  const openPack = useCallback(
-    (subgraph: BoMSubgraph) => {
-      loadSubgraph(subgraph)
+  /** Replace the draft with a graph's stored members (Open graph / Clone). */
+  const loadGraphMembers = useCallback(
+    (contents: BoMGraphContents) => {
+      loadGraphContents(contents)
       clearQuery()
       setResult(null)
       setError(null)
     },
-    [clearQuery, loadSubgraph],
+    [clearQuery, loadGraphContents],
+  )
+
+  const onOpenGraph = useCallback(
+    (id: string, resolved: BoMGraphResponse) => {
+      setCurrentGraphId(id)
+      loadGraphMembers(resolved.graph)
+    },
+    [loadGraphMembers, setCurrentGraphId],
+  )
+
+  const onGraphCreated = useCallback(
+    (id: string, resolved: BoMGraphResponse) => {
+      setCurrentGraphId(id)
+      if (graphModal === 'clone') {
+        loadGraphMembers(resolved.graph)
+      } else {
+        clearDraft()
+        clearQuery()
+        setResult(null)
+        setError(null)
+      }
+    },
+    [clearDraft, clearQuery, graphModal, loadGraphMembers, setCurrentGraphId],
   )
 
   const draftEntityIds = useMemo(
@@ -240,6 +264,10 @@ export function ObjectLinterPage() {
   }
 
   async function saveGraph() {
+    if (!currentGraphId) {
+      setError('Select or create a current graph before saving.')
+      return
+    }
     const synced = await syncTextIntoDraft()
     if (!synced) return
     setBusy(true)
@@ -252,7 +280,7 @@ export function ObjectLinterPage() {
         setError('Fix validation issues before Save')
         return
       }
-      await putGraphMutation(synced.body)
+      await putGraphMutation(currentGraphId, synced.body)
       markApplied()
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -284,17 +312,21 @@ export function ObjectLinterPage() {
     const navState = location.state as ObjectLinterNavState | null
     if (navState == null || typeof navState !== 'object') return
     const hasMatcher = 'matcher' in navState && navState.matcher !== undefined
-    const hasSubgraph = navState.subgraph != null && typeof navState.subgraph === 'object'
-    if (!hasMatcher && !hasSubgraph) return
+    const hasGraphContents = navState.graphContents != null && typeof navState.graphContents === 'object'
+    if (!hasMatcher && !hasGraphContents && !navState.graphId) return
 
     const matcher = hasMatcher ? navState.matcher : undefined
     const addAll = navState.addAll === true
-    const subgraph = hasSubgraph ? navState.subgraph : undefined
+    const graphContents = hasGraphContents ? navState.graphContents : undefined
     navigate('.', { replace: true, state: null })
 
-    if (addAll && subgraph) {
-      const entities = subgraph.entities ?? []
-      const edges = subgraph.edges ?? []
+    if (navState.graphId && !currentGraphId) {
+      setCurrentGraphId(navState.graphId)
+    }
+
+    if (addAll && graphContents) {
+      const entities = graphContents.entities ?? []
+      const edges = graphContents.edges ?? []
       if (entities.length > 0) mergeEntities(entities)
       if (edges.length > 0) mergeEdges(edges)
       setResult(null)
@@ -317,8 +349,8 @@ export function ObjectLinterPage() {
         <div>
           <Title order={3}>Object linter</Title>
           <Text size="sm" c="dimmed">
-            Add objects from the store into the draft, edit visually or as YAML/JSON, then Validate
-            or Save (transactional upsert + delete). Subgraph / Snapshot pack the draft.
+            Add objects into the draft, edit visually or as YAML/JSON, then Validate or Save
+            (transactional upsert + delete) into the current graph.
           </Text>
         </div>
         <Group>
@@ -330,9 +362,6 @@ export function ObjectLinterPage() {
             onClick={() => (addObjectsOpen ? closeAddObjects() : openAddObjects())}
           >
             {addObjectsOpen ? 'Hide add objects' : 'Add objects…'}
-          </Button>
-          <Button variant="light" onClick={() => setPacksOpen(true)}>
-            Open packs…
           </Button>
           <Button variant="default" onClick={resetToRollback}>
             Reset
@@ -354,6 +383,8 @@ export function ObjectLinterPage() {
           <Group gap={0} wrap="nowrap" style={{ display: 'inline-flex' }}>
             <Button
               loading={busy}
+              disabled={!currentGraphId}
+              title={currentGraphId ? undefined : 'Select or create a current graph first'}
               onClick={() => void saveGraph()}
               style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
             >
@@ -375,14 +406,32 @@ export function ObjectLinterPage() {
                 </Button>
               </Menu.Target>
               <Menu.Dropdown>
-                <Menu.Item onClick={() => void saveGraph()}>Save</Menu.Item>
-                <Menu.Item onClick={() => setCreatePack('soft')}>Subgraph</Menu.Item>
-                <Menu.Item onClick={() => setCreatePack('hard')}>Snapshot</Menu.Item>
+                <Menu.Item disabled={!currentGraphId} onClick={() => void saveGraph()}>
+                  Save
+                </Menu.Item>
+                <Menu.Item
+                  disabled={!currentGraphId}
+                  onClick={() => setGraphModal('clone')}
+                >
+                  Clone…
+                </Menu.Item>
               </Menu.Dropdown>
             </Menu>
           </Group>
         </Group>
       </Group>
+
+      <CurrentGraphBar
+        graphId={currentGraphId}
+        onOpenGraph={() => setOpenGraphOpen(true)}
+        onNewGraph={() => setGraphModal('new')}
+      />
+
+      {!currentGraphId && (
+        <Alert color="orange" title="No current graph" style={{ flexShrink: 0 }}>
+          Open an existing graph or create a new one before saving.
+        </Alert>
+      )}
 
       <Tabs
         value={tab}
@@ -443,6 +492,7 @@ export function ObjectLinterPage() {
             invalidEntityIds={invalidEntityIds}
             invalidEdgeIds={invalidEdgeIds}
             addObjectsOpen={addObjectsOpen}
+            graphId={currentGraphId}
             onCloseAddObjects={closeAddObjects}
             addObjectsMatcher={handoffMatcher}
             addObjectsAutoSearch={autoSearch}
@@ -626,17 +676,17 @@ export function ObjectLinterPage() {
         </Paper>
       )}
 
-      <SubgraphPacksModal
-        opened={packsOpen}
-        onClose={() => setPacksOpen(false)}
-        onOpenPack={openPack}
+      <OpenGraphModal
+        opened={openGraphOpen}
+        onClose={() => setOpenGraphOpen(false)}
+        onOpen={onOpenGraph}
       />
-      <CreateSubgraphModal
-        opened={createPack != null}
-        mode={createPack ?? 'soft'}
-        draftSubgraph={draftSubgraph}
-        onClose={() => setCreatePack(null)}
-        onHardCreated={openPack}
+      <NewGraphModal
+        opened={graphModal != null}
+        mode={graphModal ?? 'new'}
+        cloneSourceGraphId={currentGraphId}
+        onClose={() => setGraphModal(null)}
+        onCreated={onGraphCreated}
       />
     </Stack>
   )

@@ -13,7 +13,7 @@ describe('traverseGremlin', () => {
       json: async () => ({
         primary: 'table',
         items: [],
-        subgraph: null,
+        contents: null,
         views: { graph: null, table: { columns: ['name'], rows: [['a']] }, scalar: null },
         meta: {
           strategy: 'envelope',

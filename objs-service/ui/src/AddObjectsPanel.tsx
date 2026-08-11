@@ -10,13 +10,18 @@ import {
   Table,
   Text,
 } from '@mantine/core'
-import { queryGraph } from './api'
+import { queryInGraph } from './api'
 import {
   MatcherQueryForm,
   type MatcherQueryFormHandle,
 } from './MatcherQueryForm'
 import { formatQueryExecStats, type QueryExecStats } from './queryExecStats'
 import type { BoMEntity, BoMEdge } from './types'
+
+/** obj-expr OR-chain over ids — the graph-scoped substitute for the retired `ids` matcher key. */
+function objExprForIds(ids: string[]): string {
+  return ids.map((id) => `id == '${id}'`).join(' || ')
+}
 
 const PAGE_SIZE = 20
 const MAX_PAYLOAD_COLS = 6
@@ -56,6 +61,8 @@ export function scalarPayloadColumns(entities: BoMEntity[], max = MAX_PAYLOAD_CO
 export type AddObjectsPanelProps = {
   /** When false, panel unmount effects reset auto-search state. */
   active: boolean
+  /** Current graph (WI-005): Search / induced-edge refresh are scoped to this graph's members. */
+  graphId: string | null
   onClose: () => void
   /** Hydrate matcher form (Explorer handoff). */
   matcher?: unknown | null
@@ -77,6 +84,7 @@ export type AddObjectsPanelProps = {
 
 export function AddObjectsPanel({
   active,
+  graphId,
   onClose,
   matcher,
   autoSearch = false,
@@ -125,8 +133,8 @@ export function AddObjectsPanel({
 
   async function refreshInducedEdges(extraIds: Iterable<string> = []) {
     const storeBacked = storeIdsForEdgeRefresh(extraIds)
-    if (storeBacked.length === 0) return
-    const subgraph = await queryGraph({ ids: storeBacked })
+    if (storeBacked.length === 0 || !graphId) return
+    const subgraph = await queryInGraph(graphId, { 'obj-expr': objExprForIds(storeBacked) })
     const edges = subgraph.edges ?? []
     if (edges.length > 0) onMergeEdges(edges)
   }
@@ -163,9 +171,12 @@ export function AddObjectsPanel({
       if (body === undefined) {
         throw new Error('Matcher form is not ready')
       }
+      if (!graphId) {
+        throw new Error('Select or create a current graph before searching.')
+      }
       setSearchBusy(true)
       const started = performance.now()
-      const subgraph = await queryGraph(body)
+      const subgraph = await queryInGraph(graphId, body)
       const durationMs = performance.now() - started
       const entities = subgraph.entities ?? []
       const edges = subgraph.edges ?? []
@@ -270,6 +281,11 @@ export function AddObjectsPanel({
 
       <ScrollArea style={{ flex: 1, minHeight: 0 }} offsetScrollbars type="auto">
         <Stack gap="xs" pb="xs">
+          {!graphId && (
+            <Alert color="orange" p="xs" title="No current graph">
+              Select or create a current graph before searching.
+            </Alert>
+          )}
           <MatcherQueryForm
             ref={formRef}
             matcher={matcher}
@@ -278,7 +294,12 @@ export function AddObjectsPanel({
             error={formError}
             stats={stats}
             action={
-              <Button size="xs" loading={searchBusy} onClick={() => void runSearch()}>
+              <Button
+                size="xs"
+                loading={searchBusy}
+                disabled={!graphId}
+                onClick={() => void runSearch()}
+              >
                 Search
               </Button>
             }

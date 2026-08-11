@@ -1,8 +1,10 @@
 import type {
   BoMSchema,
   BoMSchemaUsage,
-  BoMSubgraph,
+  BoMGraphContents,
   BoMAllowedEdgeRule,
+  BoMGraphListItem,
+  BoMGraphResponse,
   EdgeRelationRequest,
   GraphLink,
   GraphNode,
@@ -10,14 +12,13 @@ import type {
   SchemaDefinitionRequest,
   SchemaLintResponse,
   SeedImportResult,
-  SoftLinkSubgraph,
-  SoftLinkSubgraphListItem,
   TypeEdgesResponse,
 } from './types'
+import type { MatcherMode } from './MatcherQueryForm'
 import { colorForType, nodeLabel } from './color'
 
-export function toGraphData(subgraph: BoMSubgraph): { nodes: GraphNode[]; links: GraphLink[] } {
-  const nodes: GraphNode[] = (subgraph.entities ?? []).map((e) => ({
+export function toGraphData(contents: BoMGraphContents): { nodes: GraphNode[]; links: GraphLink[] } {
+  const nodes: GraphNode[] = (contents.entities ?? []).map((e) => ({
     id: e.id,
     name: nodeLabel(e.payload, e.id),
     type: e.type,
@@ -28,7 +29,7 @@ export function toGraphData(subgraph: BoMSubgraph): { nodes: GraphNode[]; links:
   }))
 
   const idSet = new Set(nodes.map((n) => n.id))
-  const links: GraphLink[] = (subgraph.edges ?? [])
+  const links: GraphLink[] = (contents.edges ?? [])
     .filter((edge) => idSet.has(edge.source) && idSet.has(edge.target))
     .map((edge, i) => ({
       id: edge.id ?? `e-${edge.source}-${edge.target}-${edge.role}-${i}`,
@@ -43,8 +44,8 @@ export function toGraphData(subgraph: BoMSubgraph): { nodes: GraphNode[]; links:
   return { nodes, links }
 }
 
-/** Rebuild a BoMSubgraph from Explorer/Query canvas state (Open in Composer handoff). */
-export function subgraphFromGraphView(nodes: GraphNode[], links: GraphLink[]): BoMSubgraph {
+/** Rebuild a BoMGraphContents from Explorer/Query canvas state (Open in Composer handoff). */
+export function graphContentsFromGraphView(nodes: GraphNode[], links: GraphLink[]): BoMGraphContents {
   return {
     entities: nodes.map((n) => ({
       id: n.id,
@@ -98,7 +99,7 @@ export type BoMGremlinTable = {
 }
 
 export type BoMGremlinViews = {
-  graph?: BoMSubgraph | null
+  graph?: BoMGraphContents | null
   table?: BoMGremlinTable | null
   scalar?: unknown
 }
@@ -125,7 +126,7 @@ export type BoMGremlinItem = {
 export type BoMGremlinResult = {
   primary: string
   items: BoMGremlinItem[]
-  subgraph?: BoMSubgraph | null
+  contents?: BoMGraphContents | null
   views: BoMGremlinViews
   meta: BoMGremlinMeta
 }
@@ -149,80 +150,112 @@ export async function traverseGremlin(body: TraverseGremlinRequest): Promise<BoM
   return parseResponse<BoMGremlinResult>(res)
 }
 
-export async function queryGraph(matcherBody: unknown): Promise<BoMSubgraph> {
-  const res = await fetch('/api/v1/objs/graph/query', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(matcherBody),
-  })
-  return parseResponse<BoMSubgraph>(res)
+/**
+ * Graph lifecycle (`/api/v1/objs/graphs`, WI-004/WI-005): header CRUD, membership, graph-scoped
+ * mutate/query, and optional clone.
+ */
+export async function listGraphs(): Promise<BoMGraphListItem[]> {
+  const res = await fetch('/api/v1/objs/graphs')
+  return parseResponse<BoMGraphListItem[]>(res)
 }
 
-export async function listSoftLinkSubgraphs(): Promise<SoftLinkSubgraphListItem[]> {
-  const res = await fetch('/api/v1/objs/graph/subgraphs')
-  return parseResponse<SoftLinkSubgraphListItem[]>(res)
+export async function getGraph(id: string): Promise<BoMGraphResponse> {
+  const res = await fetch(`/api/v1/objs/graphs/${encodeURIComponent(id)}`)
+  return parseResponse<BoMGraphResponse>(res)
 }
 
-export async function getSoftLinkSubgraph(id: string): Promise<SoftLinkSubgraph> {
-  const res = await fetch(`/api/v1/objs/graph/subgraphs/${encodeURIComponent(id)}`)
-  return parseResponse<SoftLinkSubgraph>(res)
-}
-
-export async function createSoftLinkSubgraph(body: {
+export async function createGraph(body: {
   id?: string
-  annotations: Record<string, string>
-  entityIds: string[]
-  edgeIds: string[]
-}): Promise<SoftLinkSubgraph> {
-  const res = await fetch('/api/v1/objs/graph/subgraphs', {
+  annotations?: Record<string, string>
+  entityIds?: string[]
+}): Promise<BoMGraphResponse> {
+  const res = await fetch('/api/v1/objs/graphs', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    body: JSON.stringify({
+      id: body.id,
+      annotations: body.annotations ?? {},
+      entityIds: body.entityIds ?? [],
+    }),
   })
-  return parseResponse<SoftLinkSubgraph>(res)
+  return parseResponse<BoMGraphResponse>(res)
 }
 
-export async function snapshotSoftLinkSubgraph(
+export async function deleteGraph(id: string): Promise<void> {
+  const res = await fetch(`/api/v1/objs/graphs/${encodeURIComponent(id)}`, { method: 'DELETE' })
+  if (res.status === 204) return
+  await parseResponse(res)
+}
+
+export async function cloneGraph(
   id: string,
-  annotations: Record<string, string>,
-): Promise<SoftLinkSubgraph> {
-  const res = await fetch(`/api/v1/objs/graph/subgraphs/${encodeURIComponent(id)}/snapshot`, {
+  annotations: Record<string, string> = {},
+): Promise<BoMGraphResponse> {
+  const res = await fetch(`/api/v1/objs/graphs/${encodeURIComponent(id)}/clone`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ annotations }),
   })
-  return parseResponse<SoftLinkSubgraph>(res)
+  return parseResponse<BoMGraphResponse>(res)
 }
 
-export async function deleteSoftLinkSubgraph(id: string): Promise<void> {
-  const res = await fetch(`/api/v1/objs/graph/subgraphs/${encodeURIComponent(id)}`, {
-    method: 'DELETE',
+/** Matcher DSL (`obj-expr` / chained) scoped to this graph's stored members. */
+export async function queryInGraph(id: string, matcherBody: unknown): Promise<BoMGraphContents> {
+  const res = await fetch(`/api/v1/objs/graphs/${encodeURIComponent(id)}/query`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(matcherBody),
   })
-  if (!res.ok) {
-    await parseResponse<unknown>(res)
-  }
+  return parseResponse<BoMGraphContents>(res)
 }
 
-/** @deprecated Prefer [queryGraph] with an `anno` matcher body. */
-export async function fetchGraph(annotationJson: string): Promise<BoMSubgraph> {
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(annotationJson)
-  } catch {
-    throw new Error('Annotation box must be valid JSON')
+/** Matcher DSL over graph headers (stage-0 `all` or `graph-expr`); union of matching graphs. */
+export async function queryGraphs(matcherBody: unknown): Promise<BoMGraphContents> {
+  const res = await fetch('/api/v1/objs/graphs/query', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(matcherBody),
+  })
+  return parseResponse<BoMGraphContents>(res)
+}
+
+/**
+ * Route a built matcher body to the right graph-scoped query endpoint (WI-005). `obj-expr`
+ * requires a current graph and is scoped through [queryInGraph]; `all` / `graph-expr` / `chained`
+ * select graph(s) by header through [queryGraphs] (backend requires stage-0 `all` or `graph-expr`).
+ */
+export async function execMatcher(
+  mode: MatcherMode,
+  body: unknown,
+  currentGraphId: string | null,
+): Promise<BoMGraphContents> {
+  if (mode === 'obj-expr') {
+    if (!currentGraphId) {
+      throw new Error(
+        'Select or create a current graph before running a bare obj-expr matcher (or use graph-expr to open one).',
+      )
+    }
+    return queryInGraph(currentGraphId, body)
   }
-  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new Error('Annotation JSON must be an object, e.g. {"app":"payments-api"}')
+  return queryGraphs(body)
+}
+
+/**
+ * Wrap a built matcher body with a `graph-expr` stage scoping it to [currentGraphId] when needed
+ * (WI-005 Query page: `POST /graph/traverse/gremlin` takes a matcher, not a graph id path param).
+ */
+export function scopeMatcherToGraph(
+  mode: MatcherMode,
+  body: unknown,
+  currentGraphId: string | null,
+): unknown {
+  if (mode !== 'obj-expr') return body
+  if (!currentGraphId) {
+    throw new Error(
+      'Select or create a current graph before running a bare obj-expr matcher (or use graph-expr to open one).',
+    )
   }
-  const filter = Object.fromEntries(
-    Object.entries(parsed as Record<string, unknown>)
-      .filter(([, value]) => value !== null && value !== undefined)
-      .map(([key, value]) => [key, String(value)]),
-  )
-  if (Object.keys(filter).length === 0) {
-    throw new Error('Provide at least one annotation key/value')
-  }
-  return queryGraph({ anno: filter })
+  return [{ 'graph-expr': `id == '${currentGraphId}'` }, body]
 }
 
 export async function validateGraphDraft(graph: unknown): Promise<GraphValidationResult> {
@@ -257,13 +290,17 @@ export async function validateGraphMutation(mutation: GraphMutationBody): Promis
   return validateGraphDraft(mutation)
 }
 
-export async function putGraphMutation(mutation: GraphMutationBody): Promise<BoMSubgraph> {
-  const res = await fetch('/api/v1/objs/graph', {
+/** Mutate [graphId] in one transaction: upsert lands in the pool + this graph's membership. */
+export async function putGraphMutation(
+  graphId: string,
+  mutation: GraphMutationBody,
+): Promise<BoMGraphResponse> {
+  const res = await fetch(`/api/v1/objs/graphs/${encodeURIComponent(graphId)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(mutation),
   })
-  return parseResponse<BoMSubgraph>(res)
+  return parseResponse<BoMGraphResponse>(res)
 }
 
 export async function listSchemas(usage?: BoMSchemaUsage): Promise<BoMSchema[]> {

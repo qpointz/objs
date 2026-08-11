@@ -3,7 +3,7 @@ import {
   applyMutationDocument,
   buildMutationDocument,
   deleteEntityFromDraft,
-  draftFromSubgraph,
+  draftFromGraphContents,
   edgeStatus,
   emptyDraftState,
   entityStatus,
@@ -55,7 +55,7 @@ describe('graphDraft helpers', () => {
   })
 
   it('cascades incident edges when deleting an entity from a loaded draft', () => {
-    const loaded = draftFromSubgraph({
+    const loaded = draftFromGraphContents({
       entities: [
         { id: 'a', type: 'A', annotations: {} },
         { id: 'b', type: 'B', annotations: {} },
@@ -84,7 +84,7 @@ describe('graphDraft helpers', () => {
   })
 
   it('undoes soft-delete and modifications for loaded entities', () => {
-    const loaded = draftFromSubgraph({
+    const loaded = draftFromGraphContents({
       entities: [{ id: 'a', type: 'A', annotations: {}, payload: { name: 'orig' } }],
       edges: [],
     })
@@ -106,7 +106,7 @@ describe('graphDraft helpers', () => {
   })
 
   it('does not resurrect a cascaded soft-deleted edge when reverting the other endpoint', () => {
-    const loaded = draftFromSubgraph({
+    const loaded = draftFromGraphContents({
       entities: [
         { id: 'a', type: 'A', annotations: {}, payload: { name: 'orig' } },
         { id: 'b', type: 'B', annotations: {}, payload: {} },
@@ -138,7 +138,7 @@ describe('graphDraft helpers', () => {
   })
 
   it('tracks pending deletes when text replaces a loaded document', () => {
-    const loaded = draftFromSubgraph({
+    const loaded = draftFromGraphContents({
       entities: [{ id: 'a', type: 'A', annotations: {} }],
       edges: [],
     })
@@ -154,7 +154,7 @@ describe('graphDraft helpers', () => {
   })
 
   it('builds an empty mutation right after load', () => {
-    const loaded = draftFromSubgraph({
+    const loaded = draftFromGraphContents({
       entities: [
         { id: 'a', type: 'A', annotations: {}, payload: { name: 'x' } },
         { id: 'b', type: 'B', annotations: {}, payload: {} },
@@ -168,7 +168,7 @@ describe('graphDraft helpers', () => {
   })
 
   it('includes only created, modified, and deleted items in the mutation', () => {
-    const loaded = draftFromSubgraph({
+    const loaded = draftFromGraphContents({
       entities: [
         { id: 'a', type: 'A', annotations: {}, payload: { name: 'orig' } },
         { id: 'b', type: 'B', annotations: {}, payload: {} },
@@ -192,7 +192,7 @@ describe('graphDraft helpers', () => {
   })
 
   it('applies a mutation onto baseline without wiping unchanged loaded items', () => {
-    const loaded = draftFromSubgraph({
+    const loaded = draftFromGraphContents({
       entities: [
         { id: 'a', type: 'A', annotations: {}, payload: { name: 'orig' } },
         { id: 'b', type: 'B', annotations: {}, payload: {} },
@@ -215,7 +215,7 @@ describe('graphDraft helpers', () => {
   })
 
   it('merges entities without overwriting and excludes without pending deletes', () => {
-    const loaded = draftFromSubgraph({
+    const loaded = draftFromGraphContents({
       entities: [{ id: 'a', type: 'A', annotations: {}, payload: { name: 'keep' } }],
       edges: [],
     })
