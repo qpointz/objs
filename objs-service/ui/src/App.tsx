@@ -2,6 +2,7 @@ import { Navigate, Route, createBrowserRouter, createRoutesFromElements, RouterP
 import { AppLayout } from './AppLayout'
 import { GraphExplorerPage } from './GraphExplorerPage'
 import { ObjectLinterPage } from './ObjectLinterPage'
+import { ObjectsPage } from './ObjectsPage'
 import { QueryPage } from './QueryPage'
 import { SchemaExplorerPage } from './SchemaExplorerPage'
 import { SchemaLinterPage } from './SchemaLinterPage'
@@ -21,6 +22,7 @@ const router = createBrowserRouter(
     <Route element={<AppLayout />}>
       <Route index element={<Navigate to="/explorer" replace />} />
       <Route path="explorer" element={<GraphExplorerPage />} />
+      <Route path="objects" element={<ObjectsPage />} />
       <Route path="composer" element={<ObjectLinterPage />} />
       <Route path="query" element={<QueryPage />} />
       <Route path="model" element={<SchemaExplorerPage />} />

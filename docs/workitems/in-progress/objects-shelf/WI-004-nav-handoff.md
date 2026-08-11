@@ -6,6 +6,6 @@ Wire `/objects` route; place Objects **after Explorer** in L0 nav; New graph fro
 
 ## Acceptance
 
-- [ ] Nav order: Explorer · Objects · Composer · Query · Schema
-- [ ] Handoff uses `replaceDraft` + `graphContents` (entities only)
-- [ ] Vitest coverage for shelf + handoff helper
+- [x] Nav order: Explorer · Objects · Composer · Query · Schema
+- [x] Handoff uses `replaceDraft` + `graphContents` (entities only)
+- [x] Vitest coverage for shelf + handoff helper

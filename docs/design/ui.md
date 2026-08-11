@@ -57,6 +57,22 @@ dark/light toggle on the right:
 
 Legacy `/ui/**` URLs redirect into `/workbench/**` (e.g. `/ui/graph` → `/workbench/explorer`).
 
+L0 header order: **Explorer · Objects · Composer · Query · Schema**.
+
+## Objects
+
+Objects (`/workbench/objects`) is **read-only** pool exploration:
+
+1. **Search** — shared `MatcherQueryForm` (default `obj-expr`); bare `obj-expr` uses
+   `POST /entities/query` (orphans included). Result grid matches Composer **Add objects**.
+2. **Shelf** — client cart of entities (unique by id); add/remove from the grid; persisted in
+   `localStorage` (`objs.ui.objects.shelf`).
+3. **New graph from shelf** — navigates to Composer with `graphId: null`, `replaceDraft: true`,
+   and `graphContents: { entities: shelf, edges: [] }`. First **Save** in Composer creates the graph.
+
+Chrome: L1 title + help + primary actions (`sm`); main = matcher + table; right pane = shelf list
+(`xs` in-pane actions).
+
 ## Graph explorer
 
 Explorer is **read-only**: it may open graphs, run matchers, and display results. It does **not**

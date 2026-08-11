@@ -6,5 +6,5 @@ Extract shared entity result table from Add objects; ship Objects page search (p
 
 ## Acceptance
 
-- [ ] Shared table used by Add objects and Objects
-- [ ] Objects page: L1 chrome + MatcherQueryForm + paginated results
+- [x] Shared table used by Add objects and Objects
+- [x] Objects page: L1 chrome + MatcherQueryForm + paginated results

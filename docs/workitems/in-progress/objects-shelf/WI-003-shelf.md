@@ -6,5 +6,5 @@ Client shelf: add/remove from results, right-pane list, persist across navigatio
 
 ## Acceptance
 
-- [ ] `useObjectShelf` with `objs.ui.objects.shelf`
-- [ ] Right pane list with remove / clear; badge count on L1
+- [x] `useObjectShelf` with `objs.ui.objects.shelf`
+- [x] Right pane list with remove / clear; badge count on L1

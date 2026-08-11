@@ -1,6 +1,7 @@
 import { AppShell, ActionIcon, Group, Text, Tooltip, UnstyledButton, useMantineColorScheme } from '@mantine/core'
 import {
   IconAffiliate,
+  IconBox,
   IconMoon,
   IconPencilCode,
   IconRoute,
@@ -117,6 +118,11 @@ export function AppLayout() {
                 to="/explorer"
                 label="Explorer"
                 icon={<IconAffiliate size={16} stroke={1.75} />}
+              />
+              <HeaderNavLink
+                to="/objects"
+                label="Objects"
+                icon={<IconBox size={16} stroke={1.75} />}
               />
               <HeaderNavLink
                 to="/composer"

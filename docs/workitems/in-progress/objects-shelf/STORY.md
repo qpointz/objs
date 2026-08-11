@@ -2,7 +2,8 @@
 
 **Slug:** `objects-shelf`  
 **Branch:** `objects-shelf` (track `origin/objects-shelf`)  
-**Status:** planned  
+**Status:** in-progress  
+**Folder:** [`docs/workitems/in-progress/objects-shelf/`](.)  
 **Backlog:** [U-5](../../BACKLOG.md)  
 **Base:** `origin/dev` (post pool `obj-expr` + `||`/`!=` pushdown)  
 **Design:** [`ui.md`](../../../design/ui.md)  
@@ -36,14 +37,14 @@ park them on a client **shelf**, then **New graph from shelf** → Composer with
 
 ## Work Items
 
-- [ ] WI-001 — Design + story trackers (`WI-001-design.md`)
-- [ ] WI-002 — Shared result table + Objects search page (`WI-002-search-page.md`)
-- [ ] WI-003 — Shelf localStorage + pane UI (`WI-003-shelf.md`)
-- [ ] WI-004 — Nav after Explorer + Composer handoff + tests (`WI-004-nav-handoff.md`)
+- [x] WI-001 — Design + story trackers (`WI-001-design.md`)
+- [x] WI-002 — Shared result table + Objects search page (`WI-002-search-page.md`)
+- [x] WI-003 — Shelf localStorage + pane UI (`WI-003-shelf.md`)
+- [x] WI-004 — Nav after Explorer + Composer handoff + tests (`WI-004-nav-handoff.md`)
 
 ## Acceptance (story)
 
-- [ ] Objects appears in L0 nav **immediately after Explorer**
-- [ ] Search lists pool entities; add/remove shelf works across navigation
-- [ ] **New graph from shelf** opens Composer with replaced draft containing shelf entities
-- [ ] Design docs and UI tests green
+- [x] Objects appears in L0 nav **immediately after Explorer**
+- [x] Search lists pool entities; add/remove shelf works across navigation
+- [x] **New graph from shelf** opens Composer with replaced draft containing shelf entities
+- [x] Design docs and UI tests green

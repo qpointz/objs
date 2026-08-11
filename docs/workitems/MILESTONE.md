@@ -32,8 +32,8 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 
 ### In Progress
 
-_(none)_
+- [`objects-shelf`](in-progress/objects-shelf/STORY.md) — Objects top-level view (pool search + shelf) → New graph in Composer (U-5).
 
 ### Planned
 
-- [`objects-shelf`](planned/objects-shelf/STORY.md) — Objects top-level view (pool search + shelf) → New graph in Composer (U-5).
+_(none)_
