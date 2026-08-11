@@ -19,6 +19,7 @@ import org.poc.objs.core.domain.BoMSchemaCatalog
 import org.poc.objs.core.domain.BoMSchemaDsl
 import org.poc.objs.core.domain.BoMGraphException
 import org.poc.objs.core.domain.BoMGraphSpec
+import org.poc.objs.core.match.BoMGraphExprMatcher
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.SpringBootConfiguration
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration
@@ -467,6 +468,25 @@ class BoMNamedGraphStoreTest {
         val items = namedGraphs.search(q = "acme", expr = "a.env == 'prod'")
         assertThat(items).hasSize(1)
         assertThat(items[0].id).isEqualTo(hit.id)
+    }
+
+    @Test
+    fun shouldMatchingHeaders_byAnnotationEquality() {
+        val hit = namedGraphs.create(
+            BoMGraphSpec(annotations = mapOf("app" to "payments", "appVersion" to "1.0.0"), entityIds = setOf(a)),
+        )
+        namedGraphs.create(
+            BoMGraphSpec(annotations = mapOf("app" to "payments", "appVersion" to "2.0.0"), entityIds = setOf(b)),
+        )
+        namedGraphs.create(
+            BoMGraphSpec(annotations = mapOf("app" to "billing", "appVersion" to "1.0.0"), entityIds = setOf(a)),
+        )
+
+        val headers = namedGraphs.matchingHeaders(
+            BoMGraphExprMatcher("a.app == 'payments' && a.appVersion == '1.0.0'"),
+        )
+        assertThat(headers).hasSize(1)
+        assertThat(headers[0].id).isEqualTo(hit.id)
     }
 
     @Test

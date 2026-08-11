@@ -100,9 +100,35 @@ class BoMObjectSchemaTest {
         )
 
         assertThat(normalized.version).isEqualTo("1")
-        assertThat(normalized.contentSchema.required).containsExactly("name")
+        assertThat(normalized.contentSchema.fields!!.filter { it.required }.map { it.name })
+            .containsExactly("name")
         assertThat(normalized.contentSchema.fields!![0].name).isEqualTo("name")
         assertThat(normalized.contentSchema.fields!![0].stereotype).containsExactly("tags")
+    }
+
+    @Test
+    fun shouldIgnoreLegacyObjectLevelRequiredListOnDeserialize() {
+        val map = linkedMapOf<String, Any?>(
+            "type" to "OBJECT",
+            "title" to "Thing",
+            "description" to "Thing payload",
+            "fields" to listOf(
+                linkedMapOf(
+                    "name" to "name",
+                    "required" to true,
+                    "schema" to linkedMapOf(
+                        "type" to "STRING",
+                        "title" to "Name",
+                        "description" to "Name value",
+                    ),
+                ),
+            ),
+            "required" to listOf("name"),
+        )
+        val node = PayloadMapper.fromMap(map, BoMSchemaNode::class.java)
+        assertThat(node.fields).hasSize(1)
+        val roundTrip = PayloadMapper.toMap(node)
+        assertThat(roundTrip).doesNotContainKey("required")
     }
 
     @Test
@@ -152,5 +178,93 @@ class BoMObjectSchemaTest {
             )
         }.isInstanceOf(BoMSchemaDefinitionException::class.java)
             .hasMessageContaining("duplicate field name")
+    }
+
+    @Test
+    fun shouldProjectIdentifierAndSearchableExtensions() {
+        val definition = BoMSchema(
+            type = "Thing",
+            version = "1",
+            contentSchema = BoMSchemaDsl.obj(
+                "Thing",
+                "Thing payload",
+                listOf(
+                    BoMSchemaDsl.field(
+                        "name",
+                        BoMSchemaDsl.string("Name", "Name value"),
+                        identifier = true,
+                        searchable = true,
+                    ),
+                    BoMSchemaDsl.field(
+                        "note",
+                        BoMSchemaDsl.string("Note", "Optional note"),
+                        required = false,
+                    ),
+                ),
+            ),
+        )
+        @Suppress("UNCHECKED_CAST")
+        val properties = definition.toJsonSchema()["properties"] as Map<String, Map<String, Any?>>
+        assertThat(properties["name"]!!["x-objs-identifier"]).isEqualTo(true)
+        assertThat(properties["name"]!!["x-objs-searchable"]).isEqualTo(true)
+        assertThat(properties["note"]!!).doesNotContainKey("x-objs-identifier")
+    }
+
+    @Test
+    fun shouldRejectIdentifierOnObjectOrUnderArray() {
+        assertThatThrownBy {
+            BoMSchemaNormalizer.normalizeStrict(
+                BoMSchema(
+                    "Broken",
+                    "1",
+                    BoMSchemaDsl.obj(
+                        "Broken",
+                        "Bad identifier",
+                        listOf(
+                            BoMSchemaDsl.field(
+                                "nested",
+                                BoMSchemaDsl.obj("Nested", "Nested object"),
+                                identifier = true,
+                            ),
+                        ),
+                    ),
+                ),
+            )
+        }.isInstanceOf(BoMSchemaDefinitionException::class.java)
+            .hasMessageContaining("identifier is only allowed on scalar")
+
+        assertThatThrownBy {
+            BoMSchemaNormalizer.normalizeStrict(
+                BoMSchema(
+                    "Broken",
+                    "1",
+                    BoMSchemaDsl.obj(
+                        "Broken",
+                        "Bad array identifier",
+                        listOf(
+                            BoMSchemaDsl.field(
+                                "items",
+                                BoMSchemaDsl.array(
+                                    "Items",
+                                    "List",
+                                    BoMSchemaDsl.obj(
+                                        "Item",
+                                        "One item",
+                                        listOf(
+                                            BoMSchemaDsl.field(
+                                                "id",
+                                                BoMSchemaDsl.string("Id", "Item id"),
+                                                identifier = true,
+                                            ),
+                                        ),
+                                    ),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            )
+        }.isInstanceOf(BoMSchemaDefinitionException::class.java)
+            .hasMessageContaining("not allowed under ARRAY")
     }
 }

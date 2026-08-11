@@ -1,5 +1,6 @@
 package org.poc.objs.core.domain
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonInclude
 
 /**
@@ -8,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonInclude
  * The DSL is authoritative. JSON Schema is a generated projection used by validators and clients.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class BoMSchemaNode(
     val type: BoMSchemaType,
     val title: String,
@@ -16,16 +18,20 @@ data class BoMSchemaNode(
     val items: BoMSchemaNode? = null,
     val values: List<BoMEnumValue>? = null,
     val format: String? = null,
-    val required: List<String>? = null,
     val default: Any? = null,
 )
 
 /** Ordered field entry for an [BoMSchemaType.OBJECT] node. */
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class BoMSchemaField(
     val name: String,
     val schema: BoMSchemaNode,
     val required: Boolean = true,
+    @get:JsonInclude(JsonInclude.Include.NON_DEFAULT)
+    val identifier: Boolean = false,
+    @get:JsonInclude(JsonInclude.Include.NON_DEFAULT)
+    val searchable: Boolean = false,
     /** Presentation hints only; ignored by validation. */
     val stereotype: List<String>? = null,
 )
@@ -69,7 +75,11 @@ object BoMSchemaNormalizer {
         )
     }
 
-    private fun normalizeNode(path: String, node: BoMSchemaNode): BoMSchemaNode {
+    private fun normalizeNode(
+        path: String,
+        node: BoMSchemaNode,
+        underArray: Boolean = false,
+    ): BoMSchemaNode {
         if (node.title.isBlank()) invalid("$path.title must not be blank")
         if (node.description.isBlank()) invalid("$path.description must not be blank")
 
@@ -83,9 +93,11 @@ object BoMSchemaNormalizer {
                     val name = field.name.trim()
                     if (name.isBlank()) invalid("$fieldPath.name must not be blank")
                     if (!names.add(name)) invalid("$path has duplicate field name '$name'")
+                    val nested = normalizeNode("$fieldPath.schema", field.schema, underArray)
+                    validateFieldFlags(fieldPath, field, nested, underArray)
                     field.copy(
                         name = name,
-                        schema = normalizeNode("$fieldPath.schema", field.schema),
+                        schema = nested,
                         stereotype = field.stereotype
                             ?.map(String::trim)
                             ?.filter(String::isNotEmpty)
@@ -97,22 +109,21 @@ object BoMSchemaNormalizer {
                     title = node.title.trim(),
                     description = node.description.trim(),
                     fields = normalizedFields,
-                    required = normalizedFields.filter { it.required }.map { it.name }.takeIf { it.isNotEmpty() },
                 )
             }
 
             BoMSchemaType.ARRAY -> {
-                reject(path, node, fields = true, values = true, format = true, required = true)
+                reject(path, node, fields = true, values = true, format = true)
                 val items = node.items ?: invalid("$path.items is required for ARRAY")
                 node.copy(
                     title = node.title.trim(),
                     description = node.description.trim(),
-                    items = normalizeNode("$path.items", items),
+                    items = normalizeNode("$path.items", items, underArray = true),
                 )
             }
 
             BoMSchemaType.ENUM -> {
-                reject(path, node, fields = true, items = true, format = true, required = true)
+                reject(path, node, fields = true, items = true, format = true)
                 val values = node.values ?: invalid("$path.values is required for ENUM")
                 if (values.isEmpty()) invalid("$path.values must not be empty")
                 val seen = mutableSetOf<String>()
@@ -133,7 +144,7 @@ object BoMSchemaNormalizer {
             }
 
             BoMSchemaType.STRING -> {
-                reject(path, node, fields = true, items = true, values = true, required = true)
+                reject(path, node, fields = true, items = true, values = true)
                 if (node.format != null && node.format !in allowedStringFormats) {
                     invalid("$path.format must be one of ${allowedStringFormats.sorted().joinToString(", ")}")
                 }
@@ -144,11 +155,38 @@ object BoMSchemaNormalizer {
             BoMSchemaType.INTEGER,
             BoMSchemaType.BOOLEAN,
             -> {
-                reject(path, node, fields = true, items = true, values = true, format = true, required = true)
+                reject(path, node, fields = true, items = true, values = true, format = true)
                 node.copy(title = node.title.trim(), description = node.description.trim())
             }
         }
     }
+
+    private fun validateFieldFlags(
+        fieldPath: String,
+        field: BoMSchemaField,
+        nested: BoMSchemaNode,
+        underArray: Boolean,
+    ) {
+        if (!field.identifier && !field.searchable) return
+        if (underArray) {
+            invalid("$fieldPath identifier/searchable is not allowed under ARRAY")
+        }
+        val scalar = nested.type in SCALAR_FLAG_TYPES
+        if (field.identifier && !scalar) {
+            invalid("$fieldPath.identifier is only allowed on scalar field schemas")
+        }
+        if (field.searchable && !scalar) {
+            invalid("$fieldPath.searchable is only allowed on scalar field schemas")
+        }
+    }
+
+    private val SCALAR_FLAG_TYPES = setOf(
+        BoMSchemaType.STRING,
+        BoMSchemaType.NUMBER,
+        BoMSchemaType.INTEGER,
+        BoMSchemaType.BOOLEAN,
+        BoMSchemaType.ENUM,
+    )
 
     private fun reject(
         path: String,
@@ -157,13 +195,11 @@ object BoMSchemaNormalizer {
         items: Boolean = false,
         values: Boolean = false,
         format: Boolean = false,
-        required: Boolean = false,
     ) {
         if (fields && node.fields != null) invalid("$path.fields is only allowed for OBJECT")
         if (items && node.items != null) invalid("$path.items is only allowed for ARRAY")
         if (values && node.values != null) invalid("$path.values is only allowed for ENUM")
         if (format && node.format != null) invalid("$path.format is only allowed for STRING")
-        if (required && node.required != null) invalid("$path.required is only allowed for OBJECT")
     }
 
     private fun invalid(message: String): Nothing = throw BoMSchemaDefinitionException(message)
@@ -199,6 +235,8 @@ object BoMJsonSchema {
                     field.stereotype?.takeIf { it.isNotEmpty() }?.let {
                         projected["x-objs-stereotype"] = it
                     }
+                    if (field.identifier) projected["x-objs-identifier"] = true
+                    if (field.searchable) projected["x-objs-searchable"] = true
                     properties[field.name] = projected
                     if (field.required) required += field.name
                 }
@@ -298,6 +336,8 @@ object BoMSchemaDsl {
         name: String,
         schema: BoMSchemaNode,
         required: Boolean = true,
+        identifier: Boolean = false,
+        searchable: Boolean = false,
         stereotype: List<String>? = null,
-    ) = BoMSchemaField(name, schema, required, stereotype)
+    ) = BoMSchemaField(name, schema, required, identifier, searchable, stereotype)
 }

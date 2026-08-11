@@ -8,10 +8,12 @@ import org.poc.objs.core.domain.BoMAllowedEdgeRule
 import org.poc.objs.core.domain.BoMEdge
 import org.poc.objs.core.domain.BoMEntity
 import org.poc.objs.core.domain.BoMGraph
+import org.poc.objs.core.domain.BoMGraphSpec
 import org.poc.objs.core.domain.BoMPropertiesPolicy
 import org.poc.objs.core.domain.BoMSchema
 import org.poc.objs.core.domain.BoMSchemaCatalog
 import org.poc.objs.core.domain.BoMSchemaDsl
+import org.poc.objs.core.match.BoMGraphExprMatcher
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.SpringBootConfiguration
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration
@@ -30,7 +32,7 @@ import java.util.UUID
  */
 @DataJpaTest
 @ImportAutoConfiguration(ObjsCoreAutoConfiguration::class)
-@Import(BoMGraphStore::class)
+@Import(BoMGraphStore::class, BoMNamedGraphStore::class)
 @Testcontainers
 class BoMGraphStorePostgresIT {
 
@@ -69,6 +71,9 @@ class BoMGraphStorePostgresIT {
 
     @Autowired
     lateinit var graphRepository: BoMGraphRepository
+
+    @Autowired
+    lateinit var namedGraphs: BoMNamedGraphStore
 
     /** Edges require an owning graph (`graph_id` NOT NULL); every edge in this file shares [graphId]. */
     private lateinit var graphId: UUID
@@ -138,6 +143,79 @@ class BoMGraphStorePostgresIT {
             Int::class.java,
         )
         assertThat(count).isEqualTo(1)
+    }
+
+    @Test
+    fun shouldHaveGraphAnnotationsGinIndex_afterV2() {
+        val count = jdbc.queryForObject(
+            """
+            SELECT COUNT(*) FROM pg_indexes
+            WHERE tablename = 'bom_graph'
+              AND indexname = 'idx_bom_graph_annotations_gin'
+            """.trimIndent(),
+            Int::class.java,
+        )
+        assertThat(count).isEqualTo(1)
+    }
+
+    @Test
+    fun shouldHaveGraphScopedEdgeCompositeIndexes_afterV2() {
+        val names = jdbc.queryForList(
+            """
+            SELECT indexname FROM pg_indexes
+            WHERE tablename = 'bom_graph_edge'
+              AND indexname IN (
+                'idx_bom_graph_edge_graph_source',
+                'idx_bom_graph_edge_graph_target'
+              )
+            ORDER BY indexname
+            """.trimIndent(),
+            String::class.java,
+        )
+        assertThat(names).containsExactly(
+            "idx_bom_graph_edge_graph_source",
+            "idx_bom_graph_edge_graph_target",
+        )
+    }
+
+    @Test
+    fun shouldPushdownGraphExpr_byAnnotationContainment() {
+        val entityId = UUID.randomUUID()
+        assertThat(
+            store.write(
+                BoMGraph(
+                    entities = mutableListOf(
+                        BoMEntity(
+                            id = entityId,
+                            type = "Person",
+                            schemaVersion = "1",
+                            payload = mutableMapOf("name" to "X"),
+                        ),
+                    ),
+                ),
+            ).isValid,
+        ).isTrue()
+        val hit = namedGraphs.create(
+            BoMGraphSpec(
+                annotations = mapOf("app" to "payments-api", "appVersion" to "2.3.1"),
+                entityIds = setOf(entityId),
+            ),
+        )
+        namedGraphs.create(
+            BoMGraphSpec(
+                annotations = mapOf("app" to "payments-api", "appVersion" to "2.4.0"),
+                entityIds = setOf(entityId),
+            ),
+        )
+
+        val headers = namedGraphs.matchingHeaders(
+            BoMGraphExprMatcher("a.app == 'payments-api' && a.appVersion == '2.3.1'"),
+        )
+        assertThat(headers).hasSize(1)
+        assertThat(headers[0].id).isEqualTo(hit.id)
+
+        val searched = namedGraphs.search(expr = "a.app == 'payments-api' && a.appVersion == '2.3.1'")
+        assertThat(searched.map { it.id }).containsExactly(hit.id)
     }
 
     @Test

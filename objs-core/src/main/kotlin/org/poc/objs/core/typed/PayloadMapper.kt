@@ -9,6 +9,7 @@ import tools.jackson.module.kotlin.kotlinModule
 object PayloadMapper {
     val mapper: JsonMapper = JsonMapper.builder()
         .addModule(kotlinModule())
+        .disable(tools.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
         .build()
 
     @Suppress("UNCHECKED_CAST")

@@ -108,7 +108,35 @@ class BoMGraphStore(
             }
         }
         val lookup = validator.combinedLookup(graph.entities, projectedStore)
-        return validator.validateEdges(graph.edges, lookup)
+        val edgeResult = validator.validateEdges(graph.edges, lookup)
+        if (!edgeResult.isValid) {
+            return edgeResult
+        }
+        val identityIssues = mutableListOf<BoMValidationIssue>()
+        graph.entities.forEachIndexed { index, entity ->
+            val id = entity.id ?: return@forEachIndexed
+            if (id in deleted) return@forEachIndexed
+            val stored = entityRepository.findById(id).orElse(null)?.toDomain() ?: return@forEachIndexed
+            identityIssues += validator.validateEntityIdentifierImmutability(
+                stored,
+                entity,
+                path = "entities[$index]",
+            )
+        }
+        graph.edges.forEachIndexed { index, edge ->
+            val id = edge.id ?: return@forEachIndexed
+            val stored = edgeRepository.findById(id).orElse(null)?.toDomain() ?: return@forEachIndexed
+            identityIssues += validator.validateEdgeIdentifierImmutability(
+                stored,
+                edge,
+                path = "edges[$index]",
+            )
+        }
+        return if (identityIssues.isEmpty()) {
+            BoMValidationResult.ok()
+        } else {
+            BoMValidationResult.of(identityIssues)
+        }
     }
 
     @Transactional
@@ -281,13 +309,7 @@ class BoMGraphStore(
             is BoMAllGraphsMatcher ->
                 namedGraphs.list().mapNotNull { item -> namedGraphs.get(item.id) }
             is BoMGraphExprMatcher ->
-                namedGraphs.list().mapNotNull { item ->
-                    if (first.matchesHeader(item.id, item.annotations)) {
-                        namedGraphs.get(item.id)
-                    } else {
-                        null
-                    }
-                }
+                namedGraphs.matchingHeaders(first).mapNotNull { item -> namedGraphs.get(item.id) }
             else -> emptyList()
         }
         val entityById = linkedMapOf<UUID, BoMEntity>()

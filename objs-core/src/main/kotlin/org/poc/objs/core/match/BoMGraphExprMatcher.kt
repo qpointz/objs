@@ -41,11 +41,20 @@ object BoMGraphExprCompile {
  * DSL `graph-expr` (evolution of the former `subg-expr`) — JEXL over graph headers
  * (`id`, `a` annotations). Selection executor unions **stored** members + graph-local edges
  * of matching graph(s); it never induces edges over the whole pool (G-G15/G-G16).
+ *
+ * When the expression lowers to equality/`&&` over `id` / `a.*` (see [BoMGraphExprLowerer]),
+ * Postgres may push it down via PK / `annotations @>` (GIN); otherwise headers are filtered
+ * in memory after a table scan.
  */
 class BoMGraphExprMatcher(
     val expression: String,
     private val compiled: JexlExpression = BoMGraphExprCompile.compile(expression),
 ) : BoMMatcher {
+    val pushdown: BoMGraphExprPushdown? = BoMGraphExprLowerer.toPushdown(compiled)
+
+    val localEvalOnly: Boolean
+        get() = pushdown == null
+
     /** Header matchers do not filter individual entity candidates directly. */
     override fun matches(candidate: BoMEntityMatchCandidate): Boolean = true
 

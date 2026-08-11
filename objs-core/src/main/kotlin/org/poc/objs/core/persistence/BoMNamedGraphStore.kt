@@ -1,5 +1,7 @@
 package org.poc.objs.core.persistence
 
+import com.fasterxml.jackson.core.type.TypeReference
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.poc.objs.core.domain.BoMEdge
 import org.poc.objs.core.domain.BoMEntity
 import org.poc.objs.core.domain.BoMGraph
@@ -11,15 +13,19 @@ import org.poc.objs.core.domain.BoMGraphException
 import org.poc.objs.core.domain.BoMGraphListItem
 import org.poc.objs.core.domain.BoMGraphSpec
 import org.poc.objs.core.match.BoMGraphExprMatcher
+import org.poc.objs.core.match.BoMGraphExprPushdown
 import org.poc.objs.core.validation.BoMEntityTypeLookup
 import org.poc.objs.core.validation.BoMPersistGate
 import org.poc.objs.core.validation.BoMValidationIssue
 import org.poc.objs.core.validation.BoMValidationResult
 import org.poc.objs.core.validation.BoMValidator
 import org.springframework.context.annotation.Lazy
+import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.jdbc.core.RowMapper
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
+import javax.sql.DataSource
 
 /**
  * Graph store: entity membership is M2M (`bom_graph_entity`); edges are graph-owned via
@@ -32,8 +38,30 @@ class BoMNamedGraphStore(
     private val entityRepository: BoMEntityRepository,
     private val edgeRepository: BoMEdgeRepository,
     private val validator: BoMValidator,
+    private val dataSource: DataSource,
     @Lazy private val graphStore: BoMGraphStore,
 ) {
+    private val jdbc = JdbcTemplate(dataSource)
+    private val objectMapper = ObjectMapper()
+    private val postgres: Boolean by lazy {
+        dataSource.connection.use { connection ->
+            connection.metaData.databaseProductName.equals("PostgreSQL", ignoreCase = true)
+        }
+    }
+    private val headerRowMapper = RowMapper { rs, _ ->
+        val annotationsJson = rs.getString("annotations")
+        val annotations: Map<String, String> =
+            if (annotationsJson.isNullOrBlank()) {
+                emptyMap()
+            } else {
+                objectMapper.readValue(annotationsJson, ANNOTATIONS_TYPE)
+            }
+        BoMGraphHeader(
+            id = rs.getObject("id", UUID::class.java),
+            annotations = annotations,
+        )
+    }
+
     private fun gate(): BoMPersistGate = BoMPersistGate(
         validator = validator,
         storeLookup = BoMEntityTypeLookup { id -> entityRepository.findById(id).map { it.type }.orElse(null) },
@@ -58,6 +86,18 @@ class BoMNamedGraphStore(
             ),
         )
         replaceMembership(id, spec.entityIds, spec.edgeIds)
+        return requireNotNull(get(id))
+    }
+
+    @Transactional
+    fun updateAnnotations(id: UUID, annotations: Map<String, String>): BoMResolvedGraph {
+        val existing = graphRepository.findById(id).orElse(null)
+            ?: throw BoMGraphException(
+                code = "GRAPH_NOT_FOUND",
+                message = "Subgraph not found: $id",
+            )
+        existing.annotations = annotations.toMutableMap()
+        graphRepository.save(existing)
         return requireNotNull(get(id))
     }
 
@@ -108,6 +148,9 @@ class BoMNamedGraphStore(
      * G-U10 / WI-007 open-graph search over headers (no FTS). Empty [q] without [expr] returns
      * nothing — never the full catalog. When both are set, results must match **both** (AND).
      * Order is stable by id; [limit] is capped at [MAX_SEARCH_LIMIT].
+     *
+     * When [expr] lowers to equality/`&&` over `id` / `a.*` and the backend is PostgreSQL,
+     * candidates are loaded via PK / `annotations @>` (GIN) instead of scanning all headers.
      */
     @Transactional(readOnly = true)
     fun search(q: String? = null, expr: String? = null, limit: Int = DEFAULT_SEARCH_LIMIT): List<BoMGraphHeader> {
@@ -121,9 +164,10 @@ class BoMNamedGraphStore(
             else -> minOf(limit, MAX_SEARCH_LIMIT)
         }
         val matcher = if (expression.isNotEmpty()) BoMGraphExprMatcher(expression) else null
-        return graphRepository.findAll()
+        val sqlLimit = if (query.isEmpty()) capped else null
+        val candidates = headersForSearch(matcher, sqlLimit)
+        return candidates
             .asSequence()
-            .map { BoMGraphHeader(id = it.id, annotations = it.annotations.toMap()) }
             .filter { header ->
                 val qOk = query.isEmpty() || matchesSearchText(header, query)
                 val exprOk = matcher == null || matcher.matchesHeader(header.id, header.annotations)
@@ -132,6 +176,53 @@ class BoMNamedGraphStore(
             .sortedBy { it.id }
             .take(capped)
             .toList()
+    }
+
+    /**
+     * Headers matching [matcher]. Uses Postgres annotation/id pushdown when the expression
+     * lowers; otherwise scans headers and evaluates [BoMGraphExprMatcher.matchesHeader].
+     */
+    @Transactional(readOnly = true)
+    fun matchingHeaders(matcher: BoMGraphExprMatcher): List<BoMGraphHeader> {
+        val pushdown = matcher.pushdown
+        if (pushdown != null && postgres) {
+            return findHeadersByPushdown(pushdown, limit = null)
+        }
+        return graphRepository.findAll()
+            .asSequence()
+            .map { BoMGraphHeader(id = it.id, annotations = it.annotations.toMap()) }
+            .filter { matcher.matchesHeader(it.id, it.annotations) }
+            .sortedBy { it.id }
+            .toList()
+    }
+
+    private fun headersForSearch(matcher: BoMGraphExprMatcher?, sqlLimit: Int?): List<BoMGraphHeader> {
+        val pushdown = matcher?.pushdown
+        if (pushdown != null && postgres) {
+            return findHeadersByPushdown(pushdown, sqlLimit)
+        }
+        return graphRepository.findAll().map { BoMGraphHeader(id = it.id, annotations = it.annotations.toMap()) }
+    }
+
+    private fun findHeadersByPushdown(pushdown: BoMGraphExprPushdown, limit: Int?): List<BoMGraphHeader> {
+        val sql = StringBuilder("SELECT id, annotations::text AS annotations FROM bom_graph WHERE ")
+        val args = ArrayList<Any>()
+        val clauses = ArrayList<String>()
+        pushdown.idEquals?.let { id ->
+            clauses += "id = ?"
+            args += id
+        }
+        if (pushdown.annotationEquals.isNotEmpty()) {
+            clauses += "annotations @> ?::jsonb"
+            args += objectMapper.writeValueAsString(pushdown.annotationEquals)
+        }
+        sql.append(clauses.joinToString(" AND "))
+        sql.append(" ORDER BY id")
+        if (limit != null) {
+            sql.append(" LIMIT ?")
+            args += limit
+        }
+        return jdbc.query(sql.toString(), headerRowMapper, *args.toTypedArray())
     }
 
     /**
@@ -312,7 +403,30 @@ class BoMNamedGraphStore(
                 )
             }
         }
-        return BoMValidationResult(edgeIssues)
+        if (edgeIssues.isNotEmpty()) {
+            return BoMValidationResult(edgeIssues)
+        }
+        val identityIssues = mutableListOf<BoMValidationIssue>()
+        graph.entities.forEachIndexed { index, entity ->
+            val id = entity.id ?: return@forEachIndexed
+            if (id in deletedEntityIds) return@forEachIndexed
+            val stored = entityRepository.findById(id).orElse(null)?.toDomain() ?: return@forEachIndexed
+            identityIssues += validator.validateEntityIdentifierImmutability(
+                stored,
+                entity,
+                path = "entities[$index]",
+            )
+        }
+        graph.edges.forEachIndexed { index, edge ->
+            val id = edge.id ?: return@forEachIndexed
+            val stored = edgeRepository.findById(id).orElse(null)?.toDomain() ?: return@forEachIndexed
+            identityIssues += validator.validateEdgeIdentifierImmutability(
+                stored,
+                edge,
+                path = "edges[$index]",
+            )
+        }
+        return BoMValidationResult(identityIssues)
     }
 
     private fun applyGraphDeletes(graphId: UUID, mutation: BoMGraphMutation) {
@@ -444,6 +558,8 @@ class BoMNamedGraphStore(
     companion object {
         const val DEFAULT_SEARCH_LIMIT = 15
         const val MAX_SEARCH_LIMIT = 100
+
+        private val ANNOTATIONS_TYPE = object : TypeReference<Map<String, String>>() {}
 
         /** v1 q match: UUID / UUID-prefix + case-insensitive substring on id and annotation key/value. */
         internal fun matchesSearchText(header: BoMGraphHeader, q: String): Boolean {

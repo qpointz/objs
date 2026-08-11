@@ -130,11 +130,11 @@ Programmatic apps that hold a graph id use **get-by-id**
 
 ## Open
 
-- Confirm JSON storage and indexing — see [persistence.md](persistence.md) (annotations GIN done;
-  payload index still open)
+- Confirm JSON storage and indexing — see [persistence.md](persistence.md) (entity + graph-header
+  annotations GIN done; payload index still open)
 - Revisit edge annotations if requirements demand it
 - Value type of map entries (string-only vs richer JSON values) — assume string values unless decided
   otherwise
-- Pushdown of `graph-expr` header predicates (currently local eval) and of `obj-expr` predicates
-  beyond equality/`&&`/`||` containment DNF (inequality, comparisons, functions)
+- Pushdown of `graph-expr` / `obj-expr` beyond equality/`&&` (inequality, comparisons, functions,
+  OR/DNF for headers)
 - Gremlin strategies over graph membership (deferred)

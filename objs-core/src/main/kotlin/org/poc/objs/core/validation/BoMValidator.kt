@@ -8,6 +8,7 @@ import org.poc.objs.core.domain.BoMAllowedEdgeRule
 import org.poc.objs.core.domain.BoMEdge
 import org.poc.objs.core.domain.BoMEntity
 import org.poc.objs.core.domain.BoMGraph
+import org.poc.objs.core.domain.BoMIdentityProjection
 import org.poc.objs.core.domain.BoMPropertiesPolicy
 import org.poc.objs.core.domain.BoMSchemaCatalog
 import java.util.UUID
@@ -202,6 +203,81 @@ class BoMValidator(
     ): BoMEntityTypeLookup {
         val payload = payloadLookup(payloadEntities)
         return BoMEntityTypeLookup { id -> payload.typeOf(id) ?: storeLookup.typeOf(id) }
+    }
+
+    /**
+     * Identity immutability (G-2 / G-15): project stored vs incoming with each side's catalog
+     * schema. Only paths with a **set** stored identity value (non-null, non-blank string) that
+     * remain `identifier` on the **incoming** schema are frozen. Missing / null / blank stored
+     * values may be filled; schema migrates that introduce identifiers may set new paths;
+     * downgrades (or catalog changes) that drop the `identifier` flag on a path are allowed.
+     * Changing or clearing a still-marked identity path fails with `IDENTIFIER_IMMUTABLE`.
+     */
+    fun validateIdentifierImmutability(
+        storedType: String,
+        storedSchemaVersion: String,
+        storedDocument: Map<String, Any?>,
+        incomingType: String,
+        incomingSchemaVersion: String,
+        incomingDocument: Map<String, Any?>,
+        path: String,
+    ): List<BoMValidationIssue> {
+        val storedSchema = schemas.get(storedType, storedSchemaVersion) ?: return emptyList()
+        val incomingSchema = schemas.get(incomingType, incomingSchemaVersion) ?: return emptyList()
+        val oldMap = BoMIdentityProjection.project(storedSchema.contentSchema, storedDocument)
+        if (oldMap.isEmpty()) return emptyList()
+        val stillIdentity = BoMIdentityProjection.identifierPaths(incomingSchema.contentSchema)
+        if (stillIdentity.isEmpty()) return emptyList()
+        val newMap = BoMIdentityProjection.project(incomingSchema.contentSchema, incomingDocument)
+        val changed = oldMap.keys.filter { key ->
+            if (key !in stillIdentity) return@filter false
+            val old = oldMap[key]
+            if (BoMIdentityProjection.isUnset(old)) return@filter false
+            old != newMap[key]
+        }.sorted()
+        if (changed.isEmpty()) return emptyList()
+        return listOf(
+            BoMValidationIssue(
+                code = "IDENTIFIER_IMMUTABLE",
+                message = "Identifier fields are immutable on update: ${changed.joinToString(", ")}",
+                path = path,
+            ),
+        )
+    }
+
+    fun validateEntityIdentifierImmutability(
+        stored: BoMEntity,
+        incoming: BoMEntity,
+        path: String,
+    ): List<BoMValidationIssue> =
+        validateIdentifierImmutability(
+            storedType = stored.type,
+            storedSchemaVersion = stored.schemaVersion,
+            storedDocument = stored.payload,
+            incomingType = incoming.type,
+            incomingSchemaVersion = incoming.schemaVersion,
+            incomingDocument = incoming.payload,
+            path = "$path.payload",
+        )
+
+    fun validateEdgeIdentifierImmutability(
+        stored: BoMEdge,
+        incoming: BoMEdge,
+        path: String,
+    ): List<BoMValidationIssue> {
+        val storedType = stored.type ?: return emptyList()
+        val storedVersion = stored.schemaVersion ?: return emptyList()
+        val incomingType = incoming.type ?: return emptyList()
+        val incomingVersion = incoming.schemaVersion ?: return emptyList()
+        return validateIdentifierImmutability(
+            storedType = storedType,
+            storedSchemaVersion = storedVersion,
+            storedDocument = stored.properties.orEmpty(),
+            incomingType = incomingType,
+            incomingSchemaVersion = incomingVersion,
+            incomingDocument = incoming.properties.orEmpty(),
+            path = "$path.properties",
+        )
     }
 
     private fun validateAgainstSchema(

@@ -372,4 +372,305 @@ class BoMGraphStoreTest {
 
         assertThat(store.listEntities().map { it.id }).containsExactlyInAnyOrder(a, b)
     }
+
+    @Test
+    fun shouldRejectUpdate_whenIdentifierFieldChanges() {
+        schemas.clear()
+        schemas.register(
+            BoMSchema(
+                "Person",
+                "1",
+                BoMSchemaDsl.obj(
+                    "Person",
+                    "Person payload",
+                    listOf(
+                        BoMSchemaDsl.field(
+                            "name",
+                            BoMSchemaDsl.string("Name", "Person name"),
+                            identifier = true,
+                        ),
+                        BoMSchemaDsl.field(
+                            "nickname",
+                            BoMSchemaDsl.string("Nickname", "Optional nickname"),
+                            required = false,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val id = UUID.randomUUID()
+        assertThat(
+            store.write(
+                BoMGraph(
+                    entities = mutableListOf(
+                        BoMEntity(
+                            id = id,
+                            type = "Person",
+                            schemaVersion = "1",
+                            payload = mutableMapOf("name" to "Alice", "nickname" to "A"),
+                        ),
+                    ),
+                ),
+            ).isValid,
+        ).isTrue()
+
+        val renamed = store.write(
+            BoMGraph(
+                entities = mutableListOf(
+                    BoMEntity(
+                        id = id,
+                        type = "Person",
+                        schemaVersion = "1",
+                        payload = mutableMapOf("name" to "Bob", "nickname" to "A"),
+                    ),
+                ),
+            ),
+        )
+        assertThat(renamed.isValid).isFalse()
+        assertThat(renamed.issues.map { it.code }).contains("IDENTIFIER_IMMUTABLE")
+
+        val nickOnly = store.write(
+            BoMGraph(
+                entities = mutableListOf(
+                    BoMEntity(
+                        id = id,
+                        type = "Person",
+                        schemaVersion = "1",
+                        payload = mutableMapOf("name" to "Alice", "nickname" to "Ally"),
+                    ),
+                ),
+            ),
+        )
+        assertThat(nickOnly.isValid).isTrue()
+        assertThat(store.getEntity(id)?.payload?.get("nickname")).isEqualTo("Ally")
+    }
+
+    @Test
+    fun shouldAllowUpdate_whenSchemaVersionIntroducesIdentifierFields() {
+        schemas.clear()
+        schemas.register(
+            BoMSchema(
+                "Person",
+                "1",
+                BoMSchemaDsl.obj(
+                    "Person",
+                    "Person payload v1",
+                    listOf(BoMSchemaDsl.field("name", BoMSchemaDsl.string("Name", "Person name"))),
+                ),
+            ),
+        )
+        schemas.register(
+            BoMSchema(
+                "Person",
+                "2",
+                BoMSchemaDsl.obj(
+                    "Person",
+                    "Person payload v2",
+                    listOf(
+                        BoMSchemaDsl.field(
+                            "name",
+                            BoMSchemaDsl.string("Name", "Person name"),
+                            identifier = true,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val id = UUID.randomUUID()
+        assertThat(
+            store.write(
+                BoMGraph(
+                    entities = mutableListOf(
+                        BoMEntity(
+                            id = id,
+                            type = "Person",
+                            schemaVersion = "1",
+                            payload = mutableMapOf("name" to "Alice"),
+                        ),
+                    ),
+                ),
+            ).isValid,
+        ).isTrue()
+
+        val migrate = store.write(
+            BoMGraph(
+                entities = mutableListOf(
+                    BoMEntity(
+                        id = id,
+                        type = "Person",
+                        schemaVersion = "2",
+                        payload = mutableMapOf("name" to "Alice"),
+                    ),
+                ),
+            ),
+        )
+        assertThat(migrate.isValid).isTrue()
+        assertThat(store.getEntity(id)?.schemaVersion).isEqualTo("2")
+
+        val renameAfterIdentityExists = store.write(
+            BoMGraph(
+                entities = mutableListOf(
+                    BoMEntity(
+                        id = id,
+                        type = "Person",
+                        schemaVersion = "2",
+                        payload = mutableMapOf("name" to "Bob"),
+                    ),
+                ),
+            ),
+        )
+        assertThat(renameAfterIdentityExists.isValid).isFalse()
+        assertThat(renameAfterIdentityExists.issues.map { it.code }).contains("IDENTIFIER_IMMUTABLE")
+    }
+
+    @Test
+    fun shouldAllowFill_whenStoredIdentifierIsBlank() {
+        schemas.clear()
+        schemas.register(
+            BoMSchema(
+                "Person",
+                "1",
+                BoMSchemaDsl.obj(
+                    "Person",
+                    "Person payload",
+                    listOf(
+                        BoMSchemaDsl.field(
+                            "name",
+                            BoMSchemaDsl.string("Name", "Person name"),
+                            identifier = true,
+                        ),
+                        BoMSchemaDsl.field(
+                            "code",
+                            BoMSchemaDsl.string("Code", "Optional code"),
+                            required = false,
+                            identifier = true,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val id = UUID.randomUUID()
+        assertThat(
+            store.write(
+                BoMGraph(
+                    entities = mutableListOf(
+                        BoMEntity(
+                            id = id,
+                            type = "Person",
+                            schemaVersion = "1",
+                            payload = mutableMapOf("name" to "Alice", "code" to "  "),
+                        ),
+                    ),
+                ),
+            ).isValid,
+        ).isTrue()
+
+        val fillBlank = store.write(
+            BoMGraph(
+                entities = mutableListOf(
+                    BoMEntity(
+                        id = id,
+                        type = "Person",
+                        schemaVersion = "1",
+                        payload = mutableMapOf("name" to "Alice", "code" to "P-1"),
+                    ),
+                ),
+            ),
+        )
+        assertThat(fillBlank.isValid).isTrue()
+        assertThat(store.getEntity(id)?.payload?.get("code")).isEqualTo("P-1")
+
+        val changeFilled = store.write(
+            BoMGraph(
+                entities = mutableListOf(
+                    BoMEntity(
+                        id = id,
+                        type = "Person",
+                        schemaVersion = "1",
+                        payload = mutableMapOf("name" to "Alice", "code" to "P-2"),
+                    ),
+                ),
+            ),
+        )
+        assertThat(changeFilled.isValid).isFalse()
+        assertThat(changeFilled.issues.map { it.code }).contains("IDENTIFIER_IMMUTABLE")
+    }
+
+    @Test
+    fun shouldAllowUpdate_whenSchemaVersionDropsIdentifierFields() {
+        schemas.clear()
+        schemas.register(
+            BoMSchema(
+                "Person",
+                "1.0.0",
+                BoMSchemaDsl.obj(
+                    "Person",
+                    "Person payload v1",
+                    listOf(BoMSchemaDsl.field("name", BoMSchemaDsl.string("Name", "Person name"))),
+                ),
+            ),
+        )
+        schemas.register(
+            BoMSchema(
+                "Person",
+                "2.0.0",
+                BoMSchemaDsl.obj(
+                    "Person",
+                    "Person payload v2",
+                    listOf(
+                        BoMSchemaDsl.field(
+                            "name",
+                            BoMSchemaDsl.string("Name", "Person name"),
+                            identifier = true,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val id = UUID.randomUUID()
+        assertThat(
+            store.write(
+                BoMGraph(
+                    entities = mutableListOf(
+                        BoMEntity(
+                            id = id,
+                            type = "Person",
+                            schemaVersion = "2.0.0",
+                            payload = mutableMapOf("name" to "Alice"),
+                        ),
+                    ),
+                ),
+            ).isValid,
+        ).isTrue()
+
+        val downgrade = store.write(
+            BoMGraph(
+                entities = mutableListOf(
+                    BoMEntity(
+                        id = id,
+                        type = "Person",
+                        schemaVersion = "1.0.0",
+                        payload = mutableMapOf("name" to "Alice"),
+                    ),
+                ),
+            ),
+        )
+        assertThat(downgrade.isValid).isTrue()
+        assertThat(store.getEntity(id)?.schemaVersion).isEqualTo("1.0.0")
+
+        val renameOnV1 = store.write(
+            BoMGraph(
+                entities = mutableListOf(
+                    BoMEntity(
+                        id = id,
+                        type = "Person",
+                        schemaVersion = "1.0.0",
+                        payload = mutableMapOf("name" to "Bob"),
+                    ),
+                ),
+            ),
+        )
+        assertThat(renameOnV1.isValid).isTrue()
+        assertThat(store.getEntity(id)?.payload?.get("name")).isEqualTo("Bob")
+    }
 }

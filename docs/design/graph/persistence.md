@@ -24,10 +24,10 @@ No global graph: an entity **pool** (`bom_entity`) shared by many **graphs** (`b
 | `bom_edge_schema` | Edge allow-list `(source_type, role, target_type)` + properties policy + cardinality |
 | `bom_seed_ledger` | Startup seed fingerprints |
 
-**Flyway:** single migration `V1__bom_schema` (Java) creates this schema for empty databases.
-PostgreSQL uses JSONB (+ GIN on `bom_entity.annotations`); H2 uses JSON. There is no
-intermediate rename/backfill history — greenfield apply only (reset `flyway_schema_history`
-/ recreate the DB if an older V1–V6 history is present).
+**Flyway:** migrations `V1__bom_schema` + `V2__bom_graph_header_indexes` (Java) create this schema
+for empty databases. PostgreSQL uses JSONB (+ GIN on entity **and** graph-header annotations); H2
+uses JSON. There is no intermediate rename/backfill history — greenfield apply only (reset
+`flyway_schema_history` / recreate the DB if an older V1–V6 history is present).
 
 ```mermaid
 erDiagram
@@ -75,6 +75,11 @@ erDiagram
 - Entity **payload** and **annotations** are **JSONB** on PostgreSQL; edge **properties** likewise.
 - GIN index on `bom_entity.annotations` uses `jsonb_path_ops` for containment (`@>`) sources.
   Pushdown predicate is `WHERE annotations @> $filter::jsonb` (no cast on the column) so the planner can use GIN; `SELECT` may still cast columns to `text` for JDBC without affecting index use.
+- GIN index on `bom_graph.annotations` (same `jsonb_path_ops`) supports `graph-expr` equality/`&&`
+  pushdown (`a.key == '…'` / `id == '…'`) in open-graph search and cross-graph `select`. Non-lowerable
+  expressions and free-text `q` still evaluate headers in memory.
+- Composite indexes `(graph_id, source_id)` / `(graph_id, target_id)` on `bom_graph_edge` complement
+  the single-column endpoint indexes for graph-scoped adjacency.
 - H2 remains acceptable for non-pushdown unit smoke only; **graph-query SQL pushdown assumes PostgreSQL**.
 
 ### Graph read path
@@ -143,4 +148,5 @@ Persistence is the **enforcement** point for payload schema and allowed edges �
 - Exact DDL / column lists beyond **UUID** identity
 - Whether a GIN (or other) index on **payload** is warranted for future payload pushdown
 - Whether annotations JSON storage should ever move to normalized tables
-- Pushdown of `graph-expr` header predicates (currently local eval over `bom_graph`)
+- Pushdown of `obj-expr` beyond equality/`&&` (and graph-expr beyond equality/`&&` over `id` / `a.*`)
+  — inequality, comparisons, functions, OR/DNF
