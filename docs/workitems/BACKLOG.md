@@ -28,6 +28,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | C-11 | Composer add objects + `obj-expr` / `ids` + visual chain matcher UI | feature | done | [`completed/20260807-composer-draft-shopping/`](completed/20260807-composer-draft-shopping/STORY.md) |
 | C-12 | Soft-link subgraphs + snapshot clone (new ids) + Composer save/open/snapshot | feature | done | [`completed/20260807-subgraphs-materialization/`](completed/20260807-subgraphs-materialization/STORY.md) |
 | C-13 | Global entity pool + many graphs (no global graph); table renames; graph-local edges | feature | done | [`completed/20260811-graphs-from-objects/`](completed/20260811-graphs-from-objects/STORY.md) |
+| C-14 | Schema field flags: drop OBJECT `required` list; `identifier` + `searchable`; identity immutability | feature | in-progress | [`in-progress/schema-field-identifiers/`](in-progress/schema-field-identifiers/STORY.md) |
 
 ---
 

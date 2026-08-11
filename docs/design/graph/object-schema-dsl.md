@@ -68,8 +68,11 @@ default: https://example.invalid
 | `items` | `ARRAY` | Schema of every array item |
 | `values` | `ENUM` | Ordered, nonempty string enum values |
 | `format` | `STRING` | Standard string format hint |
-| `required` | `OBJECT` | Derived during normalization from field flags; do not author separately |
 | `default` | all | Optional default hint; it does not mutate stored payloads |
+
+There is **no** OBJECT-node `required: [...]` list in the DSL. JSON Schema projection still emits
+`"required"` arrays derived from field-level `required` flags. Legacy documents that still contain
+an OBJECT-level `required` list are ignored on read and never rewritten.
 
 Properties that do not apply to a node type are rejected rather than ignored.
 
@@ -111,15 +114,44 @@ fields:
       title: Name
       description: Component name
     required: true
-  - name: labels
+    identifier: true
+    searchable: true
+  - name: description
+    schema:
+      type: STRING
+      title: Description
+      description: Human-readable description
+    required: false
+  - name: source
+    schema:
+      type: OBJECT
+      title: Source
+      description: External system identity
+      fields:
+        - name: system
+          schema:
+            type: STRING
+            title: System
+            description: External system name
+          required: true
+          identifier: true
+        - name: id
+          schema:
+            type: STRING
+            title: External id
+            description: Id in the external system
+          required: true
+          identifier: true
+    required: false
+  - name: tags
     schema:
       type: ARRAY
-      title: Labels
+      title: Tags
       description: Search and grouping labels
       items:
         type: STRING
-        title: Label
-        description: One label
+        title: Tag
+        description: One tag
     required: false
     stereotype:
       - tags
@@ -130,6 +162,8 @@ fields:
 | `name` | yes | — | Unique, nonblank property name within the containing object |
 | `schema` | yes | — | Recursive value schema |
 | `required` | no | `true` | Whether the property name appears in generated JSON Schema `required` |
+| `identifier` | no | `false` | Marks a scalar leaf as part of the entity/edge **identity map** (see below) |
+| `searchable` | no | `false` | Marks a scalar leaf as searchable metadata for a later search feature |
 | `stereotype` | no | absent | Ordered presentation hints; ignored by server validation |
 
 Stereotypes are trimmed, empty entries are removed, and duplicates are collapsed. They are
@@ -137,6 +171,38 @@ projected as `x-objs-stereotype`.
 
 `required` means the property must be present. It does not add nullability: the DSL has no `NULL`
 type, so a present value must conform to its node type.
+
+### `identifier` and `searchable`
+
+Both flags default to `false` and are omitted from JSON when false. They apply to **ENTITY** and
+**EDGE_PROPERTIES** schemas.
+
+**Placement:** allowed only when `field.schema.type` is a scalar
+(`STRING` | `NUMBER` | `INTEGER` | `BOOLEAN` | `ENUM`). Forbidden on `ARRAY` / `OBJECT` fields
+themselves (mark nested scalar leaves under OBJECTs instead). Forbidden on any field whose path is
+under an `ARRAY` `items` schema. Flags are independent (a field may be one, both, or neither).
+
+JSON Schema projection emits `x-objs-identifier: true` and/or `x-objs-searchable: true` on the
+property schema when set.
+
+**Identity map:** from `contentSchema` + payload (or edge properties), project a flat
+`Map<String, Any?>` whose keys are **dotted paths** from the object root (`name`, `source.id`) for
+every `identifier: true` leaf reached without crossing an ARRAY. Missing, null, and blank-string
+leaves omit the key (not yet set). An empty map (no set identifier values) imposes no immutability
+constraint.
+
+**Create vs update:** identifier values may be set on create (id absent or not yet in store). On
+update, project the stored document with the stored `(type, schemaVersion)` schema and the
+incoming document with the incoming schema. **Only stored identity paths that remain `identifier`
+on the incoming schema are immutable** — their values must match on the incoming projection
+(missing counts as change). Paths that appear only on the incoming projection (e.g. schema migrate
+that newly marks `identifier`) may be set. Paths whose `identifier` flag is dropped on the
+incoming schema (downgrade / catalog change) are not frozen. If the stored projection is empty, or
+the incoming schema has no identifier paths, the check is skipped. Violations fail with
+`IDENTIFIER_IMMUTABLE`. Writes are full-document replace.
+
+See story [`schema-field-identifiers`](../../workitems/in-progress/schema-field-identifiers/STORY.md)
+(C-14).
 
 ## Enums
 
@@ -250,9 +316,9 @@ The example above projects deterministically to the following shape (abbreviated
 Projection rules:
 
 1. Preserve field and enum declaration order.
-2. Derive object `required` arrays from `BoMSchemaField.required`.
+2. Derive object `required` arrays from `BoMSchemaField.required` (DSL has no OBJECT-level list).
 3. Emit `additionalProperties: true` for every object.
-4. Emit enum and stereotype metadata under `x-objs-*` extension keywords.
+4. Emit enum, stereotype, identifier, and searchable metadata under `x-objs-*` extension keywords.
 5. Preserve titles, descriptions, formats, and defaults.
 6. Add the JSON Schema 2020-12 dialect and catalog identity at the root.
 
@@ -261,7 +327,8 @@ Projection rules:
 Definitions are normalized before entering either the in-memory or JPA catalog:
 
 - trim type, version, titles, descriptions, field names, enum values, and stereotypes;
-- derive object-level `required` from field flags;
+- do **not** store an OBJECT-level `required` list (ignore if present on input);
+- reject `identifier` / `searchable` on non-scalar fields or under ARRAY paths;
 - reject duplicate field names and enum values;
 - reject blank titles/descriptions/names;
 - require `fields`, `items`, or `values` where dictated by the node type;

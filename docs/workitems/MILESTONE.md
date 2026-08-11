@@ -31,7 +31,7 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 
 ### In Progress
 
-_(none)_
+- [`schema-field-identifiers`](in-progress/schema-field-identifiers/STORY.md) — Drop OBJECT-level `required` list; field `identifier` + `searchable`; identity projection + create-only immutability (C-14).
 
 ### Planned
 
