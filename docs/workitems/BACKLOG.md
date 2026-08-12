@@ -52,11 +52,19 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 
 ---
 
+## platform — Build / tooling
+
+| # | Item | Type | Status | Source |
+|---|------|------|--------|--------|
+| P-1 | Gradle cleanup: `platform()` BOM, prune deps, minimize plugins | improvement | in-progress | [`in-progress/build-system-cleanup/`](in-progress/build-system-cleanup/STORY.md) |
+
+---
+
 ## Summary
 
 | Status | Count |
 |--------|------:|
 | backlog | 0 |
 | planned | 0 |
-| in-progress | 1 |
+| in-progress | 2 |
 | done | 17 |

@@ -33,6 +33,7 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 ### In Progress
 
 - [`objects-shelf`](in-progress/objects-shelf/STORY.md) — Objects top-level view (pool search + shelf) → New graph in Composer (U-5).
+- [`build-system-cleanup`](in-progress/build-system-cleanup/STORY.md) — Gradle: drop Spring DM for `platform()`, prune deps/catalog, minimize plugins (P-1).
 
 ### Planned
 
