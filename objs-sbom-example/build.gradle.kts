@@ -13,12 +13,7 @@ dependencies {
     api(platform(libs.boot.dependencies))
     api(project(":objs-core"))
     api(project(":objs-service"))
-    api(libs.kotlin.stdlib)
     api(libs.kotlin.reflect)
-    implementation(libs.jackson.module.kotlin)
-    implementation(libs.jackson.databind)
-    implementation(libs.jackson.annotations.v2)
-    implementation(libs.springdoc.openapi.starter.webmvc.ui)
 }
 
 kotlin {
@@ -82,9 +77,6 @@ testing {
                     implementation(libs.boot.starter.test)
                     implementation(libs.boot.starter.data.jpa.test)
                     implementation(libs.boot.starter.webmvc.test)
-                    implementation(libs.assertj.core)
-                    implementation(libs.mockito.core)
-                    implementation(libs.mockito.junit.jupiter)
                     runtimeOnly(libs.h2.database)
                 }
             }

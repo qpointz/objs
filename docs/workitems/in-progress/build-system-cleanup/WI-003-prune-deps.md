@@ -2,7 +2,7 @@
 
 **Story:** [`STORY.md`](STORY.md)  
 **Stage:** 2 — Platform + prune  
-**Status:** pending  
+**Status:** done  
 **Depends on:** WI-002
 
 ## Goal
@@ -12,6 +12,6 @@ module dependencies; tighten `api` vs `implementation`.
 
 ## Acceptance
 
-- [ ] Unused catalog libraries/plugins removed  
-- [ ] Per-module deps match inventory keep set  
-- [ ] No intentional behaviour change (tests still meaningful)  
+- [x] Unused catalog libraries/plugins removed  
+- [x] Per-module deps match inventory keep set  
+- [x] No intentional behaviour change (tests still meaningful)  

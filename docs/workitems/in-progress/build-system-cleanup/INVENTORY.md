@@ -51,7 +51,7 @@ Decisions for WI-002…WI-004. Status as of story start on `origin/dev`.
 | `junit-jupiter-api` / `engine` | **keep** | gremlin-core tests (no Boot test starter) |
 | `mockito-*` | **drop from catalog** | Covered by `boot-starter-test` where used |
 | `assertj-core` | **keep** | Needed for gremlin-core; optional elsewhere via Boot test |
-| `springdoc-openapi-…` | **keep** | OpenAPI surface on objs-service |
+| `springdoc-openapi-…` | **keep** | OpenAPI surface; **`api`** on objs-service so downstream controllers compile |
 | `kotlin-stdlib` | **drop from catalog** | Kotlin JVM plugin adds it |
 | `kotlin-reflect` | **keep** | Spring / Jackson |
 | `h2` / `postgresql` / testcontainers | **keep** | Pin `postgresql` version in catalog |
@@ -67,10 +67,10 @@ Decisions for WI-002…WI-004. Status as of story start on `origin/dev`.
 
 ### objs-service
 - Rely on core’s platform (or local `api(platform)` if needed)
-- Keep: project core, boot-starter-webmvc, kotlin-reflect, springdoc
+- Keep: project core, boot-starter-webmvc, kotlin-reflect, springdoc as **`api`**
 - Drop: jackson-module-kotlin (via core API), configuration-processor, kotlin-stdlib
 - Remove empty `testIT` suite registration
-- Tests: boot webmvc test + assertj/mockito via Boot
+- Tests: boot webmvc test (+ AssertJ/Mockito via Boot)
 
 ### objs-sbom-example
 - Keep: project core + service, kotlin-reflect

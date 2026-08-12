@@ -14,11 +14,9 @@ dependencies {
     api(platform(libs.boot.dependencies))
     api(project(":objs-core"))
     api(libs.boot.starter.webmvc)
-    api(libs.kotlin.stdlib)
     api(libs.kotlin.reflect)
-    implementation(libs.jackson.module.kotlin)
-    implementation(libs.springdoc.openapi.starter.webmvc.ui)
-    annotationProcessor(libs.boot.configuration.processor)
+    // api: Swagger/OpenAPI annotations are used by this module and downstream controllers
+    api(libs.springdoc.openapi.starter.webmvc.ui)
 }
 
 kotlin {
@@ -30,9 +28,6 @@ kotlin {
 
 testing {
     suites {
-        register<JvmTestSuite>("testIT") {
-        }
-
         configureEach {
             if (this is JvmTestSuite) {
                 useJUnitJupiter(libs.versions.junit.get())
@@ -40,9 +35,6 @@ testing {
                     implementation(project())
                     implementation(libs.boot.starter.test)
                     implementation(libs.boot.starter.webmvc.test)
-                    implementation(libs.assertj.core)
-                    implementation(libs.mockito.core)
-                    implementation(libs.mockito.junit.jupiter)
                 }
             }
         }

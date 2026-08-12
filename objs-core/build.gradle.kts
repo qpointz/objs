@@ -15,12 +15,9 @@ dependencies {
     api(libs.boot.starter.data.jpa)
     api(libs.boot.starter.flyway)
     api(libs.bundles.jackson)
-    api(libs.kotlin.stdlib)
     api(libs.kotlin.reflect)
-    implementation(libs.bundles.logging)
     implementation(libs.json.schema.validator)
     implementation(libs.commons.jexl)
-    implementation(libs.flyway.core)
 }
 
 kotlin {
@@ -39,9 +36,6 @@ testing {
                     implementation(project())
                     implementation(libs.boot.starter.test)
                     implementation(libs.boot.starter.data.jpa.test)
-                    implementation(libs.assertj.core)
-                    implementation(libs.mockito.core)
-                    implementation(libs.mockito.junit.jupiter)
                     runtimeOnly(libs.h2.database)
                 }
             }
@@ -52,7 +46,6 @@ testing {
                 implementation(project())
                 implementation(libs.boot.starter.test)
                 implementation(libs.boot.starter.data.jpa.test)
-                implementation(libs.assertj.core)
                 runtimeOnly(libs.postgresql)
                 runtimeOnly(libs.flyway.postgresql)
                 implementation(libs.testcontainers.junit.jupiter)

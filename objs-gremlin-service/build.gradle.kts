@@ -9,14 +9,9 @@ plugins {
 description = "Objs Gremlin REST service and Boot autoconfiguration."
 
 dependencies {
-    api(platform(libs.boot.dependencies))
     api(project(":objs-gremlin-core"))
     api(project(":objs-service"))
-    api(libs.boot.starter.webmvc)
-    api(libs.kotlin.stdlib)
     api(libs.kotlin.reflect)
-    implementation(libs.jackson.module.kotlin)
-    implementation(libs.springdoc.openapi.starter.webmvc.ui)
 }
 
 kotlin {
@@ -35,7 +30,6 @@ testing {
                     implementation(project())
                     implementation(libs.boot.starter.test)
                     implementation(libs.boot.starter.webmvc.test)
-                    implementation(libs.assertj.core)
                 }
             }
         }
