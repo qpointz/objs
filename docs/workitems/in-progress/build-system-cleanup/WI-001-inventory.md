@@ -2,7 +2,7 @@
 
 **Story:** [`STORY.md`](STORY.md)  
 **Stage:** 1 — Inventory  
-**Status:** pending  
+**Status:** done  
 **Depends on:** WI-000
 
 ## Goal
@@ -16,6 +16,6 @@ direct dependencies, before mutating Gradle files.
 
 ## Acceptance
 
-- [ ] Plugin matrix (all modules + catalog-only) with keep/drop  
-- [ ] Library catalog keep/drop  
-- [ ] Per-module direct-dep notes (`api` vs drop / transitive)  
+- [x] Plugin matrix (all modules + catalog-only) with keep/drop  
+- [x] Library catalog keep/drop  
+- [x] Per-module direct-dep notes (`api` vs drop / transitive)  
