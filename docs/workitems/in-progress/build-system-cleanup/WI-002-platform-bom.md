@@ -2,7 +2,7 @@
 
 **Story:** [`STORY.md`](STORY.md)  
 **Stage:** 2 — Platform + prune  
-**Status:** pending  
+**Status:** done  
 **Depends on:** WI-001
 
 ## Goal
@@ -13,6 +13,6 @@ Pin any formerly versionless coords in the catalog (e.g. `postgresql`).
 
 ## Acceptance
 
-- [ ] No `spring.dependency.management` plugin or `dependencyManagement` blocks  
-- [ ] Modules that need Boot-managed alignment use `platform(libs.boot.dependencies)`  
-- [ ] Catalog / build still resolves (compile at least one leaf)  
+- [x] No `spring.dependency.management` plugin or `dependencyManagement` blocks  
+- [x] Modules that need Boot-managed alignment use `platform(libs.boot.dependencies)`  
+- [x] Catalog / build still resolves (compile at least one leaf)  

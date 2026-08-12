@@ -40,7 +40,7 @@ module dependencies down to what each leaf module actually requires.
 
 - [x] WI-000 — Story scaffold (`WI-000-story-scaffold.md`)
 - [x] WI-001 — Dependency + plugin inventory (`WI-001-inventory.md`)
-- [ ] WI-002 — Drop Spring DM; adopt `platform()` (`WI-002-platform-bom.md`)
+- [x] WI-002 — Drop Spring DM; adopt `platform()` (`WI-002-platform-bom.md`)
 - [ ] WI-003 — Prune catalog and module dependencies (`WI-003-prune-deps.md`)
 - [ ] WI-004 — Minimize plugins + verify build (`WI-004-plugins-verify.md`)
 

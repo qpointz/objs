@@ -6,18 +6,12 @@ plugins {
     `java-library`
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.spring)
-    alias(libs.plugins.spring.dependency.management)
 }
 
 description = "Objs Spring REST service and Boot autoconfiguration (Kotlin)."
 
-dependencyManagement {
-    imports {
-        mavenBom(libs.boot.dependencies.get().toString())
-    }
-}
-
 dependencies {
+    api(platform(libs.boot.dependencies))
     api(project(":objs-core"))
     api(libs.boot.starter.webmvc)
     api(libs.kotlin.stdlib)

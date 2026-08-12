@@ -4,18 +4,12 @@ plugins {
     `java-library`
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.spring)
-    alias(libs.plugins.spring.dependency.management)
 }
 
 description = "Objs Gremlin REST service and Boot autoconfiguration."
 
-dependencyManagement {
-    imports {
-        mavenBom(libs.boot.dependencies.get().toString())
-    }
-}
-
 dependencies {
+    api(platform(libs.boot.dependencies))
     api(project(":objs-gremlin-core"))
     api(project(":objs-service"))
     api(libs.boot.starter.webmvc)

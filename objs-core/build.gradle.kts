@@ -5,18 +5,12 @@ plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.spring)
     alias(libs.plugins.kotlin.jpa)
-    alias(libs.plugins.spring.dependency.management)
 }
 
 description = "Objs core: entity SDK, validation, and JPA persistence (Kotlin)."
 
-dependencyManagement {
-    imports {
-        mavenBom(libs.boot.dependencies.get().toString())
-    }
-}
-
 dependencies {
+    api(platform(libs.boot.dependencies))
     api(libs.boot.starter)
     api(libs.boot.starter.data.jpa)
     api(libs.boot.starter.flyway)

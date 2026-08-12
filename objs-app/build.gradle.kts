@@ -2,18 +2,12 @@ plugins {
     application
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.spring)
-    alias(libs.plugins.spring.dependency.management)
 }
 
 description = "Runnable Objs assembly (REST + core + SBOM example)."
 
-dependencyManagement {
-    imports {
-        mavenBom(libs.boot.dependencies.get().toString())
-    }
-}
-
 dependencies {
+    implementation(platform(libs.boot.dependencies))
     implementation(project(":objs-service"))
     implementation(project(":objs-sbom-example"))
     implementation(project(":objs-gremlin-service"))

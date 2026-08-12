@@ -4,19 +4,13 @@ plugins {
     `java-library`
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.spring)
-    alias(libs.plugins.spring.dependency.management)
     alias(libs.plugins.jsonschema2pojo)
 }
 
 description = "Concrete Software BOM example app on the objs graph foundation."
 
-dependencyManagement {
-    imports {
-        mavenBom(libs.boot.dependencies.get().toString())
-    }
-}
-
 dependencies {
+    api(platform(libs.boot.dependencies))
     api(project(":objs-core"))
     api(project(":objs-service"))
     api(libs.kotlin.stdlib)

@@ -72,8 +72,6 @@ jackson = ["jackson-databind", "jackson-dataformat-yaml", "jackson-module-kotlin
 logging = ["slf4j-api", "logback-core", "logback-classic"]
 
 [plugins]
-spring-dependency-management = { id = "io.spring.dependency-management", version = "1.1.6" }
-spring-boot-plugin = { id = "org.springframework.boot", version.ref = "springBoot" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }
 kotlin-jpa = { id = "org.jetbrains.kotlin.plugin.jpa", version.ref = "kotlin" }

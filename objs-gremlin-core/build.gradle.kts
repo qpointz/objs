@@ -3,18 +3,12 @@ import org.gradle.api.plugins.jvm.JvmTestSuite
 plugins {
     `java-library`
     alias(libs.plugins.kotlin.jvm)
-    alias(libs.plugins.spring.dependency.management)
 }
 
 description = "Objs Gremlin core: BoM subgraph materialization and gremlin-lang evaluation."
 
-dependencyManagement {
-    imports {
-        mavenBom(libs.boot.dependencies.get().toString())
-    }
-}
-
 dependencies {
+    api(platform(libs.boot.dependencies))
     api(project(":objs-core"))
     api(libs.gremlin.core)
     api(libs.tinkergraph.gremlin)
