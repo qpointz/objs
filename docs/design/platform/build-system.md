@@ -19,11 +19,12 @@ objs/
 
 ## Conventions
 
-- **Plugins per leaf module:** `java-library` (libraries), `application` (`objs-app`), `io.spring.dependency-management`
-- **BOM:** `spring-boot-dependencies` imported in each Spring module
+- **Plugins per leaf module:** `java-library` (libraries), `application` (`objs-app`); Kotlin
+  `jvm` everywhere; `kotlin-spring` on Spring modules; `kotlin-jpa` on `:objs-core` only
+- **BOM:** Gradle `platform(libs.boot.dependencies)` — no `io.spring.dependency-management`
+- **Catalog:** `libs.versions.toml` is the version SoT; declare only deps/plugins in use
 - **Toolchain:** Java 21 applied to all Java/Kotlin projects from the root `subprojects` block
-- **Tests:** JVM Test Suite + JUnit Jupiter from the version catalog; optional `testIT` suite on
-  `objs-service`
+- **Tests:** JVM Test Suite + JUnit Jupiter from the version catalog; `testIT` on `:objs-core`
 - **Aggregate:** root tasks `test` and `testIT` depend on leaf module tasks
 - **No** `build-logic` / custom convention plugins
 
@@ -33,6 +34,6 @@ objs/
 ./gradlew test
 ./gradlew :objs-core:build
 ./gradlew :objs-service:build
-./gradlew :objs-service:testIT
+./gradlew :objs-core:testIT
 ./gradlew :objs-app:run
 ```

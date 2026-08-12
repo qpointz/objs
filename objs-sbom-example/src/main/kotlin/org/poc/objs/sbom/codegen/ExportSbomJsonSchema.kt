@@ -12,14 +12,13 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 /**
- * Writes the SBOM full-catalog JSON Schema (linked edges) for jsonschema2pojo.
+ * Writes the SBOM full-catalog JSON Schema (linked edges).
  *
  * Usage (via Gradle JavaExec):
  * `ExportSbomJsonSchema <output-dir>`
  *
  * Produces:
  * - `sbom-catalog-linked.schema.json` — full catalog with `$defs` + root props `$ref`ing each def
- *   (so jsonschema2pojo discovers every type)
  * - `types/<DefKey>.json` — payload-only projection per ENTITY type (closer to Wave* payloads;
  *   no relation props)
  */
@@ -53,7 +52,7 @@ object ExportSbomJsonSchema {
         linked["properties"] = rootProps
 
         val mapper = JsonMapper.builder().findAndAddModules().build()
-        // Keep catalog at the jsonschema root (jsonschema2pojo source file).
+        // Keep catalog at the jsonschema root.
         val catalogFile = outDir.resolve("sbom-catalog-linked.schema.json")
         mapper.writerWithDefaultPrettyPrinter().writeValue(catalogFile.toFile(), linked)
 

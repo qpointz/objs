@@ -2,9 +2,6 @@ import java.nio.file.Files
 
 plugins {
     base
-    alias(libs.plugins.kotlin.jvm) apply false
-    alias(libs.plugins.kotlin.spring) apply false
-    alias(libs.plugins.kotlin.jpa) apply false
 }
 
 val projectVersion: String =
@@ -72,6 +69,5 @@ tasks.register("testIT") {
     group = "verification"
     dependsOn(
         ":objs-core:testIT",
-        ":objs-service:testIT",
     )
 }

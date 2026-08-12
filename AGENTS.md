@@ -19,7 +19,7 @@ Production sources: `src/main/kotlin`. Tests: `src/test/kotlin` (integration sui
 - `./gradlew build` — compile, test, assemble
 - `./gradlew test` — unit tests (all leaf modules)
 - `./gradlew :objs-core:test` / `./gradlew :objs-service:test` — scoped tests
-- `./gradlew :objs-service:testIT` — integration tests when defined
+- `./gradlew :objs-core:testIT` — integration tests when defined
 - `./gradlew :objs-app:run` — run the service locally (H2)
 - `./gradlew clean` — remove build outputs
 

@@ -2,7 +2,7 @@
 
 **Story:** [`STORY.md`](STORY.md)  
 **Stage:** 2 — Platform + prune  
-**Status:** pending  
+**Status:** done  
 **Depends on:** WI-003
 
 ## Goal
@@ -13,6 +13,6 @@ Verify `./gradlew build` (and core `testIT` if practical).
 
 ## Acceptance
 
-- [ ] Plugin set matches STORY target table  
-- [ ] `./gradlew build` passes  
-- [ ] Story tracker updated  
+- [x] Plugin set matches STORY target table  
+- [x] `./gradlew build` passes  
+- [x] Story tracker updated  
