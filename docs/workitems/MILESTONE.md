@@ -29,12 +29,13 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`graphs-from-objects`](completed/20260811-graphs-from-objects/STORY.md) — Global `bom_entity` pool + many `bom_graph`s (no global graph); multi-graph membership; graph-local edges; matchers `all` / `graph-expr` / `obj-expr` / chained; REST `/graphs` + `/entities`; workbench Open/New graph; SBOM on graphs; pack-era cleanup; `gql-gremlin` (C-13).
 - [`workbench-chrome-regroup`](completed/20260811-workbench-chrome-regroup/STORY.md) — Explorer Graph vs Selection modes; Explore-scope; Open-graph search; Composer L2 Save/Snapshot + edit migrate; Query L2 Exec; schema `usage` scalar (U-4).
 - [`schema-field-identifiers`](completed/20260811-schema-field-identifiers/STORY.md) — Drop OBJECT-level `required` list; field `identifier` + `searchable`; identity projection + create-only immutability; graph-header annotation pushdown (C-14).
+- [`objects-shelf`](completed/20260813-objects-shelf/STORY.md) — Objects top-level view (pool search + shelf) → New graph in Composer (U-5).
+- [`build-system-cleanup`](completed/20260813-build-system-cleanup/STORY.md) — Gradle: drop Spring DM for `platform()`, prune deps/catalog, minimize plugins (P-1).
+- [`ui-gradle-node`](completed/20260813-ui-gradle-node/STORY.md) — Workbench SPA via `com.github.node-gradle.node` 7.0.2 + `:objs-service-ui` (U-6).
 
 ### In Progress
 
-- [`objects-shelf`](in-progress/objects-shelf/STORY.md) — Objects top-level view (pool search + shelf) → New graph in Composer (U-5).
-- [`build-system-cleanup`](in-progress/build-system-cleanup/STORY.md) — Gradle: drop Spring DM for `platform()`, prune deps/catalog, minimize plugins (P-1).
-- [`ui-gradle-node`](in-progress/ui-gradle-node/STORY.md) — Workbench SPA via `com.github.node-gradle.node` 7.0.2 + `:objs-service-ui` (U-6).
+_(none)_
 
 ### Planned
 

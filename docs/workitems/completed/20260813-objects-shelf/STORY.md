@@ -2,8 +2,8 @@
 
 **Slug:** `objects-shelf`  
 **Branch:** `objects-shelf` (track `origin/objects-shelf`)  
-**Status:** in-progress  
-**Folder:** [`docs/workitems/in-progress/objects-shelf/`](.)  
+**Status:** closed  
+**Archive:** [`docs/workitems/completed/20260813-objects-shelf/`](.)  
 **Backlog:** [U-5](../../BACKLOG.md)  
 **Base:** `origin/dev` (post pool `obj-expr` + `||`/`!=` pushdown)  
 **Design:** [`ui.md`](../../../design/ui.md)  

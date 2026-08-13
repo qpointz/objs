@@ -40,8 +40,8 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | U-2 | Schemas full-catalog overview + seed import/export | feature | done | [`completed/20260803-schemas-catalog-overview/`](completed/20260803-schemas-catalog-overview/STORY.md) |
 | U-3 | Object linter visual workspace + transactional graph mutate | feature | done | [`completed/20260805-object-linter-visual/`](completed/20260805-object-linter-visual/STORY.md) |
 | U-4 | Workbench chrome: Explorer Graph vs non-graph + Explore-scope fragment | improvement | done | [`completed/20260811-workbench-chrome-regroup/`](completed/20260811-workbench-chrome-regroup/STORY.md) |
-| U-5 | Objects top-level view + shelf → New graph in Composer | feature | in-progress | [`in-progress/objects-shelf/`](in-progress/objects-shelf/STORY.md) |
-| U-6 | Workbench UI Gradle build via node-gradle plugin (`:objs-service-ui`) | improvement | in-progress | [`in-progress/ui-gradle-node/`](in-progress/ui-gradle-node/STORY.md) |
+| U-5 | Objects top-level view + shelf → New graph in Composer | feature | done | [`completed/20260813-objects-shelf/`](completed/20260813-objects-shelf/STORY.md) |
+| U-6 | Workbench UI Gradle build via node-gradle plugin (`:objs-service-ui`) | improvement | done | [`completed/20260813-ui-gradle-node/`](completed/20260813-ui-gradle-node/STORY.md) |
 
 ---
 
@@ -57,7 +57,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 
 | # | Item | Type | Status | Source |
 |---|------|------|--------|--------|
-| P-1 | Gradle cleanup: `platform()` BOM, prune deps, minimize plugins | improvement | in-progress | [`in-progress/build-system-cleanup/`](in-progress/build-system-cleanup/STORY.md) |
+| P-1 | Gradle cleanup: `platform()` BOM, prune deps, minimize plugins | improvement | done | [`completed/20260813-build-system-cleanup/`](completed/20260813-build-system-cleanup/STORY.md) |
 
 ---
 
@@ -67,5 +67,5 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 |--------|------:|
 | backlog | 0 |
 | planned | 0 |
-| in-progress | 3 |
-| done | 17 |
+| in-progress | 0 |
+| done | 20 |

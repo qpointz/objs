@@ -2,8 +2,8 @@
 
 **Slug:** `build-system-cleanup`  
 **Branch:** `build-system-cleanup`  
-**Status:** in-progress  
-**Folder:** [`docs/workitems/in-progress/build-system-cleanup/`](.)  
+**Status:** closed  
+**Archive:** [`docs/workitems/completed/20260813-build-system-cleanup/`](.)  
 **Backlog:** [P-1](../../BACKLOG.md)  
 **Base:** `origin/dev`  
 **Process:** [`docs/workitems/RULES.md`](../../RULES.md)

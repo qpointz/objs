@@ -2,8 +2,8 @@
 
 **Slug:** `ui-gradle-node`  
 **Branch:** `ui-gradle-node`  
-**Status:** in-progress  
-**Folder:** [`docs/workitems/in-progress/ui-gradle-node/`](.)  
+**Status:** closed  
+**Archive:** [`docs/workitems/completed/20260813-ui-gradle-node/`](.)  
 **Backlog:** [U-6](../../BACKLOG.md)  
 **Base:** `origin/dev` (post P-1 / objects-shelf merges)  
 **Design:** [`docs/design/platform/build-system.md`](../../../design/platform/build-system.md), [`docs/design/ui.md`](../../../design/ui.md)  

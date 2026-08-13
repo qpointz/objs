@@ -10,6 +10,9 @@ docs/workitems/completed/YYYYMMDD-<story-slug>/
 
 ## Index (optional, newest first)
 
+- [`20260813-ui-gradle-node`](20260813-ui-gradle-node/STORY.md) — Workbench SPA via node-gradle + `:objs-service-ui` (U-6)
+- [`20260813-objects-shelf`](20260813-objects-shelf/STORY.md) — Objects view + shelf → Composer New graph (U-5)
+- [`20260813-build-system-cleanup`](20260813-build-system-cleanup/STORY.md) — Gradle `platform()` BOM, prune deps, minimize plugins (P-1)
 - [`20260811-schema-field-identifiers`](20260811-schema-field-identifiers/STORY.md) — Field `identifier`/`searchable`; drop OBJECT `required` list; identity immutability; graph-header pushdown (C-14)
 - [`20260811-workbench-chrome-regroup`](20260811-workbench-chrome-regroup/STORY.md) — Explorer Graph/Selection chrome; Explore-scope; Open-graph search; Composer Save/Snapshot; Query L2 (U-4)
 - [`20260811-graphs-from-objects`](20260811-graphs-from-objects/STORY.md) — Global entity pool + many graphs; graph-local edges; `all`/`graph-expr`/`obj-expr` (C-13)
