@@ -14,8 +14,7 @@ build
 bin
 out/
 target/
-**/ui/dist/
-**/ui/node_modules/
+**/node_modules/
 
 # IDE
 .idea

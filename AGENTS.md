@@ -7,6 +7,7 @@ Gradle multi-module Kotlin project. Leaf modules at the repository root:
 
 - `objs-core` — Entity SDK, domain types, JPA / PostgreSQL persistence, typed-domain toolkit
 - `objs-service` — Spring REST API and Boot autoconfiguration (library)
+- `objs-service-ui` — Workbench SPA (Vite/React); node-gradle build; JAR packs `static/ui/`
 - `objs-gremlin-core` — BoM → TinkerGraph materialization + gremlin-lang evaluation
 - `objs-gremlin-service` — Gremlin REST (`POST /api/v1/objs/graph/traverse/gremlin`) autoconfiguration
 - `objs-sbom-example` — Concrete SBOM app (canonical ontology + `/api/v1/example/sbom`); keep in sync with foundation features — see [`docs/workitems/RULES.md`](docs/workitems/RULES.md) **Concrete example integration**

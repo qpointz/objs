@@ -212,8 +212,8 @@ See the user-level [`Objs UI manual`](../ui.md) for complete operating instructi
 Legacy `/ui/**` redirects into `/workbench/**`. Explorer type badges open Schema; **Create version**
 uses a base-version + new-version dialog and saves via `PUT` to the exact version.
 
-Dev: `cd objs-service/ui && npm install && npm run dev` (Vite proxies `/api` → `:8080`).  
-Build: Gradle `:objs-service` builds the UI into `static/ui/` unless `-PskipUi=true`. The SPA does not require `:objs-sbom-example`.
+Dev: `cd objs-service-ui && npm install && npm run dev` (Vite proxies `/api` → `:8080`).  
+Build: Gradle `:objs-service-ui` (consumed by `:objs-service`) packs the SPA into `static/ui/` unless `-PskipUi=true`. The SPA does not require `:objs-sbom-example`.
 
 ### Python client script
 

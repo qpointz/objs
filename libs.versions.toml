@@ -11,6 +11,7 @@ springDoc = "3.0.3"
 commonsJexl = "3.5.0"
 tinkerpop = "4.0.0-beta.3"
 postgresql = "42.7.7"
+nodeGradle = "7.0.2"
 
 [libraries]
 boot-dependencies = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "springBoot" }
@@ -55,3 +56,4 @@ jackson = ["jackson-databind", "jackson-dataformat-yaml", "jackson-module-kotlin
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }
 kotlin-jpa = { id = "org.jetbrains.kotlin.plugin.jpa", version.ref = "kotlin" }
+node-gradle = { id = "com.github.node-gradle.node", version.ref = "nodeGradle" }

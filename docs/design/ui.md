@@ -579,7 +579,7 @@ Hit list uses **compact fixed-height** graph rows (single-line id + pills; list 
 To run the UI separately with live reload:
 
 ```powershell
-Set-Location objs-service/ui
+Set-Location objs-service-ui
 npm install
 npm run dev
 ```
@@ -587,7 +587,8 @@ npm run dev
 Open `http://localhost:5173/workbench/`. Vite proxies `/api` requests to
 `http://localhost:8080`, so `objs-app` must also be running.
 
-Packaged builds: Gradle `:objs-service` runs `npm run build` and syncs dist into
-`classpath:/static/ui/` (skip with `-PskipUi=true`). The SPA is served by
-`:objs-service` at `/workbench/` and does **not** require `:objs-sbom-example`.
+Packaged builds: Gradle `:objs-service-ui` (node-gradle) builds the SPA into
+`classpath:/static/ui/` on the module JAR; `:objs-service` depends on it
+(`runtimeOnly`). Skip with `-PskipUi=true`. Served at `/workbench/` and does
+**not** require `:objs-sbom-example`.
 
