@@ -4,6 +4,9 @@ import jakarta.servlet.http.HttpServletRequest
 import org.springframework.context.annotation.Configuration
 import org.springframework.core.io.ClassPathResource
 import org.springframework.core.io.Resource
+import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
+import org.springframework.http.ResponseEntity
 import org.springframework.stereotype.Controller
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry
@@ -12,15 +15,20 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
 import org.springframework.web.servlet.resource.PathResourceResolver
 import org.springframework.web.servlet.view.RedirectView
 import java.io.IOException
+import java.nio.charset.StandardCharsets
 
 /**
  * Serves the workbench SPA from classpath `static/ui` at `/workbench/`.
+ *
+ * Index HTML is served by [WorkbenchSpaController] (not a view-controller forward into
+ * [org.springframework.web.servlet.resource.ResourceHttpRequestHandler]), so a missing
+ * `static/ui/index.html` returns 503 with a plain message instead of FileNotFoundException/500
+ * from `Resource.lastModified()`.
  */
 @Configuration
 class ObjsWorkbenchUiConfiguration : WebMvcConfigurer {
     override fun addViewControllers(registry: ViewControllerRegistry) {
         registry.addRedirectViewController("/workbench", "/workbench/")
-        registry.addViewController("/workbench/").setViewName("forward:/workbench/index.html")
     }
 
     override fun addResourceHandlers(registry: ResourceHandlerRegistry) {
@@ -30,14 +38,52 @@ class ObjsWorkbenchUiConfiguration : WebMvcConfigurer {
             .addResolver(object : PathResourceResolver() {
                 @Throws(IOException::class)
                 override fun getResource(resourcePath: String, location: Resource): Resource? {
-                    val requested = location.createRelative(resourcePath)
-                    return if (requested.exists() && requested.isReadable) {
-                        requested
-                    } else {
-                        ClassPathResource("/static/ui/index.html")
+                    val path = resourcePath.trimStart('/')
+                    if (path.isEmpty()) {
+                        return readableRelative(location, "index.html")
                     }
+                    readableRelative(location, path)?.let { return it }
+                    // SPA client routes (no file extension) → index when packaged
+                    if (!path.contains('.')) {
+                        return readableRelative(location, "index.html")
+                    }
+                    return null
                 }
             })
+    }
+
+    companion object {
+        fun readableRelative(location: Resource, relative: String): Resource? =
+            try {
+                val resource = location.createRelative(relative)
+                if (resource.isReadable) resource else null
+            } catch (_: IOException) {
+                null
+            }
+
+        fun workbenchIndex(): Resource = ClassPathResource("static/ui/index.html")
+    }
+}
+
+/** Entry HTML for `/workbench/` without ResourceHttpRequestHandler lastModified on a missing file. */
+@Controller
+class WorkbenchSpaController {
+    @GetMapping("/workbench/", produces = [MediaType.TEXT_HTML_VALUE])
+    fun index(): ResponseEntity<ByteArray> {
+        val index = ObjsWorkbenchUiConfiguration.workbenchIndex()
+        if (!index.isReadable) {
+            val message =
+                """
+                Workbench UI is not on the classpath (static/ui/index.html missing).
+                Rebuild without -PskipUi=true, e.g. ./gradlew :objs-app:run
+                """.trimIndent()
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .contentType(MediaType.TEXT_PLAIN)
+                .body(message.toByteArray(StandardCharsets.UTF_8))
+        }
+        return ResponseEntity.ok()
+            .contentType(MediaType.TEXT_HTML)
+            .body(index.inputStream.use { it.readBytes() })
     }
 }
 

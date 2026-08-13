@@ -1,7 +1,8 @@
 # Object-schema DSL
 
-**Status:** implemented
-**Parent:** [README.md](README.md)
+**Status:** implemented  
+**Parent:** [README.md](README.md)  
+**Related:** [seeds.md](seeds.md) (seed envelope), [json-schema-to-seeds.md](json-schema-to-seeds.md) (JSON Schema → YAML seeds)  
 **Inspired by:** qpointz metadata facet payload schemas; Objs does not implement facets
 
 ## Purpose
@@ -16,7 +17,8 @@ A deterministic JSON Schema 2020-12 projection is generated for:
 - `GET /api/v1/objs/registry/schemas/{type}/{version}/json-schema`.
 
 This keeps authoring predictable and ordered while retaining standards-based runtime validation.
-There is intentionally no JSON Schema-to-DSL conversion.
+There is intentionally no JSON Schema-to-DSL conversion in the product. To map JSON Schema into
+DSL seeds by hand or with a generator, see [json-schema-to-seeds.md](json-schema-to-seeds.md).
 
 ## Definition envelope
 
@@ -201,7 +203,7 @@ incoming schema (downgrade / catalog change) are not frozen. If the stored proje
 the incoming schema has no identifier paths, the check is skipped. Violations fail with
 `IDENTIFIER_IMMUTABLE`. Writes are full-document replace.
 
-See story [`schema-field-identifiers`](../../workitems/in-progress/schema-field-identifiers/STORY.md)
+See story [`schema-field-identifiers`](../../workitems/completed/20260811-schema-field-identifiers/STORY.md)
 (C-14).
 
 ## Enums
@@ -422,7 +424,8 @@ source, role, and target are not embedded in the reusable object-schema DSL.
 
 ## Seed representation
 
-Seed v1 uses this same DSL without introducing a second schema language:
+Seed v1 uses this same DSL without introducing a second schema language. Full seed envelope,
+`AllowedEdgeRule`, `Graph`, packaging, and converter checklist: [seeds.md](seeds.md).
 
 ```yaml
 apiVersion: objs.poc.org/v1

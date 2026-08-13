@@ -25,6 +25,9 @@
 
 **Ontology coverage:** classpath seed `seeds/sbom-ontology.yaml` registers the **entire** draft ontology (Waves A–D): 23 entity types + shared `CanonicalEdge` + all 28 relationship triples from [`canonical-spec.md`](canonical-spec.md). Typed `SbomRegistry.pack()` remains the parity/builder companion.
 
+**Seed format:** see [`../graph/seeds.md`](../graph/seeds.md) and
+[`../graph/json-schema-to-seeds.md`](../graph/json-schema-to-seeds.md) (JSON Schema → YAML seeds).
+
 ## Problem
 
 An organisation tracks dependencies and related metadata for **many applications**. Each application has a string **slug** id. Each application release has its **own SBOM** (app version). Objects in an SBOM may arrive from different pipelines:

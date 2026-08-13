@@ -29,6 +29,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | C-12 | Soft-link subgraphs + snapshot clone (new ids) + Composer save/open/snapshot | feature | done | [`completed/20260807-subgraphs-materialization/`](completed/20260807-subgraphs-materialization/STORY.md) |
 | C-13 | Global entity pool + many graphs (no global graph); table renames; graph-local edges | feature | done | [`completed/20260811-graphs-from-objects/`](completed/20260811-graphs-from-objects/STORY.md) |
 | C-14 | Schema field flags: drop OBJECT `required` list; `identifier` + `searchable`; identity immutability | feature | done | [`completed/20260811-schema-field-identifiers/`](completed/20260811-schema-field-identifiers/STORY.md) |
+| C-15 | Schema migration handover docs (seed reference + JSON Schema → YAML seeds guide) | docs | done | [`completed/20260813-schema-migration-docs/`](completed/20260813-schema-migration-docs/STORY.md) |
 
 ---
 
@@ -68,4 +69,4 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | backlog | 0 |
 | planned | 0 |
 | in-progress | 0 |
-| done | 20 |
+| done | 21 |

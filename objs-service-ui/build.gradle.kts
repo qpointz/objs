@@ -46,10 +46,15 @@ val npmBuildWorkbench by tasks.registering(NpmTask::class) {
 
 // Project dependencies consume resources/ + classes/ dirs, not the jar artifact.
 // Put SPA files into main resources so :objs-app:run sees classpath:/static/ui/.
+// Stub: src/main/resources/static/ui/index.html (used when -PskipUi=true).
+// When the UI builds, drop the stub tree and copy Vite output instead.
 tasks.named<ProcessResources>("processResources") {
     dependsOn(npmBuildWorkbench)
-    from(viteOutDir) {
-        into("static/ui")
+    if (!uiSkipped()) {
+        exclude("static/ui/**")
+        from(viteOutDir) {
+            into("static/ui")
+        }
     }
 }
 

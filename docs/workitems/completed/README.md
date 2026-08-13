@@ -10,6 +10,7 @@ docs/workitems/completed/YYYYMMDD-<story-slug>/
 
 ## Index (optional, newest first)
 
+- [`20260813-schema-migration-docs`](20260813-schema-migration-docs/STORY.md) — Seed format + JSON Schema → YAML seeds guide + Python nano-framework (C-15)
 - [`20260813-ui-gradle-node`](20260813-ui-gradle-node/STORY.md) — Workbench SPA via node-gradle + `:objs-service-ui` (U-6)
 - [`20260813-objects-shelf`](20260813-objects-shelf/STORY.md) — Objects view + shelf → Composer New graph (U-5)
 - [`20260813-build-system-cleanup`](20260813-build-system-cleanup/STORY.md) — Gradle `platform()` BOM, prune deps, minimize plugins (P-1)
