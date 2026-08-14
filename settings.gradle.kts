@@ -8,6 +8,11 @@ include(":objs-gremlin-core")
 include(":objs-gremlin-service")
 include(":objs-app")
 
+include(":asset-repository-service")
+include(":asset-repository-service-ui")
+project(":asset-repository-service").projectDir = file("examples/asset-repository/asset-repository-service")
+project(":asset-repository-service-ui").projectDir = file("examples/asset-repository/asset-repository-service-ui")
+
 dependencyResolutionManagement {
     repositories {
         mavenCentral()

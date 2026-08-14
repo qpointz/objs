@@ -1,0 +1,427 @@
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
+type: "Database"
+version: "1.0.0"
+contentSchema:
+  type: "OBJECT"
+  title: "Database"
+  description: "Database asset (data product shelf / product)"
+  fields:
+  - name: "name"
+    schema:
+      type: "STRING"
+      title: "Name"
+      description: "Database name"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "engine"
+    schema:
+      type: "STRING"
+      title: "Engine"
+      description: "Database engine"
+    required: true
+    searchable: true
+  - name: "version"
+    schema:
+      type: "STRING"
+      title: "Version"
+      description: "Engine version"
+    required: false
+    searchable: true
+  - name: "environment"
+    schema:
+      type: "STRING"
+      title: "Environment"
+      description: "Deployment environment"
+    required: false
+    searchable: true
+  - name: "description"
+    schema:
+      type: "STRING"
+      title: "Description"
+      description: "Human-readable description"
+    required: false
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
+type: "Dataset"
+version: "1.0.0"
+contentSchema:
+  type: "OBJECT"
+  title: "Dataset"
+  description: "Dataset asset (table, topic, file set, …)"
+  fields:
+  - name: "name"
+    schema:
+      type: "STRING"
+      title: "Name"
+      description: "Dataset name"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "datasetType"
+    schema:
+      type: "STRING"
+      title: "Dataset type"
+      description: "Kind of dataset"
+    required: true
+    searchable: true
+  - name: "classification"
+    schema:
+      type: "STRING"
+      title: "Classification"
+      description: "Data classification"
+    required: false
+    searchable: true
+  - name: "description"
+    schema:
+      type: "STRING"
+      title: "Description"
+      description: "Human-readable description"
+    required: false
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
+type: "AiAgent"
+version: "1.0.0"
+contentSchema:
+  type: "OBJECT"
+  title: "AI Agent"
+  description: "Agent system asset that wires prompts, skills, tools, and MCP servers"
+  fields:
+  - name: "name"
+    schema:
+      type: "STRING"
+      title: "Name"
+      description: "Agent name"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "role"
+    schema:
+      type: "STRING"
+      title: "Role"
+      description: "Agent role or persona"
+    required: true
+    searchable: true
+  - name: "runtime"
+    schema:
+      type: "STRING"
+      title: "Runtime"
+      description: "Runtime or framework"
+    required: false
+    searchable: true
+  - name: "description"
+    schema:
+      type: "STRING"
+      title: "Description"
+      description: "Human-readable description"
+    required: false
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
+type: "Prompt"
+version: "1.0.0"
+contentSchema:
+  type: "OBJECT"
+  title: "Prompt"
+  description: "Prompt template asset"
+  fields:
+  - name: "name"
+    schema:
+      type: "STRING"
+      title: "Name"
+      description: "Prompt name"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "template"
+    schema:
+      type: "STRING"
+      title: "Template"
+      description: "Prompt body or template text"
+    required: true
+  - name: "description"
+    schema:
+      type: "STRING"
+      title: "Description"
+      description: "Human-readable description"
+    required: false
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
+type: "Skill"
+version: "1.0.0"
+contentSchema:
+  type: "OBJECT"
+  title: "Skill"
+  description: "Reusable agent skill asset"
+  fields:
+  - name: "name"
+    schema:
+      type: "STRING"
+      title: "Name"
+      description: "Skill name"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "description"
+    schema:
+      type: "STRING"
+      title: "Description"
+      description: "What the skill does"
+    required: true
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
+type: "Tool"
+version: "1.0.0"
+contentSchema:
+  type: "OBJECT"
+  title: "Tool"
+  description: "Tool asset callable by an agent"
+  fields:
+  - name: "name"
+    schema:
+      type: "STRING"
+      title: "Name"
+      description: "Tool name"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "kind"
+    schema:
+      type: "STRING"
+      title: "Kind"
+      description: "function, http, mcp, …"
+    required: true
+    searchable: true
+  - name: "description"
+    schema:
+      type: "STRING"
+      title: "Description"
+      description: "Human-readable description"
+    required: false
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
+type: "McpServer"
+version: "1.0.0"
+contentSchema:
+  type: "OBJECT"
+  title: "MCP Server"
+  description: "Model Context Protocol server asset"
+  fields:
+  - name: "name"
+    schema:
+      type: "STRING"
+      title: "Name"
+      description: "Server name"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "endpoint"
+    schema:
+      type: "STRING"
+      title: "Endpoint"
+      description: "Server endpoint URI"
+      format: "uri"
+    required: true
+    searchable: true
+  - name: "transport"
+    schema:
+      type: "STRING"
+      title: "Transport"
+      description: "stdio, sse, streamable-http, …"
+    required: false
+    searchable: true
+  - name: "description"
+    schema:
+      type: "STRING"
+      title: "Description"
+      description: "Human-readable description"
+    required: false
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
+type: "ModelFamily"
+version: "1.0.0"
+contentSchema:
+  type: "OBJECT"
+  title: "Model Family"
+  description: "Model family asset (e.g. gpt, claude)"
+  fields:
+  - name: "name"
+    schema:
+      type: "STRING"
+      title: "Name"
+      description: "Family name"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "vendor"
+    schema:
+      type: "STRING"
+      title: "Vendor"
+      description: "Provider / vendor"
+    required: true
+    searchable: true
+  - name: "description"
+    schema:
+      type: "STRING"
+      title: "Description"
+      description: "Human-readable description"
+    required: false
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
+type: "ModelVersion"
+version: "1.0.0"
+contentSchema:
+  type: "OBJECT"
+  title: "Model Version"
+  description: "Concrete model version asset within a family"
+  fields:
+  - name: "name"
+    schema:
+      type: "STRING"
+      title: "Name"
+      description: "Version id / marketing name"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "contextWindow"
+    schema:
+      type: "INTEGER"
+      title: "Context window"
+      description: "Context window size in tokens"
+    required: false
+  - name: "releasedAt"
+    schema:
+      type: "STRING"
+      title: "Released at"
+      description: "Release date"
+      format: "date"
+    required: false
+  - name: "description"
+    schema:
+      type: "STRING"
+      title: "Description"
+      description: "Human-readable description"
+    required: false
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
+type: "Modality"
+version: "1.0.0"
+contentSchema:
+  type: "OBJECT"
+  title: "Modality"
+  description: "Input/output modality asset (text, vision, audio, embedding, …)"
+  fields:
+  - name: "name"
+    schema:
+      type: "STRING"
+      title: "Name"
+      description: "Modality name"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "description"
+    schema:
+      type: "STRING"
+      title: "Description"
+      description: "Human-readable description"
+    required: false
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Database"
+role: "CONTAINS"
+targetType: "Dataset"
+propertiesPolicy: "NONE"
+cardinality: "1:*"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "AiAgent"
+role: "USES_PROMPT"
+targetType: "Prompt"
+propertiesPolicy: "NONE"
+cardinality: "1:*"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "AiAgent"
+role: "HAS_SKILL"
+targetType: "Skill"
+propertiesPolicy: "NONE"
+cardinality: "1:*"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "AiAgent"
+role: "USES_TOOL"
+targetType: "Tool"
+propertiesPolicy: "NONE"
+cardinality: "1:*"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "AiAgent"
+role: "CONNECTS_TO"
+targetType: "McpServer"
+propertiesPolicy: "NONE"
+cardinality: "1:*"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Skill"
+role: "USES_TOOL"
+targetType: "Tool"
+propertiesPolicy: "NONE"
+cardinality: "1:*"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Tool"
+role: "BACKED_BY"
+targetType: "McpServer"
+propertiesPolicy: "NONE"
+cardinality: "1:1"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "ModelFamily"
+role: "HAS_VERSION"
+targetType: "ModelVersion"
+propertiesPolicy: "NONE"
+cardinality: "1:*"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "ModelVersion"
+role: "SUPPORTS"
+targetType: "Modality"
+propertiesPolicy: "NONE"
+cardinality: "1:*"

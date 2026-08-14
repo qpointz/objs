@@ -11,6 +11,7 @@ Gradle multi-module Kotlin project. Leaf modules at the repository root:
 - `objs-gremlin-core` — BoM → TinkerGraph materialization + gremlin-lang evaluation
 - `objs-gremlin-service` — Gremlin REST (`POST /api/v1/objs/graph/traverse/gremlin`) autoconfiguration
 - `objs-sbom-example` — Concrete SBOM app (canonical ontology + `/api/v1/example/sbom`); keep in sync with foundation features — see [`docs/workitems/RULES.md`](docs/workitems/RULES.md) **Concrete example integration**
+- `examples/asset-repository/` — Asset repository example (`:asset-repository-service` + `:asset-repository-service-ui`); objs as object store — see [`docs/design/asset-repository/example.md`](docs/design/asset-repository/example.md)
 - `objs-app` — Runnable assembly (`./gradlew :objs-app:run`)
 
 Production sources: `src/main/kotlin`. Tests: `src/test/kotlin` (integration suites under `src/testIT/kotlin` when present).
@@ -22,6 +23,7 @@ Production sources: `src/main/kotlin`. Tests: `src/test/kotlin` (integration sui
 - `./gradlew :objs-core:test` / `./gradlew :objs-service:test` — scoped tests
 - `./gradlew :objs-core:testIT` — integration tests when defined
 - `./gradlew :objs-app:run` — run the service locally (H2)
+- `./gradlew :asset-repository-service:run` — asset repository example (demo profile; domain UI `/app/`)
 - `./gradlew clean` — remove build outputs
 
 ## Coding Style & Naming Conventions

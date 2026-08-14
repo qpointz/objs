@@ -1,0 +1,40 @@
+spring:
+  application:
+    name: asset-repository
+  datasource:
+    url: jdbc:h2:mem:assetrepository;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+server:
+  port: 8080
+
+objs:
+  seeds:
+    enabled: false
+    on-failure: FAIL_FAST
+
+springdoc:
+  remove-broken-reference-definitions: false
+
+---
+spring:
+  config:
+    activate:
+      on-profile: demo
+
+# Ontology schemas + DemoDataSeeder (collections + sample objects).
+objs:
+  seeds:
+    enabled: true
+    resources:
+      - classpath:seeds/asset-repository-ontology.yaml
+    on-failure: FAIL_FAST
