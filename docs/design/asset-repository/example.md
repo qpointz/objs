@@ -1,8 +1,8 @@
 # Asset repository example
 
 **Status:** product design (aligned with D-3 GAPS)  
-**Story:** [`docs/workitems/in-progress/asset-repository-example/`](../../workitems/in-progress/asset-repository-example/STORY.md)  
-**Gaps:** [`GAPS.md`](../../workitems/in-progress/asset-repository-example/GAPS.md)
+**Story:** [`docs/workitems/completed/20260814-asset-repository-example/`](../../workitems/completed/20260814-asset-repository-example/STORY.md)  
+**Gaps:** [`GAPS.md`](../../workitems/completed/20260814-asset-repository-example/GAPS.md)
 
 ## Purpose
 
@@ -90,5 +90,5 @@ Schemas: portal of latest object schemas (used-in collections); left pane type l
 
 ## See also
 
-- [`GAPS.md`](../../workitems/in-progress/asset-repository-example/GAPS.md)  
+- [`GAPS.md`](../../workitems/completed/20260814-asset-repository-example/GAPS.md)  
 - Graph foundation: [`docs/design/graph/model.md`](../graph/model.md), [`annotations-and-matchers.md`](../graph/annotations-and-matchers.md)  

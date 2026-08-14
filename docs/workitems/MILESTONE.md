@@ -33,11 +33,11 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`build-system-cleanup`](completed/20260813-build-system-cleanup/STORY.md) — Gradle: drop Spring DM for `platform()`, prune deps/catalog, minimize plugins (P-1).
 - [`ui-gradle-node`](completed/20260813-ui-gradle-node/STORY.md) — Workbench SPA via `com.github.node-gradle.node` 7.0.2 + `:objs-service-ui` (U-6).
 - [`schema-migration-docs`](completed/20260813-schema-migration-docs/STORY.md) — Seed-format implementer reference + JSON Schema → YAML seeds guide + Python nano-framework; workbench missing-UI 503 (C-15).
+- [`asset-repository-example`](completed/20260814-asset-repository-example/STORY.md) — Centralized asset object store: collections, domain REST, Mantine UI, schema catalog, Python client (D-3).
 
 ### In Progress
 
 - [`sbom-inventory-app`](in-progress/sbom-inventory-app/STORY.md) — Applications \| Portfolios inventory app; portfolio-scoped MI (latest-version graphs + Gremlin); weak CDX; programmatic objs (D-2).
-- [`asset-repository-example`](in-progress/asset-repository-example/STORY.md) — Centralized asset object store via objs collections; domain REST + simple explore UI (D-3).
 
 ### Planned
 

@@ -1,5 +1,5 @@
 import { ActionIcon, AppShell, Group, Text, Tooltip, UnstyledButton, useMantineColorScheme } from '@mantine/core'
-import { IconBuildingWarehouse, IconMoon, IconSchema, IconSun, IconTool, IconTournament } from '@tabler/icons-react'
+import { IconBuildingWarehouse, IconExternalLink, IconMoon, IconSchema, IconSun, IconTournament } from '@tabler/icons-react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { useEffect, useState, type ReactNode } from 'react'
 
@@ -11,7 +11,7 @@ function HeaderNavLink({
 }: {
   to: string
   label: string
-  icon: ReactNode
+  icon?: ReactNode
   external?: boolean
 }) {
   const location = useLocation()
@@ -29,10 +29,19 @@ function HeaderNavLink({
 
   if (external) {
     return (
-      <UnstyledButton component="a" href={to} px="md" py={7} style={style}>
+      <UnstyledButton
+        component="a"
+        href={to}
+        target="_blank"
+        rel="noopener noreferrer"
+        px="md"
+        py={7}
+        style={style}
+      >
         <Group gap={8} wrap="nowrap">
           {icon}
           <span>{label}</span>
+          {external && <IconExternalLink size={14} stroke={1.75} aria-hidden />}
         </Group>
       </UnstyledButton>
     )
@@ -134,17 +143,14 @@ export function AppLayout() {
             >
               <HeaderNavLink to="/" label="Collections" icon={<IconTournament size={16} stroke={1.75} />} />
               <HeaderNavLink to="/schemas" label="Schemas" icon={<IconSchema size={16} stroke={1.75} />} />
-              {workbenchUp && (
-                <HeaderNavLink
-                  to="/workbench/"
-                  label="Workbench"
-                  icon={<IconTool size={16} stroke={1.75} />}
-                  external
-                />
-              )}
             </Group>
           </Group>
-          <ColorSchemeToggle />
+          <Group gap="xs" wrap="nowrap">
+            {workbenchUp && (
+              <HeaderNavLink to="/workbench/" label="Workbench" external />
+            )}
+            <ColorSchemeToggle />
+          </Group>
         </Group>
       </AppShell.Header>
       <AppShell.Main>

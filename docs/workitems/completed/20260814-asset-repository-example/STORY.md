@@ -2,8 +2,8 @@
 
 **Slug:** `asset-repository-example`  
 **Branch:** `asset-repository-example`  
-**Status:** in-progress  
-**Folder:** [`docs/workitems/in-progress/asset-repository-example/`](.)  
+**Status:** completed  
+**Folder:** [`docs/workitems/completed/20260814-asset-repository-example/`](.)  
 **Backlog:** [D-3](../../BACKLOG.md)  
 **Base:** `origin/dev`  
 **Design (product):** [`docs/design/asset-repository/example.md`](../../../design/asset-repository/example.md)  
@@ -116,4 +116,4 @@ See [`GAPS.md`](GAPS.md) for full resolved detail (G-A*, G-P1…G-P7, G-X1).
 2. Prefer example-layer solutions; escalate platform holes into `GAPS.md`.  
 3. Domain UI stays clear (WI-005); schema management via workbench link.  
 4. Never call foundation REST from the application path (G-A2 sidecar rule).  
-5. Do **not** close/archive until the user explicitly requests story closure.  
+5. Story archived 2026-08-14.  
