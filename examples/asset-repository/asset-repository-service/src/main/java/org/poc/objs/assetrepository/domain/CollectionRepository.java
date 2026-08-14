@@ -11,6 +11,8 @@ public interface CollectionRepository extends JpaRepository<CollectionEntity, UU
 
     Optional<CollectionEntity> findByGraphId(UUID graphId);
 
+    Optional<CollectionEntity> findByName(String name);
+
     @Query("""
             SELECT c FROM CollectionEntity c
             WHERE (:nameContains IS NULL OR LOWER(c.name) LIKE LOWER(CONCAT('%', CAST(:nameContains AS string), '%')))

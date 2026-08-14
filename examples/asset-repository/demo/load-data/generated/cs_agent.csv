@@ -1,0 +1,3 @@
+agentId,name,description,catalog,category,capabilities,runtime_platform,runtime_interactionMode,runtime_autonomyLevel,status,owner,access,businessCriticality
+ff638d14-588a-4182-a9b2-36eaa1c62753,CS Agent vL,Quite realize source happy enjoy source ten.,Enterprise AI Catalog,Customer Support,Search|Classification|Task Automation,Enterprise AI Platform,API,Assisted,Production,Customer Support,Restricted,Critical
+a51de150-e592-45bd-acf6-0c66c2792b78,CS Agent xg,View movement finish smile first.,Enterprise AI Catalog,Customer Support,Search|Classification|Task Automation,Enterprise AI Platform,Conversational,Assisted,Production,Customer Support,Restricted,High

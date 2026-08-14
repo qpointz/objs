@@ -7,6 +7,13 @@ package org.poc.objs.core.seed
 interface SeedDocumentHandler {
     val kind: String
 
+    /**
+     * Lower runs first. Built-in: ObjectSchema `0`, AllowedEdgeRule `10`, Graph `30`.
+     * Application kinds should pick a gap (e.g. Collection `20`, CollectionObjects `40`).
+     */
+    val applyOrder: Int
+        get() = 50
+
     /** Parse and validate the document without applying side effects. */
     fun parse(document: SeedRawDocument): ParsedSeedDocument
 

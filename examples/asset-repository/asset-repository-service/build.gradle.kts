@@ -10,6 +10,7 @@ description = "Asset repository example — Java 21 Boot app (objs as object sto
 dependencies {
     implementation(platform(libs.boot.dependencies))
     implementation(project(":objs-service"))
+    implementation(project(":objs-gremlin-service"))
     implementation(libs.boot.starter.webmvc)
     implementation(libs.boot.starter.data.jpa)
     implementation(libs.boot.starter.flyway)

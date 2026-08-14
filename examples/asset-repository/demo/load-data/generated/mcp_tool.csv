@@ -1,0 +1,11 @@
+toolId,name,description,catalog,integration_toolType,integration_operationType,integration_service,version,owner,status
+90918041-5c8b-40e7-9268-6aa80b150f8b,Tool lRzg,Debate itself least.,Enterprise AI Catalog,Function,Read,Azure Blob Storage,1.4.0,AI Infrastructure,Approved
+07e2d0ca-5815-4162-8480-4b933fb37912,Tool FWGX,Rise capital war.,Enterprise AI Catalog,Function,Write,Azure Blob Storage,1.1.0,Customer Platform,Approved
+3826cc35-d575-4846-8de0-a1c6783c85c5,Tool pyjz,Live inside blue organization his cover traditional back.,Enterprise AI Catalog,Function,Write,Azure Blob Storage,1.5.0,Customer Platform,Draft
+82b17153-042d-437a-830d-c4bf3b6eb914,Tool trtN,Yard man during get ok lot baby.,Enterprise AI Catalog,MCP,Write,S3,1.4.0,AI Infrastructure,Deprecated
+bc0b3659-ff74-4c07-91e5-8fbd813707f3,Tool cuMq,Trip recently detail stop college positive create.,Enterprise AI Catalog,Other,Read / Write,Azure Blob Storage,1.3.0,AI Infrastructure,Draft
+054afc43-8f67-4205-8fb8-bc24b1020882,Tool STyA,Person course some will lose listen board president.,Enterprise AI Catalog,Other,Read,BigQuery,1.9.0,Data Platform,Approved
+59ec48b7-9f9f-4fc5-ab80-89154abb9d50,Tool vYAr,Again probably car read.,Enterprise AI Catalog,Database,Write,Snowflake,1.1.0,Customer Platform,Approved
+f0542420-37aa-47a2-83f2-b60ed40f6275,Tool RxTz,Set article wear himself today whether idea.,Enterprise AI Catalog,Database,Read / Write,S3,1.0.0,Customer Platform,Draft
+1bbfce06-371b-4a78-9ed4-c520555390c9,Tool ORCI,Force college eight through believe animal.,Enterprise AI Catalog,Search,Write,Azure Blob Storage,1.6.0,AI Infrastructure,Deprecated
+75db66dd-a7f9-4027-8caa-fe63683989ec,Tool eJtP,Talk PM picture institution.,Enterprise AI Catalog,API,Write,SharePoint,1.0.0,AI Infrastructure,Approved

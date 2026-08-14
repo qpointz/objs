@@ -2,7 +2,7 @@ package org.poc.objs.core.seed
 
 import org.poc.objs.core.validation.BoMValidationIssue
 
-class SeedDocumentParseException(
+class SeedDocumentParseException @JvmOverloads constructor(
     val documentIndex: Int,
     message: String,
     cause: Throwable? = null,
@@ -14,7 +14,7 @@ class SeedDocumentValidationException(
     message: String,
 ) : RuntimeException("document[$documentIndex]: $message")
 
-internal fun requireText(
+fun requireText(
     map: Map<String, Any?>,
     key: String,
     documentIndex: Int,

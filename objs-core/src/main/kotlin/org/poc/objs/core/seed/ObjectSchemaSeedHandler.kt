@@ -14,6 +14,7 @@ class ObjectSchemaSeedHandler(
     private val schemas: BoMSchemaCatalog,
 ) : SeedDocumentHandler {
     override val kind: String = SEED_KIND_OBJECT_SCHEMA
+    override val applyOrder: Int = 0
 
     override fun parse(document: SeedRawDocument): ParsedSeedDocument {
         val type = requireText(document.raw, "type", document.index)

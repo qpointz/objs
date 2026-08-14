@@ -108,8 +108,9 @@ class BoMSeedStartupLoader(
             )
         } catch (ex: SeedImportException) {
             val error = ex.message ?: "Seed import failed"
+            val details = ex.result.allErrors().joinToString("; ") { "${it.code} ${it.path}: ${it.message}" }
             ledger.recordFailure(seedKey, fingerprint, error)
-            log.error("Failed seed resource {} ({}): {}", seedKey, fingerprint, error)
+            log.error("Failed seed resource {} ({}): {} {}", seedKey, fingerprint, error, details)
             SeedStartupResourceResult(
                 seedKey = seedKey,
                 location = location,

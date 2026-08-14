@@ -31,6 +31,7 @@ class GraphSeedHandler(
     private val namedGraphs: BoMNamedGraphStore,
 ) : SeedDocumentHandler {
     override val kind: String = SEED_KIND_GRAPH
+    override val applyOrder: Int = 30
 
     override fun parse(document: SeedRawDocument): ParsedSeedDocument {
         val name = requireText(document.raw, "name", document.index)

@@ -83,6 +83,17 @@ public class CollectionService {
     }
 
     @Transactional(readOnly = true)
+    public CollectionEntity requireByName(String name) {
+        return collections.findByName(name)
+                .orElseThrow(() -> new NoSuchElementException("Collection not found: " + name));
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.Optional<CollectionEntity> findByName(String name) {
+        return collections.findByName(name);
+    }
+
+    @Transactional(readOnly = true)
     public List<CollectionEntity> list(String nameContains, String owner, String acceptedType) {
         List<CollectionEntity> rows = collections.search(
                 blankToNull(nameContains),

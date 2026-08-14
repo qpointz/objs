@@ -33,26 +33,26 @@ class CollectionServiceTest {
     @Test
     void shouldCreateCollection_withTypeRowsAndAcceptedGate() {
         CollectionEntity created = collections.create(
-                "db-catalog",
-                "Databases and datasets",
+                "model-catalog",
+                "Models and datasets",
                 "platform-data",
                 "data@example.com",
                 "support@example.com",
                 "best effort",
                 ObjectWriteMode.UUID_OR_IDENTIFIER,
                 List.of(
-                        new CollectionTypeSpec("Database", "{\"source\":\"cmdb\"}"),
+                        new CollectionTypeSpec("LlmModel", "{\"source\":\"cmdb\"}"),
                         CollectionTypeSpec.of("Dataset")));
 
         assertThat(created.getId()).isNotNull();
         assertThat(created.getGraphId()).isNotNull();
-        assertThat(created.acceptedTypes()).containsExactly("Database", "Dataset");
+        assertThat(created.acceptedTypes()).containsExactly("LlmModel", "Dataset");
         assertThat(created.getTypes()).hasSize(2);
         assertThat(created.getTypes().get(0).getMetadata()).isEqualTo("{\"source\":\"cmdb\"}");
-        assertThat(schemas.get("Database", "1.0.0")).isNotNull();
+        assertThat(schemas.get("LlmModel", "1.0.0")).isNotNull();
         assertThat(schemas.get("Dataset", "1.0.0")).isNotNull();
 
-        collections.assertAcceptedType(created, "Database");
+        collections.assertAcceptedType(created, "LlmModel");
         assertThatThrownBy(() -> collections.assertAcceptedType(created, "AiAgent"))
                 .isInstanceOf(IllegalArgumentException.class);
     }

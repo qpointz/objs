@@ -1,0 +1,6 @@
+guardrailId,name,description,catalog,policy_guardrailType,policy_action,version,owner,status
+d96074fd-95f1-4e76-bcc3-091dbb4284a6,Guardrail dyJc,General sell cup direction weight.,Enterprise AI Catalog,Other,Warn,0.1.0,AI Governance,Deprecated
+ff204b34-1870-473d-8a91-9662963b6fe9,Guardrail DoYi,Them expect to concern window.,Enterprise AI Catalog,Output Validation,Block,6.1.0,AI Governance,Approved
+822f18ed-7136-4dcd-8fde-88de495c14b0,Guardrail kggS,Day network public theory choose thousand scientist.,Enterprise AI Catalog,Access Control,Detect,4.1.0,AI Governance,Draft
+ae506433-7675-4ae5-b809-559164269b22,Guardrail nZKt,Fall begin choice include.,Enterprise AI Catalog,Compliance,Detect,5.1.0,AI Governance,Approved
+f623209b-89a9-4cb8-a027-472f95859a3c,Guardrail CSGz,Nation now focus.,Enterprise AI Catalog,Other,Warn,8.1.0,AI Governance,Draft

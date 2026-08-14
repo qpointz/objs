@@ -1,0 +1,1000 @@
+# Demo-seed ratios. Scale volume with rows_multiply only (1.0 = committed default extract).
+rows_multiply: 0.2
+
+experiments:
+  write_csv:
+    type: csv
+    path: "generated/{dataset-name}.csv"
+    params:
+      sep: ","
+      header: true
+      index: false
+
+models:
+  - name: asset_repository
+    locales: ["en-US"]
+    schemas:
+
+      - name: dataset
+        rows: 50
+        description: Library datasets collection
+        attributes:
+          - name: datasetId
+            type: uuid4
+          - name: name
+            type: catch_phrase
+          - name: description
+            type: sentence
+          - name: purpose
+            type: random_element
+            params:
+              elements: ["Training", "Validation", "Evaluation", "Knowledge", "Operational", "Other"]
+          - name: catalog
+            type: random_element
+            params:
+              elements: ["Enterprise Data Catalog", "Corporate Data Catalog", "AI Data Catalog"]
+          - name: format
+            type: random_element
+            params:
+              elements: ["CSV", "Parquet", "JSON", "Database Table", "Documents", "Images", "Audio", "Video"]
+          - name: service
+            type: random_element
+            params:
+              elements: ["Azure Blob Storage", "SharePoint", "PostgreSQL", "S3", "Snowflake", "BigQuery"]
+          - name: location
+            type: file_path
+          - name: owner
+            type: random_element
+            params:
+              elements: ["Customer Service Analytics", "Product Management", "AI Quality Engineering", "Customer Platform", "Finance Analytics", "HR Analytics", "Risk Data Office"]
+          - name: classification
+            type: random_element
+            params:
+              elements: ["Public", "Internal", "Confidential", "Restricted"]
+          - name: size
+            type: bothify
+            params:
+              text: "## GB"
+          - name: lastUpdated
+            type: date_this_year
+
+      - name: llm_model
+        rows: 20
+        attributes:
+          - name: modelId
+            type: uuid4
+          - name: name
+            type: bothify
+            params:
+              text: "Model ???? ##"
+          - name: description
+            type: sentence
+          - name: vendor
+            type: random_element
+            params:
+              elements: ["OpenAI", "Anthropic", "Google", "Meta", "Mistral", "Amazon"]
+          - name: family
+            type: random_element
+            params:
+              elements: ["GPT", "Claude", "Gemini", "Llama", "Mistral", "Titan"]
+          - name: version
+            type: bothify
+            params:
+              text: "2025-##-01"
+          - name: catalog
+            type: random_element
+            params:
+              elements: ["Approved Model Catalog", "Enterprise Model Catalog"]
+          - name: modelType
+            type: random_element
+            params:
+              elements: ["General Purpose", "Reasoning", "Coding", "Multimodal", "Other"]
+          - name: io_inputs
+            type: random_element
+            params:
+              elements: ["Text", "Text|Image", "Text|Image|Audio|Video"]
+          - name: io_outputs
+            type: random_element
+            params:
+              elements: ["Text", "Text|Image"]
+          - name: limits_contextWindow
+            type: random_element
+            params:
+              elements: ["128k tokens", "200k tokens", "1M tokens"]
+          - name: hosting_platform
+            type: random_element
+            params:
+              elements: ["Azure OpenAI", "Anthropic", "Google Cloud", "Internal GPU Platform", "Azure AI", "AWS Bedrock"]
+          - name: hosting_region
+            type: random_element
+            params:
+              elements: ["Switzerland North", "West Europe", "East US", "Frankfurt"]
+          - name: status
+            type: random_element
+            params:
+              elements: ["Candidate", "Approved", "Restricted", "Deprecated"]
+          - name: dataClassificationAllowed
+            type: random_element
+            params:
+              elements: ["Public", "Internal", "Confidential", "Restricted"]
+          - name: owner
+            type: random_element
+            params:
+              elements: ["Enterprise AI Platform"]
+
+      - name: ai_agent
+        rows: 100
+        attributes:
+          - name: agentId
+            type: uuid4
+          - name: name
+            type: bothify
+            params:
+              text: "Agent ????"
+          - name: description
+            type: sentence
+          - name: catalog
+            type: random_element
+            params:
+              elements: ["Enterprise AI Catalog"]
+          - name: category
+            type: random_element
+            params:
+              elements: ["Customer Support", "Software Development", "Data Analytics", "Finance", "Human Resources", "Sales", "Operations", "Research", "Legal", "Risk"]
+          - name: capabilities
+            type: random_element
+            params:
+              elements:
+                - "Question Answering|Search|Summarization"
+                - "Search|Summarization|Content Generation"
+                - "Summarization|Content Generation|Data Analysis"
+                - "Content Generation|Data Analysis|Classification"
+                - "Data Analysis|Classification|Recommendation"
+                - "Classification|Recommendation|Task Automation"
+                - "Recommendation|Task Automation|Decision Support"
+                - "Task Automation|Decision Support|Question Answering"
+                - "Decision Support|Question Answering|Search"
+          - name: runtime_platform
+            type: random_element
+            params:
+              elements: ["Enterprise AI Platform"]
+          - name: runtime_interactionMode
+            type: random_element
+            params:
+              elements: ["Conversational", "API", "Background", "Embedded"]
+          - name: runtime_autonomyLevel
+            type: random_element
+            params:
+              elements: ["Assistant", "Assisted", "Autonomous"]
+          - name: status
+            type: random_element
+            params:
+              elements: ["Development", "Pilot", "Production", "Suspended", "Retired"]
+          - name: owner
+            type: random_element
+            params:
+              elements: ["Customer Support", "Software Development", "Data Analytics", "Finance", "Human Resources", "Sales", "Operations", "Research", "Legal", "Risk"]
+          - name: access
+            type: random_element
+            params:
+              elements: ["Internal", "External", "Restricted", "Public"]
+          - name: businessCriticality
+            type: random_element
+            params:
+              elements: ["Low", "Medium", "High", "Critical"]
+
+      - name: prompt
+        rows: 50
+        attributes: &prompt_attrs
+          - name: promptId
+            type: uuid4
+          - name: name
+            type: bothify
+            params:
+              text: "Prompt ????"
+          - name: description
+            type: sentence
+          - name: catalog
+            type: random_element
+            params:
+              elements: ["Enterprise AI Catalog"]
+          - name: promptType
+            type: random_element
+            params:
+              elements: ["System", "Task", "Classification", "Extraction", "Generation", "Evaluation", "Other"]
+          - name: version
+            type: bothify
+            params:
+              text: "#.#.0"
+          - name: language
+            type: random_element
+            params:
+              elements: ["English", "German", "French"]
+          - name: owner
+            type: job
+          - name: status
+            type: random_element
+            params:
+              elements: ["Draft", "Approved", "Deprecated"]
+          - name: body
+            type: paragraph
+
+      - name: skill
+        rows: 40
+        attributes: &skill_attrs
+          - name: skillId
+            type: uuid4
+          - name: name
+            type: bothify
+            params:
+              text: "Skill ????"
+          - name: description
+            type: sentence
+          - name: catalog
+            type: random_element
+            params:
+              elements: ["Enterprise AI Catalog"]
+          - name: category
+            type: random_element
+            params:
+              elements: ["Customer Support", "Software Development", "Data Analytics", "Finance", "Human Resources", "Sales", "Operations", "Research", "Legal", "Risk"]
+          - name: version
+            type: bothify
+            params:
+              text: "#.#.0"
+          - name: owner
+            type: job
+          - name: status
+            type: random_element
+            params:
+              elements: ["Draft", "Approved", "Deprecated"]
+
+      - name: tool
+        rows: 40
+        attributes: &tool_attrs
+          - name: toolId
+            type: uuid4
+          - name: name
+            type: bothify
+            params:
+              text: "Tool ????"
+          - name: description
+            type: sentence
+          - name: catalog
+            type: random_element
+            params:
+              elements: ["Enterprise AI Catalog"]
+          - name: integration_toolType
+            type: random_element
+            params:
+              elements: ["API", "Function", "Database", "Search", "MCP", "Other"]
+          - name: integration_operationType
+            type: random_element
+            params:
+              elements: ["Read", "Write", "Read / Write"]
+          - name: integration_service
+            type: random_element
+            params:
+              elements: ["Azure Blob Storage", "SharePoint", "PostgreSQL", "S3", "Snowflake", "BigQuery"]
+          - name: version
+            type: bothify
+            params:
+              text: "1.#.0"
+          - name: owner
+            type: random_element
+            params:
+              elements: ["Customer Platform", "AI Infrastructure", "Data Platform"]
+          - name: status
+            type: random_element
+            params:
+              elements: ["Draft", "Approved", "Deprecated"]
+
+      - name: guardrail
+        rows: 25
+        attributes: &guardrail_attrs
+          - name: guardrailId
+            type: uuid4
+          - name: name
+            type: bothify
+            params:
+              text: "Guardrail ????"
+          - name: description
+            type: sentence
+          - name: catalog
+            type: random_element
+            params:
+              elements: ["Enterprise AI Catalog"]
+          - name: policy_guardrailType
+            type: random_element
+            params:
+              elements: ["Data Protection", "Content Safety", "Prompt Injection", "Access Control", "Output Validation", "Compliance", "Other"]
+          - name: policy_action
+            type: random_element
+            params:
+              elements: ["Detect", "Warn", "Block", "Redact", "Require Approval"]
+          - name: version
+            type: bothify
+            params:
+              text: "#.1.0"
+          - name: owner
+            type: random_element
+            params:
+              elements: ["AI Governance"]
+          - name: status
+            type: random_element
+            params:
+              elements: ["Draft", "Approved", "Deprecated"]
+
+      - name: knowledge
+        rows: 20
+        attributes: &knowledge_attrs
+          - name: knowledgeSourceId
+            type: uuid4
+          - name: name
+            type: bothify
+            params:
+              text: "Knowledge ????"
+          - name: description
+            type: sentence
+          - name: catalog
+            type: random_element
+            params:
+              elements: ["Enterprise AI Catalog"]
+          - name: access_knowledgeType
+            type: random_element
+            params:
+              elements: ["Documents", "Structured Data", "Web Content", "Mixed"]
+          - name: access_accessMethod
+            type: random_element
+            params:
+              elements: ["Semantic Search", "Keyword Search", "Database Query", "API", "Direct Context"]
+          - name: access_refreshFrequency
+            type: random_element
+            params:
+              elements: ["Hourly", "Daily", "Weekly"]
+          - name: owner
+            type: random_element
+            params:
+              elements: ["Customer Support", "Software Development", "Data Analytics", "Finance", "Human Resources"]
+          - name: status
+            type: random_element
+            params:
+              elements: ["Development", "Pilot", "Production", "Suspended", "Retired"]
+
+      - name: template
+        rows: 25
+        attributes: &template_attrs
+          - name: templateId
+            type: uuid4
+          - name: name
+            type: bothify
+            params:
+              text: "Template ????"
+          - name: description
+            type: sentence
+          - name: catalog
+            type: random_element
+            params:
+              elements: ["Enterprise AI Catalog"]
+          - name: output_templateType
+            type: random_element
+            params:
+              elements: ["Document", "Report", "Email", "Summary", "Response", "Structured Output", "Other"]
+          - name: output_format
+            type: random_element
+            params:
+              elements: ["Text", "Markdown", "HTML", "JSON", "YAML", "Other"]
+          - name: version
+            type: bothify
+            params:
+              text: "1.#.0"
+          - name: owner
+            type: random_element
+            params:
+              elements: ["Collaboration Platform"]
+          - name: status
+            type: random_element
+            params:
+              elements: ["Draft", "Approved", "Deprecated"]
+
+      - name: skill_uses_prompt
+        rows: 40
+        attributes:
+          - name: skillId
+            type: "${ref}"
+            params: { dataset: skill, attribute: skillId, cord: "1-*" }
+          - name: promptId
+            type: "${ref}"
+            params: { dataset: prompt, attribute: promptId, cord: "1-*" }
+
+      - name: skill_uses_tool
+        rows: 40
+        attributes:
+          - name: skillId
+            type: "${ref}"
+            params: { dataset: skill, attribute: skillId, cord: "1-*" }
+          - name: toolId
+            type: "${ref}"
+            params: { dataset: tool, attribute: toolId, cord: "1-*" }
+
+      - name: skill_protected_by
+        rows: 40
+        attributes:
+          - name: skillId
+            type: "${ref}"
+            params: { dataset: skill, attribute: skillId, cord: "1-*" }
+          - name: guardrailId
+            type: "${ref}"
+            params: { dataset: guardrail, attribute: guardrailId, cord: "1-*" }
+
+      - name: skill_uses_knowledge
+        rows: 20
+        attributes:
+          - name: skillId
+            type: "${ref}"
+            params: { dataset: skill, attribute: skillId, cord: "1-*" }
+          - name: knowledgeSourceId
+            type: "${ref}"
+            params: { dataset: knowledge, attribute: knowledgeSourceId, cord: "1-*" }
+
+      - name: skill_uses_template
+        rows: 14
+        attributes:
+          - name: skillId
+            type: "${ref}"
+            params: { dataset: skill, attribute: skillId, cord: "1-*" }
+          - name: templateId
+            type: "${ref}"
+            params: { dataset: template, attribute: templateId, cord: "1-*" }
+
+      - name: skill_depends_on
+        rows: 5
+        attributes:
+          - name: skillId
+            type: "${ref}"
+            params: { dataset: skill, attribute: skillId, cord: "*-*" }
+          - name: dependsOnSkillId
+            type: "${ref}"
+            params: { dataset: skill, attribute: skillId, cord: "*-*" }
+
+      - name: prompt_uses_template
+        rows: 25
+        attributes:
+          - name: promptId
+            type: "${ref}"
+            params: { dataset: prompt, attribute: promptId, cord: "1-*" }
+          - name: templateId
+            type: "${ref}"
+            params: { dataset: template, attribute: templateId, cord: "1-*" }
+
+      - name: mcp_server
+        rows: 50
+        attributes: &mcp_attrs
+          - name: mcpServerId
+            type: uuid4
+          - name: name
+            type: bothify
+            params:
+              text: "MCP ????"
+          - name: description
+            type: sentence
+          - name: catalog
+            type: random_element
+            params:
+              elements: ["Enterprise AI Catalog"]
+          - name: version
+            type: bothify
+            params:
+              text: "2.#.0"
+          - name: connection_endpoint
+            type: url
+          - name: connection_transport
+            type: random_element
+            params:
+              elements: ["Streamable HTTP", "STDIO", "Other"]
+          - name: connection_authentication
+            type: random_element
+            params:
+              elements: ["OAuth 2.0", "API Key", "Service Identity", "None", "Other"]
+          - name: connection_protocolVersion
+            type: random_element
+            params:
+              elements: ["2025-06-18"]
+          - name: access
+            type: random_element
+            params:
+              elements: ["Internal", "External", "Restricted", "Public"]
+          - name: owner
+            type: random_element
+            params:
+              elements: ["Customer Platform", "AI Infrastructure", "Data Platform"]
+          - name: status
+            type: random_element
+            params:
+              elements: ["Development", "Pilot", "Production", "Suspended", "Retired"]
+
+      - name: mcp_tool
+        rows: 50
+        attributes: *tool_attrs
+
+      - name: mcp_knowledge
+        rows: 25
+        attributes: *knowledge_attrs
+
+      - name: mcp_prompt
+        rows: 17
+        attributes: *prompt_attrs
+
+      - name: mcp_provides_tool
+        rows: 50
+        attributes:
+          - name: mcpServerId
+            type: "${ref}"
+            params: { dataset: mcp_server, attribute: mcpServerId, cord: "1-*" }
+          - name: toolId
+            type: "${ref}"
+            params: { dataset: mcp_tool, attribute: toolId, cord: "1-*" }
+
+      - name: mcp_provides_knowledge
+        rows: 25
+        attributes:
+          - name: mcpServerId
+            type: "${ref}"
+            params: { dataset: mcp_server, attribute: mcpServerId, cord: "1-*" }
+          - name: knowledgeSourceId
+            type: "${ref}"
+            params: { dataset: mcp_knowledge, attribute: knowledgeSourceId, cord: "1-*" }
+
+      - name: mcp_provides_prompt
+        rows: 17
+        attributes:
+          - name: mcpServerId
+            type: "${ref}"
+            params: { dataset: mcp_server, attribute: mcpServerId, cord: "1-*" }
+          - name: promptId
+            type: "${ref}"
+            params: { dataset: mcp_prompt, attribute: promptId, cord: "1-*" }
+
+      - name: cs_dataset
+        rows: 16
+        attributes:
+          - name: datasetId
+            type: uuid4
+          - name: name
+            type: catch_phrase
+          - name: description
+            type: sentence
+          - name: purpose
+            type: random_element
+            params:
+              elements: ["Training", "Validation", "Evaluation", "Knowledge", "Operational", "Other"]
+          - name: catalog
+            type: random_element
+            params:
+              elements: ["Enterprise Data Catalog"]
+          - name: format
+            type: random_element
+            params:
+              elements: ["CSV", "Parquet", "JSON", "Documents"]
+          - name: service
+            type: random_element
+            params:
+              elements: ["Azure Blob Storage", "PostgreSQL", "S3"]
+          - name: location
+            type: file_path
+          - name: owner
+            type: random_element
+            params:
+              elements: ["Customer Service Analytics"]
+          - name: classification
+            type: random_element
+            params:
+              elements: ["Public", "Internal", "Confidential", "Restricted"]
+          - name: size
+            type: bothify
+            params:
+              text: "## GB"
+          - name: lastUpdated
+            type: date_this_year
+
+      - name: cs_model
+        rows: 8
+        attributes:
+          - name: modelId
+            type: uuid4
+          - name: name
+            type: bothify
+            params:
+              text: "CS Model ??"
+          - name: description
+            type: sentence
+          - name: vendor
+            type: random_element
+            params:
+              elements: ["OpenAI", "Anthropic", "Google"]
+          - name: family
+            type: random_element
+            params:
+              elements: ["GPT", "Claude", "Gemini"]
+          - name: version
+            type: bothify
+            params:
+              text: "2025-##-01"
+          - name: catalog
+            type: random_element
+            params:
+              elements: ["Approved Model Catalog"]
+          - name: modelType
+            type: random_element
+            params:
+              elements: ["General Purpose", "Reasoning", "Multimodal"]
+          - name: io_inputs
+            type: random_element
+            params:
+              elements: ["Text", "Text|Image"]
+          - name: io_outputs
+            type: random_element
+            params:
+              elements: ["Text"]
+          - name: limits_contextWindow
+            type: random_element
+            params:
+              elements: ["128k tokens", "200k tokens"]
+          - name: hosting_platform
+            type: random_element
+            params:
+              elements: ["Azure OpenAI", "Anthropic"]
+          - name: hosting_region
+            type: random_element
+            params:
+              elements: ["Switzerland North", "West Europe"]
+          - name: status
+            type: random_element
+            params:
+              elements: ["Approved", "Restricted"]
+          - name: dataClassificationAllowed
+            type: random_element
+            params:
+              elements: ["Internal", "Confidential"]
+          - name: owner
+            type: random_element
+            params:
+              elements: ["Enterprise AI Platform"]
+
+      - name: cs_agent
+        rows: 10
+        attributes:
+          - name: agentId
+            type: uuid4
+          - name: name
+            type: bothify
+            params:
+              text: "CS Agent ??"
+          - name: description
+            type: sentence
+          - name: catalog
+            type: random_element
+            params:
+              elements: ["Enterprise AI Catalog"]
+          - name: category
+            type: random_element
+            params:
+              elements: ["Customer Support"]
+          - name: capabilities
+            type: random_element
+            params:
+              elements:
+                - "Question Answering|Search|Summarization"
+                - "Search|Classification|Task Automation"
+          - name: runtime_platform
+            type: random_element
+            params:
+              elements: ["Enterprise AI Platform"]
+          - name: runtime_interactionMode
+            type: random_element
+            params:
+              elements: ["Conversational", "API"]
+          - name: runtime_autonomyLevel
+            type: random_element
+            params:
+              elements: ["Assistant", "Assisted"]
+          - name: status
+            type: random_element
+            params:
+              elements: ["Production", "Pilot"]
+          - name: owner
+            type: random_element
+            params:
+              elements: ["Customer Support"]
+          - name: access
+            type: random_element
+            params:
+              elements: ["Internal", "Restricted"]
+          - name: businessCriticality
+            type: random_element
+            params:
+              elements: ["High", "Critical"]
+
+      - name: cs_skill
+        rows: 24
+        attributes: *skill_attrs
+      - name: cs_prompt
+        rows: 24
+        attributes: *prompt_attrs
+      - name: cs_template
+        rows: 12
+        attributes: *template_attrs
+      - name: cs_tool
+        rows: 16
+        attributes: *tool_attrs
+      - name: cs_guardrail
+        rows: 12
+        attributes: *guardrail_attrs
+      - name: cs_knowledge
+        rows: 12
+        attributes: *knowledge_attrs
+      - name: cs_mcp
+        rows: 8
+        attributes: *mcp_attrs
+
+      - name: cs_agent_uses_model
+        rows: 11
+        attributes:
+          - name: agentId
+            type: "${ref}"
+            params: { dataset: cs_agent, attribute: agentId, cord: "1-*" }
+          - name: modelId
+            type: "${ref}"
+            params: { dataset: cs_model, attribute: modelId, cord: "1-*" }
+      - name: cs_agent_protected_by
+        rows: 22
+        attributes:
+          - name: agentId
+            type: "${ref}"
+            params: { dataset: cs_agent, attribute: agentId, cord: "1-*" }
+          - name: guardrailId
+            type: "${ref}"
+            params: { dataset: cs_guardrail, attribute: guardrailId, cord: "1-*" }
+      - name: cs_agent_uses_mcp
+        rows: 18
+        attributes:
+          - name: agentId
+            type: "${ref}"
+            params: { dataset: cs_agent, attribute: agentId, cord: "1-*" }
+          - name: mcpServerId
+            type: "${ref}"
+            params: { dataset: cs_mcp, attribute: mcpServerId, cord: "1-*" }
+      - name: cs_agent_uses_data
+        rows: 10
+        attributes:
+          - name: agentId
+            type: "${ref}"
+            params: { dataset: cs_agent, attribute: agentId, cord: "1-*" }
+          - name: datasetId
+            type: "${ref}"
+            params: { dataset: cs_dataset, attribute: datasetId, cord: "1-*" }
+      - name: cs_agent_uses_template
+        rows: 10
+        attributes:
+          - name: agentId
+            type: "${ref}"
+            params: { dataset: cs_agent, attribute: agentId, cord: "1-*" }
+          - name: templateId
+            type: "${ref}"
+            params: { dataset: cs_template, attribute: templateId, cord: "1-*" }
+      - name: cs_agent_uses_skill
+        rows: 24
+        attributes:
+          - name: agentId
+            type: "${ref}"
+            params: { dataset: cs_agent, attribute: agentId, cord: "1-*" }
+          - name: skillId
+            type: "${ref}"
+            params: { dataset: cs_skill, attribute: skillId, cord: "1-*" }
+      - name: cs_skill_uses_prompt
+        rows: 24
+        attributes:
+          - name: skillId
+            type: "${ref}"
+            params: { dataset: cs_skill, attribute: skillId, cord: "1-*" }
+          - name: promptId
+            type: "${ref}"
+            params: { dataset: cs_prompt, attribute: promptId, cord: "1-*" }
+      - name: cs_skill_uses_template
+        rows: 24
+        attributes:
+          - name: skillId
+            type: "${ref}"
+            params: { dataset: cs_skill, attribute: skillId, cord: "1-*" }
+          - name: templateId
+            type: "${ref}"
+            params: { dataset: cs_template, attribute: templateId, cord: "1-*" }
+      - name: cs_skill_protected_by
+        rows: 24
+        attributes:
+          - name: skillId
+            type: "${ref}"
+            params: { dataset: cs_skill, attribute: skillId, cord: "1-*" }
+          - name: guardrailId
+            type: "${ref}"
+            params: { dataset: cs_guardrail, attribute: guardrailId, cord: "1-*" }
+      - name: cs_skill_uses_tool
+        rows: 24
+        attributes:
+          - name: skillId
+            type: "${ref}"
+            params: { dataset: cs_skill, attribute: skillId, cord: "1-*" }
+          - name: toolId
+            type: "${ref}"
+            params: { dataset: cs_tool, attribute: toolId, cord: "1-*" }
+      - name: cs_skill_uses_knowledge
+        rows: 24
+        attributes:
+          - name: skillId
+            type: "${ref}"
+            params: { dataset: cs_skill, attribute: skillId, cord: "1-*" }
+          - name: knowledgeSourceId
+            type: "${ref}"
+            params: { dataset: cs_knowledge, attribute: knowledgeSourceId, cord: "1-*" }
+      - name: cs_skill_uses_model
+        rows: 24
+        attributes:
+          - name: skillId
+            type: "${ref}"
+            params: { dataset: cs_skill, attribute: skillId, cord: "1-*" }
+          - name: modelId
+            type: "${ref}"
+            params: { dataset: cs_model, attribute: modelId, cord: "1-*" }
+      - name: cs_skill_depends_on
+        rows: 23
+        attributes:
+          - name: skillId
+            type: "${ref}"
+            params: { dataset: cs_skill, attribute: skillId, cord: "*-*" }
+          - name: dependsOnSkillId
+            type: "${ref}"
+            params: { dataset: cs_skill, attribute: skillId, cord: "*-*" }
+      - name: cs_prompt_designed_for
+        rows: 24
+        attributes:
+          - name: promptId
+            type: "${ref}"
+            params: { dataset: cs_prompt, attribute: promptId, cord: "1-*" }
+          - name: modelId
+            type: "${ref}"
+            params: { dataset: cs_model, attribute: modelId, cord: "1-*" }
+      - name: cs_prompt_uses_template
+        rows: 24
+        attributes:
+          - name: promptId
+            type: "${ref}"
+            params: { dataset: cs_prompt, attribute: promptId, cord: "1-*" }
+          - name: templateId
+            type: "${ref}"
+            params: { dataset: cs_template, attribute: templateId, cord: "1-*" }
+      - name: cs_agent_uses_prompt
+        rows: 24
+        attributes:
+          - name: agentId
+            type: "${ref}"
+            params: { dataset: cs_agent, attribute: agentId, cord: "1-*" }
+          - name: promptId
+            type: "${ref}"
+            params: { dataset: cs_prompt, attribute: promptId, cord: "1-*" }
+      - name: cs_agent_uses_tool
+        rows: 16
+        attributes:
+          - name: agentId
+            type: "${ref}"
+            params: { dataset: cs_agent, attribute: agentId, cord: "1-*" }
+          - name: toolId
+            type: "${ref}"
+            params: { dataset: cs_tool, attribute: toolId, cord: "1-*" }
+      - name: cs_tool_accesses
+        rows: 16
+        attributes:
+          - name: toolId
+            type: "${ref}"
+            params: { dataset: cs_tool, attribute: toolId, cord: "1-*" }
+          - name: datasetId
+            type: "${ref}"
+            params: { dataset: cs_dataset, attribute: datasetId, cord: "1-*" }
+      - name: cs_agent_uses_knowledge
+        rows: 12
+        attributes:
+          - name: agentId
+            type: "${ref}"
+            params: { dataset: cs_agent, attribute: agentId, cord: "1-*" }
+          - name: knowledgeSourceId
+            type: "${ref}"
+            params: { dataset: cs_knowledge, attribute: knowledgeSourceId, cord: "1-*" }
+      - name: cs_ks_sourced_from
+        rows: 12
+        attributes:
+          - name: knowledgeSourceId
+            type: "${ref}"
+            params: { dataset: cs_knowledge, attribute: knowledgeSourceId, cord: "1-*" }
+          - name: datasetId
+            type: "${ref}"
+            params: { dataset: cs_dataset, attribute: datasetId, cord: "1-*" }
+      - name: cs_ks_uses_model
+        rows: 12
+        attributes:
+          - name: knowledgeSourceId
+            type: "${ref}"
+            params: { dataset: cs_knowledge, attribute: knowledgeSourceId, cord: "1-*" }
+          - name: modelId
+            type: "${ref}"
+            params: { dataset: cs_model, attribute: modelId, cord: "1-*" }
+      - name: cs_gr_applies_to_model
+        rows: 12
+        attributes:
+          - name: guardrailId
+            type: "${ref}"
+            params: { dataset: cs_guardrail, attribute: guardrailId, cord: "1-*" }
+          - name: modelId
+            type: "${ref}"
+            params: { dataset: cs_model, attribute: modelId, cord: "1-*" }
+      - name: cs_gr_applies_to_dataset
+        rows: 12
+        attributes:
+          - name: guardrailId
+            type: "${ref}"
+            params: { dataset: cs_guardrail, attribute: guardrailId, cord: "1-*" }
+          - name: datasetId
+            type: "${ref}"
+            params: { dataset: cs_dataset, attribute: datasetId, cord: "1-*" }
+      - name: cs_mcp_provides_tool
+        rows: 8
+        attributes:
+          - name: mcpServerId
+            type: "${ref}"
+            params: { dataset: cs_mcp, attribute: mcpServerId, cord: "1-*" }
+          - name: toolId
+            type: "${ref}"
+            params: { dataset: cs_tool, attribute: toolId, cord: "1-*" }
+      - name: cs_mcp_provides_knowledge
+        rows: 8
+        attributes:
+          - name: mcpServerId
+            type: "${ref}"
+            params: { dataset: cs_mcp, attribute: mcpServerId, cord: "1-*" }
+          - name: knowledgeSourceId
+            type: "${ref}"
+            params: { dataset: cs_knowledge, attribute: knowledgeSourceId, cord: "1-*" }
+      - name: cs_mcp_provides_prompt
+        rows: 8
+        attributes:
+          - name: mcpServerId
+            type: "${ref}"
+            params: { dataset: cs_mcp, attribute: mcpServerId, cord: "1-*" }
+          - name: promptId
+            type: "${ref}"
+            params: { dataset: cs_prompt, attribute: promptId, cord: "1-*" }
+      - name: cs_ds_evaluates
+        rows: 6
+        attributes:
+          - name: datasetId
+            type: "${ref}"
+            params: { dataset: cs_dataset, attribute: datasetId, cord: "1-*" }
+          - name: modelId
+            type: "${ref}"
+            params: { dataset: cs_model, attribute: modelId, cord: "1-*" }
+      - name: cs_ds_validates
+        rows: 6
+        attributes:
+          - name: datasetId
+            type: "${ref}"
+            params: { dataset: cs_dataset, attribute: datasetId, cord: "1-*" }
+          - name: modelId
+            type: "${ref}"
+            params: { dataset: cs_model, attribute: modelId, cord: "1-*" }
+      - name: cs_ds_trains
+        rows: 1
+        attributes:
+          - name: datasetId
+            type: "${ref}"
+            params: { dataset: cs_dataset, attribute: datasetId, cord: "1-*" }
+          - name: modelId
+            type: "${ref}"
+            params: { dataset: cs_model, attribute: modelId, cord: "1-*" }

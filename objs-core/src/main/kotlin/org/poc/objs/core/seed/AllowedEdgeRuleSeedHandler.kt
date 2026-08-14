@@ -11,6 +11,7 @@ class AllowedEdgeRuleSeedHandler(
     private val edgeRules: BoMAllowedEdgeCatalog,
 ) : SeedDocumentHandler {
     override val kind: String = SEED_KIND_ALLOWED_EDGE_RULE
+    override val applyOrder: Int = 10
 
     override fun parse(document: SeedRawDocument): ParsedSeedDocument {
         val sourceType = requireText(document.raw, "sourceType", document.index)

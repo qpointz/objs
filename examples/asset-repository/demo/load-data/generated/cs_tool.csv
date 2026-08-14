@@ -1,0 +1,4 @@
+toolId,name,description,catalog,integration_toolType,integration_operationType,integration_service,version,owner,status
+3fe1ffd5-995c-4d54-a5c1-65404e110f19,Tool GBzt,Few push run blood admit recent miss down.,Enterprise AI Catalog,Search,Read,S3,1.4.0,Data Platform,Draft
+2a498371-0eda-46f3-a49c-1fba0dcbafc6,Tool ODNO,Whose build condition Democrat appear must.,Enterprise AI Catalog,Function,Read / Write,Azure Blob Storage,1.1.0,AI Infrastructure,Draft
+d77deede-5a88-4d6d-a40c-5cbace324932,Tool slJD,Quickly trouble as fish produce level life determine.,Enterprise AI Catalog,Function,Write,S3,1.9.0,Customer Platform,Deprecated

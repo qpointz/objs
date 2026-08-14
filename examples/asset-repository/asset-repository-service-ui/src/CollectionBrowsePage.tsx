@@ -30,6 +30,14 @@ const PAGE_SIZE_OPTIONS = ['10', '20', '50']
 const DEFAULT_PAGE_SIZE = 20
 const MAX_PAYLOAD_COLS = 6
 
+function formatExecDuration(ms: number): string {
+  if (ms >= 1000) {
+    const seconds = ms / 1000
+    return `${seconds >= 10 ? seconds.toFixed(1) : seconds.toFixed(2)}s`
+  }
+  return `${Math.round(ms)}ms`
+}
+
 function isScalar(value: unknown): boolean {
   return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
 }
@@ -67,6 +75,7 @@ export function CollectionBrowsePage() {
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [exec, setExec] = useState<{ records: number; durationMs: number } | null>(null)
 
   async function load(matcherExpr?: string) {
     try {
@@ -75,9 +84,14 @@ export function CollectionBrowsePage() {
       const c = await getCollection(id)
       setCollection(c)
       const expr = matcherExpr?.trim()
-      setObjects(expr ? await searchObjects(id, { matcherExpr: expr }) : await listObjects(id))
+      const started = performance.now()
+      const rows = expr ? await searchObjects(id, { matcherExpr: expr }) : await listObjects(id)
+      const durationMs = performance.now() - started
+      setObjects(rows)
+      setExec({ records: rows.length, durationMs })
       setPage(1)
     } catch (e) {
+      setExec(null)
       setError(String(e))
     } finally {
       setLoading(false)
@@ -207,6 +221,11 @@ export function CollectionBrowsePage() {
             ]}
           />
         </Group>
+        {exec && (
+          <Text size="xs" c="dimmed" mt={8}>
+            {exec.records} record{exec.records === 1 ? '' : 's'} · {formatExecDuration(exec.durationMs)}
+          </Text>
+        )}
       </Paper>
 
       {error && <Alert color="red">{error}</Alert>}

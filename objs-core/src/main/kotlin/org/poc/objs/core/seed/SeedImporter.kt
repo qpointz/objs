@@ -8,16 +8,23 @@ import java.io.InputStream
 /**
  * Transactional multi-document seed importer.
  *
- * Parses and validates all documents first, then applies in dependency order
- * (ObjectSchema → AllowedEdgeRule → Graph) regardless of declaration order.
+ * Parses and validates all documents first, then applies in [SeedDocumentHandler.applyOrder]
+ * (then document index). Built-in order: ObjectSchema → AllowedEdgeRule → Graph.
+ * Additional Spring [SeedDocumentHandler] beans register new kinds.
  * Any failure rolls back the entire resource transaction.
  */
 @Service
 class SeedImporter(
     handlers: List<SeedDocumentHandler>,
 ) {
-    private val handlersByKind: Map<String, SeedDocumentHandler> =
-        handlers.associateBy { it.kind }
+    private val handlersByKind: Map<String, SeedDocumentHandler> = run {
+        val grouped = handlers.groupBy { it.kind }
+        val duplicates = grouped.filter { it.value.size > 1 }.keys
+        require(duplicates.isEmpty()) {
+            "Duplicate SeedDocumentHandler beans for kind(s): ${duplicates.sorted().joinToString()}"
+        }
+        grouped.mapValues { (_, list) -> list.single() }
+    }
 
     @Transactional
     fun importYaml(yaml: String, allowedKinds: Set<String>? = null): SeedImportResult =
@@ -113,7 +120,7 @@ class SeedImporter(
         }
 
         val ordered = parsed.sortedWith(
-            compareBy<Pair<SeedDocumentHandler, ParsedSeedDocument>> { applyOrder(it.first.kind) }
+            compareBy<Pair<SeedDocumentHandler, ParsedSeedDocument>> { it.first.applyOrder }
                 .thenBy { it.second.document.index },
         )
 
@@ -207,12 +214,5 @@ class SeedImporter(
             )
         }
         return null
-    }
-
-    private fun applyOrder(kind: String): Int = when (kind) {
-        SEED_KIND_OBJECT_SCHEMA -> 0
-        SEED_KIND_ALLOWED_EDGE_RULE -> 1
-        SEED_KIND_GRAPH -> 2
-        else -> 99
     }
 }

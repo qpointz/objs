@@ -1,0 +1,2 @@
+modelId,name,description,vendor,family,version,catalog,modelType,io_inputs,io_outputs,limits_contextWindow,hosting_platform,hosting_region,status,dataClassificationAllowed,owner
+e48d5e94-5092-48a3-8d89-0b5f863e73e7,CS Model BG,Conference media guess fear eight account.,Google,Claude,2025-09-01,Approved Model Catalog,General Purpose,Text,Text,128k tokens,Azure OpenAI,West Europe,Restricted,Internal,Enterprise AI Platform

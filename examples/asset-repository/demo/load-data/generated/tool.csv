@@ -1,0 +1,9 @@
+toolId,name,description,catalog,integration_toolType,integration_operationType,integration_service,version,owner,status
+c9efa529-44e5-4d95-bf30-1dd20ae4276c,Tool OtZP,Very current attention husband personal rich large.,Enterprise AI Catalog,Database,Write,BigQuery,1.6.0,Customer Platform,Approved
+9eaf4a5e-6242-4374-9a0d-bc2f2a820460,Tool nLck,Sea but later seek common own above.,Enterprise AI Catalog,Other,Read / Write,S3,1.3.0,Customer Platform,Approved
+2ee37a05-5994-437f-b71e-66a7ef96f521,Tool mxyC,Investment close example style even travel.,Enterprise AI Catalog,Function,Write,PostgreSQL,1.5.0,Data Platform,Deprecated
+323e3e8d-e09e-4663-bb41-ff5fb737e0b3,Tool GRrh,Particular want open environment economic article hold price.,Enterprise AI Catalog,MCP,Read,SharePoint,1.2.0,Data Platform,Draft
+9f73c080-51ad-403c-98f0-c1faaed701d6,Tool XfKu,Begin range look attention matter project.,Enterprise AI Catalog,API,Read / Write,Azure Blob Storage,1.6.0,AI Infrastructure,Draft
+7d6b9276-49ae-4912-b6dd-9a72e0dd5514,Tool SuRM,Music front ground thousand.,Enterprise AI Catalog,Search,Read,S3,1.7.0,AI Infrastructure,Deprecated
+4f9e5ac2-7e21-47ed-8192-a2a481879cd5,Tool Edle,Century kind natural note enjoy then daughter off.,Enterprise AI Catalog,MCP,Read,BigQuery,1.3.0,Customer Platform,Deprecated
+e1d5ff63-f30e-4121-8413-efc3d4334646,Tool QGHU,Blue policy crime second.,Enterprise AI Catalog,Other,Write,BigQuery,1.0.0,Data Platform,Approved

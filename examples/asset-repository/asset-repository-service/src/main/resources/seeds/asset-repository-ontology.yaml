@@ -1,86 +1,350 @@
 ---
 apiVersion: "objs.poc.org/v1"
 kind: "ObjectSchema"
-type: "Database"
-version: "1.0.0"
-contentSchema:
-  type: "OBJECT"
-  title: "Database"
-  description: "Database asset (data product shelf / product)"
-  fields:
-  - name: "name"
-    schema:
-      type: "STRING"
-      title: "Name"
-      description: "Database name"
-    required: true
-    identifier: true
-    searchable: true
-  - name: "engine"
-    schema:
-      type: "STRING"
-      title: "Engine"
-      description: "Database engine"
-    required: true
-    searchable: true
-  - name: "version"
-    schema:
-      type: "STRING"
-      title: "Version"
-      description: "Engine version"
-    required: false
-    searchable: true
-  - name: "environment"
-    schema:
-      type: "STRING"
-      title: "Environment"
-      description: "Deployment environment"
-    required: false
-    searchable: true
-  - name: "description"
-    schema:
-      type: "STRING"
-      title: "Description"
-      description: "Human-readable description"
-    required: false
----
----
-apiVersion: "objs.poc.org/v1"
-kind: "ObjectSchema"
 type: "Dataset"
 version: "1.0.0"
 contentSchema:
   type: "OBJECT"
   title: "Dataset"
-  description: "Dataset asset (table, topic, file set, …)"
+  description: "A collection of data used for building, evaluating, providing knowledge to, or operating AI solutions"
   fields:
+  - name: "datasetId"
+    schema:
+      type: "STRING"
+      title: "Dataset id"
+      description: "Enterprise DMO external identifier"
+    required: true
+    identifier: true
+    searchable: true
   - name: "name"
     schema:
       type: "STRING"
       title: "Name"
       description: "Dataset name"
     required: true
-    identifier: true
-    searchable: true
-  - name: "datasetType"
-    schema:
-      type: "STRING"
-      title: "Dataset type"
-      description: "Kind of dataset"
-    required: true
-    searchable: true
-  - name: "classification"
-    schema:
-      type: "STRING"
-      title: "Classification"
-      description: "Data classification"
-    required: false
     searchable: true
   - name: "description"
     schema:
       type: "STRING"
       title: "Description"
       description: "Human-readable description"
+    required: false
+  - name: "purpose"
+    schema:
+      type: "ENUM"
+      title: "Purpose"
+      description: "Primary purpose"
+      values:
+        - value: "Training"
+          description: "Used to train models"
+        - value: "Validation"
+          description: "Used to validate models"
+        - value: "Evaluation"
+          description: "Used to evaluate quality"
+        - value: "Knowledge"
+          description: "Used as knowledge content"
+        - value: "Operational"
+          description: "Used in production operations"
+        - value: "Other"
+          description: "Other purpose"
+    required: true
+    searchable: true
+  - name: "catalog"
+    schema:
+      type: "STRING"
+      title: "Catalog"
+      description: "Catalog where the dataset is registered"
+    searchable: true
+    required: false
+  - name: "format"
+    schema:
+      type: "ENUM"
+      title: "Format"
+      description: "Physical or logical data format"
+      values:
+        - value: "CSV"
+          description: "Comma-separated values"
+        - value: "Parquet"
+          description: "Apache Parquet"
+        - value: "JSON"
+          description: "JSON records or documents"
+        - value: "Database Table"
+          description: "Relational table"
+        - value: "Documents"
+          description: "Document corpus"
+        - value: "Images"
+          description: "Image corpus"
+        - value: "Audio"
+          description: "Audio corpus"
+        - value: "Video"
+          description: "Video corpus"
+    searchable: true
+    required: false
+  - name: "service"
+    schema:
+      type: "STRING"
+      title: "Service"
+      description: "Service where the data is stored"
+    required: false
+  - name: "location"
+    schema:
+      type: "STRING"
+      title: "Location"
+      description: "Physical or logical location"
+    required: false
+  - name: "owner"
+    schema:
+      type: "STRING"
+      title: "Owner"
+      description: "Responsible team"
+    searchable: true
+    required: false
+  - name: "classification"
+    schema:
+      type: "ENUM"
+      title: "Classification"
+      description: "Data sensitivity"
+      values:
+        - value: "Public"
+          description: "Publicly shareable"
+        - value: "Internal"
+          description: "Internal use"
+        - value: "Confidential"
+          description: "Confidential"
+        - value: "Restricted"
+          description: "Restricted"
+    required: true
+    searchable: true
+  - name: "size"
+    schema:
+      type: "STRING"
+      title: "Size"
+      description: "Approximate size"
+    required: false
+  - name: "lastUpdated"
+    schema:
+      type: "STRING"
+      title: "Last updated"
+      description: "Last significant update"
+      format: "date"
+    required: false
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
+type: "LlmModel"
+version: "1.0.0"
+contentSchema:
+  type: "OBJECT"
+  title: "LLM Model"
+  description: "A large language model available for use in AI solutions"
+  fields:
+  - name: "modelId"
+    schema:
+      type: "STRING"
+      title: "Model id"
+      description: "Technical model identifier"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "name"
+    schema:
+      type: "STRING"
+      title: "Name"
+      description: "Human-readable model name"
+    required: true
+    searchable: true
+  - name: "description"
+    schema:
+      type: "STRING"
+      title: "Description"
+      description: "Model description"
+    required: false
+  - name: "vendor"
+    schema:
+      type: "STRING"
+      title: "Vendor"
+      description: "Organization providing the model"
+    required: true
+    searchable: true
+  - name: "family"
+    schema:
+      type: "STRING"
+      title: "Family"
+      description: "Model family"
+    searchable: true
+    required: false
+  - name: "version"
+    schema:
+      type: "STRING"
+      title: "Version"
+      description: "Model version or revision"
+    required: false
+  - name: "catalog"
+    schema:
+      type: "STRING"
+      title: "Catalog"
+      description: "Catalog where the model is registered"
+    searchable: true
+    required: false
+  - name: "modelType"
+    schema:
+      type: "ENUM"
+      title: "Model type"
+      description: "Primary specialization"
+      values:
+        - value: "General Purpose"
+          description: "General-purpose language model"
+        - value: "Reasoning"
+          description: "Reasoning-focused model"
+        - value: "Coding"
+          description: "Coding-focused model"
+        - value: "Multimodal"
+          description: "Multimodal model"
+        - value: "Other"
+          description: "Other specialization"
+    required: true
+    searchable: true
+  - name: "io"
+    schema:
+        type: "OBJECT"
+        title: "I/O"
+        description: "Supported input and output modalities"
+        fields:
+        - name: "inputs"
+          schema:
+            type: "ARRAY"
+            title: "Inputs"
+            description: "Accepted input modalities"
+            items:
+              type: "ENUM"
+              title: "Modality"
+              description: "Input modality"
+              values:
+                - value: "Text"
+                  description: "Text"
+                - value: "Image"
+                  description: "Image"
+                - value: "Audio"
+                  description: "Audio"
+                - value: "Video"
+                  description: "Video"
+          required: false
+        - name: "outputs"
+          schema:
+            type: "ARRAY"
+            title: "Outputs"
+            description: "Produced output modalities"
+            items:
+              type: "ENUM"
+              title: "Modality"
+              description: "Output modality"
+              values:
+                - value: "Text"
+                  description: "Text"
+                - value: "Image"
+                  description: "Image"
+                - value: "Audio"
+                  description: "Audio"
+                - value: "Video"
+                  description: "Video"
+          required: false
+    required: false
+  - name: "limits"
+    schema:
+        type: "OBJECT"
+        title: "Limits"
+        description: "Capacity limits"
+        fields:
+        - name: "contextWindow"
+          schema:
+            type: "STRING"
+            title: "Context window"
+            description: "Maximum context size"
+          required: false
+        - name: "maxOutputTokens"
+          schema:
+            type: "STRING"
+            title: "Max output tokens"
+            description: "Maximum output size"
+          required: false
+    required: false
+  - name: "hosting"
+    schema:
+        type: "OBJECT"
+        title: "Hosting"
+        description: "Where the model is hosted"
+        fields:
+        - name: "platform"
+          schema:
+            type: "STRING"
+            title: "Platform"
+            description: "Hosting platform"
+          required: false
+        - name: "region"
+          schema:
+            type: "STRING"
+            title: "Region"
+            description: "Hosting region"
+          required: false
+    required: false
+  - name: "status"
+    schema:
+      type: "ENUM"
+      title: "Status"
+      description: "Enterprise usage status"
+      values:
+        - value: "Candidate"
+          description: "Under evaluation"
+        - value: "Approved"
+          description: "Approved for use"
+        - value: "Restricted"
+          description: "Restricted use"
+        - value: "Deprecated"
+          description: "Deprecated"
+    required: true
+    searchable: true
+  - name: "dataClassificationAllowed"
+    schema:
+      type: "ENUM"
+      title: "Data classification allowed"
+      description: "Highest permitted data classification"
+      values:
+        - value: "Public"
+          description: "Publicly shareable"
+        - value: "Internal"
+          description: "Internal use"
+        - value: "Confidential"
+          description: "Confidential"
+        - value: "Restricted"
+          description: "Restricted"
+    required: false
+  - name: "owner"
+    schema:
+      type: "STRING"
+      title: "Owner"
+      description: "Responsible internal team"
+    searchable: true
+    required: false
+  - name: "license"
+    schema:
+      type: "STRING"
+      title: "License"
+      description: "Licensing terms"
+    required: false
+  - name: "knowledgeCutoff"
+    schema:
+      type: "STRING"
+      title: "Knowledge cutoff"
+      description: "Training data cutoff date"
+      format: "date"
+    required: false
+  - name: "documentationUrl"
+    schema:
+      type: "STRING"
+      title: "Documentation URL"
+      description: "Vendor or internal documentation"
+      format: "uri"
     required: false
 ---
 ---
@@ -91,35 +355,168 @@ version: "1.0.0"
 contentSchema:
   type: "OBJECT"
   title: "AI Agent"
-  description: "Agent system asset that wires prompts, skills, tools, and MCP servers"
+  description: "An AI-powered digital assistant that uses models, data, skills, tools, and other shared resources to perform tasks"
   fields:
+  - name: "agentId"
+    schema:
+      type: "STRING"
+      title: "Agent id"
+      description: "Unique stable identifier"
+    required: true
+    identifier: true
+    searchable: true
   - name: "name"
     schema:
       type: "STRING"
       title: "Name"
-      description: "Agent name"
+      description: "Human-readable name"
     required: true
-    identifier: true
-    searchable: true
-  - name: "role"
-    schema:
-      type: "STRING"
-      title: "Role"
-      description: "Agent role or persona"
-    required: true
-    searchable: true
-  - name: "runtime"
-    schema:
-      type: "STRING"
-      title: "Runtime"
-      description: "Runtime or framework"
-    required: false
     searchable: true
   - name: "description"
     schema:
       type: "STRING"
       title: "Description"
-      description: "Human-readable description"
+      description: "Purpose"
+    required: false
+  - name: "catalog"
+    schema:
+      type: "STRING"
+      title: "Catalog"
+      description: "Catalog where the agent is registered"
+    searchable: true
+    required: false
+  - name: "category"
+    schema:
+      type: "STRING"
+      title: "Category"
+      description: "Business specialization"
+    required: true
+    searchable: true
+  - name: "capabilities"
+    schema:
+        type: "ARRAY"
+        title: "Capabilities"
+        description: "Main capabilities"
+        items:
+            type: "ENUM"
+            title: "Capability"
+            description: "One capability"
+            values:
+              - value: "Question Answering"
+                description: "Question answering"
+              - value: "Search"
+                description: "Search"
+              - value: "Summarization"
+                description: "Summarization"
+              - value: "Content Generation"
+                description: "Content generation"
+              - value: "Data Analysis"
+                description: "Data analysis"
+              - value: "Classification"
+                description: "Classification"
+              - value: "Recommendation"
+                description: "Recommendation"
+              - value: "Task Automation"
+                description: "Task automation"
+              - value: "Decision Support"
+                description: "Decision support"
+    required: false
+  - name: "runtime"
+    schema:
+        type: "OBJECT"
+        title: "Runtime"
+        description: "How and where the agent runs"
+        fields:
+        - name: "platform"
+          schema:
+            type: "STRING"
+            title: "Platform"
+            description: "Runtime or implementation platform"
+          required: false
+        - name: "interactionMode"
+          schema:
+            type: "ENUM"
+            title: "Interaction mode"
+            description: "Interaction mechanism"
+            values:
+              - value: "Conversational"
+                description: "Conversational UI"
+              - value: "API"
+                description: "API invocation"
+              - value: "Background"
+                description: "Background job"
+              - value: "Embedded"
+                description: "Embedded in another product"
+          required: false
+        - name: "autonomyLevel"
+          schema:
+            type: "ENUM"
+            title: "Autonomy level"
+            description: "Degree of independent action"
+            values:
+              - value: "Assistant"
+                description: "Provides information or recommendations"
+              - value: "Assisted"
+                description: "Can perform actions with user approval"
+              - value: "Autonomous"
+                description: "Can perform defined tasks independently"
+          required: false
+    required: false
+  - name: "status"
+    schema:
+      type: "ENUM"
+      title: "Status"
+      description: "Lifecycle status"
+      values:
+        - value: "Development"
+          description: "In development"
+        - value: "Pilot"
+          description: "Pilot"
+        - value: "Production"
+          description: "Production"
+        - value: "Suspended"
+          description: "Suspended"
+        - value: "Retired"
+          description: "Retired"
+    required: true
+    searchable: true
+  - name: "owner"
+    schema:
+      type: "STRING"
+      title: "Owner"
+      description: "Responsible team"
+    required: true
+    searchable: true
+  - name: "access"
+    schema:
+      type: "ENUM"
+      title: "Access"
+      description: "Intended audience"
+      values:
+        - value: "Internal"
+          description: "Internal audience"
+        - value: "External"
+          description: "External audience"
+        - value: "Restricted"
+          description: "Restricted audience"
+        - value: "Public"
+          description: "Public audience"
+    searchable: true
+    required: false
+  - name: "businessCriticality"
+    schema:
+      type: "ENUM"
+      title: "Business criticality"
+      description: "Business importance"
+      values:
+        - value: "Low"
+          description: "Low"
+        - value: "Medium"
+          description: "Medium"
+        - value: "High"
+          description: "High"
+        - value: "Critical"
+          description: "Critical"
     required: false
 ---
 ---
@@ -130,27 +527,97 @@ version: "1.0.0"
 contentSchema:
   type: "OBJECT"
   title: "Prompt"
-  description: "Prompt template asset"
+  description: "Reusable instructions that define how an AI model or agent should behave or perform a task"
   fields:
+  - name: "promptId"
+    schema:
+      type: "STRING"
+      title: "Prompt id"
+      description: "Unique stable identifier"
+    required: true
+    identifier: true
+    searchable: true
   - name: "name"
     schema:
       type: "STRING"
       title: "Name"
-      description: "Prompt name"
+      description: "Human-readable name"
     required: true
-    identifier: true
     searchable: true
-  - name: "template"
-    schema:
-      type: "STRING"
-      title: "Template"
-      description: "Prompt body or template text"
-    required: true
   - name: "description"
     schema:
       type: "STRING"
       title: "Description"
-      description: "Human-readable description"
+      description: "Purpose"
+    required: false
+  - name: "catalog"
+    schema:
+      type: "STRING"
+      title: "Catalog"
+      description: "Catalog where the prompt is registered"
+    searchable: true
+    required: false
+  - name: "promptType"
+    schema:
+      type: "ENUM"
+      title: "Prompt type"
+      description: "Type of prompt"
+      values:
+        - value: "System"
+          description: "System prompt"
+        - value: "Task"
+          description: "Task prompt"
+        - value: "Classification"
+          description: "Classification prompt"
+        - value: "Extraction"
+          description: "Extraction prompt"
+        - value: "Generation"
+          description: "Generation prompt"
+        - value: "Evaluation"
+          description: "Evaluation prompt"
+        - value: "Other"
+          description: "Other prompt type"
+    required: true
+    searchable: true
+  - name: "version"
+    schema:
+      type: "STRING"
+      title: "Version"
+      description: "Prompt version"
+    required: false
+  - name: "language"
+    schema:
+      type: "STRING"
+      title: "Language"
+      description: "Primary language"
+    searchable: true
+    required: false
+  - name: "owner"
+    schema:
+      type: "STRING"
+      title: "Owner"
+      description: "Responsible team"
+    required: true
+    searchable: true
+  - name: "status"
+    schema:
+      type: "ENUM"
+      title: "Status"
+      description: "Lifecycle status"
+      values:
+        - value: "Draft"
+          description: "Draft"
+        - value: "Approved"
+          description: "Approved for use"
+        - value: "Deprecated"
+          description: "Deprecated"
+    required: true
+    searchable: true
+  - name: "body"
+    schema:
+      type: "STRING"
+      title: "Body"
+      description: "Prompt text"
     required: false
 ---
 ---
@@ -161,22 +628,70 @@ version: "1.0.0"
 contentSchema:
   type: "OBJECT"
   title: "Skill"
-  description: "Reusable agent skill asset"
+  description: "A reusable AI capability describing how an agent performs a particular task"
   fields:
+  - name: "skillId"
+    schema:
+      type: "STRING"
+      title: "Skill id"
+      description: "Unique stable identifier"
+    required: true
+    identifier: true
+    searchable: true
   - name: "name"
     schema:
       type: "STRING"
       title: "Name"
-      description: "Skill name"
+      description: "Human-readable name"
     required: true
-    identifier: true
     searchable: true
   - name: "description"
     schema:
       type: "STRING"
       title: "Description"
-      description: "What the skill does"
+      description: "Purpose"
+    required: false
+  - name: "catalog"
+    schema:
+      type: "STRING"
+      title: "Catalog"
+      description: "Catalog where the skill is registered"
+    searchable: true
+    required: false
+  - name: "category"
+    schema:
+      type: "STRING"
+      title: "Category"
+      description: "Functional category"
+    searchable: true
+    required: false
+  - name: "version"
+    schema:
+      type: "STRING"
+      title: "Version"
+      description: "Skill version"
+    required: false
+  - name: "owner"
+    schema:
+      type: "STRING"
+      title: "Owner"
+      description: "Responsible team"
     required: true
+    searchable: true
+  - name: "status"
+    schema:
+      type: "ENUM"
+      title: "Status"
+      description: "Lifecycle status"
+      values:
+        - value: "Draft"
+          description: "Draft"
+        - value: "Approved"
+          description: "Approved for use"
+        - value: "Deprecated"
+          description: "Deprecated"
+    required: true
+    searchable: true
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -186,29 +701,448 @@ version: "1.0.0"
 contentSchema:
   type: "OBJECT"
   title: "Tool"
-  description: "Tool asset callable by an agent"
+  description: "A reusable function, API, database operation, or service that an AI agent can invoke"
   fields:
+  - name: "toolId"
+    schema:
+      type: "STRING"
+      title: "Tool id"
+      description: "Unique stable identifier"
+    required: true
+    identifier: true
+    searchable: true
   - name: "name"
     schema:
       type: "STRING"
       title: "Name"
-      description: "Tool name"
-    required: true
-    identifier: true
-    searchable: true
-  - name: "kind"
-    schema:
-      type: "STRING"
-      title: "Kind"
-      description: "function, http, mcp, …"
+      description: "Human-readable name"
     required: true
     searchable: true
   - name: "description"
     schema:
       type: "STRING"
       title: "Description"
-      description: "Human-readable description"
+      description: "Purpose"
     required: false
+  - name: "catalog"
+    schema:
+      type: "STRING"
+      title: "Catalog"
+      description: "Catalog where the tool is registered"
+    searchable: true
+    required: false
+  - name: "integration"
+    schema:
+        type: "OBJECT"
+        title: "Integration"
+        description: "How the tool is integrated"
+        fields:
+        - name: "toolType"
+          schema:
+            type: "ENUM"
+            title: "Tool type"
+            description: "Type of integration"
+            values:
+              - value: "API"
+                description: "HTTP or service API"
+              - value: "Function"
+                description: "In-process function"
+              - value: "Database"
+                description: "Database operation"
+              - value: "Search"
+                description: "Search interface"
+              - value: "MCP"
+                description: "Exposed or backed by MCP"
+              - value: "Other"
+                description: "Other integration"
+          required: false
+        - name: "operationType"
+          schema:
+            type: "ENUM"
+            title: "Operation type"
+            description: "Whether the tool reads or changes information"
+            values:
+              - value: "Read"
+                description: "Read only"
+              - value: "Write"
+                description: "Write only"
+              - value: "Read / Write"
+                description: "Read and write"
+          required: false
+        - name: "service"
+          schema:
+            type: "STRING"
+            title: "Service"
+            description: "Underlying service"
+          required: false
+    required: false
+  - name: "version"
+    schema:
+      type: "STRING"
+      title: "Version"
+      description: "Tool version"
+    required: false
+  - name: "owner"
+    schema:
+      type: "STRING"
+      title: "Owner"
+      description: "Responsible team"
+    required: true
+    searchable: true
+  - name: "status"
+    schema:
+      type: "ENUM"
+      title: "Status"
+      description: "Lifecycle status"
+      values:
+        - value: "Draft"
+          description: "Draft"
+        - value: "Approved"
+          description: "Approved for use"
+        - value: "Deprecated"
+          description: "Deprecated"
+    required: true
+    searchable: true
+  - name: "endpoint"
+    schema:
+      type: "STRING"
+      title: "Endpoint"
+      description: "Optional tool endpoint"
+      format: "uri"
+    required: false
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
+type: "Guardrail"
+version: "1.0.0"
+contentSchema:
+  type: "OBJECT"
+  title: "Guardrail"
+  description: "A reusable control that constrains, validates, or protects the behavior of AI models and agents"
+  fields:
+  - name: "guardrailId"
+    schema:
+      type: "STRING"
+      title: "Guardrail id"
+      description: "Unique stable identifier"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "name"
+    schema:
+      type: "STRING"
+      title: "Name"
+      description: "Human-readable name"
+    required: true
+    searchable: true
+  - name: "description"
+    schema:
+      type: "STRING"
+      title: "Description"
+      description: "Purpose"
+    required: false
+  - name: "catalog"
+    schema:
+      type: "STRING"
+      title: "Catalog"
+      description: "Catalog where the guardrail is registered"
+    searchable: true
+    required: false
+  - name: "policy"
+    schema:
+        type: "OBJECT"
+        title: "Policy"
+        description: "Protection type and action"
+        fields:
+        - name: "guardrailType"
+          schema:
+            type: "ENUM"
+            title: "Guardrail type"
+            description: "Type of protection"
+            values:
+              - value: "Data Protection"
+                description: "Data protection"
+              - value: "Content Safety"
+                description: "Content safety"
+              - value: "Prompt Injection"
+                description: "Prompt injection defense"
+              - value: "Access Control"
+                description: "Access control"
+              - value: "Output Validation"
+                description: "Output validation"
+              - value: "Compliance"
+                description: "Compliance"
+              - value: "Other"
+                description: "Other"
+          required: false
+        - name: "action"
+          schema:
+            type: "ENUM"
+            title: "Action"
+            description: "Action when triggered"
+            values:
+              - value: "Detect"
+                description: "Detect only"
+              - value: "Warn"
+                description: "Warn"
+              - value: "Block"
+                description: "Block"
+              - value: "Redact"
+                description: "Redact"
+              - value: "Require Approval"
+                description: "Require approval"
+          required: false
+    required: false
+  - name: "version"
+    schema:
+      type: "STRING"
+      title: "Version"
+      description: "Guardrail version"
+    required: false
+  - name: "owner"
+    schema:
+      type: "STRING"
+      title: "Owner"
+      description: "Responsible team"
+    required: true
+    searchable: true
+  - name: "status"
+    schema:
+      type: "ENUM"
+      title: "Status"
+      description: "Lifecycle status"
+      values:
+        - value: "Draft"
+          description: "Draft"
+        - value: "Approved"
+          description: "Approved for use"
+        - value: "Deprecated"
+          description: "Deprecated"
+    required: true
+    searchable: true
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
+type: "KnowledgeSource"
+version: "1.0.0"
+contentSchema:
+  type: "OBJECT"
+  title: "Knowledge Source"
+  description: "A reusable configuration that makes enterprise knowledge available to AI agents"
+  fields:
+  - name: "knowledgeSourceId"
+    schema:
+      type: "STRING"
+      title: "Knowledge source id"
+      description: "Unique stable identifier"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "name"
+    schema:
+      type: "STRING"
+      title: "Name"
+      description: "Human-readable name"
+    required: true
+    searchable: true
+  - name: "description"
+    schema:
+      type: "STRING"
+      title: "Description"
+      description: "Purpose"
+    required: false
+  - name: "catalog"
+    schema:
+      type: "STRING"
+      title: "Catalog"
+      description: "Catalog where it is registered"
+    searchable: true
+    required: false
+  - name: "access"
+    schema:
+        type: "OBJECT"
+        title: "Access"
+        description: "How knowledge is exposed to AI"
+        fields:
+        - name: "knowledgeType"
+          schema:
+            type: "ENUM"
+            title: "Knowledge type"
+            description: "Type of knowledge"
+            values:
+              - value: "Documents"
+                description: "Documents"
+              - value: "Structured Data"
+                description: "Structured data"
+              - value: "Web Content"
+                description: "Web content"
+              - value: "Mixed"
+                description: "Mixed"
+          required: false
+        - name: "accessMethod"
+          schema:
+            type: "ENUM"
+            title: "Access method"
+            description: "How AI accesses the knowledge"
+            values:
+              - value: "Semantic Search"
+                description: "Semantic search"
+              - value: "Keyword Search"
+                description: "Keyword search"
+              - value: "Database Query"
+                description: "Database query"
+              - value: "API"
+                description: "API"
+              - value: "Direct Context"
+                description: "Direct context"
+          required: false
+        - name: "refreshFrequency"
+          schema:
+            type: "STRING"
+            title: "Refresh frequency"
+            description: "How frequently knowledge is refreshed"
+          required: false
+    required: false
+  - name: "owner"
+    schema:
+      type: "STRING"
+      title: "Owner"
+      description: "Responsible team"
+    required: true
+    searchable: true
+  - name: "status"
+    schema:
+      type: "ENUM"
+      title: "Status"
+      description: "Lifecycle status"
+      values:
+        - value: "Development"
+          description: "In development"
+        - value: "Pilot"
+          description: "Pilot"
+        - value: "Production"
+          description: "Production"
+        - value: "Suspended"
+          description: "Suspended"
+        - value: "Retired"
+          description: "Retired"
+    required: true
+    searchable: true
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
+type: "Template"
+version: "1.0.0"
+contentSchema:
+  type: "OBJECT"
+  title: "Template"
+  description: "A reusable structure defining how AI-generated information should be organized or presented"
+  fields:
+  - name: "templateId"
+    schema:
+      type: "STRING"
+      title: "Template id"
+      description: "Unique stable identifier"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "name"
+    schema:
+      type: "STRING"
+      title: "Name"
+      description: "Human-readable name"
+    required: true
+    searchable: true
+  - name: "description"
+    schema:
+      type: "STRING"
+      title: "Description"
+      description: "Purpose"
+    required: false
+  - name: "catalog"
+    schema:
+      type: "STRING"
+      title: "Catalog"
+      description: "Catalog where the template is registered"
+    searchable: true
+    required: false
+  - name: "output"
+    schema:
+        type: "OBJECT"
+        title: "Output"
+        description: "Type and format of generated output"
+        fields:
+        - name: "templateType"
+          schema:
+            type: "ENUM"
+            title: "Template type"
+            description: "Type of output"
+            values:
+              - value: "Document"
+                description: "Document"
+              - value: "Report"
+                description: "Report"
+              - value: "Email"
+                description: "Email"
+              - value: "Summary"
+                description: "Summary"
+              - value: "Response"
+                description: "Response"
+              - value: "Structured Output"
+                description: "Structured output"
+              - value: "Other"
+                description: "Other"
+          required: false
+        - name: "format"
+          schema:
+            type: "ENUM"
+            title: "Format"
+            description: "Output format"
+            values:
+              - value: "Text"
+                description: "Plain text"
+              - value: "Markdown"
+                description: "Markdown"
+              - value: "HTML"
+                description: "HTML"
+              - value: "JSON"
+                description: "JSON"
+              - value: "YAML"
+                description: "YAML"
+              - value: "Other"
+                description: "Other"
+          required: false
+    required: false
+  - name: "version"
+    schema:
+      type: "STRING"
+      title: "Version"
+      description: "Template version"
+    required: false
+  - name: "owner"
+    schema:
+      type: "STRING"
+      title: "Owner"
+      description: "Responsible team"
+    required: true
+    searchable: true
+  - name: "status"
+    schema:
+      type: "ENUM"
+      title: "Status"
+      description: "Lifecycle status"
+      values:
+        - value: "Draft"
+          description: "Draft"
+        - value: "Approved"
+          description: "Approved for use"
+        - value: "Deprecated"
+          description: "Deprecated"
+    required: true
+    searchable: true
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -218,139 +1152,158 @@ version: "1.0.0"
 contentSchema:
   type: "OBJECT"
   title: "MCP Server"
-  description: "Model Context Protocol server asset"
+  description: "A service that exposes reusable AI resources such as tools, prompts, and knowledge sources using MCP"
   fields:
+  - name: "mcpServerId"
+    schema:
+      type: "STRING"
+      title: "MCP server id"
+      description: "Unique stable identifier"
+    required: true
+    identifier: true
+    searchable: true
   - name: "name"
     schema:
       type: "STRING"
       title: "Name"
-      description: "Server name"
-    required: true
-    identifier: true
-    searchable: true
-  - name: "endpoint"
-    schema:
-      type: "STRING"
-      title: "Endpoint"
-      description: "Server endpoint URI"
-      format: "uri"
-    required: true
-    searchable: true
-  - name: "transport"
-    schema:
-      type: "STRING"
-      title: "Transport"
-      description: "stdio, sse, streamable-http, …"
-    required: false
-    searchable: true
-  - name: "description"
-    schema:
-      type: "STRING"
-      title: "Description"
-      description: "Human-readable description"
-    required: false
----
----
-apiVersion: "objs.poc.org/v1"
-kind: "ObjectSchema"
-type: "ModelFamily"
-version: "1.0.0"
-contentSchema:
-  type: "OBJECT"
-  title: "Model Family"
-  description: "Model family asset (e.g. gpt, claude)"
-  fields:
-  - name: "name"
-    schema:
-      type: "STRING"
-      title: "Name"
-      description: "Family name"
-    required: true
-    identifier: true
-    searchable: true
-  - name: "vendor"
-    schema:
-      type: "STRING"
-      title: "Vendor"
-      description: "Provider / vendor"
+      description: "Human-readable name"
     required: true
     searchable: true
   - name: "description"
     schema:
       type: "STRING"
       title: "Description"
-      description: "Human-readable description"
+      description: "Purpose"
     required: false
----
----
-apiVersion: "objs.poc.org/v1"
-kind: "ObjectSchema"
-type: "ModelVersion"
-version: "1.0.0"
-contentSchema:
-  type: "OBJECT"
-  title: "Model Version"
-  description: "Concrete model version asset within a family"
-  fields:
-  - name: "name"
+  - name: "catalog"
     schema:
       type: "STRING"
-      title: "Name"
-      description: "Version id / marketing name"
-    required: true
-    identifier: true
+      title: "Catalog"
+      description: "Catalog where the server is registered"
     searchable: true
-  - name: "contextWindow"
-    schema:
-      type: "INTEGER"
-      title: "Context window"
-      description: "Context window size in tokens"
     required: false
-  - name: "releasedAt"
+  - name: "version"
     schema:
       type: "STRING"
-      title: "Released at"
-      description: "Release date"
-      format: "date"
+      title: "Version"
+      description: "Server version"
     required: false
-  - name: "description"
+  - name: "connection"
     schema:
-      type: "STRING"
-      title: "Description"
-      description: "Human-readable description"
+        type: "OBJECT"
+        title: "Connection"
+        description: "How clients reach the MCP server"
+        fields:
+        - name: "endpoint"
+          schema:
+            type: "STRING"
+            title: "Endpoint"
+            description: "Server endpoint"
+            format: "uri"
+          required: false
+        - name: "transport"
+          schema:
+            type: "ENUM"
+            title: "Transport"
+            description: "Transport mechanism"
+            values:
+              - value: "Streamable HTTP"
+                description: "Streamable HTTP"
+              - value: "STDIO"
+                description: "Standard I/O"
+              - value: "Other"
+                description: "Other transport"
+          required: false
+        - name: "authentication"
+          schema:
+            type: "ENUM"
+            title: "Authentication"
+            description: "Authentication mechanism"
+            values:
+              - value: "OAuth 2.0"
+                description: "OAuth 2.0"
+              - value: "API Key"
+                description: "API key"
+              - value: "Service Identity"
+                description: "Service identity"
+              - value: "None"
+                description: "No authentication"
+              - value: "Other"
+                description: "Other"
+          required: false
+        - name: "protocolVersion"
+          schema:
+            type: "STRING"
+            title: "Protocol version"
+            description: "Supported MCP protocol version"
+          required: false
     required: false
----
----
-apiVersion: "objs.poc.org/v1"
-kind: "ObjectSchema"
-type: "Modality"
-version: "1.0.0"
-contentSchema:
-  type: "OBJECT"
-  title: "Modality"
-  description: "Input/output modality asset (text, vision, audio, embedding, …)"
-  fields:
-  - name: "name"
+  - name: "access"
     schema:
-      type: "STRING"
-      title: "Name"
-      description: "Modality name"
-    required: true
-    identifier: true
+      type: "ENUM"
+      title: "Access"
+      description: "Intended audience"
+      values:
+        - value: "Internal"
+          description: "Internal audience"
+        - value: "External"
+          description: "External audience"
+        - value: "Restricted"
+          description: "Restricted audience"
+        - value: "Public"
+          description: "Public audience"
     searchable: true
-  - name: "description"
+    required: false
+  - name: "owner"
     schema:
       type: "STRING"
-      title: "Description"
-      description: "Human-readable description"
-    required: false
+      title: "Owner"
+      description: "Responsible team"
+    required: true
+    searchable: true
+  - name: "status"
+    schema:
+      type: "ENUM"
+      title: "Status"
+      description: "Lifecycle status"
+      values:
+        - value: "Development"
+          description: "In development"
+        - value: "Pilot"
+          description: "Pilot"
+        - value: "Production"
+          description: "Production"
+        - value: "Suspended"
+          description: "Suspended"
+        - value: "Retired"
+          description: "Retired"
+    required: true
+    searchable: true
 ---
 ---
 apiVersion: "objs.poc.org/v1"
 kind: "AllowedEdgeRule"
-sourceType: "Database"
-role: "CONTAINS"
+sourceType: "AiAgent"
+role: "USES_MODEL"
+targetType: "LlmModel"
+propertiesPolicy: "NONE"
+cardinality: "1:*"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "AiAgent"
+role: "USES_DATA"
 targetType: "Dataset"
+propertiesPolicy: "NONE"
+cardinality: "1:*"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "AiAgent"
+role: "USES_SKILL"
+targetType: "Skill"
 propertiesPolicy: "NONE"
 cardinality: "1:*"
 ---
@@ -367,15 +1320,6 @@ cardinality: "1:*"
 apiVersion: "objs.poc.org/v1"
 kind: "AllowedEdgeRule"
 sourceType: "AiAgent"
-role: "HAS_SKILL"
-targetType: "Skill"
-propertiesPolicy: "NONE"
-cardinality: "1:*"
----
----
-apiVersion: "objs.poc.org/v1"
-kind: "AllowedEdgeRule"
-sourceType: "AiAgent"
 role: "USES_TOOL"
 targetType: "Tool"
 propertiesPolicy: "NONE"
@@ -385,8 +1329,80 @@ cardinality: "1:*"
 apiVersion: "objs.poc.org/v1"
 kind: "AllowedEdgeRule"
 sourceType: "AiAgent"
-role: "CONNECTS_TO"
+role: "USES_KNOWLEDGE"
+targetType: "KnowledgeSource"
+propertiesPolicy: "NONE"
+cardinality: "1:*"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "AiAgent"
+role: "USES_TEMPLATE"
+targetType: "Template"
+propertiesPolicy: "NONE"
+cardinality: "1:*"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "AiAgent"
+role: "PROTECTED_BY"
+targetType: "Guardrail"
+propertiesPolicy: "NONE"
+cardinality: "1:*"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "AiAgent"
+role: "USES_MCP_SERVER"
 targetType: "McpServer"
+propertiesPolicy: "NONE"
+cardinality: "1:*"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Dataset"
+role: "TRAINS"
+targetType: "LlmModel"
+propertiesPolicy: "NONE"
+cardinality: "1:*"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Dataset"
+role: "VALIDATES"
+targetType: "LlmModel"
+propertiesPolicy: "NONE"
+cardinality: "1:*"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Dataset"
+role: "EVALUATES"
+targetType: "LlmModel"
+propertiesPolicy: "NONE"
+cardinality: "1:*"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Skill"
+role: "USES_MODEL"
+targetType: "LlmModel"
+propertiesPolicy: "NONE"
+cardinality: "1:*"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Skill"
+role: "USES_PROMPT"
+targetType: "Prompt"
 propertiesPolicy: "NONE"
 cardinality: "1:*"
 ---
@@ -402,26 +1418,125 @@ cardinality: "1:*"
 ---
 apiVersion: "objs.poc.org/v1"
 kind: "AllowedEdgeRule"
-sourceType: "Tool"
-role: "BACKED_BY"
-targetType: "McpServer"
-propertiesPolicy: "NONE"
-cardinality: "1:1"
----
----
-apiVersion: "objs.poc.org/v1"
-kind: "AllowedEdgeRule"
-sourceType: "ModelFamily"
-role: "HAS_VERSION"
-targetType: "ModelVersion"
+sourceType: "Skill"
+role: "USES_KNOWLEDGE"
+targetType: "KnowledgeSource"
 propertiesPolicy: "NONE"
 cardinality: "1:*"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
 kind: "AllowedEdgeRule"
-sourceType: "ModelVersion"
-role: "SUPPORTS"
-targetType: "Modality"
+sourceType: "Skill"
+role: "USES_TEMPLATE"
+targetType: "Template"
+propertiesPolicy: "NONE"
+cardinality: "1:*"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Skill"
+role: "PROTECTED_BY"
+targetType: "Guardrail"
+propertiesPolicy: "NONE"
+cardinality: "1:*"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Skill"
+role: "DEPENDS_ON"
+targetType: "Skill"
+propertiesPolicy: "NONE"
+cardinality: "1:*"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Prompt"
+role: "DESIGNED_FOR"
+targetType: "LlmModel"
+propertiesPolicy: "NONE"
+cardinality: "1:*"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Prompt"
+role: "USES_TEMPLATE"
+targetType: "Template"
+propertiesPolicy: "NONE"
+cardinality: "1:*"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Tool"
+role: "ACCESSES"
+targetType: "Dataset"
+propertiesPolicy: "NONE"
+cardinality: "1:*"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "KnowledgeSource"
+role: "SOURCED_FROM"
+targetType: "Dataset"
+propertiesPolicy: "NONE"
+cardinality: "1:*"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "KnowledgeSource"
+role: "USES_MODEL"
+targetType: "LlmModel"
+propertiesPolicy: "NONE"
+cardinality: "1:*"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Guardrail"
+role: "APPLIES_TO"
+targetType: "LlmModel"
+propertiesPolicy: "NONE"
+cardinality: "1:*"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Guardrail"
+role: "APPLIES_TO"
+targetType: "Dataset"
+propertiesPolicy: "NONE"
+cardinality: "1:*"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "McpServer"
+role: "PROVIDES_TOOL"
+targetType: "Tool"
+propertiesPolicy: "NONE"
+cardinality: "1:*"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "McpServer"
+role: "PROVIDES_PROMPT"
+targetType: "Prompt"
+propertiesPolicy: "NONE"
+cardinality: "1:*"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "McpServer"
+role: "PROVIDES_KNOWLEDGE"
+targetType: "KnowledgeSource"
 propertiesPolicy: "NONE"
 cardinality: "1:*"

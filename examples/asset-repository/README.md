@@ -7,6 +7,7 @@ examples/asset-repository/
   asset-repository-service/       # Java 21 Spring Boot
   asset-repository-service-ui/    # Domain SPA → /app/
   scripts/                        # Python client (WI-007)
+  demo/load-data/                 # qsynth model, default CSVs, REST loader
 ```
 
 Design: [`docs/design/asset-repository/example.md`](../../docs/design/asset-repository/example.md)
@@ -17,7 +18,7 @@ Design: [`docs/design/asset-repository/example.md`](../../docs/design/asset-repo
 ./gradlew :asset-repository-service:run
 ```
 
-Uses the **`demo`** profile by default (ontology seed + sample collections/objects). Skip the Vite UI build with `-PskipUi=true` if you only need the API.
+Uses the **`demo`** profile by default (ontology + collection instance seeds). Skip the Vite UI build with `-PskipUi=true` if you only need the API.
 
 | Surface | URL |
 |---------|-----|
@@ -32,15 +33,19 @@ Foundation `/api/v1/objs/**` is present as a **sidecar** for the workbench. Doma
 
 ## Demo data (`demo` profile)
 
-**Libraries (asset shelves):** `databases`, `datasets`, `prompts`, `skills`, `tools`, `mcp-servers`, `model-families`, `modalities`
+Classpath seeds (no Java seeder):
 
-**Products (minigraphs):**
+- [`asset-repository-ontology.yaml`](asset-repository-service/src/main/resources/seeds/asset-repository-ontology.yaml) — `ObjectSchema` + `AllowedEdgeRule`
+- [`asset-repository-demo-data.yaml`](asset-repository-service/src/main/resources/seeds/asset-repository-demo-data.yaml) — `Collection` + `CollectionObjects`
 
 | Collection | Accepted types | Notes |
 |------------|----------------|-------|
-| `dp-customers` | Database, Dataset | `CONTAINS` |
-| `agent-support` | AiAgent, Prompt, Skill, Tool, McpServer | Agent wiring (copy-on-assemble) |
-| `models-openai` | ModelFamily, ModelVersion, Modality | `HAS_VERSION` / `SUPPORTS` |
+| `datasets` | Dataset | ~50 library objects |
+| `models` | LlmModel | ~20 library objects |
+| `agents` | AiAgent | ~100 library objects |
+| `composables` | Prompt, Skill, Tool, Guardrail, KnowledgeSource, Template | ~200 objects + wiring |
+| `mcp-servers` | McpServer, Tool, Prompt, KnowledgeSource | ~50 servers plus provided components |
+| `customer-support` | all 10 types | Larger solution graph (~140 objects, dense wiring) |
 
 ## Sample REST
 
@@ -74,6 +79,10 @@ python ar_client.py all --delete
 ```
 
 Calls **`/api/v1/asset-repository/**` only** (never foundation `/api/v1/objs/**`).
+
+## Synthetic load (performance)
+
+[`demo/load-data`](demo/load-data/README.md) holds a qsynth model (demo-seed ratios), a committed CSV extract, and `load.py`. Load the default extract into a running app without Docker. Scale by changing `rows_multiply` and regenerating with `qpointz/qsynth:latest`.
 
 ## Notes
 

@@ -270,4 +270,63 @@ class SeedImporterTest {
         assertThat(rules.find("Person", "knows", "Person")!!.cardinality)
             .isEqualTo(org.poc.objs.core.domain.BoMEdgeCardinality.UNSPECIFIED)
     }
+
+    @Test
+    fun shouldApplyCustomKind_usingRegisteredHandlerOrder() {
+        val notes = mutableListOf<String>()
+        val custom = object : SeedDocumentHandler {
+            override val kind: String = "Note"
+            override val applyOrder: Int = 5
+            override fun parse(document: SeedRawDocument) = ParsedSeedDocument(
+                document,
+                requireText(document.raw, "name", document.index),
+                document.raw["name"].toString(),
+            )
+            override fun apply(parsed: ParsedSeedDocument): SeedDocumentResult {
+                notes += parsed.identity!!
+                return SeedDocumentResult(
+                    index = parsed.document.index,
+                    kind = kind,
+                    apiVersion = parsed.document.apiVersion,
+                    identity = parsed.identity,
+                    applied = true,
+                )
+            }
+        }
+        val withCustom = SeedImporter(listOf(objectHandler, ruleHandler, custom))
+        val result = withCustom.importYaml(
+            """
+            apiVersion: objs.poc.org/v1
+            kind: Note
+            name: hello
+            ---
+            apiVersion: objs.poc.org/v1
+            kind: ObjectSchema
+            type: Person
+            version: "1"
+            contentSchema:
+              type: OBJECT
+              title: Person
+              description: Person payload
+              fields: []
+            """.trimIndent(),
+        )
+        assertThat(result.isSuccess).isTrue()
+        assertThat(result.appliedByKind()["Note"]).isEqualTo(1)
+        assertThat(schemas.get("Person", "1")).isNotNull
+        assertThat(notes).containsExactly("hello")
+    }
+
+    @Test
+    fun shouldRejectDuplicateHandlerKinds() {
+        val dup = object : SeedDocumentHandler {
+            override val kind: String = SEED_KIND_OBJECT_SCHEMA
+            override fun parse(document: SeedRawDocument): ParsedSeedDocument = error("unused")
+            override fun apply(parsed: ParsedSeedDocument): SeedDocumentResult = error("unused")
+        }
+        assertThatThrownBy {
+            SeedImporter(listOf(objectHandler, dup))
+        }.isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining(SEED_KIND_OBJECT_SCHEMA)
+    }
 }

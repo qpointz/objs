@@ -34,6 +34,7 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`ui-gradle-node`](completed/20260813-ui-gradle-node/STORY.md) — Workbench SPA via `com.github.node-gradle.node` 7.0.2 + `:objs-service-ui` (U-6).
 - [`schema-migration-docs`](completed/20260813-schema-migration-docs/STORY.md) — Seed-format implementer reference + JSON Schema → YAML seeds guide + Python nano-framework; workbench missing-UI 503 (C-15).
 - [`asset-repository-example`](completed/20260814-asset-repository-example/STORY.md) — Centralized asset object store: collections, domain REST, Mantine UI, schema catalog, Python client (D-3).
+- [`asset-repository-demo-seeds`](completed/20260814-asset-repository-demo-seeds/STORY.md) — Extensible seed kinds, AI catalog demo volumes, qsynth load-data, collection query exec stats (D-4).
 
 ### In Progress
 

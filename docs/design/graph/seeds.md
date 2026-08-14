@@ -15,14 +15,14 @@ Each YAML document:
 
 ```yaml
 apiVersion: objs.poc.org/v1
-kind: ObjectSchema | AllowedEdgeRule | Graph
+kind: ObjectSchema | AllowedEdgeRule | Graph | *(application-defined)*
 # kind-specific fields follow directly at the document root
 ```
 
 | Field | Required | Notes |
 |-------|----------|--------|
 | `apiVersion` | **yes** | Only `objs.poc.org/v1` is accepted |
-| `kind` | **yes** | Exactly one of the three kinds below |
+| `kind` | **yes** | Built-in: `ObjectSchema`, `AllowedEdgeRule`, `Graph`. Applications register more via `SeedDocumentHandler` beans. |
 | other root keys | kind-specific | Flat at document root — no Kubernetes-style `metadata` / `spec` |
 
 Seed documents deliberately follow Mill's flat format. `apiVersion` and `kind` are the only
@@ -34,11 +34,9 @@ common envelope fields.
 - Empty documents between consecutive `---` markers are **skipped** (canonical SBOM ontology
   often has double `---`; generators may emit a single `---` between docs).
 - Documents in one resource may appear in **any order**. The importer validates **all**
-  documents first, then applies them in dependency order:
-
-  1. `ObjectSchema`
-  2. `AllowedEdgeRule`
-  3. `Graph`
+  documents first, then applies in `SeedDocumentHandler.applyOrder` (then document index).
+  Built-in: `ObjectSchema` (0) → `AllowedEdgeRule` (10) → `Graph` (30). Extra kinds pick a gap
+  (asset-repository: `Collection` 20, `CollectionObjects` 40).
 
 Unsupported `apiVersion` or `kind` values fail the **whole** resource (no partial apply).
 
@@ -52,6 +50,8 @@ All seed import is **MERGE** (upsert). Omission never deletes. There is no `REPL
 | `AllowedEdgeRule` | `(sourceType, role, targetType)` | Re-import updates that allow-list row |
 | `Graph` entities / edges | stable textual `key` within the graph document | Default ids are **UUIDv5** over `graphName/entity\|edge/key` in the Objs seed namespace; optional explicit `id` overrides (used by REST export of existing rows) |
 | `Graph` header | document `name` (or explicit `id`) | Default graph UUID = UUIDv3 of `graph-seed:<name>` |
+| `Collection` (asset-repository) | collection `name` | Creates `ar_collection` + named graph; MERGE updates metadata |
+| `CollectionObjects` (asset-repository) | `collection` name | Writes objects/relations into that collection |
 
 Generator implication: re-import updates matching identities; types or rules omitted from a
 later import are **not** removed from the catalog or graph by import alone.
@@ -398,3 +398,14 @@ Use this when emitting ontology YAML (including from JSON Schema — see
 16. Do **not** reverse-engineer seeds from `format=json-schema` export — that projection is
     lossy and may synthesize relation properties that are not part of the authoring model
     (see [json-schema-to-seeds.md](json-schema-to-seeds.md)).
+
+## Extending seed kinds
+
+Built-in handlers are Spring beans implementing `SeedDocumentHandler`. An application can add
+kinds the same way: `@Component` with a unique `kind`, `parse` + `apply`, and `applyOrder` in a
+gap (do not collide with 0 / 10 / 30). Duplicate `kind` values fail importer construction.
+
+Classpath startup (`objs.seeds.resources`) applies **all** registered kinds. REST import still
+filters: registry = catalog kinds only; graph import = `Graph` only. Application kinds are for
+startup (or a domain import endpoint), not the foundation registry/graph I/O split.
+

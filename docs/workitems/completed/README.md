@@ -10,6 +10,7 @@ docs/workitems/completed/YYYYMMDD-<story-slug>/
 
 ## Index (optional, newest first)
 
+- [`20260814-asset-repository-demo-seeds`](20260814-asset-repository-demo-seeds/STORY.md) — Extensible seed kinds, AI catalog demo volumes, qsynth load-data, query exec stats (D-4)
 - [`20260814-asset-repository-example`](20260814-asset-repository-example/STORY.md) — Asset repository example: collections object store, domain REST + UI (D-3)
 - [`20260813-schema-migration-docs`](20260813-schema-migration-docs/STORY.md) — Seed format + JSON Schema → YAML seeds guide + Python nano-framework (C-15)
 - [`20260813-ui-gradle-node`](20260813-ui-gradle-node/STORY.md) — Workbench SPA via node-gradle + `:objs-service-ui` (U-6)

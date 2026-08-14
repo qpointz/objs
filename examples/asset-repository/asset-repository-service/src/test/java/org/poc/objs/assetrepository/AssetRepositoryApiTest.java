@@ -60,7 +60,13 @@ class AssetRepositoryApiTest {
         String writeBody = mapper.writeValueAsString(Map.of(
                 "type", "Prompt",
                 "schemaVersion", "1.0.0",
-                "payload", Map.of("name", "greet", "template", "Hello {{name}}")
+                "payload", Map.of(
+                        "promptId", "prompt-greet-001",
+                        "name", "greet",
+                        "promptType", "Task",
+                        "owner", "ai-platform",
+                        "status", "Approved",
+                        "body", "Hello {{name}}")
         ));
 
         MvcResult written = mockMvc.perform(post("/api/v1/asset-repository/collections/" + collectionId + "/objects")
@@ -78,8 +84,12 @@ class AssetRepositoryApiTest {
                                 "type", "Prompt",
                                 "schemaVersion", "1.0.0",
                                 "payload", Map.of(
+                                        "promptId", "prompt-greet-001",
                                         "name", "greet",
-                                        "template", "Hello {{name}}",
+                                        "promptType", "Task",
+                                        "owner", "ai-platform",
+                                        "status", "Approved",
+                                        "body", "Hello {{name}}",
                                         "description", "Greeting prompt")
                         ))))
                 .andExpect(status().isCreated())
@@ -108,7 +118,7 @@ class AssetRepositoryApiTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(objectId))
                 .andExpect(jsonPath("$.payload.name").value("greet"))
-                .andExpect(jsonPath("$.payload.template").value("Hello {{name}}"))
+                .andExpect(jsonPath("$.payload.body").value("Hello {{name}}"))
                 .andExpect(jsonPath("$.payload.description").value("partial-only"));
 
         mockMvc.perform(post("/api/v1/asset-repository/collections/" + collectionId + "/objects/search")
@@ -122,25 +132,29 @@ class AssetRepositoryApiTest {
         mockMvc.perform(post("/api/v1/asset-repository/collections/" + collectionId + "/objects")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(Map.of(
-                                "type", "Database",
+                                "type", "Dataset",
                                 "schemaVersion", "1.0.0",
-                                "payload", Map.of("name", "x", "engine", "pg")
+                                "payload", Map.of(
+                                        "datasetId", "DS-X",
+                                        "name", "x",
+                                        "purpose", "Other",
+                                        "classification", "Internal")
                         ))))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void shouldExposeSeededSchemaViaDomainApi() throws Exception {
-        mockMvc.perform(get("/api/v1/asset-repository/schemas/Database/1.0.0"))
+        mockMvc.perform(get("/api/v1/asset-repository/schemas/Dataset/1.0.0"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.type").value("Database"))
+                .andExpect(jsonPath("$.type").value("Dataset"))
                 .andExpect(jsonPath("$.version").value("1.0.0"))
                 .andExpect(jsonPath("$.contentSchema.type").value("OBJECT"))
-                .andExpect(jsonPath("$.contentSchema.fields[0].name").value("name"));
+                .andExpect(jsonPath("$.contentSchema.fields[0].name").value("datasetId"));
 
-        mockMvc.perform(get("/api/v1/asset-repository/schemas").param("type", "Database"))
+        mockMvc.perform(get("/api/v1/asset-repository/schemas").param("type", "Dataset"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].type").value("Database"));
+                .andExpect(jsonPath("$[0].type").value("Dataset"));
     }
 
     @Test
@@ -149,7 +163,7 @@ class AssetRepositoryApiTest {
                 "name", "schema-catalog-test",
                 "owner", "data-eng",
                 "objectWriteMode", "UUID_OR_IDENTIFIER",
-                "types", java.util.List.of(Map.of("objectType", "Database"))
+                "types", java.util.List.of(Map.of("objectType", "Dataset"))
         ));
         MvcResult created = mockMvc.perform(post("/api/v1/asset-repository/collections")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -163,19 +177,19 @@ class AssetRepositoryApiTest {
                 .andReturn();
         JsonNode rows = mapper.readTree(catalog.getResponse().getContentAsString());
         assertThat(rows.isArray()).isTrue();
-        JsonNode database = null;
+        JsonNode dataset = null;
         for (JsonNode row : rows) {
             assertThat(row.has("versions")).isTrue();
             assertThat(row.get("latestVersion").asText()).isEqualTo(
                     row.get("versions").get(row.get("versions").size() - 1).asText());
-            if ("Database".equals(row.get("type").asText())) {
-                database = row;
+            if ("Dataset".equals(row.get("type").asText())) {
+                dataset = row;
             }
         }
-        assertThat(database).isNotNull();
-        assertThat(database.get("latestVersion").asText()).isEqualTo("1.0.0");
+        assertThat(dataset).isNotNull();
+        assertThat(dataset.get("latestVersion").asText()).isEqualTo("1.0.0");
         boolean found = false;
-        for (JsonNode used : database.get("usedIn")) {
+        for (JsonNode used : dataset.get("usedIn")) {
             if (collectionId.equals(used.get("id").asText())) {
                 found = true;
                 assertThat(used.get("name").asText()).isEqualTo("schema-catalog-test");
@@ -191,8 +205,8 @@ class AssetRepositoryApiTest {
                 "owner", "data-eng",
                 "objectWriteMode", "UUID_OR_IDENTIFIER",
                 "types", java.util.List.of(
-                        Map.of("objectType", "Database"),
-                        Map.of("objectType", "Dataset"))
+                        Map.of("objectType", "Dataset"),
+                        Map.of("objectType", "LlmModel"))
         ));
         MvcResult created = mockMvc.perform(post("/api/v1/asset-repository/collections")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -203,12 +217,21 @@ class AssetRepositoryApiTest {
 
         String composition = mapper.writeValueAsString(Map.of(
                 "objects", java.util.List.of(
-                        Map.of("type", "Database", "schemaVersion", "1.0.0",
-                                "payload", Map.of("name", "db-a", "engine", "postgresql")),
                         Map.of("type", "Dataset", "schemaVersion", "1.0.0",
-                                "payload", Map.of("name", "ds-a", "datasetType", "table"))),
+                                "payload", Map.of(
+                                        "datasetId", "DS-A",
+                                        "name", "ds-a",
+                                        "purpose", "Evaluation",
+                                        "classification", "Internal")),
+                        Map.of("type", "LlmModel", "schemaVersion", "1.0.0",
+                                "payload", Map.of(
+                                        "modelId", "gpt-4.1",
+                                        "name", "GPT-4.1",
+                                        "vendor", "OpenAI",
+                                        "modelType", "General Purpose",
+                                        "status", "Approved"))),
                 "relations", java.util.List.of(
-                        Map.of("sourceKey", "obj-0", "role", "CONTAINS", "targetKey", "obj-1"))
+                        Map.of("sourceKey", "obj-0", "role", "EVALUATES", "targetKey", "obj-1"))
         ));
         MvcResult written = mockMvc.perform(post("/api/v1/asset-repository/collections/" + collectionId + "/compositions")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -223,13 +246,13 @@ class AssetRepositoryApiTest {
 
         mockMvc.perform(get("/api/v1/asset-repository/collections/" + collectionId + "/objects/" + dbId + "/relations"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].role").value("CONTAINS"))
+                .andExpect(jsonPath("$[0].role").value("EVALUATES"))
                 .andExpect(jsonPath("$[0].direction").value("OUTGOING"))
                 .andExpect(jsonPath("$[0].related.id").value(dsId));
 
         mockMvc.perform(get("/api/v1/asset-repository/collections/" + collectionId + "/objects/" + dsId + "/relations"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].role").value("CONTAINS"))
+                .andExpect(jsonPath("$[0].role").value("EVALUATES"))
                 .andExpect(jsonPath("$[0].direction").value("INCOMING"))
                 .andExpect(jsonPath("$[0].related.id").value(dbId));
     }
