@@ -51,6 +51,8 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | # | Item | Type | Status | Source |
 |---|------|------|--------|--------|
 | D-1 | SBOM typed example (toolkit + ontology + REST + SPA) | feature | done | [`completed/20260728-sbom-typed-example/`](completed/20260728-sbom-typed-example/STORY.md), [`docs/design/sbom/example.md`](../design/sbom/example.md) |
+| D-2 | SBOM applications inventory app (Apps/Portfolios tabs; portfolio-scoped MI via Gremlin; weak CDX demo) | feature | in-progress | [`in-progress/sbom-inventory-app/`](in-progress/sbom-inventory-app/STORY.md) |
+| D-3 | Asset repository example (collections-as-graphs object store; domain REST + simple explore UI) | feature | in-progress | [`in-progress/asset-repository-example/`](in-progress/asset-repository-example/STORY.md), [`docs/design/asset-repository/example.md`](../design/asset-repository/example.md) |
 
 ---
 
@@ -68,5 +70,5 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 |--------|------:|
 | backlog | 0 |
 | planned | 0 |
-| in-progress | 0 |
+| in-progress | 2 |
 | done | 21 |

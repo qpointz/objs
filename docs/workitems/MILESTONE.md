@@ -36,7 +36,8 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 
 ### In Progress
 
-_(none)_
+- [`sbom-inventory-app`](in-progress/sbom-inventory-app/STORY.md) — Applications \| Portfolios inventory app; portfolio-scoped MI (latest-version graphs + Gremlin); weak CDX; programmatic objs (D-2).
+- [`asset-repository-example`](in-progress/asset-repository-example/STORY.md) — Centralized asset object store via objs collections; domain REST + simple explore UI (D-3).
 
 ### Planned
 
