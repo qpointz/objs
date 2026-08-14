@@ -1,0 +1,12 @@
+.syntax-editor {
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}

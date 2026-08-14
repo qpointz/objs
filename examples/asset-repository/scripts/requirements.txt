@@ -1,0 +1,2 @@
+# stdlib only — no third-party deps required for ar_client.py
+# Optional: pip install requests  (not used by this script)
