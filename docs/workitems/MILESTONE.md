@@ -35,6 +35,7 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`schema-migration-docs`](completed/20260813-schema-migration-docs/STORY.md) — Seed-format implementer reference + JSON Schema → YAML seeds guide + Python nano-framework; workbench missing-UI 503 (C-15).
 - [`asset-repository-example`](completed/20260814-asset-repository-example/STORY.md) — Centralized asset object store: collections, domain REST, Mantine UI, schema catalog, Python client (D-3).
 - [`asset-repository-demo-seeds`](completed/20260814-asset-repository-demo-seeds/STORY.md) — Extensible seed kinds, AI catalog demo volumes, qsynth load-data, collection query exec stats (D-4).
+- [`asset-repository-ops-fixes`](completed/20260814-asset-repository-ops-fixes/STORY.md) — Postgres collection search casts, SPA deep-link filters, batched `load.py` (D-5).
 
 ### In Progress
 

@@ -590,5 +590,7 @@ Open `http://localhost:5173/workbench/`. Vite proxies `/api` requests to
 Packaged builds: Gradle `:objs-service-ui` (node-gradle) builds the SPA into
 `classpath:/static/ui/` on the module JAR; `:objs-service` depends on it
 (`runtimeOnly`). Skip with `-PskipUi=true`. Served at `/workbench/` and does
-**not** require `:objs-sbom-example`.
+**not** require `:objs-sbom-example`. `WorkbenchSpaRoutingFilter` forwards
+client routes (including schema versions like `1.0.0`) to `/workbench/index.html`
+so a browser refresh is not a 404.
 

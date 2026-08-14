@@ -28,9 +28,9 @@ examples/asset-repository/
   scripts/                        # Python producer/consumer (WI-007)
 ```
 
-Workbench (schema): `/workbench/` via objs-service as a **sidecar** — operators manage schemas there. Domain UI: `/app/`.
+Workbench (schema): `/workbench/` via objs-service as a **sidecar** — operators manage schemas there. Domain UI: `/app/`. Packaged SPAs use servlet filters (`SpaRoutingFilter`) so a browser refresh of a client route serves `index.html` instead of a 404. Static files (`*.js`, `*.css`, …) pass through; version path segments such as `1.0.0` are treated as SPA routes.
 
-**Run:** `./gradlew :asset-repository-service:run` (demo profile: ontology + sample collections). Operator guide: [`examples/asset-repository/README.md`](../../../examples/asset-repository/README.md).
+**Run:** `./gradlew :asset-repository-service:run` (demo profile: ontology + sample collections). Operator guide: [`examples/asset-repository/README.md`](../../../examples/asset-repository/README.md). PostgreSQL: `--spring.profiles.active=demo,postgres` (`OBJS_DB_*` env). Collection list/search casts optional JPQL string params so PostgreSQL does not bind nulls as `bytea`.
 
 **Rule:** domain Java, domain SPA, and Python client use **`objs-core` programmatic APIs** and **`/api/v1/asset-repository/**` only. Do **not** use foundation `/api/v1/objs/**` as the application data API (even though those endpoints may be reachable on the same process).
 

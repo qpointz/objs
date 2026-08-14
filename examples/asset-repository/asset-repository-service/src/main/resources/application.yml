@@ -39,3 +39,38 @@ objs:
       - classpath:seeds/asset-repository-ontology.yaml
       - classpath:seeds/asset-repository-demo-data.yaml
     on-failure: FAIL_FAST
+
+---
+spring:
+  config:
+    activate:
+      on-profile: demo-empty
+
+# Ontology schemas. Instance collections: seeds/asset-repository-demo-data.yaml (kind Collection / CollectionObjects).
+objs:
+  seeds:
+    enabled: true
+    resources:
+      - classpath:seeds/asset-repository-ontology.yaml
+    on-failure: FAIL_FAST
+
+---
+# PostgreSQL persistence. Start PostgreSQL separately, then run with:
+#   ./gradlew :asset-repository-service:run --args="--spring.profiles.active=demo,postgres"
+spring:
+  config:
+    activate:
+      on-profile: postgres
+  datasource:
+    url: ${OBJS_DB_URL:jdbc:postgresql://localhost:5432/objs}
+    driver-class-name: org.postgresql.Driver
+    username: ${OBJS_DB_USERNAME:postgres}
+    password: ${OBJS_DB_PASSWORD:postgres}
+    hikari:
+      maximum-pool-size: ${OBJS_DB_POOL_MAX:20}
+      minimum-idle: ${OBJS_DB_POOL_MIN_IDLE:2}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true

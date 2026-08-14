@@ -93,4 +93,23 @@ class CollectionServiceTest {
                 .orElseThrow()
                 .getId()).isEqualTo(toolId);
     }
+
+    @Test
+    void shouldListCollections_whenNameAndOwnerFiltersOmitted() {
+        collections.create(
+                "list-unfiltered",
+                null,
+                "ops",
+                null,
+                null,
+                null,
+                ObjectWriteMode.UUID_OR_IDENTIFIER,
+                List.of(CollectionTypeSpec.of("Dataset")));
+
+        List<CollectionEntity> rows = collections.list(null, null, null);
+        assertThat(rows).extracting(CollectionEntity::getName).contains("list-unfiltered");
+        assertThat(collections.list("list-un", "ops", null))
+                .extracting(CollectionEntity::getName)
+                .containsExactly("list-unfiltered");
+    }
 }

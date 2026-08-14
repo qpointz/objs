@@ -165,14 +165,14 @@ LINKS = [
 
 
 class ArClient:
-    def __init__(self, base_url: str, timeout: int = 120) -> None:
+    def __init__(self, base_url: str, timeout: int = 300) -> None:
         self.base = base_url.rstrip("/") + "/"
         self.timeout = timeout
 
     def request(self, method: str, path: str, body: Any | None = None) -> Any:
         url = self.base + API.lstrip("/") + path.lstrip("/")
         data = None
-        headers = {"Accept": "application/json"}
+        headers = {"Accept": "application/json", "Connection": "keep-alive"}
         if body is not None:
             data = json.dumps(body).encode("utf-8")
             headers["Content-Type"] = "application/json"
@@ -269,7 +269,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Load synthetic asset-repository CSVs over domain REST")
     parser.add_argument("--base-url", default=DEFAULT_BASE)
     parser.add_argument("--data-dir", default=str(Path(__file__).resolve().parent / "generated"))
-    parser.add_argument("--batch-size", type=int, default=50)
+    parser.add_argument("--batch-size", type=int, default=200)
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
     data_dir = Path(args.data_dir)
@@ -280,22 +280,27 @@ def main() -> None:
     collection_ids = ensure_collections(client, args.dry_run)
 
     objects: dict[tuple[str, str], dict[str, Any]] = {}
+    writes_by_collection: dict[str, list[dict[str, Any]]] = {name: [] for name in COLLECTIONS}
     for table, collection, type_name, id_field in OBJECT_TABLES:
         path = data_dir / f"{table}.csv"
         if not path.exists():
             raise SystemExit(f"missing {path}")
         rows = read_csv(path)
-        writes = []
         for row in rows:
             payload = nest_payload(row, id_field)
             ident = str(payload[id_field])
-            writes.append({"type": type_name, "schemaVersion": SCHEMA_VERSION, "payload": payload})
-            objects[(table, ident)] = {"type": type_name, "schemaVersion": SCHEMA_VERSION, "payload": payload}
-        print(f"{table}: {len(writes)} {type_name} -> {collection}")
-        if args.dry_run:
+            write = {"type": type_name, "schemaVersion": SCHEMA_VERSION, "payload": payload}
+            writes_by_collection[collection].append(write)
+            objects[(table, ident)] = write
+        print(f"{table}: {len(rows)} {type_name} -> {collection}")
+
+    for collection, writes in writes_by_collection.items():
+        batches = chunks(writes, args.batch_size)
+        print(f"{collection}: {len(writes)} objects ({len(batches)} posts)")
+        if args.dry_run or not writes:
             continue
         cid = collection_ids[collection]
-        for batch in chunks(writes, args.batch_size):
+        for batch in batches:
             client.request("POST", f"collections/{cid}/compositions", {"objects": batch, "relations": []})
 
     rel_count = 0
@@ -303,29 +308,46 @@ def main() -> None:
         path = data_dir / csv_name
         if not path.exists():
             raise SystemExit(f"missing {path}")
+        pending: list[tuple[tuple[str, str], tuple[str, str]]] = []
+        skipped = 0
         for row in read_csv(path):
             src_id = syn_id(row[src_col])
-            tgt_raw = row[tgt_col]
-            tgt_id = syn_id(tgt_raw)
+            tgt_id = syn_id(row[tgt_col])
             if src_id == tgt_id and role == "DEPENDS_ON":
                 continue
-            src = objects.get((src_table, src_id))
-            tgt = objects.get((tgt_table, tgt_id))
-            if src is None or tgt is None:
-                print(f"skip {csv_name}: missing endpoint {src_table}/{src_id} or {tgt_table}/{tgt_id}", file=sys.stderr)
+            src_key = (src_table, src_id)
+            tgt_key = (tgt_table, tgt_id)
+            if src_key not in objects or tgt_key not in objects:
+                skipped += 1
+                print(
+                    f"skip {csv_name}: missing endpoint {src_table}/{src_id} or {tgt_table}/{tgt_id}",
+                    file=sys.stderr,
+                )
                 continue
-            rel_count += 1
-            if args.dry_run:
-                continue
-            cid = collection_ids[collection]
-            client.request(
-                "POST",
-                f"collections/{cid}/compositions",
-                {
-                    "objects": [src, tgt],
-                    "relations": [{"sourceKey": "obj-0", "role": role, "targetKey": "obj-1"}],
-                },
-            )
+            pending.append((src_key, tgt_key))
+        rel_count += len(pending)
+        batches = chunks(pending, args.batch_size)
+        print(f"{csv_name}: {len(pending)} {role} -> {collection} ({len(batches)} posts, {skipped} skipped)")
+        if args.dry_run or not pending:
+            continue
+        cid = collection_ids[collection]
+        for batch in batches:
+            writes: list[dict[str, Any]] = []
+            index: dict[tuple[str, str], int] = {}
+            relations: list[dict[str, str]] = []
+            for src_key, tgt_key in batch:
+                for key in (src_key, tgt_key):
+                    if key not in index:
+                        index[key] = len(writes)
+                        writes.append(objects[key])
+                relations.append(
+                    {
+                        "sourceKey": f"obj-{index[src_key]}",
+                        "role": role,
+                        "targetKey": f"obj-{index[tgt_key]}",
+                    }
+                )
+            client.request("POST", f"collections/{cid}/compositions", {"objects": writes, "relations": relations})
     print(f"relations posted: {rel_count}")
 
 

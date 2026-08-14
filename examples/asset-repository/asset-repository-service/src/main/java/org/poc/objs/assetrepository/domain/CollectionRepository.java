@@ -15,8 +15,10 @@ public interface CollectionRepository extends JpaRepository<CollectionEntity, UU
 
     @Query("""
             SELECT c FROM CollectionEntity c
-            WHERE (:nameContains IS NULL OR LOWER(c.name) LIKE LOWER(CONCAT('%', CAST(:nameContains AS string), '%')))
-              AND (:owner IS NULL OR LOWER(c.owner) = LOWER(:owner))
+            WHERE (CAST(:nameContains AS string) IS NULL
+                   OR LOWER(c.name) LIKE LOWER(CONCAT('%', CAST(:nameContains AS string), '%')))
+              AND (CAST(:owner AS string) IS NULL
+                   OR LOWER(c.owner) = LOWER(CAST(:owner AS string)))
             """)
     List<CollectionEntity> search(
             @Param("nameContains") String nameContains,

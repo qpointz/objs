@@ -43,8 +43,7 @@ class ObjsWorkbenchUiConfiguration : WebMvcConfigurer {
                         return readableRelative(location, "index.html")
                     }
                     readableRelative(location, path)?.let { return it }
-                    // SPA client routes (no file extension) → index when packaged
-                    if (!path.contains('.')) {
+                    if (!looksLikeStaticFile(path)) {
                         return readableRelative(location, "index.html")
                     }
                     return null
@@ -62,6 +61,11 @@ class ObjsWorkbenchUiConfiguration : WebMvcConfigurer {
             }
 
         fun workbenchIndex(): Resource = ClassPathResource("static/ui/index.html")
+
+        fun looksLikeStaticFile(path: String): Boolean {
+            val last = path.substringAfterLast('/')
+            return last.matches(Regex(".*\\.[a-zA-Z][a-zA-Z0-9]{0,5}$"))
+        }
     }
 }
 

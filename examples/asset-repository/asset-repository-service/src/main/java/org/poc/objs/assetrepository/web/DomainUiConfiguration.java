@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.web.servlet.resource.PathResourceResolver;
 
 /**
  * Serves the domain SPA from classpath {@code static/ar} at {@code /app/}.
@@ -26,7 +27,26 @@ public class DomainUiConfiguration implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         registry.addResourceHandler("/app/**")
-                .addResourceLocations("classpath:/static/ar/");
+                .addResourceLocations("classpath:/static/ar/")
+                .resourceChain(true)
+                .addResolver(new PathResourceResolver() {
+                    @Override
+                    protected Resource getResource(String resourcePath, Resource location)
+                            throws java.io.IOException {
+                        String path = resourcePath.startsWith("/") ? resourcePath.substring(1) : resourcePath;
+                        if (path.isEmpty()) {
+                            return readableRelative(location, "index.html");
+                        }
+                        Resource existing = readableRelative(location, path);
+                        if (existing != null) {
+                            return existing;
+                        }
+                        if (!looksLikeStaticFile(path)) {
+                            return readableRelative(location, "index.html");
+                        }
+                        return null;
+                    }
+                });
     }
 
     @Controller
@@ -43,6 +63,21 @@ public class DomainUiConfiguration implements WebMvcConfigurer {
                                         .getBytes(java.nio.charset.StandardCharsets.UTF_8)));
             }
             return ResponseEntity.ok().contentType(MediaType.TEXT_HTML).body(index);
+        }
+    }
+
+    private static boolean looksLikeStaticFile(String path) {
+        int slash = path.lastIndexOf('/');
+        String last = slash >= 0 ? path.substring(slash + 1) : path;
+        return last.matches(".*\\.[a-zA-Z][a-zA-Z0-9]{0,5}$");
+    }
+
+    private static Resource readableRelative(Resource location, String relative) {
+        try {
+            Resource resource = location.createRelative(relative);
+            return resource.isReadable() ? resource : null;
+        } catch (java.io.IOException ignored) {
+            return null;
         }
     }
 }

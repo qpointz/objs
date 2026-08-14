@@ -16,7 +16,7 @@ qsynth model + committed CSV extract + REST loader for the asset-repository demo
 | mcp-servers | 142 |
 | customer-support | 142 |
 
-Identifiers are prefixed `syn-` on load so they do not collide with demo seed objects. Collections are found by name or created.
+Identifiers are prefixed `syn-` on load so they do not collide with demo seed objects. Collections are found by name or created. `load.py` posts objects **per collection** and edges in `--batch-size` composition requests (default 200); do not post one relation per HTTP call.
 
 ## Load default extract (no Docker)
 
