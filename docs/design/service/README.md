@@ -10,7 +10,7 @@ Publishable Spring library that exposes:
 - **REST** controllers for the objs HTTP API (`/entities`, `/graphs`, `/graph` I/O, `/registry`, `/status`)
 - **Boot autoconfiguration** so a consuming application can pick up objs beans by classpath
 - **SpringDoc** OpenAPI annotations + grouped API beans (UI also on `:objs-app`)
-- **Workbench SPA** via `:objs-service-ui` (Explorer, Composer, **Query**, Schema), packaged at `classpath:/static/ui/` and served at `/workbench/` (`ObjsWorkbenchUiConfiguration`; legacy `/ui/**` redirects)
+- **Workbench SPA** via `:objs-service-ui` (Explorer, Composer, **Query**, Schema), packaged at `classpath:/static/ui/` and served at `/workbench/` (`ObjsWorkbenchUiConfiguration`)
 
 Depends on `:objs-core` and `runtimeOnly` `:objs-service-ui`. Gremlin traverse REST lives in **`:objs-gremlin-service`** (see [`../graph/gremlin.md`](../graph/gremlin.md)). Runnable assembly: [`../platform/overview.md`](../platform/overview.md) / `:objs-app`. Domain: [`../graph/`](../graph/README.md). Operator UI: [`../ui.md`](../ui.md).
 
@@ -25,7 +25,7 @@ Depends on `:objs-core` and `runtimeOnly` `:objs-service-ui`. Gremlin traverse R
 | Graphs | `ObjsGraphsController` (`/graphs`) |
 | Graph I/O | `ObjsGraphController` (import/export/validate under `/graph`) |
 | Registry | `ObjsRegistryController` |
-| Workbench SPA | `ObjsWorkbenchUiConfiguration`, `LegacyWorkbenchUiRedirectController` |
+| Workbench SPA | `ObjsWorkbenchUiConfiguration` |
 | OpenAPI | `ObjsOpenApiConfiguration` (`GroupedOpenApi` graph / registry; includes `/graphs/**` + `/entities/**`) |
 
 `testIT` suite is registered (ready for broader wiring tests).

@@ -17,6 +17,7 @@ import org.poc.objs.core.domain.BoMSchemaCatalog
 import org.poc.objs.core.domain.BoMSchemaDsl
 import org.poc.objs.core.domain.BoMGraphSpec
 import org.poc.objs.core.match.BoMGraphExprMatcher
+import org.poc.objs.core.match.BoMGraphIdsMatcher
 import org.poc.objs.core.match.BoMMatcherDsl
 import org.poc.objs.core.match.BoMMatcherFormat
 import org.poc.objs.core.match.BoMObjExprMatcher
@@ -163,6 +164,36 @@ class BoMGraphMatcherSelectTest {
         val sg = graphStore.select(BoMGraphExprMatcher("id == '${UUID.randomUUID()}'"))
         assertThat(sg.entities).isEmpty()
         assertThat(sg.edges).isEmpty()
+    }
+
+    @Test
+    fun shouldSelectByGraphsInUnion() {
+        val c = UUID.randomUUID()
+        assertThat(
+            graphStore.write(
+                BoMGraph(
+                    entities = mutableListOf(
+                        BoMEntity(id = c, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "C")),
+                    ),
+                ),
+            ).isValid,
+        ).isTrue()
+        val second = namedGraphs.create(
+            BoMGraphSpec(annotations = mapOf("decisionId" to "D-2"), entityIds = setOf(c)),
+        ).id
+
+        val sg = graphStore.select(BoMGraphIdsMatcher(listOf(packId, second)))
+        assertThat(sg.entities.map { it.id }.toSet()).isEqualTo(setOf(a, b, c))
+
+        val empty = graphStore.select(BoMGraphIdsMatcher(emptyList()))
+        assertThat(empty.entities).isEmpty()
+
+        val chain = dsl.decode(
+            """[{"graphs-in":["$packId"]},{"obj-expr":"p.name == 'A'"}]""",
+            BoMMatcherFormat.JSON,
+        )
+        val filtered = graphStore.select(chain)
+        assertThat(filtered.entities.map { it.id }).containsExactly(a)
     }
 
     @Test

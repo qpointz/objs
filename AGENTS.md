@@ -3,16 +3,19 @@ Repository Guidelines
 
 ## Project Structure & Module Organization
 
-Gradle multi-module Kotlin project. Leaf modules at the repository root:
+Gradle multi-module Kotlin project. Foundation leaf modules at the repository root; concrete apps under `examples/`:
 
 - `objs-core` — Entity SDK, domain types, JPA / PostgreSQL persistence, typed-domain toolkit
-- `objs-service` — Spring REST API and Boot autoconfiguration (library)
+- `objs-service` — Spring REST API and Boot autoconfiguration (library); **foundation side service** (with UI)
 - `objs-service-ui` — Workbench SPA (Vite/React); node-gradle build; JAR packs `static/ui/`
 - `objs-gremlin-core` — BoM → TinkerGraph materialization + gremlin-lang evaluation
 - `objs-gremlin-service` — Gremlin REST (`POST /api/v1/objs/graph/traverse/gremlin`) autoconfiguration
-- `objs-sbom-example` — Concrete SBOM app (canonical ontology + `/api/v1/example/sbom`); keep in sync with foundation features — see [`docs/workitems/RULES.md`](docs/workitems/RULES.md) **Concrete example integration**
+- `objs-app` — Foundation **side service** runnable (`./gradlew :objs-app:run`, port **8081**) — wires objs-service + objs-service-ui; **must not** be used by example apps
+- `examples/sbom/sbom-service` (`:sbom-service`) — SBOM inventory app (launchable; programmatic objs-core only; port **8080**)
+- `examples/sbom/sbom-service-ui` (`:sbom-service-ui`) — Inventory SPA; same node-gradle packaging as `:objs-service-ui`
 - `examples/asset-repository/` — Asset repository example (`:asset-repository-service` + `:asset-repository-service-ui`); objs as object store — see [`docs/design/asset-repository/example.md`](docs/design/asset-repository/example.md)
-- `objs-app` — Runnable assembly (`./gradlew :objs-app:run`)
+
+Keep example apps in sync with foundation features — see [`docs/workitems/RULES.md`](docs/workitems/RULES.md) **Concrete example integration**.
 
 Production sources: `src/main/kotlin`. Tests: `src/test/kotlin` (integration suites under `src/testIT/kotlin` when present).
 
@@ -22,7 +25,8 @@ Production sources: `src/main/kotlin`. Tests: `src/test/kotlin` (integration sui
 - `./gradlew test` — unit tests (all leaf modules)
 - `./gradlew :objs-core:test` / `./gradlew :objs-service:test` — scoped tests
 - `./gradlew :objs-core:testIT` — integration tests when defined
-- `./gradlew :objs-app:run` — run the service locally (H2)
+- `./gradlew :objs-app:run` — foundation side service (H2, port 8081; workbench + `/api/v1/objs/**`)
+- `./gradlew :sbom-service:run` — SBOM inventory example (H2, port 8080; must not call objs-service)
 - `./gradlew :asset-repository-service:run` — asset repository example (demo profile; domain UI `/app/`)
 - `./gradlew clean` — remove build outputs
 

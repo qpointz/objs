@@ -31,8 +31,9 @@ graph** (via `obj-expr` over entities).
 |-----|---------|---------|
 | **`all: true`** | Every graph | Union of **stored** member entities + **graph-local** edges across all graphs (**distinct by id**). Orphans (no membership) are excluded. |
 | **`graph-expr`** | Graphs: JEXL over header `id` + `a` | **Stored** member entities + **graph-local** edges of the matching graph(s) (union if many; distinct by id) |
-| **`obj-expr`** | Objects: JEXL over `id`, `type`, `schemaVersion`, `a.*`, `p.*` | Matching entities; edges among survivors **within the active graph scope** (stored edges with both ends kept — never a whole-pool induce) |
-| **chained** (JSON/YAML array) | Ordered stages | Stage 0 may be `all` / `graph-expr` (source); later stages typically `obj-expr` filters |
+| **`graphs-in`** | Explicit list of graph UUIDs | Same union semantics; caller-supplied ids (unknown skipped; empty → empty). Domain: portfolio → latest version graph ids. |
+| **`obj-expr`** | Objects: JEXL over `id`, `type`, `schemaVersion`, `a.*`, `p.*` | Matching entities; edges among survivors **within the active graph scope** |
+| **chained** (JSON/YAML array) | Ordered stages | Stage 0 may be `all` / `graph-expr` / `graphs-in`; later stages typically `obj-expr` |
 
 ```yaml
 # Every graph (union, distinct by id)
@@ -40,6 +41,11 @@ all: true
 
 # Open / select graph(s) by header
 graph-expr: "id == '…' || a.env == 'prod'"
+
+# Explicit graph-id set (e.g. from domain R22)
+graphs-in:
+  - "11111111-1111-4111-8111-111111111111"
+  - "22222222-2222-4222-8222-222222222222"
 
 # Filter objects (same bindings as today)
 obj-expr: "type == 'Component' && a.app == 'payments' && p.kind == 'library'"
@@ -51,6 +57,10 @@ obj-expr: "type == 'Component' && a.app == 'payments' && p.kind == 'library'"
 # Graph then filter objects inside those graphs' members
 - graph-expr: "a.decisionId == 'D-42'"
 - obj-expr: "type == 'Component'"
+
+# Id-set then filter
+- graphs-in: ["11111111-1111-4111-8111-111111111111"]
+- obj-expr: "type == 'Component'"
 ```
 
 - `all` is a stage-0 graph-scope matcher (boolean `true` only). It selects every `bom_graph`
@@ -58,6 +68,8 @@ obj-expr: "type == 'Component' && a.app == 'payments' && p.kind == 'library'"
 - `graph-expr` evaluates Boolean JEXL over each graph header with bindings `id` and `a` (header
   annotations). Matching graphs contribute the **union** of their stored member entities and
   graph-local edges. Local eval over headers is acceptable for v1; pushdown is an open item.
+- `graphs-in` takes an array of graph UUID strings and unions those graphs' stored members/edges
+  (same distinct-by-id rules). Empty array → empty result. Unknown ids are skipped.
 - `obj-expr` uses the sandboxed JEXL engine with bindings `id`, `type`, `schemaVersion`, `a`
   (annotations map), `p` (payload map). Dot/bracket access on maps, e.g.
   `type == 'Product' && p.name == 'x' && a.app == 'y'`. Candidates expose those fields with **lazy**

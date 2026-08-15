@@ -31,18 +31,20 @@ member entities and graph-local edges (see [`graph/model.md`](graph/model.md)).
 
 ## Start and open
 
-Start `objs-app`, then open:
+Start the foundation side service (`:objs-app`, port **8081**), then open:
 
 ```text
-http://localhost:8080/workbench/
+http://localhost:8081/workbench/
 ```
 
 For PostgreSQL:
 
 ```powershell
 docker compose -f deploy/local-dev/docker-compose.yml up -d
-./gradlew :objs-app:run --args="--spring.profiles.active=postgres,sbom"
+./gradlew :objs-app:run --args="--spring.profiles.active=postgres"
 ```
+
+(The SBOM inventory app is a separate process: `./gradlew :sbom-service:run` on port **8080**.)
 
 The **top header** shows **Workbench** (links home), then the view switcher, and a compact
 dark/light toggle on the right:
@@ -54,8 +56,6 @@ dark/light toggle on the right:
 | **Composer** | `/workbench/composer` | Draft workspace: Visual/Text edit, Validate / Save / Snapshot |
 | **Query** | `/workbench/query` | Tabs Query (script) / Matcher / Options; Exec → traverse API; Structured / Raw results |
 | **Schema** | `/workbench/model` | Browse and edit object/edge schemas |
-
-Legacy `/ui/**` URLs redirect into `/workbench/**` (e.g. `/ui/graph` → `/workbench/explorer`).
 
 L0 header order: **Explorer · Objects · Composer · Query · Schema**.
 

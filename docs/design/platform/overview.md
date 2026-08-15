@@ -36,33 +36,39 @@ group/version/toolchain live in the root [`build.gradle.kts`](../../../build.gra
 
 ```mermaid
 flowchart LR
-  app[objs-app]
+  app[objs-app side service :8081]
   gsvc[objs-gremlin-service]
   gcore[objs-gremlin-core]
   service[objs-service]
-  sbom[objs-sbom-example]
+  ui[objs-service-ui]
+  sbom[sbom-service :8080]
+  sbomui[sbom-service-ui]
   core[objs-core]
   app -->|implementation| service
   app -->|implementation| gsvc
-  app -->|implementation| sbom
+  service -->|runtimeOnly| ui
   gsvc --> gcore
   gsvc --> service
   gcore --> core
   service -->|api| core
   sbom --> core
+  sbom --> gcore
+  sbom -->|runtimeOnly| sbomui
   core -->|JPA / JSON| db[(H2 local / PostgreSQL)]
 ```
 
 | Module | Gradle path | Responsibility |
 |--------|-------------|----------------|
 | **objs-core** | `:objs-core` | Entity SDK, core types, **JPA / PostgreSQL persistence** |
-| **objs-service** | `:objs-service` | Spring **REST** + Boot **autoconfiguration** + workbench SPA |
+| **objs-service** | `:objs-service` | Spring **REST** + Boot **autoconfiguration** (foundation side) |
+| **objs-service-ui** | `:objs-service-ui` | Foundation workbench SPA (`runtimeOnly` of objs-service) |
 | **objs-gremlin-core** | `:objs-gremlin-core` | BoM → TinkerGraph materialization + gremlin-lang eval |
 | **objs-gremlin-service** | `:objs-gremlin-service` | Gremlin traverse REST + Boot autoconfig |
-| **objs-sbom-example** | `:objs-sbom-example` | Canonical SBOM ontology + example API |
-| **objs-app** | `:objs-app` | Runnable assembly — see [`app.md`](app.md) |
+| **sbom-service** | `:sbom-service` (`examples/sbom/sbom-service`) | SBOM inventory app (launchable; **no** objs-service) |
+| **sbom-service-ui** | `:sbom-service-ui` (`examples/sbom/sbom-service-ui`) | Inventory SPA |
+| **objs-app** | `:objs-app` | Foundation **side service** runnable — see [`app.md`](app.md) |
 
-Dependency rule: Gremlin and service libraries depend on core; app wires service + gremlin-service + example. Core must not depend on service/app/gremlin.
+Dependency rule: Gremlin and service libraries depend on core; `objs-app` wires the foundation side service only. Example apps under `examples/` are separate launchables and **must not** depend on `:objs-service` / `:objs-service-ui` / `:objs-gremlin-service`. Core must not depend on service/app/gremlin.
 
 ## Process alignment with Mill
 

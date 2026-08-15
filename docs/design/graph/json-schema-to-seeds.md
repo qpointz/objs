@@ -362,8 +362,8 @@ Do not validate seed output by checking equality with `format=json-schema` expor
 | [object-schema-dsl.md](object-schema-dsl.md) | Full DSL grammar, projection rules, deliberate limits |
 | [model.md](model.md) | Entity / edge runtime model |
 | [validation.md](validation.md) | Persist-time validation vs allow-list |
-| SBOM ontology seed | [`sbom-ontology.yaml`](../../../objs-sbom-example/src/main/resources/seeds/sbom-ontology.yaml) — worked catalog example |
-| SBOM graph seed | [`sbom-demo-graph.yaml`](../../../objs-sbom-example/src/main/resources/seeds/sbom-demo-graph.yaml) — instance example |
+| SBOM ontology seed | [`sbom-ontology.yaml`](../../../examples/sbom/sbom-service/src/main/resources/seeds/sbom-ontology.yaml) — worked catalog example |
+| SBOM graph seed | [`sbom-demo-graph.yaml`](../../../examples/sbom/sbom-service/src/main/resources/seeds/sbom-demo-graph.yaml) — instance example |
 
 ---
 

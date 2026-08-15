@@ -1,0 +1,37 @@
+apiVersion: objs.poc.org/v1
+kind: Portfolio
+id: 11111111-1111-1111-1111-111111111111
+name: Meridian Financial Group
+description: Enterprise application portfolio across retail, wealth, insurance, data, and platform LOBs
+uniqueness: UNIQUE_APP
+origin: MANUAL
+categories:
+  - id: 44444444-4444-4444-4444-444444444444
+    name: Retail Banking
+    description: Consumer deposits, cards, and branch-adjacent products
+  - id: 33333333-3333-3333-3333-333333333333
+    name: Payments & Cards
+    description: Checkout, issuing, acquiring, settlement
+    parentId: 44444444-4444-4444-4444-444444444444
+  - id: 55555555-5555-5555-5555-555555555555
+    name: Digital Channels
+    description: Online banking, mobile BFFs, onboarding
+    parentId: 44444444-4444-4444-4444-444444444444
+  - id: 66666666-6666-6666-6666-666666666666
+    name: Wealth Management
+    description: Advice, trading, and fund operations
+  - id: 77777777-7777-7777-7777-777777777777
+    name: Insurance
+    description: Life and P&C policy, claims, and distribution
+  - id: 88888888-8888-8888-8888-888888888888
+    name: Corporate Banking
+    description: Treasury, trade, and markets infrastructure
+  - id: 99999999-9999-9999-9999-999999999999
+    name: Data & Analytics
+    description: Lakehouse, risk models, ML platforms
+  - id: 22222222-2222-2222-2222-222222222222
+    name: Platform Engineering
+    description: Shared runtime, identity, CI/CD, and developer experience
+  - id: aaaa0001-aaaa-4000-8000-000000000001
+    name: Corporate Functions
+    description: HR, finance, legal, and workplace systems

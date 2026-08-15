@@ -12,6 +12,7 @@ import org.poc.objs.core.match.BoMAllGraphsMatcher
 import org.poc.objs.core.match.BoMChainedMatcher
 import org.poc.objs.core.match.BoMEntityDomainCandidate
 import org.poc.objs.core.match.BoMGraphExprMatcher
+import org.poc.objs.core.match.BoMGraphIdsMatcher
 import org.poc.objs.core.match.BoMMatcher
 import org.poc.objs.core.match.BoMObjExprMatcher
 import org.poc.objs.core.validation.BoMEntityTypeLookup
@@ -285,13 +286,14 @@ class BoMGraphStore(
 
     /**
      * Select the union of stored members + graph-local edges of graph(s) matched by a stage-0
-     * `all` or `graph-expr`, filtered by any later stages (typically `obj-expr`).
+     * `all`, `graph-expr`, or `graphs-in`, filtered by any later stages (typically `obj-expr`).
      * Entities and edges are **distinct by id** across the union.
      *
      * G-G16: there is no global graph, so a bare `obj-expr` (or any chain not starting with
-     * `all` / `graph-expr`) would otherwise silently scan the whole pool as if it were one graph.
-     * Reject it instead with `MATCHER_GRAPH_SCOPE_REQUIRED`; callers with a known graph id should
-     * use [selectInGraph], or start their chain with `all` / `graph-expr`.
+     * `all` / `graph-expr` / `graphs-in`) would otherwise silently scan the whole pool as if it
+     * were one graph. Reject it instead with `MATCHER_GRAPH_SCOPE_REQUIRED`; callers with a known
+     * graph id should use [selectInGraph], or start their chain with `all` / `graph-expr` /
+     * `graphs-in`.
      */
     @Transactional(readOnly = true)
     fun select(matcher: BoMMatcher): BoMGraphContents {
@@ -299,15 +301,18 @@ class BoMGraphStore(
         entityManager.flush()
         val stages = flattenStages(matcher)
         val first = stages.first()
-        if (first !is BoMGraphExprMatcher && first !is BoMAllGraphsMatcher) {
+        if (first !is BoMGraphExprMatcher &&
+            first !is BoMAllGraphsMatcher &&
+            first !is BoMGraphIdsMatcher
+        ) {
             throw BoMValidationException(
                 "matcher-dsl",
                 BoMValidationResult.of(
                     BoMValidationIssue(
                         code = "MATCHER_GRAPH_SCOPE_REQUIRED",
-                        message = "select requires stage-0 'all' or 'graph-expr' to fix a graph " +
+                        message = "select requires stage-0 'all', 'graph-expr', or 'graphs-in' to fix a graph " +
                             "scope (there is no whole-pool graph); use selectInGraph(graphId, matcher) " +
-                            "for a known graph, or start the chain with all / graph-expr",
+                            "for a known graph, or start the chain with all / graph-expr / graphs-in",
                         path = "$",
                     ),
                 ),
@@ -345,8 +350,8 @@ class BoMGraphStore(
     }
 
     /**
-     * Union of stored members/edges of every graph selected by stage-0 `all` or `graph-expr`,
-     * then optional later-stage entity filters. Distinct by entity/edge id.
+     * Union of stored members/edges of every graph selected by stage-0 `all`, `graph-expr`,
+     * or `graphs-in`, then optional later-stage entity filters. Distinct by entity/edge id.
      */
     private fun selectAcrossGraphs(stages: List<BoMMatcher>): BoMGraphContents {
         val first = stages.first()
@@ -355,6 +360,8 @@ class BoMGraphStore(
                 namedGraphs.list().mapNotNull { item -> namedGraphs.get(item.id) }
             is BoMGraphExprMatcher ->
                 namedGraphs.matchingHeaders(first).mapNotNull { item -> namedGraphs.get(item.id) }
+            is BoMGraphIdsMatcher ->
+                first.graphIds.mapNotNull { id -> namedGraphs.get(id) }
             else -> emptyList()
         }
         val entityById = linkedMapOf<UUID, BoMEntity>()

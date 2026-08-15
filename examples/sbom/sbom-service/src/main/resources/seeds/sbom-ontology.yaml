@@ -1,0 +1,1343 @@
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
+type: "API"
+version: "1.0.0"
+contentSchema:
+  type: "OBJECT"
+  title: "API"
+  description: "An API contract implemented by services"
+  fields:
+  - name: "name"
+    schema:
+      type: "STRING"
+      title: "Name"
+      description: "Display name of this asset"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "protocol"
+    schema:
+      type: "STRING"
+      title: "Protocol"
+      description: "API protocol (HTTPS, gRPC, …)"
+    required: true
+    searchable: true
+  - name: "version"
+    schema:
+      type: "STRING"
+      title: "Version"
+      description: "Version identifier"
+    required: false
+    searchable: true
+  - name: "description"
+    schema:
+      type: "STRING"
+      title: "Description"
+      description: "Short summary"
+    required: false
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
+type: "Artifact"
+version: "1.0.0"
+contentSchema:
+  type: "OBJECT"
+  title: "Artifact"
+  description: "A built artifact produced from source or a build"
+  fields:
+  - name: "name"
+    schema:
+      type: "STRING"
+      title: "Name"
+      description: "Display name of this asset"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "artifactType"
+    schema:
+      type: "STRING"
+      title: "Artifact type"
+      description: "Kind of artifact (jar, wheel, binary, …)"
+    required: true
+    searchable: true
+  - name: "checksum"
+    schema:
+      type: "STRING"
+      title: "Checksum"
+      description: "Content checksum"
+    required: false
+    identifier: true
+    searchable: true
+  - name: "size"
+    schema:
+      type: "INTEGER"
+      title: "Size"
+      description: "Size in bytes"
+    required: false
+  - name: "description"
+    schema:
+      type: "STRING"
+      title: "Description"
+      description: "Short summary"
+    required: false
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
+type: "Build"
+version: "1.0.0"
+contentSchema:
+  type: "OBJECT"
+  title: "Build"
+  description: "A CI build that produces artifacts or images"
+  fields:
+  - name: "name"
+    schema:
+      type: "STRING"
+      title: "Name"
+      description: "Display name of this asset"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "buildNumber"
+    schema:
+      type: "STRING"
+      title: "Build number"
+      description: "CI build number or identifier"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "builder"
+    schema:
+      type: "STRING"
+      title: "Builder"
+      description: "CI system or pipeline that produced the build"
+    required: false
+    searchable: true
+  - name: "status"
+    schema:
+      type: "STRING"
+      title: "Status"
+      description: "Build status (succeeded, failed, running)"
+    required: true
+    searchable: true
+  - name: "description"
+    schema:
+      type: "STRING"
+      title: "Description"
+      description: "Short summary"
+    required: false
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
+type: "CanonicalEdge"
+version: "1.0.0"
+usage: "EDGE_PROPERTIES"
+contentSchema:
+  type: "OBJECT"
+  title: "Canonical edge"
+  description: "Properties shared by canonical SBOM relationships"
+  fields:
+  - name: "createdAt"
+    schema:
+      type: "STRING"
+      title: "Created at"
+      description: "Relationship creation timestamp"
+      format: "date-time"
+    required: false
+  - name: "source"
+    schema:
+      type: "STRING"
+      title: "Source"
+      description: "How this relationship was recorded"
+    required: false
+  - name: "confidence"
+    schema:
+      type: "NUMBER"
+      title: "Confidence"
+      description: "Confidence that the relationship is correct (0–1)"
+    required: false
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
+type: "Component"
+version: "1.0.0"
+contentSchema:
+  type: "OBJECT"
+  title: "Component"
+  description: "A software package or library in an application bill of materials"
+  fields:
+  - name: "name"
+    schema:
+      type: "STRING"
+      title: "Name"
+      description: "Display name of this asset"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "version"
+    schema:
+      type: "STRING"
+      title: "Version"
+      description: "Version identifier"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "ecosystem"
+    schema:
+      type: "STRING"
+      title: "Ecosystem"
+      description: "Package ecosystem (Maven, npm, PyPI, …)"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "kind"
+    schema:
+      type: "STRING"
+      title: "Kind"
+      description: "Component kind (library, application, framework, …)"
+    required: true
+    searchable: true
+  - name: "coordinates"
+    schema:
+      type: "STRING"
+      title: "Coordinates"
+      description: "Package coordinates or PURL"
+    required: false
+    searchable: true
+  - name: "description"
+    schema:
+      type: "STRING"
+      title: "Description"
+      description: "Short summary"
+    required: false
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
+type: "Container Image"
+version: "1.0.0"
+contentSchema:
+  type: "OBJECT"
+  title: "Container Image"
+  description: "A container image"
+  fields:
+  - name: "name"
+    schema:
+      type: "STRING"
+      title: "Name"
+      description: "Display name of this asset"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "tag"
+    schema:
+      type: "STRING"
+      title: "Tag"
+      description: "Image tag"
+    required: true
+    searchable: true
+  - name: "digest"
+    schema:
+      type: "STRING"
+      title: "Digest"
+      description: "Image content digest"
+    required: false
+    searchable: true
+  - name: "registry"
+    schema:
+      type: "STRING"
+      title: "Registry"
+      description: "Container registry host"
+    required: false
+    searchable: true
+  - name: "description"
+    schema:
+      type: "STRING"
+      title: "Description"
+      description: "Short summary"
+    required: false
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
+type: "Container Layer"
+version: "1.0.0"
+contentSchema:
+  type: "OBJECT"
+  title: "Container Layer"
+  description: "A layer inside a container image"
+  fields:
+  - name: "name"
+    schema:
+      type: "STRING"
+      title: "Name"
+      description: "Display name of this asset"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "digest"
+    schema:
+      type: "STRING"
+      title: "Digest"
+      description: "Layer digest"
+    required: true
+    searchable: true
+  - name: "size"
+    schema:
+      type: "INTEGER"
+      title: "Size"
+      description: "Layer size in bytes"
+    required: false
+    searchable: true
+  - name: "description"
+    schema:
+      type: "STRING"
+      title: "Description"
+      description: "Short summary"
+    required: false
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
+type: "Database"
+version: "1.0.0"
+contentSchema:
+  type: "OBJECT"
+  title: "Database"
+  description: "A database used by applications"
+  fields:
+  - name: "name"
+    schema:
+      type: "STRING"
+      title: "Name"
+      description: "Display name of this asset"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "engine"
+    schema:
+      type: "STRING"
+      title: "Engine"
+      description: "Database engine (PostgreSQL, MongoDB, Redis, …)"
+    required: true
+    searchable: true
+  - name: "version"
+    schema:
+      type: "STRING"
+      title: "Engine version"
+      description: "Database engine version"
+    required: false
+    searchable: true
+  - name: "description"
+    schema:
+      type: "STRING"
+      title: "Description"
+      description: "Short summary"
+    required: false
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
+type: "Dataset"
+version: "1.0.0"
+contentSchema:
+  type: "OBJECT"
+  title: "Dataset"
+  description: "A dataset stored in a database or data platform"
+  fields:
+  - name: "name"
+    schema:
+      type: "STRING"
+      title: "Name"
+      description: "Display name of this asset"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "datasetType"
+    schema:
+      type: "STRING"
+      title: "Dataset type"
+      description: "Kind of dataset (operational, analytics, reference)"
+    required: true
+    searchable: true
+  - name: "classification"
+    schema:
+      type: "STRING"
+      title: "Classification"
+      description: "Data classification (public, internal, confidential)"
+    required: false
+    searchable: true
+  - name: "description"
+    schema:
+      type: "STRING"
+      title: "Description"
+      description: "Short summary"
+    required: false
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
+type: "Deployment"
+version: "1.0.0"
+contentSchema:
+  type: "OBJECT"
+  title: "Deployment"
+  description: "A deployment of software into an environment"
+  fields:
+  - name: "name"
+    schema:
+      type: "STRING"
+      title: "Name"
+      description: "Display name of this asset"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "status"
+    schema:
+      type: "STRING"
+      title: "Status"
+      description: "Deployment status"
+    required: false
+    searchable: true
+  - name: "replicas"
+    schema:
+      type: "INTEGER"
+      title: "Replicas"
+      description: "Number of running replicas"
+    required: false
+    searchable: true
+  - name: "deployedAt"
+    schema:
+      type: "STRING"
+      title: "Deployed at"
+      description: "When this deployment last went live"
+      format: "date-time"
+    required: false
+    searchable: true
+  - name: "description"
+    schema:
+      type: "STRING"
+      title: "Description"
+      description: "Short summary"
+    required: false
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
+type: "Environment"
+version: "1.0.0"
+contentSchema:
+  type: "OBJECT"
+  title: "Environment"
+  description: "A runtime environment that deployments target"
+  fields:
+  - name: "name"
+    schema:
+      type: "STRING"
+      title: "Name"
+      description: "Display name of this asset"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "environment"
+    schema:
+      type: "STRING"
+      title: "Stage"
+      description: "Environment stage (production, staging, development)"
+    required: true
+    searchable: true
+  - name: "description"
+    schema:
+      type: "STRING"
+      title: "Description"
+      description: "Short summary"
+    required: false
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
+type: "Host"
+version: "1.0.0"
+contentSchema:
+  type: "OBJECT"
+  title: "Host"
+  description: "A host or virtual machine that runs deployments"
+  fields:
+  - name: "name"
+    schema:
+      type: "STRING"
+      title: "Name"
+      description: "Display name of this asset"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "hostname"
+    schema:
+      type: "STRING"
+      title: "Hostname"
+      description: "Network hostname"
+    required: true
+    searchable: true
+  - name: "ip"
+    schema:
+      type: "STRING"
+      title: "IP address"
+      description: "Primary IP address"
+    required: false
+    searchable: true
+  - name: "provider"
+    schema:
+      type: "STRING"
+      title: "Provider"
+      description: "Cloud or infrastructure provider"
+    required: false
+    searchable: true
+  - name: "description"
+    schema:
+      type: "STRING"
+      title: "Description"
+      description: "Short summary"
+    required: false
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
+type: "Kubernetes Cluster"
+version: "1.0.0"
+contentSchema:
+  type: "OBJECT"
+  title: "Kubernetes Cluster"
+  description: "A Kubernetes cluster"
+  fields:
+  - name: "name"
+    schema:
+      type: "STRING"
+      title: "Name"
+      description: "Display name of this asset"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "version"
+    schema:
+      type: "STRING"
+      title: "Kubernetes version"
+      description: "Cluster Kubernetes version"
+    required: false
+    searchable: true
+  - name: "description"
+    schema:
+      type: "STRING"
+      title: "Description"
+      description: "Short summary"
+    required: false
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
+type: "License"
+version: "1.0.0"
+contentSchema:
+  type: "OBJECT"
+  title: "License"
+  description: "A software license"
+  fields:
+  - name: "name"
+    schema:
+      type: "STRING"
+      title: "Name"
+      description: "Display name of this asset"
+    required: true
+    searchable: true
+  - name: "spdxId"
+    schema:
+      type: "STRING"
+      title: "SPDX ID"
+      description: "SPDX license identifier"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "url"
+    schema:
+      type: "STRING"
+      title: "License URL"
+      description: "Canonical license text URL"
+      format: "uri"
+    required: false
+    searchable: true
+  - name: "description"
+    schema:
+      type: "STRING"
+      title: "Description"
+      description: "Short summary"
+    required: false
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
+type: "Namespace"
+version: "1.0.0"
+contentSchema:
+  type: "OBJECT"
+  title: "Namespace"
+  description: "A namespace that groups deployed workloads"
+  fields:
+  - name: "name"
+    schema:
+      type: "STRING"
+      title: "Name"
+      description: "Display name of this asset"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "namespace"
+    schema:
+      type: "STRING"
+      title: "Namespace"
+      description: "Kubernetes or tenancy namespace"
+    required: true
+    searchable: true
+  - name: "description"
+    schema:
+      type: "STRING"
+      title: "Description"
+      description: "Short summary"
+    required: false
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
+type: "Operating System"
+version: "1.0.0"
+contentSchema:
+  type: "OBJECT"
+  title: "Operating System"
+  description: "An operating system used by hosts or images"
+  fields:
+  - name: "name"
+    schema:
+      type: "STRING"
+      title: "Name"
+      description: "Display name of this asset"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "distribution"
+    schema:
+      type: "STRING"
+      title: "Distribution"
+      description: "OS distribution (Ubuntu, RHEL, Windows, …)"
+    required: true
+    searchable: true
+  - name: "version"
+    schema:
+      type: "STRING"
+      title: "Version"
+      description: "Version identifier"
+    required: false
+    searchable: true
+  - name: "architecture"
+    schema:
+      type: "STRING"
+      title: "Architecture"
+      description: "CPU architecture"
+    required: false
+    searchable: true
+  - name: "description"
+    schema:
+      type: "STRING"
+      title: "Description"
+      description: "Short summary"
+    required: false
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
+type: "Organization"
+version: "1.0.0"
+contentSchema:
+  type: "OBJECT"
+  title: "Organization"
+  description: "A company, business unit, or team that owns or supplies software"
+  fields:
+  - name: "name"
+    schema:
+      type: "STRING"
+      title: "Name"
+      description: "Display name of this asset"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "domain"
+    schema:
+      type: "STRING"
+      title: "Domain"
+      description: "Primary DNS domain"
+    required: false
+    searchable: true
+  - name: "website"
+    schema:
+      type: "STRING"
+      title: "Website"
+      description: "Organization website"
+      format: "uri"
+    required: false
+    searchable: true
+  - name: "country"
+    schema:
+      type: "STRING"
+      title: "Country"
+      description: "Country of registration or headquarters"
+    required: false
+    searchable: true
+  - name: "description"
+    schema:
+      type: "STRING"
+      title: "Description"
+      description: "Short summary"
+    required: false
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
+type: "Policy"
+version: "1.0.0"
+contentSchema:
+  type: "OBJECT"
+  title: "Policy"
+  description: "A compliance or governance policy"
+  fields:
+  - name: "name"
+    schema:
+      type: "STRING"
+      title: "Name"
+      description: "Display name of this asset"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "policyType"
+    schema:
+      type: "STRING"
+      title: "Policy type"
+      description: "Kind of policy (license, security, quality)"
+    required: false
+    searchable: true
+  - name: "version"
+    schema:
+      type: "STRING"
+      title: "Version"
+      description: "Version identifier"
+    required: false
+    searchable: true
+  - name: "description"
+    schema:
+      type: "STRING"
+      title: "Description"
+      description: "Short summary"
+    required: false
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
+type: "Product"
+version: "1.0.0"
+contentSchema:
+  type: "OBJECT"
+  title: "Product"
+  description: "A product composed of components, runtimes, and deployments"
+  fields:
+  - name: "name"
+    schema:
+      type: "STRING"
+      title: "Name"
+      description: "Display name of this asset"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "version"
+    schema:
+      type: "STRING"
+      title: "Version"
+      description: "Version identifier"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "supplier"
+    schema:
+      type: "STRING"
+      title: "Supplier"
+      description: "Vendor or internal team that supplies the product"
+    required: false
+    searchable: true
+  - name: "lifecycle"
+    schema:
+      type: "STRING"
+      title: "Lifecycle"
+      description: "Product lifecycle stage"
+    required: false
+    searchable: true
+  - name: "homepage"
+    schema:
+      type: "STRING"
+      title: "Homepage"
+      description: "Product home page"
+      format: "uri"
+    required: false
+    searchable: true
+  - name: "description"
+    schema:
+      type: "STRING"
+      title: "Description"
+      description: "Short summary"
+    required: false
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
+type: "Runtime"
+version: "1.0.0"
+contentSchema:
+  type: "OBJECT"
+  title: "Runtime"
+  description: "A language or application runtime"
+  fields:
+  - name: "name"
+    schema:
+      type: "STRING"
+      title: "Name"
+      description: "Display name of this asset"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "runtimeType"
+    schema:
+      type: "STRING"
+      title: "Runtime type"
+      description: "Runtime family (JVM, Node, Python, …)"
+    required: true
+    searchable: true
+  - name: "version"
+    schema:
+      type: "STRING"
+      title: "Version"
+      description: "Version identifier"
+    required: false
+    searchable: true
+  - name: "description"
+    schema:
+      type: "STRING"
+      title: "Description"
+      description: "Short summary"
+    required: false
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
+type: "Service"
+version: "1.0.0"
+contentSchema:
+  type: "OBJECT"
+  title: "Service"
+  description: "A network service exposed by a product"
+  fields:
+  - name: "name"
+    schema:
+      type: "STRING"
+      title: "Name"
+      description: "Display name of this asset"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "protocol"
+    schema:
+      type: "STRING"
+      title: "Protocol"
+      description: "Service protocol"
+    required: false
+    searchable: true
+  - name: "endpoint"
+    schema:
+      type: "STRING"
+      title: "Endpoint"
+      description: "Service endpoint URL"
+      format: "uri"
+    required: false
+    searchable: true
+  - name: "description"
+    schema:
+      type: "STRING"
+      title: "Description"
+      description: "Short summary"
+    required: false
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
+type: "Source Module"
+version: "1.0.0"
+contentSchema:
+  type: "OBJECT"
+  title: "Source Module"
+  description: "A module or package inside a source repository"
+  fields:
+  - name: "name"
+    schema:
+      type: "STRING"
+      title: "Name"
+      description: "Display name of this asset"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "path"
+    schema:
+      type: "STRING"
+      title: "Path"
+      description: "Path of the module inside the repository"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "language"
+    schema:
+      type: "STRING"
+      title: "Language"
+      description: "Primary programming language"
+    required: false
+    searchable: true
+  - name: "description"
+    schema:
+      type: "STRING"
+      title: "Description"
+      description: "Short summary"
+    required: false
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
+type: "Source Repository"
+version: "1.0.0"
+contentSchema:
+  type: "OBJECT"
+  title: "Source Repository"
+  description: "A source-control repository"
+  fields:
+  - name: "name"
+    schema:
+      type: "STRING"
+      title: "Name"
+      description: "Display name of this asset"
+    required: true
+    searchable: true
+  - name: "url"
+    schema:
+      type: "STRING"
+      title: "Repository URL"
+      description: "Clone or browse URL"
+      format: "uri"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "revision"
+    schema:
+      type: "STRING"
+      title: "Revision"
+      description: "Git commit or revision"
+    required: false
+    searchable: true
+  - name: "branch"
+    schema:
+      type: "STRING"
+      title: "Branch"
+      description: "Default or tracked branch"
+    required: false
+    searchable: true
+  - name: "description"
+    schema:
+      type: "STRING"
+      title: "Description"
+      description: "Short summary"
+    required: false
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
+type: "Vulnerability"
+version: "1.0.0"
+contentSchema:
+  type: "OBJECT"
+  title: "Vulnerability"
+  description: "A known vulnerability affecting components or images"
+  fields:
+  - name: "name"
+    schema:
+      type: "STRING"
+      title: "Name"
+      description: "Display name of this asset"
+    required: true
+    searchable: true
+  - name: "cve"
+    schema:
+      type: "STRING"
+      title: "CVE"
+      description: "CVE identifier"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "severity"
+    schema:
+      type: "STRING"
+      title: "Severity"
+      description: "Severity rating (critical, high, medium, low)"
+    required: true
+    searchable: true
+  - name: "cvss"
+    schema:
+      type: "NUMBER"
+      title: "CVSS score"
+      description: "CVSS base score"
+    required: false
+  - name: "description"
+    schema:
+      type: "STRING"
+      title: "Description"
+      description: "Short summary"
+    required: false
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Build"
+role: "BUILDS"
+targetType: "Artifact"
+propertiesPolicy: "SCHEMA"
+emptyPropertiesAllowed: true
+cardinality: "1:*"
+propertiesSchemaType: "CanonicalEdge"
+propertiesSchemaVersion: "1.0.0"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Build"
+role: "BUILDS"
+targetType: "Container Image"
+propertiesPolicy: "SCHEMA"
+emptyPropertiesAllowed: true
+cardinality: "1:*"
+propertiesSchemaType: "CanonicalEdge"
+propertiesSchemaVersion: "1.0.0"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Build"
+role: "USES"
+targetType: "Component"
+propertiesPolicy: "SCHEMA"
+emptyPropertiesAllowed: true
+cardinality: "1:*"
+propertiesSchemaType: "CanonicalEdge"
+propertiesSchemaVersion: "1.0.0"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Component"
+role: "DEPENDS_ON"
+targetType: "Component"
+propertiesPolicy: "SCHEMA"
+emptyPropertiesAllowed: true
+cardinality: "1:*"
+propertiesSchemaType: "CanonicalEdge"
+propertiesSchemaVersion: "1.0.0"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Component"
+role: "HAS_VULNERABILITY"
+targetType: "Vulnerability"
+propertiesPolicy: "SCHEMA"
+emptyPropertiesAllowed: true
+cardinality: "1:*"
+propertiesSchemaType: "CanonicalEdge"
+propertiesSchemaVersion: "1.0.0"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Component"
+role: "LICENSED_UNDER"
+targetType: "License"
+propertiesPolicy: "SCHEMA"
+emptyPropertiesAllowed: true
+cardinality: "1:*"
+propertiesSchemaType: "CanonicalEdge"
+propertiesSchemaVersion: "1.0.0"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Component"
+role: "PROVIDED_BY"
+targetType: "Organization"
+propertiesPolicy: "SCHEMA"
+emptyPropertiesAllowed: true
+cardinality: "1:1"
+propertiesSchemaType: "CanonicalEdge"
+propertiesSchemaVersion: "1.0.0"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Container Image"
+role: "BASED_ON"
+targetType: "Operating System"
+propertiesPolicy: "SCHEMA"
+emptyPropertiesAllowed: true
+cardinality: "1:1"
+propertiesSchemaType: "CanonicalEdge"
+propertiesSchemaVersion: "1.0.0"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Container Image"
+role: "CONTAINS"
+targetType: "Container Layer"
+propertiesPolicy: "SCHEMA"
+emptyPropertiesAllowed: true
+cardinality: "1:*"
+propertiesSchemaType: "CanonicalEdge"
+propertiesSchemaVersion: "1.0.0"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Container Image"
+role: "HAS_VULNERABILITY"
+targetType: "Vulnerability"
+propertiesPolicy: "SCHEMA"
+emptyPropertiesAllowed: true
+cardinality: "1:*"
+propertiesSchemaType: "CanonicalEdge"
+propertiesSchemaVersion: "1.0.0"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Container Image"
+role: "PACKAGES"
+targetType: "Artifact"
+propertiesPolicy: "SCHEMA"
+emptyPropertiesAllowed: true
+cardinality: "1:*"
+propertiesSchemaType: "CanonicalEdge"
+propertiesSchemaVersion: "1.0.0"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Database"
+role: "CONTAINS"
+targetType: "Dataset"
+propertiesPolicy: "SCHEMA"
+emptyPropertiesAllowed: true
+cardinality: "1:*"
+propertiesSchemaType: "CanonicalEdge"
+propertiesSchemaVersion: "1.0.0"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Deployment"
+role: "DEPLOYS"
+targetType: "Container Image"
+propertiesPolicy: "SCHEMA"
+emptyPropertiesAllowed: true
+cardinality: "1:1"
+propertiesSchemaType: "CanonicalEdge"
+propertiesSchemaVersion: "1.0.0"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Deployment"
+role: "LOCATED_IN"
+targetType: "Namespace"
+propertiesPolicy: "SCHEMA"
+emptyPropertiesAllowed: true
+cardinality: "1:1"
+propertiesSchemaType: "CanonicalEdge"
+propertiesSchemaVersion: "1.0.0"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Deployment"
+role: "RUNS_ON"
+targetType: "Host"
+propertiesPolicy: "SCHEMA"
+emptyPropertiesAllowed: true
+cardinality: "1:*"
+propertiesSchemaType: "CanonicalEdge"
+propertiesSchemaVersion: "1.0.0"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Deployment"
+role: "TARGETS"
+targetType: "Environment"
+propertiesPolicy: "SCHEMA"
+emptyPropertiesAllowed: true
+cardinality: "1:1"
+propertiesSchemaType: "CanonicalEdge"
+propertiesSchemaVersion: "1.0.0"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Host"
+role: "MEMBER_OF"
+targetType: "Kubernetes Cluster"
+propertiesPolicy: "SCHEMA"
+emptyPropertiesAllowed: true
+cardinality: "1:1"
+propertiesSchemaType: "CanonicalEdge"
+propertiesSchemaVersion: "1.0.0"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Product"
+role: "CALLS"
+targetType: "API"
+propertiesPolicy: "SCHEMA"
+emptyPropertiesAllowed: true
+cardinality: "1:*"
+propertiesSchemaType: "CanonicalEdge"
+propertiesSchemaVersion: "1.0.0"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Product"
+role: "COMPLIES_WITH"
+targetType: "Policy"
+propertiesPolicy: "SCHEMA"
+emptyPropertiesAllowed: true
+cardinality: "1:*"
+propertiesSchemaType: "CanonicalEdge"
+propertiesSchemaVersion: "1.0.0"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Product"
+role: "CONNECTS_TO"
+targetType: "Database"
+propertiesPolicy: "SCHEMA"
+emptyPropertiesAllowed: true
+cardinality: "1:*"
+propertiesSchemaType: "CanonicalEdge"
+propertiesSchemaVersion: "1.0.0"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Product"
+role: "CONTAINS"
+targetType: "Artifact"
+propertiesPolicy: "SCHEMA"
+emptyPropertiesAllowed: true
+cardinality: "1:*"
+propertiesSchemaType: "CanonicalEdge"
+propertiesSchemaVersion: "1.0.0"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Product"
+role: "CONTAINS"
+targetType: "Component"
+propertiesPolicy: "SCHEMA"
+emptyPropertiesAllowed: true
+cardinality: "1:*"
+propertiesSchemaType: "CanonicalEdge"
+propertiesSchemaVersion: "1.0.0"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Product"
+role: "OWNED_BY"
+targetType: "Organization"
+propertiesPolicy: "SCHEMA"
+emptyPropertiesAllowed: true
+cardinality: "1:1"
+propertiesSchemaType: "CanonicalEdge"
+propertiesSchemaVersion: "1.0.0"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Product"
+role: "RUNS_ON"
+targetType: "Runtime"
+propertiesPolicy: "SCHEMA"
+emptyPropertiesAllowed: true
+cardinality: "1:1"
+propertiesSchemaType: "CanonicalEdge"
+propertiesSchemaVersion: "1.0.0"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Runtime"
+role: "RUNS_ON"
+targetType: "Operating System"
+propertiesPolicy: "SCHEMA"
+emptyPropertiesAllowed: true
+cardinality: "1:1"
+propertiesSchemaType: "CanonicalEdge"
+propertiesSchemaVersion: "1.0.0"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Service"
+role: "IMPLEMENTS"
+targetType: "API"
+propertiesPolicy: "SCHEMA"
+emptyPropertiesAllowed: true
+cardinality: "1:*"
+propertiesSchemaType: "CanonicalEdge"
+propertiesSchemaVersion: "1.0.0"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Source Module"
+role: "PRODUCES"
+targetType: "Artifact"
+propertiesPolicy: "SCHEMA"
+emptyPropertiesAllowed: true
+cardinality: "1:*"
+propertiesSchemaType: "CanonicalEdge"
+propertiesSchemaVersion: "1.0.0"
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "AllowedEdgeRule"
+sourceType: "Source Repository"
+role: "CONTAINS"
+targetType: "Source Module"
+propertiesPolicy: "SCHEMA"
+emptyPropertiesAllowed: true
+cardinality: "1:*"
+propertiesSchemaType: "CanonicalEdge"
+propertiesSchemaVersion: "1.0.0"

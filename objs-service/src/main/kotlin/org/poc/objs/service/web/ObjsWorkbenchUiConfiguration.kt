@@ -1,6 +1,5 @@
 package org.poc.objs.service.web
 
-import jakarta.servlet.http.HttpServletRequest
 import org.springframework.context.annotation.Configuration
 import org.springframework.core.io.ClassPathResource
 import org.springframework.core.io.Resource
@@ -13,7 +12,6 @@ import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry
 import org.springframework.web.servlet.config.annotation.ViewControllerRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
 import org.springframework.web.servlet.resource.PathResourceResolver
-import org.springframework.web.servlet.view.RedirectView
 import java.io.IOException
 import java.nio.charset.StandardCharsets
 
@@ -88,26 +86,5 @@ class WorkbenchSpaController {
         return ResponseEntity.ok()
             .contentType(MediaType.TEXT_HTML)
             .body(index.inputStream.use { it.readBytes() })
-    }
-}
-
-/** Redirect legacy `/ui` bookmarks into `/workbench`. */
-@Controller
-class LegacyWorkbenchUiRedirectController {
-    @GetMapping("/ui", "/ui/**")
-    fun redirect(request: HttpServletRequest): RedirectView {
-        val suffix = request.requestURI.removePrefix(request.contextPath).removePrefix("/ui")
-        val mapped = when {
-            suffix == "/graph" || suffix.startsWith("/graph/") ->
-                suffix.replaceFirst("/graph", "/explorer")
-            suffix == "/object-linter" || suffix.startsWith("/object-linter/") ->
-                suffix.replaceFirst("/object-linter", "/composer")
-            suffix == "/schemas" || suffix.startsWith("/schemas/") ->
-                suffix.replaceFirst("/schemas", "/model")
-            suffix.isEmpty() || suffix == "/" -> "/"
-            else -> suffix
-        }
-        val target = "/workbench" + if (mapped.startsWith("/")) mapped else "/$mapped"
-        return RedirectView(target, true)
     }
 }

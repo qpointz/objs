@@ -58,7 +58,7 @@ tasks.register("test") {
     dependsOn(
         ":objs-core:test",
         ":objs-service:test",
-        ":objs-sbom-example:test",
+        ":sbom-service:test",
         ":objs-gremlin-core:test",
         ":objs-gremlin-service:test",
     )

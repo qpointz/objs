@@ -345,8 +345,8 @@ The importer discovers handlers by kind; export uses the canonical serializer re
 
 | Resource | Contents |
 |----------|----------|
-| [`objs-sbom-example/.../seeds/sbom-ontology.yaml`](../../../objs-sbom-example/src/main/resources/seeds/sbom-ontology.yaml) | Catalog: many `ObjectSchema` + `AllowedEdgeRule` |
-| [`objs-sbom-example/.../seeds/sbom-demo-graph.yaml`](../../../objs-sbom-example/src/main/resources/seeds/sbom-demo-graph.yaml) | Instance: `kind: Graph` docs |
+| [`examples/sbom/sbom-service/.../seeds/sbom-ontology.yaml`](../../../examples/sbom/sbom-service/src/main/resources/seeds/sbom-ontology.yaml) | Catalog: many `ObjectSchema` + `AllowedEdgeRule` |
+| [`examples/sbom/sbom-service/.../seeds/sbom-demo-graph.yaml`](../../../examples/sbom/sbom-service/src/main/resources/seeds/sbom-demo-graph.yaml) | Instance: `kind: Graph` docs |
 
 Canonical ontology YAML (`classpath:seeds/sbom-ontology.yaml`) is the registry source of truth at
 runtime under the `sbom` Spring profile. Typed `SbomRegistry.pack()` remains for builders and

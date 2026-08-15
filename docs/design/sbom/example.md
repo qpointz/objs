@@ -1,267 +1,195 @@
-# Software BOM example
+# SBOM applications inventory
 
-**Status:** completed (story [`sbom-typed-example`](../../workitems/completed/20260728-sbom-typed-example/STORY.md))  
-**Module:** `objs-sbom-example` (**concrete app**)  
-**Foundation:** low-level entity graph (`BoMEntity` / `BoMEdge` / `BoMGraphStore` / generic REST) — see [`../graph/`](../graph/README.md)  
-**Ontology:** [`canonical-spec.md`](canonical-spec.md) (v1.0 Draft)
+**Status:** completed — story [`sbom-inventory-app`](../../workitems/completed/20260816-sbom-inventory-app/STORY.md) (D-2)  
+**Modules:** `:sbom-service` + `:sbom-service-ui` under [`examples/sbom/`](../../../examples/sbom/)  
+**Run:** `./gradlew :sbom-service:run` → UI **`http://localhost:8080/ui/`** (demo seeds via `demo` profile)  
+**Engineer mapping:** [`GRAPH-AND-RETRIEVAL.md`](../../workitems/completed/20260816-sbom-inventory-app/GRAPH-AND-RETRIEVAL.md)  
+**Ontology:** [`canonical-spec.md`](canonical-spec.md) (reuse; extend only when journeys require)
 
-## Layering
+This document is the **product** design for the inventory app. End-user UI and **domain** API use the glossary below — never graph / entity / edge / matcher vocabulary.
 
-| Layer | What it is | Examples |
-|-------|------------|----------|
-| **Foundation** | Generic, domain-agnostic graph platform | Typed JSON entities, role edges, entity pool + `bom_graph`, schema/allow-list catalogs, `BoMGraphStore` / `BoMSubgraphStore`, `/api/v1/objs/**` |
-| **Canonical ontology** | Technology-neutral software graph types & relationships | Product, Component, Build, … — [`canonical-spec.md`](canonical-spec.md) |
-| **Concrete app (this example)** | SBOM product on that ontology + foundation | `app`/`appVersion`/provenance/`origin` annotations, **one graph per app-version**, `SbomService`, `/api/v1/example/sbom` |
-
-### Mapping (summary)
-
-| Canonical | objs foundation |
-|-----------|-----------------|
-| Object `id` / `type` | `BoMEntity.id` / `BoMEntity.type` (schema `1.0.0`) |
-| `name`, `description`, type-specific fields | Entity **payload** |
-| Edge `id` / relationship name | `BoMEdge.id` / `BoMEdge.role` |
-| Edge `createdAt`, `source`, `confidence` | Edge **properties** via shared schema `CanonicalEdge` |
-| Multi-app BOM partition | **One `bom_graph` per `(app, appVersion)`** (header annotations); entity annotations still carry the same keys for provenance filters |
-
-**Ontology coverage:** classpath seed `seeds/sbom-ontology.yaml` registers the **entire** draft ontology (Waves A–D): 23 entity types + shared `CanonicalEdge` + all 28 relationship triples from [`canonical-spec.md`](canonical-spec.md). Typed `SbomRegistry.pack()` remains the parity/builder companion.
-
-**Seed format:** see [`../graph/seeds.md`](../graph/seeds.md) and
-[`../graph/json-schema-to-seeds.md`](../graph/json-schema-to-seeds.md) (JSON Schema → YAML seeds).
-
-## Problem
-
-An organisation tracks dependencies and related metadata for **many applications**. Each application has a string **slug** id. Each application release has its **own SBOM** (app version). Objects in an SBOM may arrive from different pipelines:
-
-| Source | Meaning |
-|--------|---------|
-| **manual** | Captured by a user |
-| **detected** | Inferred from application sources (scans, lockfiles, builds) |
-| **enriched** | Filled from IT portfolio / catalog systems (multiple catalogs possible) |
-
-The foundation stays domain-agnostic. The **concrete app** maps this domain onto typed payloads + annotations + allow-listed edges, persists via the foundation, fetches by application (and optionally version), and exposes `/api/v1/example/sbom`.
-
-### Gremlin / Query smoke
-
-`:objs-sbom-example` ontology and APIs are unchanged by Gremlin. When `:objs-app` runs with the
-**sbom** profile (demo graphs seeded), use workbench **Query** or
-`POST /api/v1/objs/graph/traverse/gremlin` with a matcher such as
-`{ "graph-expr": "a.app == 'payments-api' && a.appVersion == '2.3.1'" }`
-(or chained `graph-expr` then `obj-expr`) and scripts like `g.V().hasLabel('Service', 'Policy')`.
-Design: [`../graph/gremlin.md`](../graph/gremlin.md).
+Foundation REST (`/api/v1/objs/**`) and the workbench are the **`:objs-app` side service**
+(port **8081**). This product **must not** depend on or call them.
 
 ---
 
-## Architecture
+## Personas and chrome
 
-```mermaid
-flowchart TB
-  rest[SbomController /api/v1/example/sbom]
-  domain[SbomGraphBuilder + typed Component]
-  graph[BoMGraph]
-  svc[SbomService]
-  graphs[BoMSubgraphStore]
-  store[BoMGraphStore]
-  db[(bom_entity / bom_graph / bom_graph_entity / bom_graph_edge)]
-  rest --> svc
-  domain --> graph
-  graph --> svc
-  svc --> graphs
-  svc --> store
-  graphs --> db
-  store --> db
-```
+Visual split only (**no auth / roles**). Keep the UI **clean and obvious**: two top tabs, one primary job per screen.
 
-| Layer | Responsibility |
-|-------|----------------|
-| **Payload** | Business fields of a graph object (e.g. Component name, version, purl) — JSON Schema validated |
-| **Annotations** | BOM identity on **graph headers** + entity provenance / caller channel — selection via `graph-expr` / `obj-expr` |
-| **Edges** | Relationships (`DEPENDS_ON`, …) — allow-list; graph-local (`graph_id`); not annotated (foundation rule) |
-| **Storage** | Foundation pool + graphs — **no** parallel SBOM schema; one graph per `(app, appVersion)` |
-| **REST** | Thin SBOM façade (`/api/v1/example/sbom`) over `SbomService` — not a second persistence model |
-
-Reusable conversion/assembly helpers live in `objs-core` (`org.poc.objs.core.typed`); SBOM vocabulary lives only in `objs-sbom-example`.
+| Tab | Persona | Owns |
+|-----|---------|------|
+| **Applications** | Application owner | Applications, edit drafts, versions, assets, CycloneDX export |
+| **Portfolios** | Portfolio owner | Portfolio taxonomy + **MI reports only here** |
 
 ---
 
-## Annotations (domain → selection keys)
+## Glossary
 
-All values are **strings**. Keys are caller vocabulary (opaque to the store).
+| Term | Meaning |
+|------|---------|
+| **Application** | Named software product/system in the inventory (domain row). |
+| **Edit draft** | Working BOM for an application. Points at its own objs graph. Mutable. |
+| **Application version** | Captured release of an application’s BOM. Points at its **own** objs graph (typically copied from the draft). Immutable for inventory purposes. |
+| **Latest version** | The most recent application version for an app (ordering locked in WI-007 / R22). Used for all portfolio MI graphs. |
+| **Asset** | A reusable software object in the global pool (e.g. component, library) that can appear in many BOMs. |
+| **Relation** | How two assets connect in a BOM (user sees a friendly label; API may also carry the canonical role code). |
+| **Owning application** | Optional owner of an asset (`owner` annotation = application **name**). |
+| **Depends on (app)** | **Inferred** link: application A depends on B when they share assets in their BOM graphs. Not authored as an app→app relation. |
+| **Shared asset** | An asset that appears in more than one application’s BOM (within the current scope). |
+| **Duplicate** | Possible same asset found via schema **identifier** fields. v1 is **find-only** (list + navigate). |
+| **Portfolio** | Taxonomy that groups **applications** (not versions) for management views. Domain-only. |
+| **Subject area** | Folder node in a portfolio tree. |
+| **Portfolio level** | Selected subject-area node **or** the portfolio root. Defines which applications a report covers. |
+| **MI report** | Management information report. Portfolio owner only. Always scoped by portfolio → level. |
+| **CycloneDX export (demo)** | Weak export of a draft or version BOM to CycloneDX-shaped JSON. Demo of “same BOM, different format” — not a certified exporter. |
 
-| Key | Required | Description |
-|-----|----------|-------------|
-| `app` | yes (on write) | Application id (**slug**), e.g. `payments-api` |
-| `appVersion` | yes (on write of a versioned BOM) | Application / SBOM version, e.g. `2.3.1` |
-| `source` | yes (typical) | How the object was captured: `manual` \| `detected` \| `enriched` |
-| `sourceDetail` | when applicable | Qualifier: for `enriched`, the catalog id (`catalog1`, `catalog2`, …) |
-| `capturedBy` | when `source=manual` | User who captured the object |
-| `origin` | optional | **Caller channel** for the write: e.g. `ui`, `batch`, `api` — simulates different integration paths; distinct from `source` |
+---
 
-### Provenance rules (`source`)
+## Journeys (v1)
 
-| `source` | Extra annotations |
-|----------|-------------------|
-| `manual` | **`capturedBy` required**; `sourceDetail` optional |
-| `detected` | `sourceDetail` optional (scanner / pipeline id) |
-| `enriched` | **`sourceDetail` required** (enrichment catalog id) |
+### Journey 1 — Application owner
 
-### Caller channel (`origin`)
+1. Search applications  
+2. Edit **edit draft**: add/remove assets; amend relations (reuse from pool or create → pool)  
+3. Create an **application version** (new graph, usually from draft)  
+4. See **depends on (app)** inferred from shared assets  
+5. Export draft/version as weak CycloneDX  
 
-`origin` answers *which system invoked the update* (UI form, nightly batch, external API), not *how the component fact was obtained* (`source`). Both may be set on the same entity. PUT SBOM accepts `origin` (and other free-form annotation query params) so tests and demos can filter later by caller.
+No portfolios or MI here.
 
-Example entity annotations for a manually added component in payments-api 2.3.1:
+### Journey 2 — Assets inventory
+
+Under **Applications** chrome.
+
+1. Search assets by type  
+2. Advanced search: dynamic form from schema — **`searchable` fields only**  
+3. Inspect asset: which applications use it, and how  
+4. Find possible **duplicates** (find-only)  
+5. Optional **owning application**
+
+### Journey 3 — Portfolio owner
+
+1. Maintain portfolios / subject areas; place applications (once per portfolio)  
+2. Run MI:
 
 ```text
-app=payments-api
-appVersion=2.3.1
-source=manual
-capturedBy=alice
+Select portfolio → select level → select report → Run → results
 ```
 
-### Why annotations (not payload)
+| ID | Report | Answers (in-scope apps / latest versions) |
+|----|--------|-------------------------------------------|
+| MI-1 | Portfolio composition | Apps; asset counts by type; relation density |
+| MI-2 | Application dependency map | Inferred app→app deps within the selected set |
+| MI-3 | Shared asset hotspots | Assets in multiple in-scope apps |
+| MI-4 | Duplicate & risk signals | Identifier duplicates + lightweight risk signals |
 
-- Same Component **type** appears in many apps/versions; membership is contextual.
-- Foundation selection uses matcher DSL (`graph-expr` on headers, `obj-expr` on entities) —
-  see [`../graph/annotations-and-matchers.md`](../graph/annotations-and-matchers.md).
-- Payload stays aligned with supply-chain object schemas; partition keys stay orthogonal.
-
----
-
-## Fetch and update via SBOM REST
-
-Base path: **`/api/v1/example/sbom`** — the `/example/` segment flags this as the concrete demo app, distinct from foundation `/api/v1/objs/**`. Persistence goes through `SbomService` → `BoMSubgraphStore` / `BoMGraphStore` (one `bom_graph` per app-version).
-
-| Method | Path | Behaviour |
-|--------|------|-----------|
-| `GET` | `/apps` | Distinct applications and their versions (sorted), from **graph header** `app` / `appVersion` |
-| `GET` | `/apps/{appId}` | Union of members/edges for every graph whose header matches `a.app == appId` (`graph-expr`). Optional extra query annotations narrow via chained `obj-expr`. |
-| `GET` | `/apps/{appId}/versions/{version}` | Members/edges for the `(app, appVersion)` graph (+ optional `obj-expr` filters). |
-| `PUT` | `/apps/{appId}/versions/{version}` | Upsert body **`BoMGraph`** into that app-version graph (create header lazily). Path sets `app` / `appVersion`. Query annotation params are **defaults**; **body entity annotations override** on conflict. Upsert-only — does not delete omitted objects. |
-
-### Examples
-
-```http
-GET /api/v1/example/sbom/apps
-GET /api/v1/example/sbom/apps/payments-api
-GET /api/v1/example/sbom/apps/payments-api/versions/2.3.1
-GET /api/v1/example/sbom/apps/payments-api/versions/2.3.1?source=manual
-GET /api/v1/example/sbom/apps/payments-api/versions/2.3.1?origin=batch
-
-PUT /api/v1/example/sbom/apps/payments-api/versions/2.3.1?origin=ui&source=detected
-Content-Type: application/json
-
-{ "entities": [ … ], "edges": [ … ] }
-```
-
-**PUT semantics:** body is foundation `BoMGraph`; upsert into the app-version graph (membership + graph-local edges). Query annotations default onto entities; body annotations win on key conflict.
-
-**Query annotations:** optional filters/defaults (`source`, `origin`, `sourceDetail`, `capturedBy`, or any other key). Leave them blank in Swagger — do not send placeholder `additionalProp*` values; those are ignored server-side.
-
-**Service layer:** `SbomService.listApplications()`, `getSbom(app, appVersion?)`, `save(…)`, plus filter overlays for extra annotations. Controllers delegate here.
-
-**Generic foundation REST** remains available (`POST /api/v1/objs/graphs/query` with `graph-expr` / chained) for low-level access; SBOM REST is the domain-facing API.
-
-### Isolation guarantee
-
-One store holds many apps and versions as **separate graphs**. After writing fixtures for ≥2 apps × ≥2 versions, versioned GET returns **only** that BOM’s entities and edges.
+**Graphs for MI:** latest version only. Apps with no version are omitted from graph selection (may still list as “no version” in MI-1). Drafts are never used for MI.
 
 ---
 
-## Graph objects (canonical)
+## Hybrid persistence
 
-All types and the relationship table live in [`canonical-spec.md`](canonical-spec.md). Example: Component requires `name`, `version`, `ecosystem`, `kind`; licenses via edge `LICENSED_UNDER` only.
+| Layer | Owns |
+|-------|------|
+| **Domain tables** (`sbom-service`) | Application, edit draft, application version, portfolio + subject areas + membership |
+| **objs graphs** (`objs-core`) | Assets + relations inside each draft/version graph |
 
-Edges use shared **`CanonicalEdge`** properties (`createdAt`, `source`, `confidence`); empty properties allowed. Allow-list matches the canonical relationship table exactly.
+Rules:
 
----
+- Each draft and each version has its **own** `graph_id`.  
+- Portfolios are **domain-only** (no portfolio graph).  
+- Assets live in the objs **pool**; BOM membership is per draft/version graph.  
+- Domain tables must not become a parallel asset store.
 
-## Builder sketch
-
-```kotlin
-val ctx = SbomContext(app = "payments-api", appVersion = "2.3.1")
-val g = SbomGraphBuilder(ctx)
-    .add(springBoot, Provenance.detected())
-    .add(customLib, Provenance.manual(capturedBy = "alice"))
-    .dependsOn(springBoot, jackson)
-    .build()
-
-sbomService.save(g)
-val bom = sbomService.getSbom("payments-api", "2.3.1")
-```
-
-`SbomContext` supplies default `app` / `appVersion` annotations on every add; `Provenance` supplies `source` (+ `capturedBy` / `sourceDetail`).
+See story [`GRAPH-AND-RETRIEVAL.md`](../../workitems/completed/20260816-sbom-inventory-app/GRAPH-AND-RETRIEVAL.md).
 
 ---
 
-## Module boundaries
+## Domain services (sketch)
 
-| Module | Contents |
-|--------|----------|
-| `objs-core` | Typed toolkit (`TypedEntity`, `GraphBuilder`, `RegistryPack`, …) |
-| `objs-service` | Foundation REST + Boot autoconfig + **workbench SPA** at **`/workbench/`** |
-| `objs-sbom-example` | Full canonical types (A–D), annotation vocabulary, `SbomService`, registry pack, **`/api/v1/example/sbom` REST** |
-| `objs-app` | Depends on example module for demo; ontology + optional demo graph via shared seed pipeline |
-
-### Workbench SPA
-
-Open **`http://localhost:8080/workbench/`** (packaged with `:objs-service`). Routes:
-See the user-level [`Objs UI manual`](../ui.md) for complete operating instructions.
-
-| Path | View |
-|------|------|
-| `/workbench/explorer` | Explorer — annotation query, canvas, selection inspector |
-| `/workbench/model` | Schema — entity / edge-property catalogs, allowed edges, DSL + JSON Schema |
-| `/workbench/composer` | Composer — draft graph mutation (Visual/Text), Validate / Apply |
-
-Legacy `/ui/**` redirects into `/workbench/**`. Explorer type badges open Schema; **Create version**
-uses a base-version + new-version dialog and saves via `PUT` to the exact version.
-
-Dev: `cd objs-service-ui && npm install && npm run dev` (Vite proxies `/api` → `:8080`).  
-Build: Gradle `:objs-service-ui` (consumed by `:objs-service`) packs the SPA into `static/ui/` unless `-PskipUi=true`. The SPA does not require `:objs-sbom-example`.
-
-### Python client script
-
-`objs-sbom-example/scripts/random_sbom_crud.py` (stdlib only) talks to a running app (default **`http://localhost:8080`**):
-
-| Action | API |
-|--------|-----|
-| Create / update | `PUT /api/v1/example/sbom/apps/{app}/versions/{version}` |
-| Retrieve | `GET` same SBOM paths |
-| List apps | `GET /api/v1/example/sbom/apps` |
-| Delete | `DELETE /api/v1/objs/graph` (`entityIds` / `edgeIds`) |
-
-```bash
-python objs-sbom-example/scripts/random_sbom_crud.py apps
-python objs-sbom-example/scripts/random_sbom_crud.py bulk
-python objs-sbom-example/scripts/random_sbom_crud.py bulk --apps 5000
-python objs-sbom-example/scripts/random_sbom_crud.py bulk --apps 100 --max-versions 5
-python objs-sbom-example/scripts/random_sbom_crud.py bulk --tiny --apps 20000 --max-versions 30
-python objs-sbom-example/scripts/random_sbom_crud.py bulk --app-number 500 --max-versions-per-app 10
-python objs-sbom-example/scripts/random_sbom_crud.py bulk --apps 5000 --no-create-graphs
-python objs-sbom-example/scripts/random_sbom_crud.py demo
-python objs-sbom-example/scripts/random_sbom_crud.py seed --app demo-app --entities 24 --edges 18
-python objs-sbom-example/scripts/random_sbom_crud.py get --app demo-app --version 1.0.0 --summary
-```
-
-`bulk` defaults to **20 000 apps**, each with a random **1–30** versions; **each version is a random ontology graph** (8–20 entities, 6–16 allow-listed edges by default — same generator as `seed`/`demo`). Use `--tiny` for the old 2-node Product→Component stub when you only need partition volume. 16 concurrent workers.
-
-**Graphs:** by default each successful `app@version` PUT creates **one `bom_graph`** (header annotations `app` + `appVersion`) via `SbomService.ensureGraph` — searchable in Open graph as e.g. `app-` or `a.app == 'app-00000'`. Pass `--no-create-graphs` to write pool entities only (no headers, no edges). `--create-graphs` is the explicit default.
+| Service | Responsibility |
+|---------|----------------|
+| `ApplicationInventoryService` | Applications + edit draft BOM |
+| `ApplicationVersionService` | Version create/get; latest-version helper (R22) |
+| `AssetInventoryService` | Pool search, usage, duplicates, owner |
+| `PortfolioService` | Taxonomy + membership; R21 app set for a level |
+| `CycloneDxExportService` | Weak CDX from draft/version |
+| `MiReportService` | MI-1…MI-4; portfolio → level → latest graphs → Gremlin |
 
 ---
 
-## Out of scope for this example
+## Domain API sketch (product language)
 
-- Auth / multi-tenant security
-- Full replace / prune of an SBOM on PUT (upsert-only)
-- Importer merge-by-natural-key
-- BOM analytics beyond schema + allow-list validation
+Base path (evolving): `/api/v1/inventory/...`  
+Public shapes use glossary terms — **no** `BoM*` / graph / matcher names.
+
+Illustrative routes (WI-006+; exact paths evolve with later WIs):
+
+| Method | Path | Notes |
+|--------|------|-------|
+| GET | `/applications?q=` | Search / list |
+| POST | `/applications` | Create app + empty edit draft |
+| GET/PUT | `/applications/{id}` | Metadata |
+| GET | `/applications/{id}/draft` | Edit draft BOM (assets + relations) |
+| POST | `/applications/{id}/draft/assets` | Reuse (`assetId`) or create (`type`+`payload`) |
+| DELETE | `/applications/{id}/draft/assets/{assetId}` | Detach from draft |
+| POST/DELETE | `/applications/{id}/draft/relations…` | Amend relations |
+| GET | `/applications/{id}/depends-on` | Inferred shared-asset deps (draft scope until WI-007) |
+| POST | `/applications/{id}/versions` | Capture version from draft (WI-007) |
+| GET | `/applications/{id}/versions/{versionId}` | Version BOM + inferred deps |
+| GET | `/assets?type=` | List by type |
+| POST | `/assets/search` | Type + searchable field filters |
+| POST | `/assets` | Create pool asset (optional owner name) |
+| GET | `/assets/{id}` | Detail + usage (draft/version scan stopgap) |
+| PUT | `/assets/{id}/owner` | Set/clear owning application name |
+| GET | `/assets/duplicates?type=` | Find-only identifier groups |
+| CRUD | `/portfolios…` | Tree + place applications (WI-011) |
+| POST | `/portfolios/{id}/reports` | Body: `{ "level": "root"\|nodeId, "report": "MI-1"… }` |
+| GET | `/applications/{id}/draft/export/cyclonedx` | Weak demo |
+| GET | `/applications/{id}/versions/{versionId}/export/cyclonedx` | Weak demo |
+
+OpenAPI is published for these domain endpoints on `:sbom-service`.
+
+**Transitional:** until later WIs replace it, the legacy façade `/api/v1/example/sbom/**` may still exist for demos/scripts — not the product vocabulary target.
+
+---
+
+## Relation labels
+
+Users see **friendly** labels (beautifier of role codes, e.g. `DEPENDS_ON` → “Depends on”). Optional small override map where needed. APIs may include both `role` and `label`.
+
+---
+
+## Out of scope (product)
+
+- Auth / multi-tenant  
+- Object/component versioning lifecycle  
+- Foundation workbench / `/api/v1/objs/**` on this app (side service `:objs-app` only)  
+- CycloneDX/SPDX **import**; strong/certified export  
+- Custom BI builder / scheduled reporting  
+
+---
+
+## Ontology and object model (WI-005)
+
+| Concern | Lock |
+|---------|------|
+| Asset types / relations | Reuse canonical ontology seed (`seeds/sbom-ontology.yaml`) |
+| Runtime UI / search forms | Read **`BoMSchemaCatalog`** via `GET /api/v1/inventory/asset-types` (`searchable` only) |
+| Typed Wave* / `SbomRegistry` | Builder parity helpers — **not** SoT |
+| Owning application | Annotation `owner` = application **name** |
+| App→app depends | Inferred shared assets — no ApplicationRef type |
+| Portfolios | Domain tables only |
+
+Full schema→Kotlin codegen remains optional when the modeling team supplies generators; until then seeds + catalog are authoritative for product behaviour.
 
 ---
 
 ## Related
 
-- Canonical ontology: [`canonical-spec.md`](canonical-spec.md)
-- Story: [`docs/workitems/completed/20260728-sbom-typed-example/`](../../workitems/completed/20260728-sbom-typed-example/STORY.md)
-- Gaps: [`GAPS.md`](../../workitems/completed/20260728-sbom-typed-example/GAPS.md)
-- Annotations / matchers: [`../graph/annotations-and-matchers.md`](../graph/annotations-and-matchers.md) (`graph-expr` on BOM identity headers; optional `obj-expr` filters)
-- Persistence / lazy reads: [`../graph/persistence.md`](../graph/persistence.md)
-- Typed toolkit (when written): [`../graph/typed-domain.md`](../graph/typed-domain.md)
+- Story + gaps: [`sbom-inventory-app`](../../workitems/completed/20260816-sbom-inventory-app/STORY.md)  
+- Canonical ontology: [`canonical-spec.md`](canonical-spec.md)  
+- Seeds: [`../graph/seeds.md`](../graph/seeds.md)  
+- Engineer mapping: [`GRAPH-AND-RETRIEVAL.md`](../../workitems/completed/20260816-sbom-inventory-app/GRAPH-AND-RETRIEVAL.md)  
+- Foundation workbench (separate app): [`../ui.md`](../ui.md) · `:objs-app`  

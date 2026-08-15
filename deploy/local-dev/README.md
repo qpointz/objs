@@ -1,7 +1,8 @@
 # Local development
 
-This stack runs the PostgreSQL instance used by the `objs-app` `postgres` profile.
-Database files are retained under `.data/local-dev/postgres`.
+This stack runs the PostgreSQL instance used by the `objs-app` `postgres` profile
+(foundation side service on port **8081**). Database files are retained under
+`.data/local-dev/postgres`.
 
 From the repository root:
 
@@ -9,6 +10,7 @@ From the repository root:
 docker compose -f deploy/local-dev/docker-compose.yml up -d --wait
 docker compose -f deploy/local-dev/docker-compose.yml ps
 ./gradlew :objs-app:run --args="--spring.profiles.active=postgres"
+# → http://localhost:8081/workbench/  and  /api/v1/objs/**
 ```
 
 Stop PostgreSQL without deleting its data:

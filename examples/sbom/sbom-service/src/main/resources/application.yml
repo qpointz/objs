@@ -1,0 +1,61 @@
+spring:
+  application:
+    name: sbom-inventory
+  datasource:
+    url: jdbc:h2:mem:sbom;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+server:
+  port: 8080
+
+objs:
+  seeds:
+    enabled: false
+    on-failure: FAIL_FAST
+
+springdoc:
+  remove-broken-reference-definitions: false
+
+---
+# Demo ontology + graph seeds:
+#   ./gradlew :sbom-service:run --args="--spring.profiles.active=demo"
+spring:
+  config:
+    activate:
+      on-profile: demo
+
+objs:
+  seeds:
+    enabled: true
+    resources:
+      - classpath:seeds/sbom-ontology.yaml
+      - classpath:seeds/sbom-demo-graph.yaml
+      - classpath:seeds/sbom-demo-portfolios.yaml
+
+---
+spring:
+  config:
+    activate:
+      on-profile: postgres
+  datasource:
+    url: ${OBJS_DB_URL:jdbc:postgresql://localhost:5432/objs}
+    driver-class-name: org.postgresql.Driver
+    username: ${OBJS_DB_USERNAME:postgres}
+    password: ${OBJS_DB_PASSWORD:postgres}
+    hikari:
+      maximum-pool-size: ${OBJS_DB_POOL_MAX:20}
+      minimum-idle: ${OBJS_DB_POOL_MIN_IDLE:2}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true

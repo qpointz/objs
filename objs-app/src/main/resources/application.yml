@@ -15,7 +15,8 @@ spring:
     locations: classpath:db/migration
 
 server:
-  port: 8080
+  # Side service next to :sbom-service (8080). Not consumed by the SBOM app.
+  port: 8081
 
 objs:
   seeds:
@@ -27,23 +28,8 @@ springdoc:
   remove-broken-reference-definitions: false
 
 ---
-# Configure SBOM resources through the shared seed pipeline:
-#   ./gradlew :objs-app:run --args="--spring.profiles.active=sbom"
-spring:
-  config:
-    activate:
-      on-profile: sbom
-
-objs:
-  seeds:
-    enabled: true
-    resources:
-      - classpath:seeds/sbom-ontology.yaml
-      - classpath:seeds/sbom-demo-graph.yaml
-
----
 # PostgreSQL persistence. Start PostgreSQL separately, then run with:
-#   ./gradlew :objs-app:run --args="--spring.profiles.active=postgres,sbom"
+#   ./gradlew :objs-app:run --args="--spring.profiles.active=postgres"
 spring:
   config:
     activate:

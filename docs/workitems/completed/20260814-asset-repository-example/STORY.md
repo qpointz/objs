@@ -16,7 +16,7 @@ Build a **second concrete objs example** under [`examples/asset-repository/`](..
 
 Asset information is scattered across systems and formats. This app holds that information in **collections** of typed **objects**, with domain REST, a domain UI (explore / search / create / edit), foundation **workbench** for schemas, and a Python producer/consumer client.
 
-**Independent of** [`sbom-inventory-app`](../../in-progress/sbom-inventory-app/STORY.md) (D-2): packaging pattern and adapted type seeds only — no shared modules.
+**Independent of** [`sbom-inventory-app`](../20260816-sbom-inventory-app/STORY.md) (D-2): packaging pattern and adapted type seeds only — no shared modules.
 
 ## Normative locks
 

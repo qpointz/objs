@@ -51,10 +51,12 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | # | Item | Type | Status | Source |
 |---|------|------|--------|--------|
 | D-1 | SBOM typed example (toolkit + ontology + REST + SPA) | feature | done | [`completed/20260728-sbom-typed-example/`](completed/20260728-sbom-typed-example/STORY.md), [`docs/design/sbom/example.md`](../design/sbom/example.md) |
-| D-2 | SBOM applications inventory app (Apps/Portfolios tabs; portfolio-scoped MI via Gremlin; weak CDX demo) | feature | in-progress | [`in-progress/sbom-inventory-app/`](in-progress/sbom-inventory-app/STORY.md) |
+| D-2 | SBOM applications inventory app (Apps/Portfolios tabs; portfolio-scoped MI via Gremlin; weak CDX demo) | feature | done | [`completed/20260816-sbom-inventory-app/`](completed/20260816-sbom-inventory-app/STORY.md) |
 | D-3 | Asset repository example (collections-as-graphs object store; domain REST + simple explore UI) | feature | done | [`completed/20260814-asset-repository-example/`](completed/20260814-asset-repository-example/STORY.md), [`docs/design/asset-repository/example.md`](../design/asset-repository/example.md) |
 | D-4 | Asset repository demo seeds, qsynth load kit, collection query exec stats | feature | done | [`completed/20260814-asset-repository-demo-seeds/`](completed/20260814-asset-repository-demo-seeds/STORY.md) |
 | D-5 | Asset repository Postgres search, SPA refresh routing, batched load.py | fix | done | [`completed/20260814-asset-repository-ops-fixes/`](completed/20260814-asset-repository-ops-fixes/STORY.md) |
+| D-6 | Inventory Save as one transactional request (payloads + version graph + application meta) | improvement | backlog | [`completed/20260816-sbom-inventory-app/GAPS.md`](completed/20260816-sbom-inventory-app/GAPS.md) G-P13 |
+| D-7 | Demo inventory as file seeds under `examples/sbom/demo` (replace `SbomDemoInventorySeeder`) | improvement | backlog | [`completed/20260816-sbom-inventory-app/GAPS.md`](completed/20260816-sbom-inventory-app/GAPS.md) G-P14 |
 
 ---
 
@@ -70,7 +72,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 
 | Status | Count |
 |--------|------:|
-| backlog | 0 |
+| backlog | 2 |
 | planned | 0 |
-| in-progress | 1 |
-| done | 23 |
+| in-progress | 0 |
+| done | 24 |

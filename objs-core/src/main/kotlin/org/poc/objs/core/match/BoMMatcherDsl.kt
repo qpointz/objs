@@ -9,6 +9,7 @@ import tools.jackson.databind.JsonNode
 import tools.jackson.databind.json.JsonMapper
 import tools.jackson.dataformat.yaml.YAMLMapper
 import tools.jackson.module.kotlin.kotlinModule
+import java.util.UUID
 
 enum class BoMMatcherFormat {
     JSON,
@@ -23,6 +24,7 @@ enum class BoMMatcherFormat {
  * - array: ordered [BoMChainedMatcher]
  *
  * C-13 (graphs-from-objects) set: **`all`**, **`graph-expr`**, **`obj-expr`**, chained array.
+ * D-2 addition: **`graphs-in`** (explicit graph-id set for multi-graph MI selection).
  * Older keys (`anno`, `anno-expr`, `ids`, `subgraph`, `subg-expr`) are retired — see
  * [defaultHandlers] / [RetiredMatcherKeyHandler] for the clear migrate-error each produces.
  */
@@ -89,6 +91,11 @@ class BoMMatcherDsl(
         }
         is BoMAllGraphsMatcher -> {
             jsonMapper.createObjectNode().put("all", true)
+        }
+        is BoMGraphIdsMatcher -> {
+            val arr = jsonMapper.createArrayNode()
+            matcher.graphIds.forEach { arr.add(it.toString()) }
+            jsonMapper.createObjectNode().set("graphs-in", arr)
         }
         is BoMGraphExprMatcher -> {
             jsonMapper.createObjectNode().put("graph-expr", matcher.expression)
@@ -160,12 +167,14 @@ class BoMMatcherDsl(
          * C-13 set: `all` + `graph-expr` + `obj-expr`, plus [RetiredMatcherKeyHandler] entries for
          * the retired `anno` / `anno-expr` / `ids` / `subgraph` / `subg-expr` keys so callers get a
          * clear migrate error instead of a generic unknown-key failure.
+         * D-2: `graphs-in` for an explicit graph-id set.
          */
         fun defaultHandlers(
             objExprFactory: (String) -> BoMMatcher = { expression -> BoMObjExprMatcher(expression) },
             graphExprFactory: (String) -> BoMMatcher = { expression -> BoMGraphExprMatcher(expression) },
         ): List<BoMMatcherKeyHandler> = listOf(
             AllGraphsMatcherHandler,
+            GraphIdsMatcherHandler,
             GraphExprMatcherHandler(graphExprFactory),
             ObjExprMatcherHandler(objExprFactory),
             RetiredMatcherKeyHandler(
@@ -178,15 +187,15 @@ class BoMMatcherDsl(
             ),
             RetiredMatcherKeyHandler(
                 key = "ids",
-                migrateTo = "'obj-expr' (e.g. obj-expr: \"id == '...' || id == '...'\")",
+                migrateTo = "'obj-expr' (e.g. obj-expr: \"id == '...' || id == '...'\") or 'graphs-in' for graph ids",
             ),
             RetiredMatcherKeyHandler(
                 key = "subgraph",
-                migrateTo = "'graph-expr' (e.g. graph-expr: \"id == '<uuid>'\")",
+                migrateTo = "'graph-expr' (e.g. graph-expr: \"id == '<uuid>'\") or 'graphs-in'",
             ),
             RetiredMatcherKeyHandler(
                 key = "subg-expr",
-                migrateTo = "'graph-expr' (same id/a header bindings)",
+                migrateTo = "'graph-expr' (same id/a header bindings) or 'graphs-in'",
             ),
         )
 
@@ -217,6 +226,79 @@ object AllGraphsMatcherHandler : BoMMatcherKeyHandler {
             )
         }
         return BoMAllGraphsMatcher
+    }
+}
+
+/**
+ * DSL key **`graphs-in`**: non-null JSON/YAML array of UUID strings → [BoMGraphIdsMatcher].
+ * Empty array is allowed (empty selection).
+ */
+object GraphIdsMatcherHandler : BoMMatcherKeyHandler {
+    override val key: String = "graphs-in"
+
+    override fun decode(value: Any?, path: String): BoMMatcher {
+        val raw: List<*> = when (value) {
+            null -> {
+                failType(path)
+            }
+            is List<*> -> value
+            is Array<*> -> value.toList()
+            else -> {
+                failType(path)
+            }
+        }
+        val ids = raw.mapIndexed { index, item ->
+            parseUuid(item, "$path[$index]")
+        }
+        return BoMGraphIdsMatcher(ids)
+    }
+
+    private fun parseUuid(item: Any?, path: String): UUID {
+        val text = when (item) {
+            is UUID -> return item
+            is String -> item.trim()
+            else -> null
+        }
+        if (text.isNullOrBlank()) {
+            throw BoMValidationException(
+                "matcher-dsl",
+                BoMValidationResult.of(
+                    BoMValidationIssue(
+                        code = "MATCHER_DSL_GRAPHS_IN_ITEM",
+                        message = "'graphs-in' items must be UUID strings",
+                        path = path,
+                    ),
+                ),
+            )
+        }
+        return try {
+            UUID.fromString(text)
+        } catch (_: IllegalArgumentException) {
+            throw BoMValidationException(
+                "matcher-dsl",
+                BoMValidationResult.of(
+                    BoMValidationIssue(
+                        code = "MATCHER_DSL_GRAPHS_IN_UUID",
+                        message = "'graphs-in' item is not a valid UUID: $text",
+                        path = path,
+                    ),
+                ),
+            )
+        }
+    }
+
+    private fun failType(path: String): Nothing {
+        throw BoMValidationException(
+            "matcher-dsl",
+            BoMValidationResult.of(
+                BoMValidationIssue(
+                    code = "MATCHER_DSL_GRAPHS_IN_TYPE",
+                    message = "'graphs-in' value must be an array of UUID strings " +
+                        "(e.g. {\"graphs-in\": [\"…\", \"…\"]})",
+                    path = path,
+                ),
+            ),
+        )
     }
 }
 

@@ -1,0 +1,142 @@
+package org.poc.objs.sbom.service
+
+import org.poc.objs.core.domain.BoMEntity
+import org.poc.objs.core.persistence.BoMNamedGraphStore
+import org.poc.objs.sbom.persistence.SbomApplicationRepository
+import org.poc.objs.sbom.persistence.SbomApplicationVersionRepository
+import org.poc.objs.sbom.registry.SbomRoles
+import org.springframework.http.HttpStatus
+import org.springframework.stereotype.Service
+import org.springframework.web.server.ResponseStatusException
+import java.time.Instant
+import java.util.UUID
+
+/**
+ * Weak CycloneDX JSON export (G-P11 / R16) — demo of same BOM, different format.
+ * Not a certified exporter; omits non-Component types freely.
+ */
+@Service
+class CycloneDxExportService(
+    private val applications: SbomApplicationRepository,
+    private val versions: SbomApplicationVersionRepository,
+    private val namedGraphs: BoMNamedGraphStore,
+) {
+    fun exportDraft(applicationId: UUID): Map<String, Any?> {
+        val app = requireApp(applicationId)
+        val draft =
+            versions.findByApplicationIdAndStatus(applicationId, "DRAFT").firstOrNull()
+                ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "No draft for application: $applicationId")
+        return exportGraph(
+            graphId = draft.graphId,
+            applicationName = app.name,
+            versionLabel = "draft",
+        )
+    }
+
+    fun exportVersion(applicationId: UUID, versionId: UUID): Map<String, Any?> {
+        val app = requireApp(applicationId)
+        val version =
+            versions.findByIdAndApplicationId(versionId, applicationId)
+                ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Version not found: $versionId")
+        return exportGraph(
+            graphId = version.graphId,
+            applicationName = app.name,
+            versionLabel = version.version ?: version.label ?: version.capturedAt.toString(),
+        )
+    }
+
+    private fun exportGraph(
+        graphId: UUID,
+        applicationName: String,
+        versionLabel: String,
+    ): Map<String, Any?> {
+        val resolved =
+            namedGraphs.get(graphId)
+                ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "BOM graph missing")
+        val components =
+            resolved.contents.entities
+                .filter { it.type == "Component" }
+                .mapNotNull { it.toCdxComponent() }
+        val componentIds = components.mapNotNull { it["bom-ref"] as? String }.toSet()
+
+        val dependsOnByRef = linkedMapOf<String, MutableList<String>>()
+        for (edge in resolved.contents.edges) {
+            if (edge.role != SbomRoles.DEPENDS_ON) continue
+            val from = edge.source.toString()
+            val to = edge.target.toString()
+            if (from !in componentIds || to !in componentIds) continue
+            dependsOnByRef.getOrPut(from) { mutableListOf() }.add(to)
+        }
+
+        val dependencies = mutableListOf<Map<String, Any?>>()
+        // Include every component ref so tools can walk the tree; empty dependsOn when none.
+        for (ref in componentIds) {
+            dependencies +=
+                mapOf(
+                    "ref" to ref,
+                    "dependsOn" to (dependsOnByRef[ref]?.distinct()?.sorted() ?: emptyList()),
+                )
+        }
+
+        val serial = UUID.randomUUID()
+        return linkedMapOf(
+            "bomFormat" to "CycloneDX",
+            "specVersion" to "1.6",
+            "serialNumber" to "urn:uuid:$serial",
+            "version" to 1,
+            "metadata" to
+                linkedMapOf(
+                    "timestamp" to Instant.now().toString(),
+                    "component" to
+                        linkedMapOf(
+                            "type" to "application",
+                            "name" to applicationName,
+                            "version" to versionLabel,
+                            "bom-ref" to "app:$applicationName@$versionLabel",
+                        ),
+                    "tools" to
+                        listOf(
+                            linkedMapOf(
+                                "vendor" to "objs-poc",
+                                "name" to "sbom-inventory-weak-export",
+                                "version" to "demo",
+                            ),
+                        ),
+                ),
+            "components" to components,
+            "dependencies" to dependencies,
+        )
+    }
+
+    private fun BoMEntity.toCdxComponent(): Map<String, Any?>? {
+        val id = id ?: return null
+        val name = payload["name"]?.toString()?.takeIf { it.isNotBlank() } ?: return null
+        val version = payload["version"]?.toString()?.takeIf { it.isNotBlank() } ?: "0.0.0"
+        val kind = payload["kind"]?.toString()?.lowercase()
+        val type =
+            when (kind) {
+                "framework", "library", "sdk" -> if (kind == "framework") "framework" else "library"
+                else -> "library"
+            }
+        val out =
+            linkedMapOf<String, Any?>(
+                "type" to type,
+                "bom-ref" to id.toString(),
+                "name" to name,
+                "version" to version,
+            )
+        payload["coordinates"]?.toString()?.takeIf { it.isNotBlank() }?.let { out["purl"] = it }
+        payload["ecosystem"]?.toString()?.takeIf { it.isNotBlank() }?.let { eco ->
+            out["properties"] =
+                listOf(
+                    mapOf("name" to "ecosystem", "value" to eco),
+                )
+        }
+        return out
+    }
+
+    private fun requireApp(id: UUID) =
+        applications.findById(id).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "Application not found: $id")
+        }
+}

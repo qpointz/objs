@@ -3,10 +3,14 @@ rootProject.name = "objs"
 include(":objs-core")
 include(":objs-service")
 include(":objs-service-ui")
-include(":objs-sbom-example")
 include(":objs-gremlin-core")
 include(":objs-gremlin-service")
 include(":objs-app")
+
+include(":sbom-service")
+include(":sbom-service-ui")
+project(":sbom-service").projectDir = file("examples/sbom/sbom-service")
+project(":sbom-service-ui").projectDir = file("examples/sbom/sbom-service-ui")
 
 include(":asset-repository-service")
 include(":asset-repository-service-ui")

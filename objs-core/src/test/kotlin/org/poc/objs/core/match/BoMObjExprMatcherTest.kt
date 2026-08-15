@@ -79,6 +79,72 @@ class BoMObjExprMatcherTest {
     }
 
     @Test
+    fun shouldMatchRegexAsSubstring() {
+        val matcher = BoMObjExprMatcher("p.name =~ \"Apache\"")
+        val hit = BoMEntityDomainCandidate(
+            BoMEntity(
+                type = "Component",
+                schemaVersion = "1.0.0",
+                payload = mutableMapOf("name" to "Apache Kafka"),
+            ),
+        )
+        val exact = BoMEntityDomainCandidate(
+            BoMEntity(
+                type = "Component",
+                schemaVersion = "1.0.0",
+                payload = mutableMapOf("name" to "Apache"),
+            ),
+        )
+        val miss = BoMEntityDomainCandidate(
+            BoMEntity(
+                type = "Component",
+                schemaVersion = "1.0.0",
+                payload = mutableMapOf("name" to "Log4j"),
+            ),
+        )
+        assertThat(matcher.matches(hit)).isTrue()
+        assertThat(matcher.matches(exact)).isTrue()
+        assertThat(matcher.matches(miss)).isFalse()
+        val anchored = BoMObjExprMatcher("p.name =~ '^Apache$'")
+        assertThat(anchored.matches(hit)).isFalse()
+        assertThat(anchored.matches(exact)).isTrue()
+    }
+
+    @Test
+    fun shouldAcceptDoubleQuotedPayloadEquality() {
+        val matcher = BoMObjExprMatcher("p.ecosystem == \"Maven\"")
+        val hit = BoMEntityDomainCandidate(
+            BoMEntity(
+                type = "Component",
+                schemaVersion = "1.0.0",
+                payload = mutableMapOf("ecosystem" to "Maven"),
+            ),
+        )
+        val miss = BoMEntityDomainCandidate(
+            BoMEntity(
+                type = "Component",
+                schemaVersion = "1.0.0",
+                payload = mutableMapOf("ecosystem" to "npm"),
+            ),
+        )
+        assertThat(matcher.matches(hit)).isTrue()
+        assertThat(matcher.matches(miss)).isFalse()
+    }
+
+    @Test
+    fun shouldCompilePayloadExprAndedWithManyTypeEquals() {
+        val types = listOf(
+            "API", "Artifact", "Build", "Component", "Container Image", "Container Layer",
+            "Database", "Dataset", "Deployment", "Environment", "Host", "Kubernetes Cluster",
+            "License", "Namespace", "Operating System", "Organization", "Policy", "Product",
+            "Runtime", "Service", "Source Module", "Source Repository", "Vulnerability",
+        )
+        val typeScope = types.joinToString(" || ") { "type == '$it'" }
+        val expr = "($typeScope) && (p.ecosystem == \"Maven\")"
+        BoMObjExprMatcher(expr)
+    }
+
+    @Test
     fun shouldRejectBlank() {
         assertThatThrownBy { BoMObjExprMatcher("  ") }
             .isInstanceOf(BoMValidationException::class.java)

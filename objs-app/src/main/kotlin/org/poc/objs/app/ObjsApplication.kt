@@ -4,8 +4,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 
 /**
- * Assembly entry point: objs-service REST + objs-core persistence +
- * objs-sbom-example (`/api/v1/example/sbom`, registry + optional demo seed).
+ * Foundation assembly: objs-service REST + workbench + gremlin traverse.
+ * SBOM inventory lives under examples/sbom (:sbom-service).
  */
 @SpringBootApplication(scanBasePackages = ["org.poc.objs"])
 class ObjsApplication

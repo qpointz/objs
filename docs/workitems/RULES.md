@@ -366,15 +366,16 @@ This keeps each WI a **reviewable, reproducible checkpoint** on the story branch
 ## Module Reference
 
 - `objs-core` — Entity SDK, domain types, JPA / PostgreSQL persistence, typed-domain toolkit
-- `objs-service` — Spring REST API and Boot autoconfiguration (library)
-- `objs-sbom-example` — Concrete SBOM app on the foundation (canonical ontology, `SbomService`, `/api/v1/example/sbom`)
-- `objs-app` — Runnable assembly (`./gradlew :objs-app:run`); depends on the example module for demo
+- `objs-service` — Spring REST API and Boot autoconfiguration (library); foundation side service (with UI)
+- `objs-app` — Foundation **side service** (`./gradlew :objs-app:run`, port 8081); no example apps
+- `examples/sbom/sbom-service` (`:sbom-service`) — Concrete SBOM inventory app (canonical ontology, domain API; **must not** use objs-service)
+- `examples/sbom/sbom-service-ui` (`:sbom-service-ui`) — Inventory SPA (node-gradle, like `:objs-service-ui`)
 
 ---
 
-## Concrete example integration (`objs-sbom-example`)
+## Concrete example integration (`examples/sbom`)
 
-`objs-sbom-example` is the **living consumer** of the graph foundation and the **canonical software
+`:sbom-service` (under `examples/sbom/`) is the **living consumer** of the graph foundation and the **canonical software
 graph** ontology. New product features must not land in `objs-core` / `objs-service` alone while the
 example stays stale.
 
@@ -384,7 +385,7 @@ For every story/WI that changes **consumer-visible** foundation or domain capabi
 not limited to entity/edge model, catalogs, validation, `BoMGraphStore`, generic REST
 (`/api/v1/objs/**`), typed toolkit (`org.poc.objs.core.typed`), annotations/subgraphs, OpenAPI shapes,
 or the **canonical ontology** — the **same WI** (or an explicit companion WI in the same story)
-**must** update `objs-sbom-example` so the feature is exercised and documented end-to-end.
+**must** update `:sbom-service` (and its UI when user-facing) so the feature is exercised and documented end-to-end.
 
 ### What “integrated” means
 

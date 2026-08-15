@@ -80,6 +80,38 @@ class BoMMatcherDslTest {
     }
 
     @Test
+    fun shouldDecodeGraphsInFromJsonAndYaml() {
+        val id1 = UUID.fromString("11111111-1111-4111-8111-111111111111")
+        val id2 = UUID.fromString("22222222-2222-4222-8222-222222222222")
+        val fromJson = dsl.decode(
+            """{"graphs-in":["$id1","$id2"]}""",
+            BoMMatcherFormat.JSON,
+        )
+        val fromYaml = dsl.decode(
+            """
+            graphs-in:
+              - $id1
+              - $id2
+            """.trimIndent(),
+            BoMMatcherFormat.YAML,
+        )
+        assertThat(fromJson).isInstanceOf(BoMGraphIdsMatcher::class.java)
+        assertThat((fromJson as BoMGraphIdsMatcher).graphIds).containsExactly(id1, id2)
+        assertThat((fromYaml as BoMGraphIdsMatcher).graphIds).containsExactly(id1, id2)
+        val encoded = dsl.encode(fromJson, BoMMatcherFormat.JSON)
+        val roundTrip = dsl.decode(encoded, BoMMatcherFormat.JSON) as BoMGraphIdsMatcher
+        assertThat(roundTrip.graphIds).containsExactly(id1, id2)
+    }
+
+    @Test
+    fun shouldRejectGraphsInWhenNotArray() {
+        assertThatThrownBy { dsl.decode("""{"graphs-in":"nope"}""", BoMMatcherFormat.JSON) }
+            .isInstanceOf(BoMValidationException::class.java)
+        assertThatThrownBy { dsl.decode("""{"graphs-in":["not-a-uuid"]}""", BoMMatcherFormat.JSON) }
+            .isInstanceOf(BoMValidationException::class.java)
+    }
+
+    @Test
     fun shouldRejectEmptyUnknownAndMultiKeyMatchers() {
         assertThatThrownBy { dsl.decode("[]", BoMMatcherFormat.JSON) }
             .isInstanceOf(BoMValidationException::class.java)
