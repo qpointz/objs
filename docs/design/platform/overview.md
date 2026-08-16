@@ -70,6 +70,8 @@ flowchart LR
 
 Dependency rule: Gremlin and service libraries depend on core; `objs-app` wires the foundation side service only. Example apps under `examples/` are separate launchables and **must not** depend on `:objs-service` / `:objs-service-ui` / `:objs-gremlin-service`. Core must not depend on service/app/gremlin.
 
+Object/graph capabilities that examples still reimplement (reverse lookup, identity query, paging, graph copy) are listed in [`../graph/apps-vs-foundation.md`](../graph/apps-vs-foundation.md).
+
 ## Process alignment with Mill
 
 - Work items / stories: [`docs/workitems/RULES.md`](../../workitems/RULES.md)

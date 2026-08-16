@@ -21,6 +21,7 @@ Objs is an **entity store**: independent informational **entities** linked by **
 | [gremlin-examples.md](gremlin-examples.md) | Sample gremlin-lang scripts (vertices, tables, SBOM roles) |
 | [validation.md](validation.md) | Persist gate, batch two-stage validation, create/update by id |
 | [persistence.md](persistence.md) | PostgreSQL, JSONB, Flyway, H2 tests |
+| [apps-vs-foundation.md](apps-vs-foundation.md) | Store vs example apps: missing graph APIs, lift candidates, duplicates |
 
 ## Core ideas (summary)
 

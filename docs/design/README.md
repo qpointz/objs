@@ -16,6 +16,7 @@ Organised by logical component (not by story). Story process lives under
 | Core | [`core/README.md`](core/README.md) | `objs-core`: entity SDK + validation + JPA |
 | Service | [`service/README.md`](service/README.md) | `objs-service`: REST + autoconfiguration |
 | Graph domain | [`graph/README.md`](graph/README.md) | Entity store model, annotations, validation, persistence |
+| Foundation vs examples | [`graph/apps-vs-foundation.md`](graph/apps-vs-foundation.md) | Object/graph APIs: what apps reimplemented; what to lift into objs-core |
 | Gremlin traversal | [`graph/gremlin.md`](graph/gremlin.md) | Matcher → read-only TinkerGraph → gremlin-lang → result |
 | Gremlin examples | [`graph/gremlin-examples.md`](graph/gremlin-examples.md) | Sample scripts (vertices, tables, SBOM edge roles) |
 | Typed domain | [`graph/typed-domain.md`](graph/typed-domain.md) | Reusable typed façades / GraphBuilder on the foundation |
