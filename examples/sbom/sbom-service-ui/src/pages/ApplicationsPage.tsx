@@ -1,4 +1,5 @@
 import {
+  Badge,
   Box,
   Button,
   Group,
@@ -6,6 +7,7 @@ import {
   ScrollArea,
   SegmentedControl,
   SimpleGrid,
+  Skeleton,
   Stack,
   Text,
   Title,
@@ -15,10 +17,36 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 import { SearchInput } from '../SearchInput'
-import type { ApplicationSummary } from '../api/types'
+import type { ApplicationPortalStats, ApplicationSummary } from '../api/types'
+
+function useApplicationStats(id: string) {
+  const [stats, setStats] = useState<ApplicationPortalStats | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    void api
+      .getApplicationStats(id)
+      .then((next) => {
+        if (!cancelled) setStats(next)
+      })
+      .catch(() => {
+        if (!cancelled) setStats(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [id])
+  return stats
+}
+
+function latestLabel(stats: ApplicationPortalStats | null) {
+  const latest = stats?.latestVersion
+  if (!latest) return 'No released version'
+  return latest.version || latest.label || 'Released'
+}
 
 function ApplicationCard({ app }: { app: ApplicationSummary }) {
   const navigate = useNavigate()
+  const stats = useApplicationStats(app.id)
   return (
     <Paper
       withBorder
@@ -37,6 +65,18 @@ function ApplicationCard({ app }: { app: ApplicationSummary }) {
         <Text size="sm" c="dimmed" lineClamp={3} style={{ flex: 1 }}>
           {app.description || 'Open the edit draft to add assets and create a version.'}
         </Text>
+        {stats ? (
+          <Group gap={6} wrap="wrap">
+            <Text size="sm">{latestLabel(stats)}</Text>
+            {stats.latestMultiBom && (
+              <Badge size="xs" variant="light">
+                Multi-BOM
+              </Badge>
+            )}
+          </Group>
+        ) : (
+          <Skeleton height={16} width="55%" />
+        )}
       </Stack>
       <Box
         px="md"
@@ -46,9 +86,13 @@ function ApplicationCard({ app }: { app: ApplicationSummary }) {
           background: 'var(--mantine-color-default-hover)',
         }}
       >
-        <Text size="xs" c="dimmed">
-          Application
-        </Text>
+        {stats ? (
+          <Text size="xs" c="dimmed">
+            {stats.bomCount} BOMs · {stats.versionCount} versions
+          </Text>
+        ) : (
+          <Skeleton height={12} width="40%" />
+        )}
       </Box>
     </Paper>
   )
@@ -56,6 +100,7 @@ function ApplicationCard({ app }: { app: ApplicationSummary }) {
 
 function ApplicationListRow({ app }: { app: ApplicationSummary }) {
   const navigate = useNavigate()
+  const stats = useApplicationStats(app.id)
   return (
     <Paper
       withBorder
@@ -66,13 +111,29 @@ function ApplicationListRow({ app }: { app: ApplicationSummary }) {
       <Group wrap="nowrap" gap="md" px="sm" py={8}>
         <IconApps size={18} stroke={1.5} color="var(--mantine-color-dimmed)" aria-hidden />
         <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
-          <Text size="sm" fw={600} truncate>
-            {app.name}
-          </Text>
+          <Group gap={6} wrap="nowrap">
+            <Text size="sm" fw={600} truncate>
+              {app.name}
+            </Text>
+            {stats?.latestMultiBom && (
+              <Badge size="xs" variant="light">
+                Multi-BOM
+              </Badge>
+            )}
+          </Group>
           <Text size="xs" c="dimmed" truncate>
-            {app.description || 'Open the edit draft'}
+            {stats ? latestLabel(stats) : (app.description || 'Open the edit draft')}
           </Text>
         </Stack>
+        <Box miw={140} ta="right">
+          {stats ? (
+            <Text size="xs" c="dimmed">
+              {stats.bomCount} BOMs · {stats.versionCount} versions
+            </Text>
+          ) : (
+            <Skeleton height={12} width={120} ml="auto" />
+          )}
+        </Box>
       </Group>
     </Paper>
   )
