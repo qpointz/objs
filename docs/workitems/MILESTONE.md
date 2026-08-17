@@ -41,7 +41,7 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 
 ### In Progress
 
-_(none)_
+- [`multi-bom-app-versions`](in-progress/multi-bom-app-versions/STORY.md) — Multi-BOM constituents + Combined SBOM; multi-draft (target + optional combine); tags; fingerprint name/category (D-8). WI-000 done; WI-001…WI-008 pending.
 
 ### Planned
 
