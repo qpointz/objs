@@ -61,7 +61,7 @@ Extend the SBOM inventory app so an **application version** is a **combination o
 | Stage | WIs | Ready | Notes |
 |-------|-----|-------|-------|
 | 0 — Scaffold | WI-000 | done | Story folder, GAPS, trackers |
-| 1 — Product + graph design | WI-001, WI-002 | WI-001 done | Glossary locked; GRAPH-AND-RETRIEVAL |
+| 1 — Product + graph design | WI-001, WI-002 | done | Glossary locked; GRAPH-AND-RETRIEVAL |
 | 2 — Persistence + domain | WI-003, WI-004 | after Stage 1 | Flyway; ephemeral union; multi-draft; fingerprint columns |
 | 3 — API | WI-005 | after WI-004 | REST + OpenAPI |
 | 4 — UI | WI-006 | after WI-005 | Progressive disclosure + drafts + fingerprint modal |
@@ -71,7 +71,7 @@ Extend the SBOM inventory app so an **application version** is a **combination o
 
 - [x] WI-000 — Story scaffold (`WI-000-story-scaffold.md`)
 - [x] WI-001 — Product design + glossary (`WI-001-product-glossary.md`)
-- [ ] WI-002 — Graph and retrieval mapping (`WI-002-graph-and-retrieval.md`)
+- [x] WI-002 — Graph and retrieval mapping (`WI-002-graph-and-retrieval.md`)
 - [ ] WI-003 — Flyway BOMs, multi-draft, tags, fingerprint (`WI-003-persistence.md`)
 - [ ] WI-004 — Ephemeral Combined SBOM + domain services (`WI-004-domain-services.md`)
 - [ ] WI-005 — REST constituents + multi-draft + fingerprint (`WI-005-rest-api.md`)

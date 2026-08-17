@@ -2,7 +2,7 @@
 
 **Story:** [`STORY.md`](STORY.md)  
 **Stage:** 1 — Product + graph design  
-**Status:** pending  
+**Status:** done  
 **Depends on:** WI-001
 
 ## Goal
@@ -11,12 +11,12 @@ Complete [`GRAPH-AND-RETRIEVAL.md`](GRAPH-AND-RETRIEVAL.md): BOM graphs vs **eph
 
 ## Deliverables
 
-- [ ] Hybrid diagram: domain tables (incl. tags, based_on, fingerprint name/category) ↔ named graphs; **no** Combined graph on the version
-- [ ] Union algorithm (membership + edge collapse) used at **read time** and when materializing a fingerprint or flatten-copy
-- [ ] Draft create: keep-split deep copy vs combine (one BOM from computed full union) — G-P7
-- [ ] Fingerprint: persist snapshot of full union; no BOM rows
-- [ ] Migration: existing `sbom_application_version.graph_id` → first BOM named `BOM`; **drop** version `graph_id`
-- [ ] Annotation / id conventions; latest RELEASED = max `version_serial` (SemVer 2.0, G-Q7 / G-Q11)
+- [x] Hybrid diagram: domain tables (incl. tags, based_on, fingerprint name/category) ↔ named graphs; **no** Combined graph on the version
+- [x] Union algorithm (membership + edge collapse) used at **read time** and when materializing a fingerprint or flatten-copy
+- [x] Draft create: keep-split deep copy vs combine (one BOM from computed full union) — G-P7
+- [x] Fingerprint: persist snapshot of full union; no BOM rows
+- [x] Migration: existing `sbom_application_version.graph_id` → first BOM named `BOM`; **drop** version `graph_id`
+- [x] Annotation / id conventions; latest RELEASED = max `version_serial` (SemVer 2.0, G-Q7 / G-Q11)
 
 ## Out of scope
 
