@@ -23,6 +23,7 @@ import org.poc.objs.sbom.domain.CreatePoolAssetRequest
 import org.poc.objs.sbom.domain.SetAssetOwnerRequest
 import org.poc.objs.sbom.domain.UpdatePoolAssetRequest
 import org.poc.objs.sbom.persistence.SbomApplicationRepository
+import org.poc.objs.sbom.persistence.SbomApplicationSbomRepository
 import org.poc.objs.sbom.persistence.SbomApplicationVersionRepository
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
@@ -41,6 +42,7 @@ class AssetInventoryService(
     private val assetTypes: AssetTypeCatalogService,
     private val applications: SbomApplicationRepository,
     private val versions: SbomApplicationVersionRepository,
+    private val boms: SbomApplicationSbomRepository,
     private val sbom: SbomService,
 ) {
     fun search(request: AssetSearchRequest): List<AssetView> {
@@ -266,7 +268,8 @@ class AssetInventoryService(
         val out = mutableListOf<AssetUsageEntry>()
         for (version in versions.findAll()) {
             val app = applications.findById(version.applicationId).orElse(null) ?: continue
-            val graph = namedGraphs.get(version.graphId) ?: continue
+            val graphId = boms.findByVersionIdOrderBySortOrderAscIdAsc(version.id).firstOrNull()?.graphId ?: continue
+            val graph = namedGraphs.get(graphId) ?: continue
             if (graph.contents.entities.none { it.id == assetId }) continue
             out +=
                 AssetUsageEntry(
@@ -274,7 +277,7 @@ class AssetInventoryService(
                     applicationName = app.name,
                     context = version.status,
                     versionId = version.id,
-                    versionLabel = version.version ?: version.label,
+                    versionLabel = version.version.ifBlank { null } ?: version.label,
                     relations = incidentRelations(graph.contents.edges, assetId),
                 )
         }

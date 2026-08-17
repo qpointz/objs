@@ -3,6 +3,7 @@ package org.poc.objs.sbom.service
 import org.poc.objs.core.domain.BoMEntity
 import org.poc.objs.core.persistence.BoMNamedGraphStore
 import org.poc.objs.sbom.persistence.SbomApplicationRepository
+import org.poc.objs.sbom.persistence.SbomApplicationSbomRepository
 import org.poc.objs.sbom.persistence.SbomApplicationVersionRepository
 import org.poc.objs.sbom.registry.SbomRoles
 import org.springframework.http.HttpStatus
@@ -19,6 +20,7 @@ import java.util.UUID
 class CycloneDxExportService(
     private val applications: SbomApplicationRepository,
     private val versions: SbomApplicationVersionRepository,
+    private val boms: SbomApplicationSbomRepository,
     private val namedGraphs: BoMNamedGraphStore,
 ) {
     fun exportDraft(applicationId: UUID): Map<String, Any?> {
@@ -27,7 +29,7 @@ class CycloneDxExportService(
             versions.findByApplicationIdAndStatus(applicationId, "DRAFT").firstOrNull()
                 ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "No draft for application: $applicationId")
         return exportGraph(
-            graphId = draft.graphId,
+            graphId = requireBomGraphId(draft.id),
             applicationName = app.name,
             versionLabel = "draft",
         )
@@ -39,9 +41,9 @@ class CycloneDxExportService(
             versions.findByIdAndApplicationId(versionId, applicationId)
                 ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Version not found: $versionId")
         return exportGraph(
-            graphId = version.graphId,
+            graphId = requireBomGraphId(version.id),
             applicationName = app.name,
-            versionLabel = version.version ?: version.label ?: version.capturedAt.toString(),
+            versionLabel = version.version.ifBlank { null } ?: version.label ?: version.capturedAt.toString(),
         )
     }
 
@@ -134,6 +136,10 @@ class CycloneDxExportService(
         }
         return out
     }
+
+    private fun requireBomGraphId(versionId: UUID): UUID =
+        boms.findByVersionIdOrderBySortOrderAscIdAsc(versionId).firstOrNull()?.graphId
+            ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Version has no BOM")
 
     private fun requireApp(id: UUID) =
         applications.findById(id).orElseThrow {

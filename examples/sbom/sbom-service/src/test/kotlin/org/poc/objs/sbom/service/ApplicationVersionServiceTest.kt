@@ -18,6 +18,7 @@ import org.poc.objs.sbom.domain.DraftAssetWrite
 import org.poc.objs.sbom.domain.DraftRelationWrite
 import org.poc.objs.sbom.domain.PromoteVersionRequest
 import org.poc.objs.sbom.domain.ReplaceVersionBomRequest
+import org.poc.objs.sbom.persistence.SbomApplicationSbomRepository
 import org.poc.objs.sbom.persistence.SbomPersistenceConfiguration
 import org.poc.objs.sbom.registry.SbomRoles
 import org.springframework.beans.factory.annotation.Autowired
@@ -27,6 +28,7 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
 import org.springframework.context.annotation.Import
 import org.springframework.test.context.TestPropertySource
 import java.util.UUID
+import javax.sql.DataSource
 
 @DataJpaTest
 @ImportAutoConfiguration(ObjsCoreAutoConfiguration::class)
@@ -63,6 +65,15 @@ class ApplicationVersionServiceTest {
     lateinit var versions: ApplicationVersionService
 
     @Autowired
+    lateinit var boms: SbomApplicationSbomRepository
+
+    @Autowired
+    lateinit var namedGraphs: BoMNamedGraphStore
+
+    @Autowired
+    lateinit var dataSource: DataSource
+
+    @Autowired
     lateinit var sbom: SbomService
 
     @Autowired
@@ -79,6 +90,32 @@ class ApplicationVersionServiceTest {
         field.isAccessible = true
         field.setBoolean(sbom, false)
         sbom.ensureRegistry()
+    }
+
+    @Test
+    fun shouldPersistBootstrapBomNamedBom() {
+        val app = inventory.create(CreateApplicationRequest(name = "BomApp"))
+        val draft = versions.draft(app.id)!!
+        assertThat(draft.version).isEqualTo("0.1.0")
+        val rows = boms.findByVersionIdOrderBySortOrderAscIdAsc(draft.id)
+        assertThat(rows).hasSize(1)
+        assertThat(rows[0].name).isEqualTo("BOM")
+        assertThat(rows[0].tags).isEmpty()
+        val graph = namedGraphs.get(rows[0].graphId)!!
+        assertThat(graph.annotations["kind"]).isEqualTo("application-bom")
+        assertThat(graph.annotations["bomId"]).isEqualTo(rows[0].id.toString())
+    }
+
+    @Test
+    fun shouldMigrateSchemaOffVersionGraphId() {
+        dataSource.connection.use { connection ->
+            connection.metaData.getColumns(null, null, "SBOM_APPLICATION_VERSION", "GRAPH_ID").use { rs ->
+                assertThat(rs.next()).isFalse()
+            }
+            connection.metaData.getTables(null, null, "SBOM_APPLICATION_SBOM", null).use { rs ->
+                assertThat(rs.next()).isTrue()
+            }
+        }
     }
 
     @Test
@@ -135,6 +172,9 @@ class ApplicationVersionServiceTest {
         val draftId = versions.draft(app.id)!!.id
         val fp = versions.fingerprint(app.id, draftId, CreateFingerprintRequest(note = "gate"))
         assertThat(fp.contentSha256).isNotBlank()
+        assertThat(fp.note).isEqualTo("gate")
+        assertThat(fp.name).isEqualTo("gate")
+        assertThat(fp.category).isEqualTo("unknown")
         addComponent(app.id, "b")
         val later = versions.fingerprint(app.id, draftId)
         assertThat(later.contentSha256).isNotEqualTo(fp.contentSha256)

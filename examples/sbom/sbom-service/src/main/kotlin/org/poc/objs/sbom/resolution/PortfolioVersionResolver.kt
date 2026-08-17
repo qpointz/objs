@@ -3,6 +3,7 @@ package org.poc.objs.sbom.resolution
 import org.poc.objs.sbom.domain.PortfolioAppRef
 import org.poc.objs.sbom.domain.PortfolioUniqueness
 import org.poc.objs.sbom.persistence.ApplicationVersionStatus
+import org.poc.objs.sbom.persistence.SbomApplicationSbomRepository
 import org.poc.objs.sbom.persistence.SbomApplicationVersionRepository
 import org.poc.objs.sbom.service.ApplicationVersionService
 import org.springframework.http.HttpStatus
@@ -38,6 +39,7 @@ class LatestVersionResolver(
 class PortfolioGraphSelector(
     private val latest: LatestVersionResolver,
     private val versionRows: SbomApplicationVersionRepository,
+    private val boms: SbomApplicationSbomRepository,
 ) {
     fun select(
         uniqueness: PortfolioUniqueness,
@@ -71,7 +73,8 @@ class PortfolioGraphSelector(
         for (app in apps) {
             val graphId =
                 versionRows.findByApplicationIdAndStatus(app.applicationId, ApplicationVersionStatus.DRAFT)
-                    .firstOrNull()?.graphId
+                    .firstOrNull()
+                    ?.let { bomGraphId(it.id) }
                     ?: latestIds[app.applicationId]
             if (graphId == null) {
                 omitted += app
@@ -95,9 +98,17 @@ class PortfolioGraphSelector(
             if (row == null) {
                 omitted += app
             } else {
-                graphByApp[app.applicationId] = row.graphId
+                val graphId = bomGraphId(row.id)
+                if (graphId == null) {
+                    omitted += app
+                } else {
+                    graphByApp[app.applicationId] = graphId
+                }
             }
         }
         return GraphResolution(graphByApp, omitted)
     }
+
+    private fun bomGraphId(versionId: UUID): UUID? =
+        boms.findByVersionIdOrderBySortOrderAscIdAsc(versionId).firstOrNull()?.graphId
 }

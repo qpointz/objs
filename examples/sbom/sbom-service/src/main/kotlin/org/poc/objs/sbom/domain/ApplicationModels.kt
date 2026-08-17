@@ -80,6 +80,8 @@ data class PromoteVersionRequest(
 
 data class CreateFingerprintRequest(
     val note: String? = null,
+    val name: String? = null,
+    val category: String? = null,
 )
 
 data class ReplaceVersionBomRequest(
@@ -109,6 +111,8 @@ data class ApplicationFingerprintSummary(
     val versionId: UUID,
     val createdAt: java.time.Instant,
     val note: String?,
+    val name: String = note.orEmpty(),
+    val category: String = "unknown",
     val contentSha256: String,
 )
 
