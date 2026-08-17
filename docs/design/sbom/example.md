@@ -1,9 +1,10 @@
 # SBOM applications inventory
 
-**Status:** completed — story [`sbom-inventory-app`](../../workitems/completed/20260816-sbom-inventory-app/STORY.md) (D-2)  
+**Status:** living — D-2 inventory plus in-progress [`multi-bom-app-versions`](../../workitems/in-progress/multi-bom-app-versions/STORY.md) (D-8)  
 **Modules:** `:sbom-service` + `:sbom-service-ui` under [`examples/sbom/`](../../../examples/sbom/)  
 **Run:** `./gradlew :sbom-service:run` → UI **`http://localhost:8080/sbom/`** (demo seeds via `demo` profile)  
-**Engineer mapping:** [`GRAPH-AND-RETRIEVAL.md`](../../workitems/completed/20260816-sbom-inventory-app/GRAPH-AND-RETRIEVAL.md)  
+**Engineer mapping:** [`GRAPH-AND-RETRIEVAL.md`](../../workitems/in-progress/multi-bom-app-versions/GRAPH-AND-RETRIEVAL.md)  
+**Gaps:** [`GAPS.md`](../../workitems/in-progress/multi-bom-app-versions/GAPS.md)  
 **Ontology:** [`canonical-spec.md`](canonical-spec.md) (reuse; extend only when journeys require)
 
 This document is the **product** design for the inventory app. End-user UI and **domain** API use the glossary below — never graph / entity / edge / matcher vocabulary.
@@ -19,7 +20,7 @@ Visual split only (**no auth / roles**). Keep the UI **clean and obvious**: two 
 
 | Tab | Persona | Owns |
 |-----|---------|------|
-| **Applications** | Application owner | Applications, edit drafts, versions, assets, CycloneDX export |
+| **Applications** | Application owner | Applications, versions (incl. parallel drafts), BOMs, Combined SBOM, fingerprints |
 | **Portfolios** | Portfolio owner | Portfolio taxonomy + **MI reports only here** |
 
 ---
@@ -28,10 +29,13 @@ Visual split only (**no auth / roles**). Keep the UI **clean and obvious**: two 
 
 | Term | Meaning |
 |------|---------|
-| **Application** | Named software product/system in the inventory (domain row). |
-| **Edit draft** | Working BOM for an application. Points at its own objs graph. Mutable. |
-| **Application version** | Captured release of an application’s BOM. Points at its **own** objs graph (typically copied from the draft). Immutable for inventory purposes. |
-| **Latest version** | The most recent application version for an app (ordering locked in WI-007 / R22). Used for all portfolio MI graphs. |
+| **Application** | Named software product/system in the inventory (domain row). Metadata: name, description, **tags**. |
+| **BOM** | One **incomplete** bill for a version (a constituent). Own named graph + name, description, **tags**. Default name `BOM` (hidden when the version has only one). |
+| **Combined SBOM** | Complete union of **all** BOMs of a version (**select all**). **Ephemeral** (not stored on the version). Read-only. Combined **tags** show **below the application name** in view mode (unique App ∪ version ∪ all BOMs). |
+| **Application version** | DRAFT or RELEASED row. While DRAFT, `version` is the **target** semver (required; may rename). Own **tags**. Many DRAFTs per app are allowed. Each version has **1..*** BOMs. |
+| **Based on** | Lineage of a subsequent draft: another **version** (RELEASED or DRAFT) or a **fingerprint**. Bootstrap draft on new application has none. |
+| **Fingerprint** | Immutable snapshot of the **Combined SBOM** union (persisted graph). **name** + **category** (`approval` \| `history` \| `unknown`). |
+| **Latest version** | Highest **RELEASED** by **SemVer 2.0** (`version_serial`). Drafts never latest. Used for portal content, MI, depends-on, CDX-of-latest. |
 | **Asset** | A reusable software object in the global pool (e.g. component, library) that can appear in many BOMs. |
 | **Relation** | How two assets connect in a BOM (user sees a friendly label; API may also carry the canonical role code). |
 | **Owning application** | Optional owner of an asset (`owner` annotation = application **name**). |
@@ -42,7 +46,7 @@ Visual split only (**no auth / roles**). Keep the UI **clean and obvious**: two 
 | **Subject area** | Folder node in a portfolio tree. |
 | **Portfolio level** | Selected subject-area node **or** the portfolio root. Defines which applications a report covers. |
 | **MI report** | Management information report. Portfolio owner only. Always scoped by portfolio → level. |
-| **CycloneDX export (demo)** | Weak export of a draft or version BOM to CycloneDX-shaped JSON. Demo of “same BOM, different format” — not a certified exporter. |
+| **CycloneDX export (demo)** | Weak export of a Combined SBOM (or fingerprint snapshot) to CycloneDX-shaped JSON. UI link hidden on application detail. |
 
 ---
 
@@ -50,13 +54,16 @@ Visual split only (**no auth / roles**). Keep the UI **clean and obvious**: two 
 
 ### Journey 1 — Application owner
 
-1. Search applications  
-2. Edit **edit draft**: add/remove assets; amend relations (reuse from pool or create → pool)  
-3. Create an **application version** (new graph, usually from draft)  
-4. See **depends on (app)** inferred from shared assets  
-5. Export draft/version as weak CycloneDX  
+1. Search applications (portal: latest RELEASED + multi-BOM cue in content; footer totals all BOMs · all versions, lazy per app)  
+2. **New application:** name, description, **required target version**, tags → lands on that DRAFT (one empty BOM named `BOM`, name hidden)  
+3. Open a version. Count = 1: same chrome as a single BOM (app/version tags visible; **Create BOM** on overview). Count ≥ 2: Combined SBOM (select all, read-only) + left-pane **multi-select** of BOMs  
+4. Edit a **single selected BOM** when the version is DRAFT (assets/relations). Combined SBOM and multi-select unions are read-only  
+5. **Create BOM** / delete BOM (not last; not Combined) on overview. Shrink to 1: multi chrome off immediately  
+6. **New draft:** based-on (RELEASED, DRAFT, or fingerprint) + target. If based-on version has >1 BOM, ask whether to combine into a single BOM  
+7. **Promote:** re-type version to confirm (may override target). **Fingerprint:** header Button → name + category; always Combined SBOM snapshot  
+8. See **depends on (app)** inferred from shared assets on the **latest RELEASED** Combined SBOM  
 
-No portfolios or MI here.
+No portfolios or MI here. CycloneDX download is hidden on application detail (export API may remain).
 
 ### Journey 2 — Assets inventory
 
@@ -84,7 +91,7 @@ Select portfolio → select level → select report → Run → results
 | MI-3 | Shared asset hotspots | Assets in multiple in-scope apps |
 | MI-4 | Duplicate & risk signals | Identifier duplicates + lightweight risk signals |
 
-**Graphs for MI:** latest version only. Apps with no version are omitted from graph selection (may still list as “no version” in MI-1). Drafts are never used for MI.
+**Graphs for MI:** **latest RELEASED** Combined SBOM (ephemeral union of that version’s BOMs). Apps with no RELEASED are omitted from graph selection (may still list as “no version” in MI-1). Drafts are never used for MI.
 
 ---
 
@@ -92,17 +99,18 @@ Select portfolio → select level → select report → Run → results
 
 | Layer | Owns |
 |-------|------|
-| **Domain tables** (`sbom-service`) | Application, edit draft, application version, portfolio + subject areas + membership |
-| **objs graphs** (`objs-core`) | Assets + relations inside each draft/version graph |
+| **Domain tables** (`sbom-service`) | Application, version (incl. tags, based-on, `version_serial`), BOM rows (`sbom_application_sbom`), fingerprint metadata, portfolio + subject areas + membership |
+| **objs graphs** (`objs-core`) | Each **BOM** has a named graph. Combined SBOM is computed at read time. Fingerprint stores a snapshot graph. |
 
 Rules:
 
-- Each draft and each version has its **own** `graph_id`.  
+- Combined SBOM is **not** a `graph_id` on the version.  
 - Portfolios are **domain-only** (no portfolio graph).  
-- Assets live in the objs **pool**; BOM membership is per draft/version graph.  
+- Assets live in the objs **pool**; BOM membership is per BOM graph.  
+- Tags live on domain rows only (not in graphs / fingerprint hash).  
 - Domain tables must not become a parallel asset store.
 
-See story [`GRAPH-AND-RETRIEVAL.md`](../../workitems/completed/20260816-sbom-inventory-app/GRAPH-AND-RETRIEVAL.md).
+See [`GRAPH-AND-RETRIEVAL.md`](../../workitems/in-progress/multi-bom-app-versions/GRAPH-AND-RETRIEVAL.md).
 
 ---
 
@@ -110,12 +118,12 @@ See story [`GRAPH-AND-RETRIEVAL.md`](../../workitems/completed/20260816-sbom-inv
 
 | Service | Responsibility |
 |---------|----------------|
-| `ApplicationInventoryService` | Applications + edit draft BOM |
-| `ApplicationVersionService` | Version create/get; latest-version helper (R22) |
+| `ApplicationInventoryService` | Applications + tags; bootstrap DRAFT + empty BOM |
+| `ApplicationVersionService` | Multi-draft create/promote/rename/delete; BOM CRUD; ephemeral Combined SBOM union; fingerprints; latest RELEASED by `version_serial` |
 | `AssetInventoryService` | Pool search, usage, duplicates, owner |
 | `PortfolioService` | Taxonomy + membership; R21 app set for a level |
-| `CycloneDxExportService` | Weak CDX from draft/version |
-| `MiReportService` | MI-1…MI-4; portfolio → level → latest graphs → Gremlin |
+| `CycloneDxExportService` | Weak CDX from Combined SBOM union (or fingerprint snapshot) |
+| `MiReportService` | MI-1…MI-4; portfolio → level → latest RELEASED unions → Gremlin |
 
 ---
 
@@ -129,15 +137,16 @@ Illustrative routes (WI-006+; exact paths evolve with later WIs):
 | Method | Path | Notes |
 |--------|------|-------|
 | GET | `/applications?q=` | Search / list |
-| POST | `/applications` | Create app + empty edit draft |
-| GET/PUT | `/applications/{id}` | Metadata |
-| GET | `/applications/{id}/draft` | Edit draft BOM (assets + relations) |
-| POST | `/applications/{id}/draft/assets` | Reuse (`assetId`) or create (`type`+`payload`) |
-| DELETE | `/applications/{id}/draft/assets/{assetId}` | Detach from draft |
-| POST/DELETE | `/applications/{id}/draft/relations…` | Amend relations |
-| GET | `/applications/{id}/depends-on` | Inferred shared-asset deps (draft scope until WI-007) |
-| POST | `/applications/{id}/versions` | Capture version from draft (WI-007) |
-| GET | `/applications/{id}/versions/{versionId}` | Version BOM + inferred deps |
+| POST | `/applications` | Create app + bootstrap DRAFT (`targetVersion` required) + one empty BOM |
+| GET/PUT | `/applications/{id}` | Metadata + tags |
+| GET | `/applications/{id}/stats` | Portal lazy stats: versionCount, bomCount (all versions), latestVersion, latestMultiBom |
+| GET | `/applications/{id}/depends-on` | Inferred shared-asset deps (latest RELEASED Combined SBOM) |
+| POST | `/applications/{id}/versions` | New draft: target + based-on version or fingerprint; optional combine |
+| GET | `/applications/{id}/versions/{versionId}` | Version + Combined SBOM view (ephemeral; read-only) |
+| PATCH | `/applications/{id}/versions/{versionId}` | DRAFT: rename target, version tags |
+| DELETE | `/applications/{id}/versions/{versionId}` | DRAFT only; cascade dependents after confirm |
+| GET/POST | `/applications/{id}/versions/{versionId}/sboms` | List / create BOM |
+| GET/PUT/PATCH/DELETE | `.../sboms/{sbomId}` | One BOM (DELETE not last) |
 | GET | `/assets?type=` | List by type |
 | POST | `/assets/search` | Type + searchable field filters |
 | POST | `/assets` | Create pool asset (optional owner name) |
@@ -146,8 +155,7 @@ Illustrative routes (WI-006+; exact paths evolve with later WIs):
 | GET | `/assets/duplicates?type=` | Find-only identifier groups |
 | CRUD | `/portfolios…` | Tree + place applications (WI-011) |
 | POST | `/portfolios/{id}/reports` | Body: `{ "level": "root"\|nodeId, "report": "MI-1"… }` |
-| GET | `/applications/{id}/draft/export/cyclonedx` | Weak demo |
-| GET | `/applications/{id}/versions/{versionId}/export/cyclonedx` | Weak demo |
+| GET | `/applications/{id}/versions/{versionId}/export/cyclonedx` | Weak demo of Combined SBOM (hidden in UI) |
 
 OpenAPI is published for these domain endpoints on `:sbom-service`.
 
@@ -167,7 +175,9 @@ Users see **friendly** labels (beautifier of role codes, e.g. `DEPENDS_ON` → �
 - Object/component versioning lifecycle  
 - Foundation workbench / `/api/v1/objs/**` on this app (workbench runner `:objs-service-app` only)  
 - CycloneDX/SPDX **import**; strong/certified export  
+- Transactional Save (backlog D-6); file demo seeds (D-7)  
 - Custom BI builder / scheduled reporting  
+- Tag search/filter on Applications portal  
 
 ---
 
@@ -188,8 +198,8 @@ Full schema→Kotlin codegen remains optional when the modeling team supplies ge
 
 ## Related
 
-- Story + gaps: [`sbom-inventory-app`](../../workitems/completed/20260816-sbom-inventory-app/STORY.md)  
+- Story + gaps: [`multi-bom-app-versions`](../../workitems/in-progress/multi-bom-app-versions/STORY.md) · prior D-2 [`sbom-inventory-app`](../../workitems/completed/20260816-sbom-inventory-app/STORY.md)  
 - Canonical ontology: [`canonical-spec.md`](canonical-spec.md)  
 - Seeds: [`../graph/seeds.md`](../graph/seeds.md)  
-- Engineer mapping: [`GRAPH-AND-RETRIEVAL.md`](../../workitems/completed/20260816-sbom-inventory-app/GRAPH-AND-RETRIEVAL.md)  
+- Engineer mapping: [`GRAPH-AND-RETRIEVAL.md`](../../workitems/in-progress/multi-bom-app-versions/GRAPH-AND-RETRIEVAL.md)  
 - Foundation workbench (separate app): [`../ui.md`](../ui.md) · `:objs-service-app`  

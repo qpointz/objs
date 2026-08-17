@@ -22,4 +22,4 @@ Align living design docs and example README with shipped multi-BOM, multi-draft,
 
 ## Acceptance
 
-- A new contributor can understand constituents, Combined SBOM, multi-draft (incl. combine-on-create), tags (App+Ver+SBOMs), and fingerprint name/category from design docs alone
+- A new contributor can understand BOMs, Combined SBOM, multi-draft (incl. combine-on-create), tags (App+Ver+BOMs), and fingerprint name/category from design docs alone

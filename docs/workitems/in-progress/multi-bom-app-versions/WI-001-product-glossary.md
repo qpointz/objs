@@ -2,7 +2,7 @@
 
 **Story:** [`STORY.md`](STORY.md)  
 **Stage:** 1 — Product + graph design  
-**Status:** pending  
+**Status:** done  
 **Depends on:** WI-000
 
 ## Goal
@@ -11,13 +11,14 @@ Lock remaining G-Q* and rewrite the SBOM example glossary so it matches [`STORY.
 
 ## Deliverables
 
-- [ ] Resolve or defer **G-Q1…G-Q4**, **G-Q6…G-Q16** in [`GAPS.md`](GAPS.md) (G-Q5 and G-Q17 already resolved)
-- [ ] Update [`docs/design/sbom/example.md`](../../../design/sbom/example.md):
-  - Application / Version (target + based-on) / SBOM constituent / Combined SBOM
-  - Tags on app, version, constituent; **App+Ver+SBOMs** unique union
+- [x] All G-Q* in [`GAPS.md`](GAPS.md) resolved or deferred (none left open)
+- [x] Update [`docs/design/sbom/example.md`](../../../design/sbom/example.md):
+  - Application / Version (target + based-on) / **BOM** (incomplete) / **Combined SBOM** (complete)
+  - New application: **required target version**
+  - Tags on app, version, BOM; **App+Ver+BOMs** unique union
   - New draft: optional **combine into a single BOM**
-  - Fingerprint: **name** + **category** (`approval` \| `history` \| `unknown`); always Combined
-- [ ] Align journeys with progressive disclosure, Create SBOM, New draft modal, Fingerprint modal, Applications portal stats
+  - Fingerprint: **name** + **category** (`approval` \| `history` \| `unknown`); always Combined SBOM
+- [x] Align journeys with progressive disclosure, **Create BOM**, New draft modal, Fingerprint modal, Applications portal stats
 
 ## Out of scope
 

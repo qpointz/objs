@@ -4,7 +4,7 @@
 
 ## Intent
 
-Map product concepts (Application, Version, Draft target, SBOM constituent, Combined SBOM, Fingerprint) to objs **named graphs**, domain tables, and rebuild/copy flows. Non-technical UI must not expose graph vocabulary. Tags live on domain rows only (not graph payload).
+Map product concepts (Application, Version, Draft target, **BOM**, **Combined SBOM**, Fingerprint) to objs **named graphs**, domain tables, and copy flows. Non-technical UI must not expose graph vocabulary. Tags live on domain rows only (not graph payload).
 
 ## Sketch (to refine in WI-002)
 
@@ -12,11 +12,11 @@ Map product concepts (Application, Version, Draft target, SBOM constituent, Comb
 sbom_application                    tags[]
   └── sbom_application_version      tags[]; DRAFT|RELEASED; version=target or released;
                                     based_on_version_id?
-        ├── graph_id → Combined SBOM (materialized aggregate, read-only)
-        ├── sbom_application_sbom[] (name, description, tags[], graph_id, sort_order)
+        ├── Combined SBOM → ephemeral union of all BOM graphs (not stored)
+        ├── sbom_application_sbom[] (product: BOM; name, description, tags[], graph_id, sort_order)
         │     └── each graph_id → constituent named graph (editable if DRAFT)
         └── sbom_application_fingerprint[]  name, category (approval|history|unknown)
-              └── graph_id → copy of aggregate only (never constituent rows)
+              └── graph_id → snapshot of Combined SBOM union (never BOM rows)
 ```
 
 ## Copy / snapshot (locked)
@@ -24,7 +24,8 @@ sbom_application                    tags[]
 | Action | Graphs copied |
 |--------|----------------|
 | New draft, keep split | Each constituent graph + metadata; rebuild aggregate |
-| New draft, combine | One constituent = copy of source **aggregate**; rebuild (identity) |
+| New draft, combine | One constituent = copy of source **version aggregate** |
+| New draft from fingerprint | One constituent = copy of **fingerprint** graph |
 | Fingerprint | **Aggregate only** — no `sbom_application_sbom` on the fingerprint |
 
 ## Open for WI-002
