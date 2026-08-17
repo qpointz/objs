@@ -7,13 +7,17 @@
 
 ## Goal
 
-Lock product language and resolve open GAPS questions that block implementation. Rewrite the SBOM example design glossary for multi-BOM + multi-draft.
+Lock remaining G-Q* and rewrite the SBOM example glossary so it matches [`STORY.md`](STORY.md) (multi-BOM, multi-draft, tags, fingerprint name/category).
 
 ## Deliverables
 
-- [ ] Resolve **G-Q1…G-Q15** (or defer with rationale) in [`GAPS.md`](GAPS.md)
-- [ ] Update [`docs/design/sbom/example.md`](../../../design/sbom/example.md): Application / Version / Draft (target + based-on) / SBOM constituent / Combined SBOM / Fingerprint
-- [ ] Align journey text with progressive disclosure and New draft modal
+- [ ] Resolve or defer **G-Q1…G-Q4**, **G-Q6…G-Q16** in [`GAPS.md`](GAPS.md) (G-Q5 and G-Q17 already resolved)
+- [ ] Update [`docs/design/sbom/example.md`](../../../design/sbom/example.md):
+  - Application / Version (target + based-on) / SBOM constituent / Combined SBOM
+  - Tags on app, version, constituent; **App+Ver+SBOMs** unique union
+  - New draft: optional **combine into a single BOM**
+  - Fingerprint: **name** + **category** (`approval` \| `history` \| `unknown`); always Combined
+- [ ] Align journeys with progressive disclosure, Create SBOM, New draft modal, Fingerprint modal, Applications portal stats
 
 ## Out of scope
 

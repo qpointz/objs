@@ -7,7 +7,7 @@
 
 ## Goal
 
-Bootstrap D-8 on branch `multi-bom-app-versions` from `origin/dev` with story trackers, GAPS (including open clarifications), and WI stubs. **No product code.**
+Bootstrap D-8 on branch `multi-bom-app-versions` from `origin/dev` with story trackers, GAPS (including open clarifications), and WI stubs. **No product code.** Later planning expanded locks (tags, combine-on-draft, fingerprint name/category); STORY / GAPS / WIs were updated in place — this WI stays complete.
 
 ## Deliverables
 

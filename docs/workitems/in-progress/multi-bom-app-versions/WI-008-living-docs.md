@@ -7,13 +7,13 @@
 
 ## Goal
 
-Align living design docs and example README with shipped multi-BOM + multi-draft behavior.
+Align living design docs and example README with shipped multi-BOM, multi-draft, tags, and fingerprint behavior.
 
 ## Deliverables
 
 - [ ] [`docs/design/sbom/example.md`](../../../design/sbom/example.md) final pass
 - [ ] Example README / AGENTS pointers if needed
-- [ ] `GRAPH-AND-RETRIEVAL.md` matches implementation
+- [ ] [`GRAPH-AND-RETRIEVAL.md`](GRAPH-AND-RETRIEVAL.md) matches implementation
 - [ ] Close resolved GAPS; leave deferred clearly linked to D-6/D-7
 
 ## Out of scope
@@ -22,4 +22,4 @@ Align living design docs and example README with shipped multi-BOM + multi-draft
 
 ## Acceptance
 
-- A new contributor can understand constituents, Combined SBOM, and multi-draft from design docs alone
+- A new contributor can understand constituents, Combined SBOM, multi-draft (incl. combine-on-create), tags (App+Ver+SBOMs), and fingerprint name/category from design docs alone

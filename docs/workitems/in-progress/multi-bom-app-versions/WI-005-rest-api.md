@@ -7,13 +7,15 @@
 
 ## Goal
 
-Expose constituent and multi-draft APIs on the inventory domain REST surface; keep product language; update OpenAPI.
+Expose constituent, multi-draft, tags, and fingerprint APIs on the inventory domain REST surface; keep product language; update OpenAPI.
 
 ## Deliverables
 
+- [ ] `tags` on application, version, and constituent payloads; version/BOM view `combinedTags` = App+Ver+SBOMs unique union
 - [ ] `GET/POST .../versions/{id}/sboms`; `GET/PUT/PATCH/DELETE .../sboms/{sbomId}`
 - [ ] Version BOM GET = aggregate (read-only); PUT aggregate → 405
-- [ ] Create draft body: `targetVersion`, `fromVersionId`; summaries include `basedOnVersionId` / based-on label
+- [ ] Create draft: `targetVersion`, `fromVersionId`, `combineConstituents`; summaries include `basedOnVersionId`
+- [ ] Create fingerprint: required `name` + `category` (`approval` \| `history` \| `unknown`); summaries drop `note`
 - [ ] List applications enriched: `latestVersion`, `versionCount`, `constituentCount` (and `draftCount` if locked)
 - [ ] OpenAPI / springdoc updates
 - [ ] Controller/MockMvc tests
@@ -25,5 +27,5 @@ Expose constituent and multi-draft APIs on the inventory domain REST surface; ke
 
 ## Acceptance
 
-- OpenAPI documents new routes; aggregate writes fail clearly
+- OpenAPI documents new routes; aggregate writes fail clearly; fingerprint category rejected if not in enum
 - List apps returns portal fields without N+1 in normal use
