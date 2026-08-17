@@ -31,7 +31,7 @@ member entities and graph-local edges (see [`graph/model.md`](graph/model.md)).
 
 ## Start and open
 
-Start the foundation side service (`:objs-app`, port **8081**), then open:
+Start the workbench runner (`:objs-service-app`, port **8081**), then open:
 
 ```text
 http://localhost:8081/workbench/
@@ -41,7 +41,7 @@ For PostgreSQL:
 
 ```powershell
 docker compose -f deploy/local-dev/docker-compose.yml up -d
-./gradlew :objs-app:run --args="--spring.profiles.active=postgres"
+./gradlew :objs-service-app:run --args="--spring.profiles.active=postgres"
 ```
 
 (The SBOM inventory app is a separate process: `./gradlew :sbom-service:run` on port **8080**.)
@@ -585,10 +585,10 @@ npm run dev
 ```
 
 Open `http://localhost:5173/workbench/`. Vite proxies `/api` requests to
-`http://localhost:8080`, so `objs-app` must also be running.
+`http://localhost:8080`, so `objs-service-app` must also be running.
 
 Packaged builds: Gradle `:objs-service-ui` (node-gradle) builds the SPA into
-`classpath:/static/ui/` on the module JAR; `:objs-service` depends on it
+`classpath:/static/workbench/` on the module JAR; `:objs-service-app` depends on it
 (`runtimeOnly`). Skip with `-PskipUi=true`. Served at `/workbench/` and does
 **not** require `:objs-sbom-example`. `WorkbenchSpaRoutingFilter` forwards
 client routes (including schema versions like `1.0.0`) to `/workbench/index.html`

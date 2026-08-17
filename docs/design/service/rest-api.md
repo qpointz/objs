@@ -1,9 +1,9 @@
 # REST API
 
-**Modules:** `:objs-service` (foundation controllers + workbench) · `:objs-gremlin-service` (traverse) · `:objs-app` (runnable + Swagger UI)  
+**Modules:** `:objs-service` (foundation controllers) · `:objs-gremlin-service` (traverse) · `:objs-service-app` (workbench runner + Swagger UI)  
 **Base path:** `/api/v1/objs`  
 **Auth:** none (G-R15)  
-**OpenAPI:** springdoc-openapi **3.0.3** — UI via `:objs-app:run` (`/swagger-ui.html`, `/v3/api-docs`, groups `graph` / `registry` / `traverse` / …)
+**OpenAPI:** springdoc-openapi **3.0.3** — UI via `:objs-service-app:run` (`/swagger-ui.html`, `/v3/api-docs`, groups `graph` / `registry` / `traverse` / …)
 
 ## Graphs + entity pool
 

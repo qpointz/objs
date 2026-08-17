@@ -14,7 +14,7 @@ objs/
   objs-service-ui/         # workbench SPA (Vite); node-gradle 7.0.2
   objs-gremlin-core/
   objs-gremlin-service/
-  objs-app/                # foundation side service (:8081)
+  objs-service-app/        # workbench-only runner (:8081)
   examples/
     sbom/
       sbom-service/        # :sbom-service (product app; :8080; no objs-service)
@@ -24,7 +24,7 @@ objs/
 ## Conventions
 
 - **Plugins per leaf module:** `java-library` (Kotlin libraries), `java` + `com.github.node-gradle.node`
-  on UI modules (`:objs-service-ui`, `:sbom-service-ui`), `application` (`objs-app`, `sbom-service`); Kotlin `jvm` on Kotlin modules;
+  on UI modules (`:objs-service-ui`, `:sbom-service-ui`), `application` (`objs-service-app`, `sbom-service`); Kotlin `jvm` on Kotlin modules;
   `kotlin-spring` on Spring modules; `kotlin-jpa` on `:objs-core` only
 - **BOM:** Gradle `platform(libs.boot.dependencies)` — no `io.spring.dependency-management`
 - **Catalog:** `libs.versions.toml` is the version SoT; declare only deps/plugins in use
@@ -34,11 +34,13 @@ objs/
 - **No** `build-logic` / custom convention plugins
 - **Workbench UI:** `:objs-service-ui` downloads Node via node-gradle, runs `npm ci` /
   `npm run build`, writes Vite output to `build/generated/vite`, then `processResources` copies
-  into `build/resources/main/static/ui/` (so project dependency classpaths see the assets).
-  `:objs-service` depends with `runtimeOnly`. Skip with `-PskipUi=true`.
+  into `build/resources/main/static/workbench/` (so project dependency classpaths see the assets).
+  `:objs-service-app` (and example sidecars) depend with `runtimeOnly`. Skip with `-PskipUi=true`.
+  **Convention:** HTTP prefix = classpath folder under `static/` (`/workbench` → `static/workbench`,
+  `/ar` → `static/ar`, `/sbom` → `static/sbom`).
 - **SBOM UI:** same pattern for `:sbom-service-ui` → `:sbom-service` `runtimeOnly`.
-- **Side service lock:** `:sbom-service` must not depend on `:objs-service`, `:objs-service-ui`,
-  or `:objs-gremlin-service` (enforced in `sbom-service/build.gradle.kts`).
+- **SBOM compile lock:** `:sbom-service` must not compile against `:objs-service`, `:objs-service-ui`,
+  `:objs-gremlin-service`, or `:objs-service-app` (enforced in `sbom-service/build.gradle.kts`).
 
 ## Useful commands
 
@@ -49,6 +51,6 @@ objs/
 ./gradlew :objs-service-ui:build
 ./gradlew :objs-service:build -PskipUi=true
 ./gradlew :objs-core:testIT
-./gradlew :objs-app:run          # foundation side service → :8081
+./gradlew :objs-service-app:run  # workbench only → :8081
 ./gradlew :sbom-service:run      # SBOM inventory → :8080
 ```

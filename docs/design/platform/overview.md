@@ -36,7 +36,7 @@ group/version/toolchain live in the root [`build.gradle.kts`](../../../build.gra
 
 ```mermaid
 flowchart LR
-  app[objs-app side service :8081]
+  app[objs-service-app workbench :8081]
   gsvc[objs-gremlin-service]
   gcore[objs-gremlin-core]
   service[objs-service]
@@ -46,7 +46,7 @@ flowchart LR
   core[objs-core]
   app -->|implementation| service
   app -->|implementation| gsvc
-  service -->|runtimeOnly| ui
+  app -->|runtimeOnly| ui
   gsvc --> gcore
   gsvc --> service
   gcore --> core
@@ -61,14 +61,14 @@ flowchart LR
 |--------|-------------|----------------|
 | **objs-core** | `:objs-core` | Entity SDK, core types, **JPA / PostgreSQL persistence** |
 | **objs-service** | `:objs-service` | Spring **REST** + Boot **autoconfiguration** (foundation side) |
-| **objs-service-ui** | `:objs-service-ui` | Foundation workbench SPA (`runtimeOnly` of objs-service) |
+| **objs-service-ui** | `:objs-service-ui` | Foundation workbench SPA (`runtimeOnly` of `:objs-service-app` or example sidecars) |
 | **objs-gremlin-core** | `:objs-gremlin-core` | BoM → TinkerGraph materialization + gremlin-lang eval |
 | **objs-gremlin-service** | `:objs-gremlin-service` | Gremlin traverse REST + Boot autoconfig |
 | **sbom-service** | `:sbom-service` (`examples/sbom/sbom-service`) | SBOM inventory app (launchable; **no** objs-service) |
 | **sbom-service-ui** | `:sbom-service-ui` (`examples/sbom/sbom-service-ui`) | Inventory SPA |
-| **objs-app** | `:objs-app` | Foundation **side service** runnable — see [`app.md`](app.md) |
+| **objs-service-app** | `:objs-service-app` | Workbench-only runnable — see [`app.md`](app.md) |
 
-Dependency rule: Gremlin and service libraries depend on core; `objs-app` wires the foundation side service only. Example apps under `examples/` are separate launchables and **must not** depend on `:objs-service` / `:objs-service-ui` / `:objs-gremlin-service`. Core must not depend on service/app/gremlin.
+Dependency rule: Gremlin and service libraries depend on core; `objs-service-app` wires the workbench runner only and **must not** depend on `examples/`. Example apps under `examples/` are separate launchables and **must not** depend on `:objs-service` / `:objs-service-ui` / `:objs-gremlin-service` / `:objs-service-app` at compile time. Core must not depend on service/app/gremlin.
 
 Object/graph capabilities that examples still reimplement (reverse lookup, identity query, paging, graph copy) are listed in [`../graph/apps-vs-foundation.md`](../graph/apps-vs-foundation.md).
 

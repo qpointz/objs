@@ -367,7 +367,7 @@ This keeps each WI a **reviewable, reproducible checkpoint** on the story branch
 
 - `objs-core` — Entity SDK, domain types, JPA / PostgreSQL persistence, typed-domain toolkit
 - `objs-service` — Spring REST API and Boot autoconfiguration (library); foundation side service (with UI)
-- `objs-app` — Foundation **side service** (`./gradlew :objs-app:run`, port 8081); no example apps
+- `objs-service-app` — Workbench-only runnable (`./gradlew :objs-service-app:run`, port 8081); no example apps
 - `examples/sbom/sbom-service` (`:sbom-service`) — Concrete SBOM inventory app (canonical ontology, domain API; **must not** use objs-service)
 - `examples/sbom/sbom-service-ui` (`:sbom-service-ui`) — Inventory SPA (node-gradle, like `:objs-service-ui`)
 
@@ -409,7 +409,7 @@ models, and `SbomRegistry` agree.
   touches foundation or ontology.
 - Prefer integrating in the **feature WI** itself; use a follow-up WI in the **same story** only when
   the feature WI would otherwise become unreviewably large — never defer to a later story by default.
-- `objs-app` wiring (dependency, config, seed flags) stays consistent with the example module.
+- `:objs-service-app` does **not** depend on example modules (workbench-only runner).
 
 ### Exceptions
 

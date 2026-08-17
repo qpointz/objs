@@ -16,13 +16,13 @@ jars are removed (rebuild required; `/workbench/` then 404s). Gradle still forbi
 
 | Surface | URL |
 |---------|-----|
-| Inventory UI (Mantine) | http://localhost:8080/ui/ |
+| Inventory UI (Mantine) | http://localhost:8080/sbom/ |
 | Workbench (when runtime jars present) | http://localhost:8080/workbench/ |
 | Domain OpenAPI | http://localhost:8080/swagger-ui.html |
 
 The `demo` profile loads ontology seeds and a **70-application** Meridian Financial Group inventory (Java, Python, and web LOB apps with 1–5 versions, Maven/npm/PyPI pins, org/runtime/deploy graph, portfolio taxonomy).
 
-`:objs-app` remains an optional **separate** foundation process (port **8081**) if you prefer not to use the in-process sidecar.
+`:objs-service-app` remains an optional **separate** workbench process (port **8081**) if you prefer not to use the in-process sidecar.
 
 ## What you see
 

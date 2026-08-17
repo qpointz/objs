@@ -24,7 +24,7 @@ There is no Gremlin Server process.
 |--------|------|
 | `:objs-gremlin-core` | Materializer, strategies, `BoMGremlinEngine`, result projection |
 | `:objs-gremlin-service` | `POST /api/v1/objs/graph/traverse/gremlin`, OpenAPI tag `traverse` |
-| `:objs-app` | Depends on `:objs-gremlin-service` so Traverse/Query REST is on the classpath |
+| `:objs-service-app` | Depends on `:objs-gremlin-service` so Traverse/Query REST is on the classpath |
 | `:objs-service` UI | Query peer view; does **not** embed TinkerPop |
 
 Foundation modules (`:objs-core`, `:objs-service`) stay free of TinkerPop dependencies.
@@ -142,9 +142,9 @@ See [`../ui.md`](../ui.md).
 
 ## Concrete example (SBOM)
 
-Ontology and `:objs-sbom-example` code are unchanged by this feature: traverse is generic over any
-stored graph. Demo path: run `:objs-app` with the **sbom** profile (seeded canonical graph), then
-Query / traverse REST with a matcher such as `{ "anno": { "app": "app-00001" } }`.
+Ontology and SBOM inventory code are unchanged by this feature: traverse is generic over any
+stored graph. Demo path: run `:sbom-service` (seeded inventory) or `:objs-service-app` (empty
+workbench), then Query / traverse REST with a matcher such as `{ "anno": { "app": "app-00001" } }`.
 
 Ready-to-run scripts (Product↔Database, Service/Policy tables, paths): [`gremlin-examples.md`](gremlin-examples.md).
 

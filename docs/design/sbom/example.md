@@ -2,13 +2,13 @@
 
 **Status:** completed — story [`sbom-inventory-app`](../../workitems/completed/20260816-sbom-inventory-app/STORY.md) (D-2)  
 **Modules:** `:sbom-service` + `:sbom-service-ui` under [`examples/sbom/`](../../../examples/sbom/)  
-**Run:** `./gradlew :sbom-service:run` → UI **`http://localhost:8080/ui/`** (demo seeds via `demo` profile)  
+**Run:** `./gradlew :sbom-service:run` → UI **`http://localhost:8080/sbom/`** (demo seeds via `demo` profile)  
 **Engineer mapping:** [`GRAPH-AND-RETRIEVAL.md`](../../workitems/completed/20260816-sbom-inventory-app/GRAPH-AND-RETRIEVAL.md)  
 **Ontology:** [`canonical-spec.md`](canonical-spec.md) (reuse; extend only when journeys require)
 
 This document is the **product** design for the inventory app. End-user UI and **domain** API use the glossary below — never graph / entity / edge / matcher vocabulary.
 
-Foundation REST (`/api/v1/objs/**`) and the workbench are the **`:objs-app` side service**
+Foundation REST (`/api/v1/objs/**`) and the workbench are the **`:objs-service-app` workbench runner**
 (port **8081**). This product **must not** depend on or call them.
 
 ---
@@ -165,7 +165,7 @@ Users see **friendly** labels (beautifier of role codes, e.g. `DEPENDS_ON` → �
 
 - Auth / multi-tenant  
 - Object/component versioning lifecycle  
-- Foundation workbench / `/api/v1/objs/**` on this app (side service `:objs-app` only)  
+- Foundation workbench / `/api/v1/objs/**` on this app (workbench runner `:objs-service-app` only)  
 - CycloneDX/SPDX **import**; strong/certified export  
 - Custom BI builder / scheduled reporting  
 
@@ -192,4 +192,4 @@ Full schema→Kotlin codegen remains optional when the modeling team supplies ge
 - Canonical ontology: [`canonical-spec.md`](canonical-spec.md)  
 - Seeds: [`../graph/seeds.md`](../graph/seeds.md)  
 - Engineer mapping: [`GRAPH-AND-RETRIEVAL.md`](../../workitems/completed/20260816-sbom-inventory-app/GRAPH-AND-RETRIEVAL.md)  
-- Foundation workbench (separate app): [`../ui.md`](../ui.md) · `:objs-app`  
+- Foundation workbench (separate app): [`../ui.md`](../ui.md) · `:objs-service-app`  

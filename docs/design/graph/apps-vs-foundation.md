@@ -17,7 +17,7 @@ SBOM story tracker for the same gaps: [`FOUNDATION-BACKLOG.md`](../../workitems/
 | **objs-core** | Entities, edges, named graphs + membership, schema/allow-list catalogs, persist gate, identity *projection*, matchers (`obj-expr`, `graphs-in`, …), Graph/ObjectSchema/AllowedEdge seeds, Gremlin materialize + eval |
 | **objs-gremlin-core** | Matcher → TinkerGraph → gremlin-lang |
 | **Example apps** | Product tables and meaning of graphs (SBOM apps/versions/fingerprints/portfolios; AR collections + write modes), product REST, ontology packs, reports |
-| **objs-service / objs-app** | Foundation *workbench* only — not an example dependency |
+| **objs-service / objs-service-app** | Foundation *workbench* only — not an example dependency |
 
 A third example should be mostly **domain table + routes + seeds**, not another copy of pool/graph query glue.
 
@@ -93,6 +93,14 @@ SPA chrome, schema *forms*, Gradle node-gradle packaging are duplicates too; the
 ## Appendix — UI and Gradle (secondary)
 
 Not store work. Recorded so a later UI-kit / boot-starter story does not confuse them with FB-1/2/3.
+
+**URL = classpath folder** under `static/`:
+
+| App | URL | Classpath |
+|-----|-----|-----------|
+| Workbench | `/workbench/` | `static/workbench/` |
+| Asset repository | `/ar/` | `static/ar/` |
+| SBOM inventory | `/sbom/` | `static/sbom/` |
 
 - Both SPAs copy schema portal/view/tree, instance forms, layout chrome.
 - SPA deep-link filter: SBOM copies a filter; AR extends `objs-service` (examples must not depend on workbench REST).

@@ -5,7 +5,7 @@ SBOM REST helper: create / retrieve / update / delete graph objects.
 Uses the example SBOM API for app-scoped upserts and fetches, and the
 foundation graph API for batch delete.
 
-Defaults to http://localhost:8080 (running objs-app).
+Defaults to http://localhost:8080 (running :sbom-service).
 
 Examples:
   python random_sbom_crud.py status

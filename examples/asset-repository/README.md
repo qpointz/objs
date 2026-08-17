@@ -5,7 +5,7 @@ Objs as a **centralized object store**: collections (named graphs), typed object
 ```text
 examples/asset-repository/
   asset-repository-service/       # Java 21 Spring Boot
-  asset-repository-service-ui/    # Domain SPA → /app/
+  asset-repository-service-ui/    # Domain SPA → /ar/
   scripts/                        # Python client (WI-007)
   demo/load-data/                 # qsynth model, default CSVs, REST loader
 ```
@@ -22,7 +22,7 @@ Uses the **`demo`** profile by default (ontology + collection instance seeds). S
 
 | Surface | URL |
 |---------|-----|
-| Domain UI | http://localhost:8080/app/ |
+| Domain UI | http://localhost:8080/ar/ |
 | Workbench (schemas) | http://localhost:8080/workbench/ |
 | Domain OpenAPI | http://localhost:8080/swagger-ui.html — select group **asset-repository** (also `/v3/api-docs/asset-repository`) |
 | Domain REST | http://localhost:8080/api/v1/asset-repository/** |
@@ -87,4 +87,4 @@ Calls **`/api/v1/asset-repository/**` only** (never foundation `/api/v1/objs/**`
 ## Notes
 
 - Hybrid persistence: `ar_collection` / `ar_collection_type` for metadata; object payloads only in objs.
-- `objs-app` does **not** depend on this example.
+- `objs-service-app` does **not** depend on this example.
