@@ -39,10 +39,11 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`sbom-inventory-app`](completed/20260816-sbom-inventory-app/STORY.md) — Applications \| Portfolios inventory app; portfolio-scoped MI (latest-version graphs + Gremlin); weak CDX; programmatic objs (D-2). WI-000…WI-015.
 - [`spa-url-classpath-align`](completed/20260817-spa-url-classpath-align/STORY.md) — Align SPA URL prefix with classpath folder (`/workbench`, `/ar`, `/sbom`); rename `:objs-app` → `:objs-service-app`; UI JAR on the runner only (P-2). WI-000…WI-004.
 - [`multi-bom-app-versions`](completed/20260817-multi-bom-app-versions/STORY.md) — Multi-BOM constituents + Combined SBOM; multi-draft (target + optional combine); tags; fingerprint name/category; inventory UI polish (D-8). WI-000…WI-008.
+- [`flyway-module-isolation`](completed/20260817-flyway-module-isolation/STORY.md) — Two Flyway lines: objs-core vendor SQL + `flyway_schema_history_objs` before Boot Flyway; examples as derived apps (P-3). WI-000…WI-004.
 
 ### In Progress
 
-- [`flyway-module-isolation`](in-progress/flyway-module-isolation/STORY.md) — Two Flyway lines: objs-core vendor SQL + `flyway_schema_history_objs` before Boot Flyway; examples as derived apps (P-3). WI-000…WI-004.
+_(none)_
 
 ### Planned
 

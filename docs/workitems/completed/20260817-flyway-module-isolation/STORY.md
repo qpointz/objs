@@ -2,9 +2,9 @@
 
 **Slug:** `flyway-module-isolation`  
 **Branch:** `flyway-module-isolation`  
-**Status:** in-progress  
-**Folder:** [`docs/workitems/in-progress/flyway-module-isolation/`](.)  
-**Backlog:** [P-3](../../BACKLOG.md)  
+**Status:** closed  
+**Folder:** [`docs/workitems/completed/20260817-flyway-module-isolation/`](.)  
+**Backlog:** [P-3](../../BACKLOG.md) (done)  
 **Base:** `origin/dev`  
 **Design:** [`docs/design/graph/persistence.md`](../../../design/graph/persistence.md), [`docs/design/core/README.md`](../../../design/core/README.md)  
 **Gaps:** [`GAPS.md`](GAPS.md)  
