@@ -6,17 +6,21 @@ data class ApplicationSummary(
     val id: UUID,
     val name: String,
     val description: String?,
+    val tags: List<String> = emptyList(),
 )
 
 data class CreateApplicationRequest(
     val name: String,
     val description: String? = null,
     val id: UUID? = null,
+    val targetVersion: String? = null,
+    val tags: List<String> = emptyList(),
 )
 
 data class UpdateApplicationRequest(
     val name: String? = null,
     val description: String? = null,
+    val tags: List<String>? = null,
 )
 
 /** Product view of an edit-draft BOM (no graph vocabulary). */
@@ -72,6 +76,26 @@ data class InferredAppDependency(
 
 data class CreateDraftVersionRequest(
     val fromVersionId: UUID? = null,
+    val fromFingerprintId: UUID? = null,
+    val targetVersion: String? = null,
+    val combineConstituents: Boolean? = null,
+)
+
+data class RenameVersionRequest(
+    val version: String,
+)
+
+data class PatchVersionRequest(
+    val version: String? = null,
+    val tags: List<String>? = null,
+)
+
+data class ApplicationPortalStats(
+    val applicationId: UUID,
+    val versionCount: Int,
+    val bomCount: Int,
+    val latestVersion: ApplicationVersionSummary?,
+    val latestMultiBom: Boolean,
 )
 
 data class PromoteVersionRequest(
@@ -80,6 +104,38 @@ data class PromoteVersionRequest(
 
 data class CreateFingerprintRequest(
     val note: String? = null,
+    val name: String? = null,
+    val category: String? = null,
+)
+
+data class CreateBomRequest(
+    val name: String,
+    val description: String? = null,
+    val tags: List<String> = emptyList(),
+)
+
+data class UpdateBomRequest(
+    val name: String? = null,
+    val description: String? = null,
+    val tags: List<String>? = null,
+)
+
+data class BomSummary(
+    val id: UUID,
+    val versionId: UUID,
+    val name: String,
+    val description: String?,
+    val tags: List<String>,
+    val sortOrder: Int,
+)
+
+data class CombinedBomView(
+    val version: ApplicationVersionSummary,
+    val applicationName: String,
+    val assets: List<AssetView>,
+    val relations: List<RelationView>,
+    val combinedTags: List<String>,
+    val selectedBomIds: List<UUID>,
 )
 
 data class ReplaceVersionBomRequest(
@@ -95,6 +151,10 @@ data class ApplicationVersionSummary(
     val label: String?,
     val capturedAt: java.time.Instant,
     val promotedAt: java.time.Instant?,
+    val tags: List<String> = emptyList(),
+    val basedOnVersionId: UUID? = null,
+    val basedOnFingerprintId: UUID? = null,
+    val bomCount: Int = 1,
 )
 
 data class VersionBomView(
@@ -102,6 +162,7 @@ data class VersionBomView(
     val applicationName: String,
     val assets: List<AssetView>,
     val relations: List<RelationView>,
+    val combinedTags: List<String> = emptyList(),
 )
 
 data class ApplicationFingerprintSummary(
@@ -109,6 +170,8 @@ data class ApplicationFingerprintSummary(
     val versionId: UUID,
     val createdAt: java.time.Instant,
     val note: String?,
+    val name: String = note.orEmpty(),
+    val category: String = "unknown",
     val contentSha256: String,
 )
 

@@ -25,10 +25,26 @@ interface SbomApplicationVersionRepository : JpaRepository<SbomApplicationVersio
     fun findByIdAndApplicationId(id: UUID, applicationId: UUID): SbomApplicationVersionRecord?
 
     fun findByApplicationIdAndStatus(applicationId: UUID, status: String): List<SbomApplicationVersionRecord>
+
+    fun findByApplicationIdAndVersion(applicationId: UUID, version: String): SbomApplicationVersionRecord?
+
+    fun findByBasedOnVersionId(basedOnVersionId: UUID): List<SbomApplicationVersionRecord>
+
+    fun findByBasedOnFingerprintId(basedOnFingerprintId: UUID): List<SbomApplicationVersionRecord>
 }
 
 interface SbomApplicationFingerprintRepository : JpaRepository<SbomApplicationFingerprintRecord, UUID> {
     fun findByVersionIdOrderByCreatedAtDesc(versionId: UUID): List<SbomApplicationFingerprintRecord>
 
     fun findByIdAndVersionId(id: UUID, versionId: UUID): SbomApplicationFingerprintRecord?
+}
+
+interface SbomApplicationSbomRepository : JpaRepository<SbomApplicationSbomRecord, UUID> {
+    fun findByVersionIdOrderBySortOrderAscIdAsc(versionId: UUID): List<SbomApplicationSbomRecord>
+
+    fun findByIdAndVersionId(id: UUID, versionId: UUID): SbomApplicationSbomRecord?
+
+    fun findByVersionIdAndName(versionId: UUID, name: String): SbomApplicationSbomRecord?
+
+    fun countByVersionId(versionId: UUID): Long
 }
