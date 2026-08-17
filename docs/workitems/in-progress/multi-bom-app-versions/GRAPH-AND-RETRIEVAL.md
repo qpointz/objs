@@ -110,6 +110,7 @@ DRAFT rows with null `version` → default `0.1.0` and compute `version_serial`.
 | Fingerprint view / CDX | Fingerprint snapshot graph |
 | MI / depends-on / CDX-of-latest | Union of BOMs of **latest RELEASED** (`version_serial`); skip apps with no RELEASED |
 | Portal stats | Domain counts (lazy per app); `latestMultiBom` = latest RELEASED has ≥ 2 BOM rows |
+| Inventory REST | `/api/v1/inventory/applications/**` — BOMs under `.../sboms`, Combined under `.../combined` (GET only), fingerprints require `name`+`category` |
 
 ---
 

@@ -65,7 +65,7 @@ Extend the SBOM inventory app so an **application version** is a **combination o
 | 2 — Persistence + domain | WI-003, WI-004 | done | Flyway; ephemeral union; multi-draft; fingerprint columns |
 | 3 — API | WI-005 | done | REST + OpenAPI |
 | 4 — UI | WI-006 | done | Progressive disclosure + drafts + fingerprint modal |
-| 5 — Demo + portal + living docs | WI-007, WI-008 | after WI-006 | Seeder, Applications portal, design README |
+| 5 — Demo + portal + living docs | WI-007, WI-008 | done | Seeder, Applications portal, design README |
 
 ## Work Items
 
@@ -77,7 +77,7 @@ Extend the SBOM inventory app so an **application version** is a **combination o
 - [x] WI-005 — REST constituents + multi-draft + fingerprint (`WI-005-rest-api.md`)
 - [x] WI-006 — Progressive UI + drafts + metadata (`WI-006-ui.md`)
 - [x] WI-007 — Demo seeder + Applications portal (`WI-007-demo-portal.md`)
-- [ ] WI-008 — Living docs (`WI-008-living-docs.md`)
+- [x] WI-008 — Living docs (`WI-008-living-docs.md`)
 
 ## Out of scope
 

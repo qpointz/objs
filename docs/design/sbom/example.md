@@ -1,6 +1,6 @@
 # SBOM applications inventory
 
-**Status:** living — D-2 inventory plus in-progress [`multi-bom-app-versions`](../../workitems/in-progress/multi-bom-app-versions/STORY.md) (D-8)  
+**Status:** living — D-2 inventory plus [`multi-bom-app-versions`](../../workitems/in-progress/multi-bom-app-versions/STORY.md) (D-8: multi-BOM versions, parallel drafts, tags, fingerprints)  
 **Modules:** `:sbom-service` + `:sbom-service-ui` under [`examples/sbom/`](../../../examples/sbom/)  
 **Run:** `./gradlew :sbom-service:run` → UI **`http://localhost:8080/sbom/`** (demo seeds via `demo` profile)  
 **Engineer mapping:** [`GRAPH-AND-RETRIEVAL.md`](../../workitems/in-progress/multi-bom-app-versions/GRAPH-AND-RETRIEVAL.md)  
@@ -132,7 +132,7 @@ See [`GRAPH-AND-RETRIEVAL.md`](../../workitems/in-progress/multi-bom-app-version
 Base path (evolving): `/api/v1/inventory/...`  
 Public shapes use glossary terms — **no** `BoM*` / graph / matcher names.
 
-Illustrative routes (WI-006+; exact paths evolve with later WIs):
+Illustrative routes (inventory OpenAPI group on `:sbom-service`):
 
 | Method | Path | Notes |
 |--------|------|-------|
@@ -145,8 +145,11 @@ Illustrative routes (WI-006+; exact paths evolve with later WIs):
 | GET | `/applications/{id}/versions/{versionId}` | Version + Combined SBOM view (ephemeral; read-only) |
 | PATCH | `/applications/{id}/versions/{versionId}` | DRAFT: rename target, version tags |
 | DELETE | `/applications/{id}/versions/{versionId}` | DRAFT only; cascade dependents after confirm |
+| GET | `/applications/{id}/versions/{versionId}/combined` | Ephemeral Combined SBOM (optional `sbomIds`); PUT → 405 |
+| GET | `/applications/{id}/versions/{versionId}/dependents` | DRAFT delete preview (cascade list) |
 | GET/POST | `/applications/{id}/versions/{versionId}/sboms` | List / create BOM |
 | GET/PUT/PATCH/DELETE | `.../sboms/{sbomId}` | One BOM (DELETE not last) |
+| GET/POST | `/applications/{id}/versions/{versionId}/fingerprints` | List / create (`name` + `category`) |
 | GET | `/assets?type=` | List by type |
 | POST | `/assets/search` | Type + searchable field filters |
 | POST | `/assets` | Create pool asset (optional owner name) |
