@@ -85,6 +85,19 @@ data class RenameVersionRequest(
     val version: String,
 )
 
+data class PatchVersionRequest(
+    val version: String? = null,
+    val tags: List<String>? = null,
+)
+
+data class ApplicationPortalStats(
+    val applicationId: UUID,
+    val versionCount: Int,
+    val bomCount: Int,
+    val latestVersion: ApplicationVersionSummary?,
+    val latestMultiBom: Boolean,
+)
+
 data class PromoteVersionRequest(
     val version: String,
 )
@@ -148,6 +161,7 @@ data class VersionBomView(
     val applicationName: String,
     val assets: List<AssetView>,
     val relations: List<RelationView>,
+    val combinedTags: List<String> = emptyList(),
 )
 
 data class ApplicationFingerprintSummary(

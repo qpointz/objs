@@ -20,6 +20,7 @@ import org.poc.objs.sbom.domain.CreateFingerprintRequest
 import org.poc.objs.sbom.domain.DraftAssetWrite
 import org.poc.objs.sbom.domain.DraftRelationWrite
 import org.poc.objs.sbom.domain.InferredAppDependency
+import org.poc.objs.sbom.domain.PatchVersionRequest
 import org.poc.objs.sbom.domain.PromoteVersionRequest
 import org.poc.objs.sbom.domain.RelationView
 import org.poc.objs.sbom.domain.ReplaceVersionBomRequest
@@ -330,41 +331,47 @@ class ApplicationVersionService(
     }
 
     @Transactional
-    fun replaceBom(applicationId: UUID, versionId: UUID, request: ReplaceVersionBomRequest): VersionBomView {
+    fun replaceBom(
+        applicationId: UUID,
+        versionId: UUID,
+        request: ReplaceVersionBomRequest,
+        bomId: UUID? = null,
+    ): VersionBomView {
         sbom.ensureRegistry()
         val app = requireApplication(applicationId)
         val row = requireWritable(applicationId, versionId)
-        forbidFingerprintGraph(bomGraphId(row))
+        val graphId = if (bomId == null) bomGraphId(row) else requireBom(row.id, bomId).graphId
+        forbidFingerprintGraph(graphId)
         val resolved =
-            namedGraphs.get(bomGraphId(row))
+            namedGraphs.get(graphId)
                 ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Version graph missing")
         val currentIds = resolved.contents.entities.mapNotNull { it.id }.toSet()
         val desired = request.assetIds.toSet()
         for (id in desired - currentIds) {
             try {
-                namedGraphs.attach(bomGraphId(row), id)
+                namedGraphs.attach(graphId, id)
             } catch (ex: BoMGraphException) {
                 throw ResponseStatusException(HttpStatus.BAD_REQUEST, ex.message)
             }
         }
         for (id in currentIds - desired) {
             try {
-                namedGraphs.detach(bomGraphId(row), id)
+                namedGraphs.detach(graphId, id)
             } catch (ex: BoMGraphException) {
                 throw ResponseStatusException(HttpStatus.BAD_REQUEST, ex.message)
             }
         }
         val after =
-            namedGraphs.get(bomGraphId(row))
+            namedGraphs.get(graphId)
                 ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Version graph missing")
         val existingEdgeIds = after.contents.edges.mapNotNull { it.id }
         if (existingEdgeIds.isNotEmpty()) {
-            applyDeleteEdges(bomGraphId(row), existingEdgeIds)
+            applyDeleteEdges(graphId, existingEdgeIds)
         }
         for (rel in request.relations) {
-            applyRelation(bomGraphId(row), rel)
+            applyRelation(graphId, rel)
         }
-        return toBomView(app, row)
+        return toBomView(app, row, graphId)
     }
 
     @Transactional
@@ -505,6 +512,31 @@ class ApplicationVersionService(
         for (graphId in graphIds.distinct()) {
             namedGraphs.delete(graphId)
         }
+    }
+
+    @Transactional
+    fun patchDraft(applicationId: UUID, versionId: UUID, request: PatchVersionRequest): ApplicationVersionSummary {
+        val row = requireVersion(applicationId, versionId)
+        if (row.status != ApplicationVersionStatus.DRAFT) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Only a draft can be patched")
+        }
+        request.version?.let { raw ->
+            val ident = raw.trim()
+            if (ident.isEmpty()) {
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "version is required")
+            }
+            val clash = versions.findByApplicationIdAndVersion(applicationId, ident)?.takeIf { it.id != row.id }
+            if (clash != null) {
+                throw ResponseStatusException(HttpStatus.CONFLICT, "Version already exists: $ident")
+            }
+            row.version = ident
+            row.label = ident
+            row.versionSerial = versionComparer.toSerial(ident)
+        }
+        if (request.tags != null) {
+            row.tags = BomUnion.sanitizeTags(request.tags)
+        }
+        return versions.save(row).toSummary()
     }
 
     private fun applyAssetWrite(app: SbomApplicationRecord, graphId: UUID, write: DraftAssetWrite) {
@@ -778,6 +810,10 @@ class ApplicationVersionService(
         walk(versionId)
         return out
     }
+
+    private fun requireBom(versionId: UUID, bomId: UUID): SbomApplicationSbomRecord =
+        boms.findByIdAndVersionId(bomId, versionId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "BOM not found: $bomId")
 
     private fun primaryBom(row: SbomApplicationVersionRecord): SbomApplicationSbomRecord =
         boms.findByVersionIdOrderBySortOrderAscIdAsc(row.id).firstOrNull()
