@@ -1,5 +1,6 @@
 import type {
   ApplicationFingerprintSummary,
+  ApplicationPortalStats,
   ApplicationSummary,
   ApplicationVersionSummary,
   AssetDetailView,
@@ -10,7 +11,9 @@ import type {
   AssetTypeSummary,
   AssetSearchPage,
   AssetView,
+  BomSummary,
   BoMSchema,
+  CombinedBomView,
   SchemaCatalogEntry,
   SchemaUsedInRef,
   InferredAppDependency,
@@ -41,7 +44,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (res.status === 204) {
     return undefined as T
   }
-  return (await res.json()) as T
+  const text = await res.text()
+  if (!text) {
+    return undefined as T
+  }
+  return JSON.parse(text) as T
 }
 
 const apps = '/api/v1/inventory/applications'
@@ -53,24 +60,94 @@ export const api = {
   listApplications: (q?: string) =>
     request<ApplicationSummary[]>(q ? `${apps}?q=${encodeURIComponent(q)}` : apps),
 
-  createApplication: (body: { name: string; description?: string }) =>
+  createApplication: (body: { name: string; description?: string; targetVersion: string; tags?: string[] }) =>
     request<ApplicationSummary>(apps, { method: 'POST', body: JSON.stringify(body) }),
 
   getApplication: (id: string) => request<ApplicationSummary>(`${apps}/${id}`),
 
-  updateApplication: (id: string, body: { name?: string; description?: string | null }) =>
+  updateApplication: (id: string, body: { name?: string; description?: string | null; tags?: string[] }) =>
     request<ApplicationSummary>(`${apps}/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+
+  getApplicationStats: (id: string) => request<ApplicationPortalStats>(`${apps}/${id}/stats`),
 
   listVersions: (id: string) => request<ApplicationVersionSummary[]>(`${apps}/${id}/versions`),
 
-  createDraftVersion: (id: string, fromVersionId?: string) =>
+  createDraftVersion: (
+    id: string,
+    body: {
+      targetVersion: string
+      fromVersionId?: string
+      fromFingerprintId?: string
+      combineConstituents?: boolean
+    },
+  ) =>
     request<VersionBomView>(`${apps}/${id}/versions`, {
       method: 'POST',
-      body: JSON.stringify(fromVersionId ? { fromVersionId } : {}),
+      body: JSON.stringify(body),
     }),
 
   getVersion: (id: string, versionId: string) =>
     request<VersionBomView>(`${apps}/${id}/versions/${versionId}`),
+
+  patchVersion: (id: string, versionId: string, body: { version?: string; tags?: string[] }) =>
+    request<ApplicationVersionSummary>(`${apps}/${id}/versions/${versionId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
+
+  deleteVersion: (id: string, versionId: string, confirmDependents = false) =>
+    request<void>(
+      `${apps}/${id}/versions/${versionId}?confirmDependents=${confirmDependents}`,
+      { method: 'DELETE' },
+    ),
+
+  listVersionDependents: (id: string, versionId: string) =>
+    request<ApplicationVersionSummary[]>(`${apps}/${id}/versions/${versionId}/dependents`),
+
+  getCombined: (id: string, versionId: string, sbomIds?: string[]) => {
+    const q =
+      sbomIds && sbomIds.length > 0
+        ? `?${sbomIds.map((bomId) => `sbomIds=${encodeURIComponent(bomId)}`).join('&')}`
+        : ''
+    return request<CombinedBomView>(`${apps}/${id}/versions/${versionId}/combined${q}`)
+  },
+
+  listBoms: (id: string, versionId: string) =>
+    request<BomSummary[]>(`${apps}/${id}/versions/${versionId}/sboms`),
+
+  createBom: (id: string, versionId: string, body: { name: string; description?: string; tags?: string[] }) =>
+    request<BomSummary>(`${apps}/${id}/versions/${versionId}/sboms`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  getBom: (id: string, versionId: string, sbomId: string) =>
+    request<VersionBomView>(`${apps}/${id}/versions/${versionId}/sboms/${sbomId}`),
+
+  saveBom: (
+    id: string,
+    versionId: string,
+    sbomId: string,
+    body: { assetIds: string[]; relations: { fromAssetId: string; toAssetId: string; role: string }[] },
+  ) =>
+    request<VersionBomView>(`${apps}/${id}/versions/${versionId}/sboms/${sbomId}`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }),
+
+  patchBom: (
+    id: string,
+    versionId: string,
+    sbomId: string,
+    body: { name?: string; description?: string | null; tags?: string[] },
+  ) =>
+    request<BomSummary>(`${apps}/${id}/versions/${versionId}/sboms/${sbomId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
+
+  deleteBom: (id: string, versionId: string, sbomId: string) =>
+    request<void>(`${apps}/${id}/versions/${versionId}/sboms/${sbomId}`, { method: 'DELETE' }),
 
   saveVersionBom: (
     id: string,
@@ -94,10 +171,10 @@ export const api = {
   getFingerprint: (id: string, versionId: string, fingerprintId: string) =>
     request<VersionBomView>(`${apps}/${id}/versions/${versionId}/fingerprints/${fingerprintId}`),
 
-  createFingerprint: (id: string, versionId: string, note?: string) =>
+  createFingerprint: (id: string, versionId: string, body: { name: string; category: string }) =>
     request<ApplicationFingerprintSummary>(`${apps}/${id}/versions/${versionId}/fingerprints`, {
       method: 'POST',
-      body: JSON.stringify(note ? { note } : {}),
+      body: JSON.stringify(body),
     }),
 
   dependsOnVersion: (id: string, versionId: string) =>

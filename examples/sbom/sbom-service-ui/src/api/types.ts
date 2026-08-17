@@ -2,6 +2,15 @@ export type ApplicationSummary = {
   id: string
   name: string
   description: string | null
+  tags?: string[]
+}
+
+export type ApplicationPortalStats = {
+  applicationId: string
+  versionCount: number
+  bomCount: number
+  latestVersion: ApplicationVersionSummary | null
+  latestMultiBom: boolean
 }
 
 export type AssetView = {
@@ -36,6 +45,10 @@ export type ApplicationVersionSummary = {
   label: string | null
   capturedAt: string
   promotedAt: string | null
+  tags?: string[]
+  basedOnVersionId?: string | null
+  basedOnFingerprintId?: string | null
+  bomCount?: number
 }
 
 export type VersionBomView = {
@@ -43,6 +56,25 @@ export type VersionBomView = {
   applicationName: string
   assets: AssetView[]
   relations: RelationView[]
+  combinedTags?: string[]
+}
+
+export type BomSummary = {
+  id: string
+  versionId: string
+  name: string
+  description: string | null
+  tags: string[]
+  sortOrder: number
+}
+
+export type CombinedBomView = {
+  version: ApplicationVersionSummary
+  applicationName: string
+  assets: AssetView[]
+  relations: RelationView[]
+  combinedTags: string[]
+  selectedBomIds: string[]
 }
 
 export type ApplicationFingerprintSummary = {
@@ -50,6 +82,8 @@ export type ApplicationFingerprintSummary = {
   versionId: string
   createdAt: string
   note: string | null
+  name?: string
+  category?: string
   contentSha256: string
 }
 

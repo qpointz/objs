@@ -3,13 +3,16 @@ import {
   Alert,
   Anchor,
   Badge,
+  Box,
   Button,
+  Checkbox,
   Divider,
   Group,
   LoadingOverlay,
   Menu,
   Modal,
   Paper,
+  Radio,
   ScrollArea,
   SegmentedControl,
   Select,
@@ -17,6 +20,7 @@ import {
   Switch,
   Table,
   Tabs,
+  TagsInput,
   Text,
   Textarea,
   TextInput,
@@ -25,8 +29,8 @@ import {
   UnstyledButton,
 } from '@mantine/core'
 import { IconArrowBackUp, IconChevronDown, IconChevronRight, IconChevronsDown, IconChevronsUp, IconFilter, IconPlus, IconTrash, IconX } from '@tabler/icons-react'
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { Link, useBlocker, useParams, useSearchParams } from 'react-router-dom'
 import { DraftStatusPill } from '../DraftStatusPill'
 import { computeBomDraft, isChanged } from '../bomDraft'
 import { api } from '../api/client'
@@ -37,6 +41,7 @@ import type {
   AssetRelationshipSpec,
   AssetTypeSummary,
   AssetView,
+  BomSummary,
   BoMSchema,
   BoMSchemaField,
   RelationView,
@@ -104,6 +109,7 @@ type ConfirmRequest = {
   confirmLabel: string
   color?: string
   onConfirm: () => void
+  cancelLabel?: string
   discardLabel?: string
   onDiscard?: () => void
 }
@@ -126,11 +132,115 @@ const GRAPH_LAYOUTS: { value: GraphLayoutDir; label: string }[] = [
 ]
 
 function versionLabel(v: ApplicationVersionSummary): string {
-  if (v.status === 'DRAFT') return 'Draft'
+  if (v.status === 'DRAFT') return v.version || v.label || 'Draft'
   return v.version || v.label || 'Released'
 }
 
+function treeVersionLabel(v: ApplicationVersionSummary): string {
+  const ver = v.version?.trim() || v.label?.trim() || (v.status === 'DRAFT' ? 'Draft' : 'Released')
+  if (v.status === 'DRAFT') return `${ver} DRAFT`
+  return /^v\.?\s?/i.test(ver) ? ver : `v. ${ver}`
+}
+
+function fingerprintTitle(fp: ApplicationFingerprintSummary): string {
+  return fp.name?.trim() || fp.note?.trim() || fp.contentSha256.slice(0, 12)
+}
+
+function fingerprintCategory(fp: ApplicationFingerprintSummary): string {
+  return fp.category?.trim() || 'unknown'
+}
+
+function fingerprintMenuLabel(fp: ApplicationFingerprintSummary): string {
+  return `${fingerprintTitle(fp)} · ${fingerprintCategory(fp)}`
+}
+
+function uniqueTags(...lists: (string[] | undefined | null)[]): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const list of lists) {
+    for (const raw of list ?? []) {
+      const tag = raw.trim()
+      if (!tag || seen.has(tag)) continue
+      seen.add(tag)
+      out.push(tag)
+    }
+  }
+  return out
+}
+
+function sameTags(a: string[] | undefined | null, b: string[] | undefined | null): boolean {
+  const left = a ?? []
+  const right = b ?? []
+  if (left.length !== right.length) return false
+  return left.every((tag, i) => tag === right[i])
+}
+
+function parseSbomQuery(param: string | null, bomList: BomSummary[]): string[] {
+  if (bomList.length < 2) return bomList.map((b) => b.id)
+  if (!param || param === 'combined') return bomList.map((b) => b.id)
+  const wanted = param.split(',').map((part) => part.trim()).filter(Boolean)
+  const ids = wanted.filter((id) => bomList.some((b) => b.id === id))
+  return ids.length > 0 ? ids : bomList.map((b) => b.id)
+}
+
+function formatSbomQuery(ids: string[], bomList: BomSummary[]): string | null {
+  if (bomList.length < 2) return null
+  if (ids.length === 0 || ids.length === bomList.length) return 'combined'
+  if (ids.length === 1) return ids[0]
+  return ids.join(',')
+}
+
+type PaneFocus = 'app' | 'sbom' | 'bom'
+
+function parseFocus(param: string | null): PaneFocus | null {
+  if (param === 'app' || param === 'sbom' || param === 'bom') return param
+  return null
+}
+
+const FINGERPRINT_CATEGORIES = [
+  { value: 'approval', label: 'approval' },
+  { value: 'history', label: 'history' },
+  { value: 'unknown', label: 'unknown' },
+]
+
+const DEFAULT_TREE_PANE = 260
+const MIN_TREE_PANE = 200
+const MIN_CONTENT_PANE = 360
+const SPLITTER_WIDTH = 8
+let lastDetailTreeWidth = DEFAULT_TREE_PANE
+
 type FingerprintRow = ApplicationFingerprintSummary & { versionLabel: string }
+
+type BomStashEntry = {
+  baselineAssets: AssetView[]
+  baselineRels: RelationView[]
+  assets: AssetView[]
+  rels: RelationView[]
+  name: string
+  description: string
+  tags: string[]
+  baseName: string
+  baseDescription: string
+  baseTags: string[]
+}
+
+function bomEntryDirty(entry: BomStashEntry): boolean {
+  if (
+    entry.name !== entry.baseName ||
+    (entry.description || '') !== (entry.baseDescription || '') ||
+    !sameTags(entry.tags, entry.baseTags)
+  ) {
+    return true
+  }
+  const draft = computeBomDraft(entry.baselineAssets, entry.baselineRels, entry.assets, entry.rels)
+  for (const kind of draft.assetStatus.values()) {
+    if (isChanged(kind)) return true
+  }
+  for (const kind of draft.relationStatus.values()) {
+    if (isChanged(kind)) return true
+  }
+  return false
+}
 
 function MetaField({ label, children }: { label: string; children: string }) {
   return (
@@ -150,6 +260,9 @@ export function ApplicationDetailPage() {
   const [params, setParams] = useSearchParams()
   const versionParam = params.get('version')
   const fingerprintParam = params.get('fingerprint')
+  const sbomParam = params.get('sbom')
+  const focusParam = params.get('focus')
+  const bomViewParam = params.get('bom')
   const tab = params.get('tab') === 'graph' ? 'graph' : 'assets'
   const graphRef = useRef<SbomGraphHandle>(null)
   const paneScrollRef = useRef<HTMLDivElement>(null)
@@ -166,6 +279,25 @@ export function ApplicationDetailPage() {
   const [fingerprints, setFingerprints] = useState<FingerprintRow[]>([])
   const [editName, setEditName] = useState('')
   const [editDescription, setEditDescription] = useState('')
+  const [editAppTags, setEditAppTags] = useState<string[]>([])
+  const [editTargetVersion, setEditTargetVersion] = useState('')
+  const [editVersionTags, setEditVersionTags] = useState<string[]>([])
+  const [editBomName, setEditBomName] = useState('')
+  const [editBomDescription, setEditBomDescription] = useState('')
+  const [editBomTags, setEditBomTags] = useState<string[]>([])
+  const [boms, setBoms] = useState<BomSummary[]>([])
+  const [draftOpen, setDraftOpen] = useState(false)
+  const [draftTarget, setDraftTarget] = useState('')
+  const [draftFrom, setDraftFrom] = useState<string | null>(null)
+  const [draftCombine, setDraftCombine] = useState(false)
+  const [draftFromBomCount, setDraftFromBomCount] = useState(0)
+  const [fpOpen, setFpOpen] = useState(false)
+  const [fpName, setFpName] = useState('')
+  const [fpCategory, setFpCategory] = useState<string | null>('unknown')
+  const [createBomOpen, setCreateBomOpen] = useState(false)
+  const [newBomName, setNewBomName] = useState('')
+  const [newBomDescription, setNewBomDescription] = useState('')
+  const [newBomTags, setNewBomTags] = useState<string[]>([])
   const [changesOnly, setChangesOnly] = useState(false)
   const [roleSpecs, setRoleSpecs] = useState<AssetRelationshipSpec[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -185,6 +317,7 @@ export function ApplicationDetailPage() {
   const [createRelOpen, setCreateRelOpen] = useState<AssetPickRequest | null>(null)
   const [impact, setImpact] = useState<BomImpactPlan | null>(null)
   const [expandedTypes, setExpandedTypes] = useState<Set<string>>(new Set())
+  const [bomTreeOpen, setBomTreeOpen] = useState(true)
   const [paneSearch, setPaneSearch] = useState('')
   const [graphViewMode, setGraphViewMode] = useState<GraphViewMode>('details')
   const [graphLayout, setGraphLayout] = useState<GraphLayoutDir>('TB')
@@ -201,15 +334,61 @@ export function ApplicationDetailPage() {
   const [appCatalogTab, setAppCatalogTab] = useState<'versions' | 'fingerprints'>('versions')
   const [snapshotSearch, setSnapshotSearch] = useState('')
   const [paneChangesOnly, setPaneChangesOnly] = useState(false)
+  const [treeWidth, setTreeWidth] = useState(lastDetailTreeWidth)
+  const [bomStash, setBomStash] = useState<Map<string, BomStashEntry>>(() => new Map())
+  const [pendingDeleteBomIds, setPendingDeleteBomIds] = useState<Set<string>>(() => new Set())
+  const [pendingCreateBomIds, setPendingCreateBomIds] = useState<Set<string>>(() => new Set())
+  const [activeEditBomId, setActiveEditBomId] = useState<string | null>(null)
+  const splitHostRef = useRef<HTMLDivElement | null>(null)
+  const dragRef = useRef<{ startX: number; startWidth: number } | null>(null)
+  const editingRef = useRef(false)
+  const bomStashRef = useRef(bomStash)
+  const activeEditBomIdRef = useRef<string | null>(null)
+  bomStashRef.current = bomStash
+  activeEditBomIdRef.current = activeEditBomId
+  editingRef.current = editing
 
   const versionId = bom?.version.id ?? versionParam
   const currentFingerprint = fingerprints.find((fp) => fp.id === fingerprintParam) ?? null
   const versionOpen = currentFingerprint == null
+  const fingerprintView = currentFingerprint != null
+  const selectedBomIds = useMemo(() => parseSbomQuery(sbomParam, boms), [sbomParam, boms])
+  const visibleBoms = useMemo(
+    () => boms.filter((b) => !pendingDeleteBomIds.has(b.id)),
+    [boms, pendingDeleteBomIds],
+  )
+  const showBomTree = !fingerprintView && visibleBoms.length >= 1
+  const isCombined = showBomTree && selectedBomIds.length === boms.length
+  const exactlyOneBom = showBomTree && (editing ? Boolean(bomViewParam || selectedBomIds.length === 1) : selectedBomIds.length === 1)
+  const selectedBom = useMemo(() => {
+    if (!showBomTree) return null
+    if (bomViewParam && visibleBoms.some((b) => b.id === bomViewParam)) {
+      return visibleBoms.find((b) => b.id === bomViewParam) ?? null
+    }
+    if (editing && activeEditBomId) {
+      return visibleBoms.find((b) => b.id === activeEditBomId) ?? null
+    }
+    if (selectedBomIds.length === 1) return visibleBoms.find((b) => b.id === selectedBomIds[0]) ?? null
+    if (visibleBoms.length === 1) return visibleBoms[0]
+    return null
+  }, [showBomTree, bomViewParam, visibleBoms, editing, activeEditBomId, selectedBomIds])
+  const paneFocus: PaneFocus = (() => {
+    if (fingerprintView) return 'app'
+    const requested =
+      parseFocus(focusParam) ??
+      (selectedAssetId || selectedTypeParam ? (exactlyOneBom || editing ? 'bom' : 'sbom') : 'app')
+    if (requested === 'bom' && !selectedBom) return 'sbom'
+    return requested
+  })()
   const snapshotLabel = currentFingerprint
-    ? currentFingerprint.note?.trim() || currentFingerprint.contentSha256.slice(0, 12)
+    ? fingerprintMenuLabel(currentFingerprint)
     : versions.find((v) => v.id === versionId)
       ? versionLabel(versions.find((v) => v.id === versionId)!)
       : 'Version'
+  const combinedTagList = useMemo(
+    () => bom?.combinedTags ?? uniqueTags(app?.tags, bom?.version.tags, ...boms.map((b) => b.tags)),
+    [app?.tags, bom?.combinedTags, bom?.version.tags, boms],
+  )
 
   const filteredSnapshots = useMemo(() => {
     const q = snapshotSearch.trim().toLowerCase()
@@ -218,7 +397,7 @@ export function ApplicationDetailPage() {
       : versions
     const fps = q
       ? fingerprints.filter((fp) =>
-          `${fp.note ?? ''} ${fp.versionLabel} ${fp.contentSha256}`.toLowerCase().includes(q),
+          `${fingerprintMenuLabel(fp)} ${fp.versionLabel} ${fp.contentSha256}`.toLowerCase().includes(q),
         )
       : fingerprints
     return { vers, fps }
@@ -230,6 +409,7 @@ export function ApplicationDetailPage() {
     setApp(a)
     setEditName(a.name)
     setEditDescription(a.description ?? '')
+    setEditAppTags(a.tags ?? [])
     setVersions(list)
     const preferred =
       list.find((v) => v.id === preferredVersion) ||
@@ -238,6 +418,7 @@ export function ApplicationDetailPage() {
       list[0]
     if (!preferred) {
       setBom(null)
+      setBoms([])
       return
     }
     const fpRows = (
@@ -254,15 +435,89 @@ export function ApplicationDetailPage() {
       requestedFp && fpRows.some((fp) => fp.id === requestedFp && fp.versionId === preferred.id)
         ? requestedFp
         : null
-    const view = validFp
-      ? await api.getFingerprint(id, preferred.id, validFp)
-      : await api.getVersion(id, preferred.id)
+    let view: VersionBomView
+    let bomList: BomSummary[] = []
+    if (validFp) {
+      view = await api.getFingerprint(id, preferred.id, validFp)
+      setBoms([])
+    } else {
+      bomList = await api.listBoms(id, preferred.id)
+      setBoms(bomList)
+      const selectedIds = parseSbomQuery(sbomParam, bomList)
+      if (bomList.length >= 2) {
+        if (selectedIds.length === 1) {
+          view = await api.getBom(id, preferred.id, selectedIds[0])
+        } else {
+          view = await api.getCombined(
+            id,
+            preferred.id,
+            selectedIds.length === bomList.length ? undefined : selectedIds,
+          )
+        }
+      } else {
+        view = await api.getVersion(id, preferred.id)
+      }
+    }
     setBom(view)
     setWorkingAssets(view.assets)
     setWorkingRels(view.relations)
     setDirty(false)
-    setEditing(enterEditAfterLoad.current)
-    if (!enterEditAfterLoad.current) setPaneChangesOnly(false)
+    setEditTargetVersion(view.version.version ?? '')
+    setEditVersionTags(view.version.tags ?? [])
+    const oneBom =
+      !validFp && (bomList.length === 1 || (bomList.length >= 2 && parseSbomQuery(sbomParam, bomList).length === 1))
+    const currentBom = oneBom
+      ? bomList.find((b) => b.id === (bomList.length === 1 ? bomList[0].id : parseSbomQuery(sbomParam, bomList)[0]))
+      : undefined
+    setEditBomName(currentBom?.name ?? '')
+    setEditBomDescription(currentBom?.description ?? '')
+    setEditBomTags(currentBom?.tags ?? [])
+    const enterEdit = enterEditAfterLoad.current
+    setEditing(enterEdit)
+    if (!enterEdit) setPaneChangesOnly(false)
+    if (enterEdit && !validFp) {
+      const openId =
+        bomList.length === 1
+          ? bomList[0].id
+          : parseSbomQuery(sbomParam, bomList).length === 1
+            ? parseSbomQuery(sbomParam, bomList)[0]
+            : bomList[0]?.id
+      if (openId) {
+        const summary = bomList.find((b) => b.id === openId)
+        const entry = buildStashEntry(view.assets,
+          view.relations,
+          view.assets,
+          view.relations,
+          {
+            name: summary?.name ?? 'BOM',
+            description: summary?.description ?? '',
+            tags: summary?.tags ?? [],
+          },
+          {
+            name: summary?.name ?? 'BOM',
+            description: summary?.description ?? '',
+            tags: summary?.tags ?? [],
+          },
+        )
+        const stash = new Map<string, BomStashEntry>()
+        stash.set(openId, entry)
+        bomStashRef.current = stash
+        setBomStash(stash)
+        setActiveEditBomId(openId)
+        setPendingDeleteBomIds(new Set())
+        setPendingCreateBomIds(new Set())
+      }
+    } else if (!enterEdit) {
+      bomStashRef.current = new Map()
+      setBomStash(new Map())
+      setPendingDeleteBomIds(new Set())
+      setPendingCreateBomIds(new Set())
+      setActiveEditBomId(null)
+      setEditing(false)
+      setDirty(false)
+      setPaneChangesOnly(false)
+    }
+    enterEditAfterLoad.current = false
     const next = new URLSearchParams(params)
     let urlChanged = false
     if (!versionParam || versionParam !== preferred.id) {
@@ -270,7 +525,7 @@ export function ApplicationDetailPage() {
       urlChanged = true
     }
     const assetQ = next.get('asset')
-    if (assetQ && !view.assets.some((a) => a.id === assetQ)) {
+    if (assetQ && !view.assets.some((item) => item.id === assetQ)) {
       next.delete('asset')
       urlChanged = true
     }
@@ -279,17 +534,53 @@ export function ApplicationDetailPage() {
         next.set('fingerprint', validFp)
         urlChanged = true
       }
-    } else if (next.get('fingerprint')) {
-      next.delete('fingerprint')
-      urlChanged = true
+      if (next.get('sbom')) {
+        next.delete('sbom')
+        urlChanged = true
+      }
+    } else {
+      if (next.get('fingerprint')) {
+        next.delete('fingerprint')
+        urlChanged = true
+      }
+      const sbomQuery = formatSbomQuery(parseSbomQuery(sbomParam, bomList), bomList)
+      if (sbomQuery) {
+        if (next.get('sbom') !== sbomQuery) {
+          next.set('sbom', sbomQuery)
+          urlChanged = true
+        }
+      } else if (next.get('sbom')) {
+        next.delete('sbom')
+        urlChanged = true
+      }
     }
     if (urlChanged) setParams(next, { replace: true })
   }
 
   useEffect(() => {
+    // Route reuses this page for /applications/:id — reset edit session when app changes.
+    bomStashRef.current = new Map()
+    setBomStash(new Map())
+    setPendingDeleteBomIds(new Set())
+    setPendingCreateBomIds(new Set())
+    setActiveEditBomId(null)
+    setEditing(false)
+    setDirty(false)
+    enterEditAfterLoad.current = false
+    setPaneChangesOnly(false)
+    setError(null)
+  }, [id])
+
+  useEffect(() => {
     if (id) void load(versionParam, fingerprintParam).catch((e) => setError(e instanceof Error ? e.message : 'Load failed'))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, versionParam, fingerprintParam])
+
+  useEffect(() => {
+    if (!id || editingRef.current || fingerprintParam) return
+    void load(versionParam, fingerprintParam).catch((e) => setError(e instanceof Error ? e.message : 'Load failed'))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sbomParam])
 
   const draft = useMemo(
     () => computeBomDraft(bom?.assets ?? [], bom?.relations ?? [], workingAssets, workingRels),
@@ -320,14 +611,69 @@ export function ApplicationDetailPage() {
   const appSelected = !selectedAssetId && !selectedTypeParam
   const selectedType = selectedTypeParam || selectedAsset?.type || null
   const typeAssets = selectedType ? (editing ? draft.graphAssets : workingAssets).filter((a) => a.type === selectedType) : []
-  const writable = editing && bom != null && !fingerprintParam
+  const writable =
+    editing &&
+    bom != null &&
+    bom.version.status === 'DRAFT' &&
+    !fingerprintParam &&
+    paneFocus === 'bom' &&
+    selectedBom != null
   const appMetaDirty =
-    app != null && (editName.trim() !== app.name || (editDescription.trim() || '') !== (app.description ?? ''))
+    app != null &&
+    (editName.trim() !== app.name ||
+      (editDescription.trim() || '') !== (app.description ?? '') ||
+      !sameTags(editAppTags, app.tags ?? []))
+  const versionMetaDirty =
+    bom != null &&
+    bom.version.status === 'DRAFT' &&
+    !fingerprintView &&
+    (editTargetVersion.trim() !== (bom.version.version ?? '') || !sameTags(editVersionTags, bom.version.tags ?? []))
+  const bomMetaDirty =
+    selectedBom != null &&
+    !fingerprintView &&
+    (editBomName.trim() !== selectedBom.name ||
+      (editBomDescription.trim() || '') !== (selectedBom.description ?? '') ||
+      !sameTags(editBomTags, selectedBom.tags ?? []))
+  const stashDirty = useMemo(() => {
+    for (const [id, entry] of bomStash) {
+      if (pendingDeleteBomIds.has(id)) continue
+      if (bomEntryDirty(entry)) return true
+    }
+    return pendingDeleteBomIds.size > 0 || pendingCreateBomIds.size > 0
+  }, [bomStash, pendingDeleteBomIds, pendingCreateBomIds])
   const payloadUnapplied =
     selectedAsset != null &&
     editPayload != null &&
     JSON.stringify(editPayload) !== JSON.stringify(selectedAsset.payload)
-  const versionDirty = dirty || appMetaDirty
+  const versionDirty = dirty || appMetaDirty || versionMetaDirty || bomMetaDirty || stashDirty
+
+  const leaveBlocked = editing && (versionDirty || payloadUnapplied)
+  const blocker = useBlocker(({ currentLocation, nextLocation }) => {
+    if (!leaveBlocked) return false
+    // Allow in-page query changes (focus, bom, tab, asset) while editing the same application.
+    return currentLocation.pathname !== nextLocation.pathname
+  })
+
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!leaveBlocked) return
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [leaveBlocked])
+
+  function bomRowChanged(bomId: string): boolean {
+    if (!editing) return false
+    if (pendingDeleteBomIds.has(bomId)) return true
+    if (pendingCreateBomIds.has(bomId)) return true
+    if (activeEditBomId === bomId) {
+      if (bomMetaDirty || dirty || payloadUnapplied) return true
+    }
+    const entry = bomStash.get(bomId)
+    return entry ? bomEntryDirty(entry) : false
+  }
 
   const groupedVisible = useMemo(() => {
     const q = paneSearch.trim().toLowerCase()
@@ -374,6 +720,43 @@ export function ApplicationDetailPage() {
       })
       .catch(() => setAddSchema(null))
   }, [addOpen, addType, assetTypeOptions])
+
+  useEffect(() => {
+    lastDetailTreeWidth = treeWidth
+  }, [treeWidth])
+
+  const onSplitterPointerDown = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      e.preventDefault()
+      dragRef.current = { startX: e.clientX, startWidth: treeWidth }
+      e.currentTarget.setPointerCapture(e.pointerId)
+    },
+    [treeWidth],
+  )
+
+  const onSplitterPointerMove = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current
+    if (drag == null) return
+    const host = splitHostRef.current
+    if (host == null) return
+    const maxLeft = Math.max(MIN_TREE_PANE, host.clientWidth - MIN_CONTENT_PANE - SPLITTER_WIDTH)
+    const next = Math.min(maxLeft, Math.max(MIN_TREE_PANE, drag.startWidth + (e.clientX - drag.startX)))
+    setTreeWidth(next)
+  }, [])
+
+  const onSplitterPointerUp = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
+    dragRef.current = null
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (editing || !selectedBom || bomMetaDirty) return
+    setEditBomName(selectedBom.name)
+    setEditBomDescription(selectedBom.description ?? '')
+    setEditBomTags(selectedBom.tags ?? [])
+  }, [editing, selectedBom?.id, selectedBom?.name, selectedBom?.description, selectedBom?.tags, bomMetaDirty])
 
   useEffect(() => {
     if (!selectedAsset) {
@@ -453,99 +836,812 @@ export function ApplicationDetailPage() {
   }
 
   function switchSnapshot(nextId: string, fingerprintId: string | null) {
+    const currentVersionId = bom?.version.id ?? versionParam
+    const sameVersion = nextId === currentVersionId
+    const sameFingerprint = (fingerprintId ?? null) === (fingerprintParam ?? null)
+    if (sameVersion && sameFingerprint) return
     enterEditAfterLoad.current = false
+    askLeaveUnsaved(() => {
+      const next = new URLSearchParams(params)
+      next.set('version', nextId)
+      if (fingerprintId) next.set('fingerprint', fingerprintId)
+      else next.delete('fingerprint')
+      next.delete('sbom')
+      next.delete('bom')
+      next.delete('focus')
+      next.delete('asset')
+      next.delete('type')
+      setParams(next)
+    })
+  }
+
+  function askLeaveUnsaved(then: () => void) {
     if (versionDirty || payloadUnapplied) {
       setConfirm({
-        title: 'Discard unsaved changes?',
-        message: 'Switching version will drop edits that have not been saved.',
-        confirmLabel: 'Discard and switch',
+        title: 'Leave unsaved changes?',
+        message: 'Leave this version to drop edits that have not been saved.',
+        confirmLabel: 'Leave',
+        cancelLabel: 'Stay',
         color: 'red',
-        onConfirm: () => void applySwitchVersion(nextId, fingerprintId),
+        onConfirm: () => {
+          void discardAndThen(then)
+        },
       })
       return
     }
-    void applySwitchVersion(nextId, fingerprintId)
+    then()
   }
 
-  async function applySwitchVersion(nextId: string, fingerprintId: string | null = null) {
-    await load(nextId, fingerprintId)
-    const next = new URLSearchParams(params)
-    next.set('version', nextId)
-    if (fingerprintId) next.set('fingerprint', fingerprintId)
-    else next.delete('fingerprint')
-    setParams(next)
+  function buildStashEntry(
+    baselineAssets: AssetView[],
+    baselineRels: RelationView[],
+    assets: AssetView[],
+    rels: RelationView[],
+    meta: { name: string; description: string; tags: string[] },
+    baseMeta: { name: string; description: string; tags: string[] },
+  ): BomStashEntry {
+    return {
+      baselineAssets,
+      baselineRels,
+      assets,
+      rels,
+      name: meta.name,
+      description: meta.description,
+      tags: meta.tags,
+      baseName: baseMeta.name,
+      baseDescription: baseMeta.description,
+      baseTags: baseMeta.tags,
+    }
   }
 
-  async function save() {
-    if (!bom) return
-    let assetsToSave = workingAssets
+  function flushActiveBomToStash() {
+    const bomId = activeEditBomIdRef.current
+    if (!bomId || !bom) return
+    const prev = bomStashRef.current.get(bomId)
+    const summary = boms.find((b) => b.id === bomId)
+    let assets = workingAssets
+    let payload = editPayload
     if (payloadUnapplied && selectedAsset && editPayload) {
       const name =
         typeof editPayload.name === 'string' && editPayload.name.trim()
           ? editPayload.name.trim()
           : selectedAsset.label
-      assetsToSave = workingAssets.map((a) =>
+      assets = workingAssets.map((a) =>
         a.id === selectedAsset.id ? { ...a, payload: { ...editPayload }, label: name } : a,
       )
-      setWorkingAssets(assetsToSave)
+      payload = { ...editPayload }
+      setWorkingAssets(assets)
+      setEditPayload(payload)
       setDirty(true)
-      setEditPayload({ ...editPayload })
     }
+    const entry = buildStashEntry(prev?.baselineAssets ?? bom.assets ?? [],
+      prev?.baselineRels ?? bom.relations ?? [],
+      assets,
+      workingRels,
+      {
+        name: editBomName,
+        description: editBomDescription,
+        tags: editBomTags,
+      },
+      {
+        name: prev?.baseName ?? summary?.name ?? editBomName,
+        description: prev?.baseDescription ?? summary?.description ?? '',
+        tags: prev?.baseTags ?? summary?.tags ?? [],
+      },
+    )
+    const next = new Map(bomStashRef.current)
+    next.set(bomId, entry)
+    bomStashRef.current = next
+    setBomStash(next)
+    setBoms((prev) =>
+      prev.map((b) =>
+        b.id === bomId
+          ? { ...b, name: entry.name, description: entry.description || null, tags: entry.tags }
+          : b,
+      ),
+    )
+  }
+
+  async function ensureBomStashed(bomId: string) {
+    if (!bom) return
+    if (bomStashRef.current.has(bomId)) return
+    const view =
+      visibleBoms.length <= 1 && boms.length <= 1
+        ? await api.getVersion(id, bom.version.id)
+        : await api.getBom(id, bom.version.id, bomId)
+    const summary = boms.find((b) => b.id === bomId)
+    const entry = buildStashEntry(
+      view.assets,
+      view.relations,
+      view.assets,
+      view.relations,
+      {
+        name: summary?.name ?? 'BOM',
+        description: summary?.description ?? '',
+        tags: summary?.tags ?? [],
+      },
+      {
+        name: summary?.name ?? 'BOM',
+        description: summary?.description ?? '',
+        tags: summary?.tags ?? [],
+      },
+    )
+    const next = new Map(bomStashRef.current)
+    next.set(bomId, entry)
+    bomStashRef.current = next
+    setBomStash(next)
+  }
+
+  function unionAssets(lists: AssetView[][]): AssetView[] {
+    const seen = new Set<string>()
+    const out: AssetView[] = []
+    for (const list of lists) {
+      for (const a of list) {
+        if (seen.has(a.id)) continue
+        seen.add(a.id)
+        out.push(a)
+      }
+    }
+    return out
+  }
+
+  function unionRels(lists: RelationView[][]): RelationView[] {
+    const seen = new Set<string>()
+    const out: RelationView[] = []
+    for (const list of lists) {
+      for (const r of list) {
+        const key = `${r.fromAssetId}|${r.toAssetId}|${r.role}`
+        if (seen.has(key)) continue
+        seen.add(key)
+        out.push(r)
+      }
+    }
+    return out
+  }
+
+  async function applyCombinedWorking() {
+    if (!bom) return
+    flushActiveBomToStash()
+    const ids = visibleBoms.map((b) => b.id)
+    for (const bomId of ids) {
+      await ensureBomStashed(bomId)
+    }
+    const entries = ids.map((bomId) => bomStashRef.current.get(bomId)!).filter(Boolean)
+    const baselineAssets = unionAssets(entries.map((e) => e.baselineAssets))
+    const baselineRels = unionRels(entries.map((e) => e.baselineRels))
+    const assets = unionAssets(entries.map((e) => e.assets))
+    const rels = unionRels(entries.map((e) => e.rels))
+    setBom((prev) =>
+      prev
+        ? {
+            ...prev,
+            assets: baselineAssets,
+            relations: baselineRels,
+          }
+        : prev,
+    )
+    setWorkingAssets(assets)
+    setWorkingRels(rels)
+    setDirty(
+      JSON.stringify(assets) !== JSON.stringify(baselineAssets) ||
+        JSON.stringify(rels) !== JSON.stringify(baselineRels),
+    )
+    setActiveEditBomId(null)
+  }
+
+  async function applyBomWorking(bomId: string) {
+    if (!bom) return
+    await ensureBomStashed(bomId)
+    const cached = bomStashRef.current.get(bomId)
+    if (!cached) return
+    setBom((prev) =>
+      prev
+        ? {
+            ...prev,
+            assets: cached.baselineAssets,
+            relations: cached.baselineRels,
+          }
+        : prev,
+    )
+    setWorkingAssets(cached.assets)
+    setWorkingRels(cached.rels)
+    setEditBomName(cached.name)
+    setEditBomDescription(cached.description)
+    setEditBomTags(cached.tags)
+    setDirty(
+      JSON.stringify(cached.assets) !== JSON.stringify(cached.baselineAssets) ||
+        JSON.stringify(cached.rels) !== JSON.stringify(cached.baselineRels),
+    )
+    setActiveEditBomId(bomId)
+  }
+
+  async function switchEditBom(bomId: string) {
+    if (!bom) return
+    flushActiveBomToStash()
+    const next = new URLSearchParams(params)
+    next.set('focus', 'bom')
+    next.set('bom', bomId)
+    next.set('sbom', bomId)
+    next.delete('asset')
+    next.delete('type')
+    setParams(next)
+    await applyBomWorking(bomId)
+  }
+
+  async function switchEditCombined() {
+    if (!bom) return
+    const next = new URLSearchParams(params)
+    next.set('focus', 'sbom')
+    next.set('sbom', 'combined')
+    next.delete('bom')
+    next.delete('asset')
+    next.delete('type')
+    setParams(next)
+    await applyCombinedWorking()
+  }
+
+  function beginEditSession() {
+    setEditing(true)
+    setPendingDeleteBomIds(new Set())
+    setPendingCreateBomIds(new Set())
+    const openId =
+      bomViewParam && boms.some((b) => b.id === bomViewParam)
+        ? bomViewParam
+        : selectedBomIds.length === 1
+          ? selectedBomIds[0]
+          : boms.length === 1
+            ? boms[0].id
+            : null
+    if (openId && bom) {
+      const summary = boms.find((b) => b.id === openId)
+      const entry = buildStashEntry(bom.assets ?? [],
+        bom.relations ?? [],
+        workingAssets,
+        workingRels,
+        {
+          name: editBomName || summary?.name || 'BOM',
+          description: editBomDescription || summary?.description || '',
+          tags: editBomTags.length ? editBomTags : summary?.tags ?? [],
+        },
+        {
+          name: summary?.name ?? 'BOM',
+          description: summary?.description ?? '',
+          tags: summary?.tags ?? [],
+        },
+      )
+      const next = new Map<string, BomStashEntry>()
+      next.set(openId, entry)
+      bomStashRef.current = next
+      setBomStash(next)
+      setActiveEditBomId(openId)
+      const url = new URLSearchParams(params)
+      url.set('focus', 'bom')
+      url.set('bom', openId)
+      url.set('sbom', openId)
+      setParams(url)
+    } else {
+      bomStashRef.current = new Map()
+      setBomStash(new Map())
+      setActiveEditBomId(null)
+    }
+  }
+
+  function clearEditSession() {
+    bomStashRef.current = new Map()
+    setBomStash(new Map())
+    setPendingDeleteBomIds(new Set())
+    setPendingCreateBomIds(new Set())
+    setActiveEditBomId(null)
+    setEditing(false)
+    enterEditAfterLoad.current = false
+    setPaneChangesOnly(false)
+  }
+
+  function switchBomSelection(ids: string[], focus?: PaneFocus) {
+    if (editing) return
+    const next = new URLSearchParams(params)
+    const query = formatSbomQuery(ids, boms)
+    if (query) next.set('sbom', query)
+    else next.delete('sbom')
+    if (focus) next.set('focus', focus)
+    if (focus === 'sbom') next.delete('bom')
+    next.delete('asset')
+    next.delete('type')
+    setParams(next)
+  }
+
+  function selectCombinedSbom() {
+    if (editing) {
+      void switchEditCombined()
+      return
+    }
+    const next = new URLSearchParams(params)
+    next.set('focus', 'sbom')
+    next.set('sbom', 'combined')
+    next.delete('bom')
+    next.delete('asset')
+    next.delete('type')
+    setParams(next)
+  }
+
+  function selectSingleBom(bomId: string) {
+    if (editing) {
+      void switchEditBom(bomId)
+      return
+    }
+    const next = new URLSearchParams(params)
+    next.set('focus', 'bom')
+    next.set('bom', bomId)
+    next.delete('asset')
+    next.delete('type')
+    setParams(next)
+  }
+
+  function toggleBomSelected(bomId: string, checked: boolean) {
+    if (editing) return
+    if (checked) {
+      const next = selectedBomIds.includes(bomId) ? selectedBomIds : [...selectedBomIds, bomId]
+      switchBomSelection(next)
+      return
+    }
+    const next = selectedBomIds.filter((id) => id !== bomId)
+    if (next.length === 0) return
+    switchBomSelection(next)
+  }
+
+  function toggleCombinedChecked(checked: boolean) {
+    if (editing) return
+    if (checked) switchBomSelection(boms.map((b) => b.id))
+  }
+
+  async function save() {
+    if (!bom) return
+    flushActiveBomToStash()
     setBusy(true)
     setError(null)
     try {
-      const baselineById = new Map((bom.assets ?? []).map((a) => [a.id, a]))
-      for (const asset of assetsToSave) {
-        const prev = baselineById.get(asset.id)
-        if (prev && JSON.stringify(prev.payload) !== JSON.stringify(asset.payload)) {
-          await api.updateAsset(asset.id, asset.payload)
-        }
-      }
-      const saved = await api.saveVersionBom(id, bom.version.id, {
-        assetIds: assetsToSave.map((a) => a.id),
-        relations: workingRels.map((r) => ({
-          fromAssetId: r.fromAssetId,
-          toAssetId: r.toAssetId,
-          role: r.role,
-        })),
-      })
       if (app && appMetaDirty) {
         const updatedApp = await api.updateApplication(id, {
           name: editName.trim(),
           description: editDescription.trim() || null,
+          tags: editAppTags,
         })
         setApp(updatedApp)
         setEditName(updatedApp.name)
         setEditDescription(updatedApp.description ?? '')
+        setEditAppTags(updatedApp.tags ?? [])
       }
-      setBom(saved)
-      setWorkingAssets(saved.assets)
-      setWorkingRels(saved.relations)
+      if (versionMetaDirty) {
+        const patched = await api.patchVersion(id, bom.version.id, {
+          version: editTargetVersion.trim(),
+          tags: editVersionTags,
+        })
+        setBom((prev) => (prev ? { ...prev, version: { ...prev.version, ...patched } } : prev))
+        setEditTargetVersion(patched.version ?? '')
+        setEditVersionTags(patched.tags ?? [])
+      }
+
+      for (const [bomId, entry] of bomStashRef.current) {
+        if (pendingDeleteBomIds.has(bomId)) continue
+        if (bomEntryDirty(entry)) {
+          const baselineById = new Map(entry.baselineAssets.map((a) => [a.id, a]))
+          for (const asset of entry.assets) {
+            const prev = baselineById.get(asset.id)
+            if (prev && JSON.stringify(prev.payload) !== JSON.stringify(asset.payload)) {
+              await api.updateAsset(asset.id, asset.payload)
+            }
+          }
+          const relationBody = entry.rels.map((r) => ({
+            fromAssetId: r.fromAssetId,
+            toAssetId: r.toAssetId,
+            role: r.role,
+          }))
+          if (visibleBoms.length <= 1 && boms.length - pendingDeleteBomIds.size <= 1) {
+            await api.saveVersionBom(id, bom.version.id, {
+              assetIds: entry.assets.map((a) => a.id),
+              relations: relationBody,
+            })
+          } else {
+            await api.saveBom(id, bom.version.id, bomId, {
+              assetIds: entry.assets.map((a) => a.id),
+              relations: relationBody,
+            })
+          }
+          if (
+            entry.name !== entry.baseName ||
+            (entry.description || '') !== (entry.baseDescription || '') ||
+            !sameTags(entry.tags, entry.baseTags)
+          ) {
+            await api.patchBom(id, bom.version.id, bomId, {
+              name: entry.name.trim(),
+              description: entry.description.trim() || null,
+              tags: entry.tags,
+            })
+          }
+        }
+      }
+
+      for (const bomId of pendingDeleteBomIds) {
+        if (pendingCreateBomIds.has(bomId)) continue
+        await api.deleteBom(id, bom.version.id, bomId)
+      }
+
+      clearEditSession()
       setDirty(false)
-      setEditing(false)
-      enterEditAfterLoad.current = false
-      setPaneChangesOnly(false)
-      setVersions(await api.listVersions(id))
+      await load(bom.version.id, fingerprintParam)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Save failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function discardAndThen(then?: () => void) {
+    if (!bom) {
+      then?.()
+      return
+    }
+    setBusy(true)
+    setError(null)
+    try {
+      for (const bomId of pendingCreateBomIds) {
+        try {
+          await api.deleteBom(id, bom.version.id, bomId)
+        } catch {
+          /* best-effort rollback of session creates */
+        }
+      }
+      clearEditSession()
+      setDirty(false)
+      await load(bom.version.id, fingerprintParam)
+      then?.()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not discard changes')
     } finally {
       setBusy(false)
     }
   }
 
   function discard() {
-    if (!bom) return
-    setWorkingAssets(bom.assets)
-    setWorkingRels(bom.relations)
-    setDirty(false)
-    setEditing(false)
-    enterEditAfterLoad.current = false
-    setPaneChangesOnly(false)
-    if (app) {
-      setEditName(app.name)
-      setEditDescription(app.description ?? '')
+    void discardAndThen()
+  }
+
+  function basedOnLabel(v: ApplicationVersionSummary): string {
+    if (v.basedOnFingerprintId) {
+      const fp = fingerprints.find((item) => item.id === v.basedOnFingerprintId)
+      return fp ? fingerprintTitle(fp) : 'Fingerprint'
     }
-    if (selectedAssetId) {
-      const restored = bom.assets.find((a) => a.id === selectedAssetId)
-      setEditPayload(restored ? { ...restored.payload } : null)
+    if (v.basedOnVersionId) {
+      const src = versions.find((item) => item.id === v.basedOnVersionId)
+      return src ? versionLabel(src) : '—'
+    }
+    return '—'
+  }
+
+  function dependentLine(d: ApplicationVersionSummary): string {
+    const target = d.version || d.label || 'Draft'
+    if (d.basedOnFingerprintId) {
+      const fp = fingerprints.find((item) => item.id === d.basedOnFingerprintId)
+      return fp ? `${target} (based on ${fingerprintTitle(fp)})` : `${target} (based on fingerprint)`
+    }
+    return target
+  }
+
+  const draftSourceOptions = useMemo(() => {
+    const released = versions
+      .filter((v) => v.status === 'RELEASED')
+      .map((v) => ({ value: `v:${v.id}`, label: versionLabel(v) }))
+    const drafts = versions
+      .filter((v) => v.status === 'DRAFT')
+      .map((v) => ({ value: `v:${v.id}`, label: versionLabel(v) }))
+    const fps = fingerprints.map((fp) => ({
+      value: `fp:${fp.id}`,
+      label: `${fingerprintMenuLabel(fp)} · ${fp.versionLabel}`,
+    }))
+    const groups: { group: string; items: { value: string; label: string }[] }[] = []
+    if (released.length) groups.push({ group: 'Released', items: released })
+    if (drafts.length) groups.push({ group: 'Drafts', items: drafts })
+    if (fps.length) groups.push({ group: 'Fingerprints', items: fps })
+    return groups
+  }, [versions, fingerprints])
+
+  useEffect(() => {
+    if (!draftOpen || !draftFrom?.startsWith('v:')) {
+      if (draftFrom?.startsWith('fp:')) setDraftFromBomCount(0)
+      return
+    }
+    const fromVersionId = draftFrom.slice(2)
+    let cancelled = false
+    void api
+      .listBoms(id, fromVersionId)
+      .then((list) => {
+        if (!cancelled) setDraftFromBomCount(list.length)
+      })
+      .catch(() => {
+        if (!cancelled) setDraftFromBomCount(0)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [draftOpen, draftFrom, id])
+
+  function openNewDraftModal() {
+    askLeaveUnsaved(() => {
+      setDraftTarget('')
+      setDraftFrom(bom ? `v:${bom.version.id}` : null)
+      setDraftCombine(false)
+      setDraftFromBomCount(0)
+      setDraftOpen(true)
+    })
+  }
+
+  function openFingerprintModal() {
+    setFpName('')
+    setFpCategory('unknown')
+    setFpOpen(true)
+  }
+
+  function openCreateBomModal() {
+    if (editing) {
+      flushActiveBomToStash()
+      setNewBomName('')
+      setNewBomDescription('')
+      setNewBomTags([])
+      setCreateBomOpen(true)
+      return
+    }
+    askLeaveUnsaved(() => {
+      setNewBomName('')
+      setNewBomDescription('')
+      setNewBomTags([])
+      setCreateBomOpen(true)
+    })
+  }
+
+  async function submitNewDraft() {
+    if (!draftTarget.trim() || !draftFrom) return
+    setBusy(true)
+    setError(null)
+    try {
+      const body: {
+        targetVersion: string
+        fromVersionId?: string
+        fromFingerprintId?: string
+        combineConstituents?: boolean
+      } = { targetVersion: draftTarget.trim() }
+      if (draftFrom.startsWith('fp:')) {
+        body.fromFingerprintId = draftFrom.slice(3)
+      } else {
+        body.fromVersionId = draftFrom.slice(2)
+        if (draftFromBomCount > 1) body.combineConstituents = draftCombine
+      }
+      enterEditAfterLoad.current = true
+      const created = await api.createDraftVersion(id, body)
+      setDraftOpen(false)
+      const next = new URLSearchParams(params)
+      next.set('version', created.version.id)
+      next.delete('fingerprint')
+      next.delete('sbom')
+      setParams(next)
+    } catch (e) {
+      enterEditAfterLoad.current = false
+      setError(e instanceof Error ? e.message : 'Could not create draft')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function submitFingerprint() {
+    if (!bom || !fpName.trim() || !fpCategory) return
+    setBusy(true)
+    setError(null)
+    try {
+      const fp = await api.createFingerprint(id, bom.version.id, {
+        name: fpName.trim(),
+        category: fpCategory,
+      })
+      setFingerprints((prev) => [{ ...fp, versionLabel: versionLabel(bom.version) }, ...prev])
+      setFpOpen(false)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not create fingerprint')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function submitCreateBom() {
+    if (!bom || !newBomName.trim()) return
+    setBusy(true)
+    setError(null)
+    try {
+      const created = await api.createBom(id, bom.version.id, {
+        name: newBomName.trim(),
+        description: newBomDescription.trim() || undefined,
+        tags: newBomTags,
+      })
+      setCreateBomOpen(false)
+      setBoms((prev) => [...prev, created])
+      if (editing) {
+        setPendingCreateBomIds((prev) => new Set(prev).add(created.id))
+        flushActiveBomToStash()
+        const entry = buildStashEntry([],
+          [],
+          [],
+          [],
+          {
+            name: created.name,
+            description: created.description ?? '',
+            tags: created.tags ?? [],
+          },
+          {
+            name: created.name,
+            description: created.description ?? '',
+            tags: created.tags ?? [],
+          },
+        )
+        const nextStash = new Map(bomStashRef.current)
+        nextStash.set(created.id, entry)
+        bomStashRef.current = nextStash
+        setBomStash(nextStash)
+        await switchEditBom(created.id)
+      } else {
+        enterEditAfterLoad.current = bom.version.status === 'DRAFT'
+        const next = new URLSearchParams(params)
+        next.set('sbom', created.id)
+        next.set('focus', 'bom')
+        next.set('bom', created.id)
+        next.delete('fingerprint')
+        next.delete('asset')
+        next.delete('type')
+        setParams(next)
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not create BOM')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function askDeleteDraft(v: ApplicationVersionSummary) {
+    askLeaveUnsaved(() => {
+      void (async () => {
+        try {
+          const dependents = await api.listVersionDependents(id, v.id)
+          if (dependents.length === 0) {
+            setConfirm({
+              title: 'Delete draft?',
+              message: `Delete draft ${versionLabel(v)}? This removes its BOMs and fingerprints.`,
+              confirmLabel: 'Delete',
+              color: 'red',
+              onConfirm: () => void deleteDraft(v, false),
+            })
+            return
+          }
+          const lines = dependents.map((d) => `• ${dependentLine(d)}`).join('\n')
+          setConfirm({
+            title: 'Delete draft and dependents?',
+            message: `Deleting this draft will also delete the listed drafts (their BOMs and fingerprints):\n${lines}`,
+            confirmLabel: 'Delete all',
+            color: 'red',
+            onConfirm: () => void deleteDraft(v, true),
+          })
+        } catch (e) {
+          setError(e instanceof Error ? e.message : 'Could not list dependents')
+        }
+      })()
+    })
+  }
+
+  async function deleteDraft(v: ApplicationVersionSummary, confirmDependents: boolean) {
+    setBusy(true)
+    setError(null)
+    try {
+      await api.deleteVersion(id, v.id, confirmDependents)
+      const next = new URLSearchParams(params)
+      if (versionId === v.id) {
+        next.delete('version')
+        next.delete('fingerprint')
+        next.delete('sbom')
+      }
+      if (next.get('version') === v.id) {
+        next.delete('version')
+      }
+      setParams(next)
+      await load(versionId === v.id ? null : versionId, fingerprintParam)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not delete draft')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function askDeleteBom(row: BomSummary) {
+    if (visibleBoms.length <= 1) return
+    if (editing) {
+      setConfirm({
+        title: 'Delete BOM?',
+        message: `Remove BOM “${row.name}” from this draft changeset? You can discard the whole edit session to undo.`,
+        confirmLabel: 'Remove',
+        color: 'red',
+        onConfirm: () => softDeleteBom(row),
+      })
+      return
+    }
+    askLeaveUnsaved(() => {
+      setConfirm({
+        title: 'Delete BOM?',
+        message: `Delete BOM “${row.name}”? This cannot be undone.`,
+        confirmLabel: 'Delete',
+        color: 'red',
+        onConfirm: () => void deleteBomRow(row),
+      })
+    })
+  }
+
+  function softDeleteBom(row: BomSummary) {
+    flushActiveBomToStash()
+    if (pendingCreateBomIds.has(row.id)) {
+      setPendingCreateBomIds((prev) => {
+        const next = new Set(prev)
+        next.delete(row.id)
+        return next
+      })
+      void api.deleteBom(id, bom!.version.id, row.id).catch(() => undefined)
+    } else {
+      setPendingDeleteBomIds((prev) => new Set(prev).add(row.id))
+    }
+    const remaining = boms.filter((b) => b.id !== row.id)
+    setBoms(remaining)
+    const nextStash = new Map(bomStashRef.current)
+    nextStash.delete(row.id)
+    bomStashRef.current = nextStash
+    setBomStash(nextStash)
+    const next = new URLSearchParams(params)
+    if (remaining.length === 0) {
+      next.delete('sbom')
+      next.delete('bom')
+      next.set('focus', 'sbom')
+      setActiveEditBomId(null)
+    } else if (activeEditBomId === row.id || bomViewParam === row.id) {
+      next.set('sbom', remaining[0].id)
+      next.set('bom', remaining[0].id)
+      next.set('focus', 'bom')
+      void applyBomWorking(remaining[0].id)
+    }
+    next.delete('asset')
+    next.delete('type')
+    setParams(next)
+  }
+
+  async function deleteBomRow(row: BomSummary) {
+    if (!bom) return
+    setBusy(true)
+    setError(null)
+    try {
+      await api.deleteBom(id, bom.version.id, row.id)
+      const remaining = await api.listBoms(id, bom.version.id)
+      const next = new URLSearchParams(params)
+      if (remaining.length <= 1) {
+        next.delete('sbom')
+        next.set('focus', 'sbom')
+      } else if (selectedBomIds.length === 1 && selectedBomIds[0] === row.id) {
+        next.set('sbom', 'combined')
+        next.set('focus', 'sbom')
+      } else {
+        const kept = selectedBomIds.filter((bomId) => bomId !== row.id)
+        const query = formatSbomQuery(kept, remaining)
+        if (query) next.set('sbom', query)
+        else next.delete('sbom')
+        if (kept.length !== 1) next.set('focus', 'sbom')
+      }
+      next.delete('asset')
+      next.delete('type')
+      setParams(next)
+      setBoms(remaining)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not delete BOM')
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -802,7 +1898,12 @@ export function ApplicationDetailPage() {
     onPickCreateExisting([asset])
   }
 
-  function writeSelection(patch: { asset?: string | null; type?: string | null; tab?: string }) {
+  function writeSelection(patch: {
+    asset?: string | null
+    type?: string | null
+    tab?: string
+    focus?: PaneFocus | null
+  }) {
     const next = new URLSearchParams(params)
     if ('asset' in patch) {
       if (patch.asset) next.set('asset', patch.asset)
@@ -811,6 +1912,11 @@ export function ApplicationDetailPage() {
     if ('type' in patch) {
       if (patch.type) next.set('type', patch.type)
       else next.delete('type')
+    }
+    if ('focus' in patch) {
+      if (patch.focus) next.set('focus', patch.focus)
+      else next.delete('focus')
+      if (patch.focus === 'app' || patch.focus === 'sbom') next.delete('bom')
     }
     if (patch.tab) next.set('tab', patch.tab)
     setParams(next)
@@ -838,7 +1944,10 @@ export function ApplicationDetailPage() {
   }
 
   function selectApplication() {
-    withAppliedPayload(() => writeSelection({ asset: null, type: null }))
+    withAppliedPayload(() => {
+      if (editing) flushActiveBomToStash()
+      writeSelection({ asset: null, type: null, focus: 'app' })
+    })
   }
 
   function selectType(type: string) {
@@ -908,6 +2017,15 @@ export function ApplicationDetailPage() {
           <Title order={3} lineClamp={1}>
             {app?.name || 'Application'}
           </Title>
+          {!editing && combinedTagList.length > 0 && (
+            <Group gap={4} mt={4} wrap="wrap">
+              {combinedTagList.map((tag) => (
+                <Badge key={tag} size="xs" variant="light">
+                  {tag}
+                </Badge>
+              ))}
+            </Group>
+          )}
         </div>
         <Group gap="xs" wrap="nowrap">
           <Menu width={300} position="bottom-end" withinPortal onClose={() => setSnapshotSearch('')}>
@@ -946,6 +2064,9 @@ export function ApplicationDetailPage() {
                         rightSection={open ? <Badge size="xs">Open</Badge> : undefined}
                       >
                         {versionLabel(v)}
+                        <Text span size="xs" c="dimmed" ml={6}>
+                          {v.status}
+                        </Text>
                       </Menu.Item>
                     )
                   })
@@ -964,7 +2085,7 @@ export function ApplicationDetailPage() {
                         onClick={() => switchFingerprint(fp)}
                         rightSection={open ? <Badge size="xs">Open</Badge> : undefined}
                       >
-                        {fp.note?.trim() || fp.contentSha256.slice(0, 12)}
+                        {fingerprintMenuLabel(fp)}
                         <Text span size="xs" c="dimmed" ml={6}>
                           {fp.versionLabel}
                         </Text>
@@ -975,12 +2096,12 @@ export function ApplicationDetailPage() {
               </ScrollArea.Autosize>
             </Menu.Dropdown>
           </Menu>
-          {bom && !editing && !fingerprintParam && (
-            <Button size="sm" onClick={() => setEditing(true)}>
+          {bom && !editing && !fingerprintParam && bom.version.status === 'DRAFT' && (
+            <Button size="sm" onClick={() => beginEditSession()}>
               Edit
             </Button>
           )}
-          {writable && (
+          {bom && !fingerprintParam && (editing || versionDirty) && (
             <>
               <Button size="sm" disabled={!versionDirty || busy} onClick={() => void save()}>
                 Save
@@ -988,52 +2109,29 @@ export function ApplicationDetailPage() {
               <Button size="sm" variant="default" disabled={busy} onClick={discard}>
                 Discard
               </Button>
-              {bom.version.status === 'DRAFT' && (
-                <Button size="sm" variant="light" onClick={() => setPromoteOpen(true)}>
-                  Promote
-                </Button>
-              )}
             </>
           )}
-          {bom &&
-            bom.version.status === 'RELEASED' &&
-            !editing &&
-            !fingerprintParam &&
-            !versions.some((v) => v.status === 'DRAFT') && (
+          {bom && bom.version.status === 'DRAFT' && !fingerprintParam && (
             <Button
               size="sm"
               variant="light"
               onClick={() => {
-                enterEditAfterLoad.current = true
-                void api
-                  .createDraftVersion(id, bom.version.id)
-                  .then((draft) => load(draft.version.id, null))
-                  .catch((e) => {
-                    enterEditAfterLoad.current = false
-                    setError(e.message)
-                  })
+                setPromoteName('')
+                setPromoteOpen(true)
               }}
             >
+              Promote
+            </Button>
+          )}
+          {bom && !fingerprintParam && (
+            <Button size="sm" variant="light" onClick={openNewDraftModal}>
               New draft
             </Button>
           )}
           {bom && !fingerprintParam && (
-            <Button
-              size="sm"
-              variant="subtle"
-              onClick={() =>
-                void api.createFingerprint(id, bom.version.id).then((fp) =>
-                  setFingerprints((p) => [{ ...fp, versionLabel: versionLabel(bom.version) }, ...p]),
-                )
-              }
-            >
+            <Button size="sm" variant="light" onClick={openFingerprintModal}>
               Fingerprint
             </Button>
-          )}
-          {bom && (
-            <Anchor size="sm" href={api.exportVersionCycloneDxUrl(id, bom.version.id)} download>
-              CycloneDX
-            </Anchor>
           )}
         </Group>
       </Group>
@@ -1043,12 +2141,185 @@ export function ApplicationDetailPage() {
           {payloadUnapplied ? 'Unapplied component edits' : 'Unsaved changes'}
         </Text>
       )}
-      <div style={{ flex: 1, minHeight: 0, display: 'flex', gap: 8 }}>
-        <Paper withBorder p="xs" style={{ width: 260, flex: '0 0 260px', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          <Group justify="space-between" wrap="nowrap" mb="xs">
-            <Text size="xs" fw={650}>
-              Application assets
-            </Text>
+      <div
+        ref={splitHostRef}
+        style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}
+      >
+        <Paper
+          withBorder
+          p="xs"
+          style={{
+            flex: `0 0 ${treeWidth}px`,
+            width: treeWidth,
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: 0,
+            minWidth: 0,
+          }}
+        >
+          <ScrollArea style={{ flex: '0 0 auto', height: 220, maxHeight: 220 }} offsetScrollbars>
+            <UnstyledButton
+              onClick={selectApplication}
+              style={{
+                display: 'flex',
+                width: '100%',
+                padding: '6px 8px',
+                borderRadius: 6,
+                marginBottom: 4,
+                alignItems: 'center',
+                background:
+                  appSelected && paneFocus === 'app' ? 'var(--mantine-color-blue-light)' : undefined,
+              }}
+            >
+              <Text
+                size="sm"
+                fw={appSelected && paneFocus === 'app' ? 650 : 600}
+                truncate
+                style={{ flex: 1, minWidth: 0 }}
+                c={editing && appMetaDirty ? 'blue' : undefined}
+              >
+                {app?.name || 'Application'}
+              </Text>
+            </UnstyledButton>
+            {showBomTree && bom && (
+              <Stack gap={2}>
+                <Group gap={6} wrap="nowrap" py={2} style={{ paddingLeft: 16, paddingRight: 8 }}>
+                  <span
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setBomTreeOpen((v) => !v)
+                    }}
+                    style={{ display: 'flex', cursor: 'pointer' }}
+                    role="button"
+                    aria-label={bomTreeOpen ? 'Collapse version' : 'Expand version'}
+                  >
+                    {bomTreeOpen ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />}
+                  </span>
+                  {!editing && visibleBoms.length >= 2 && (
+                    <Checkbox
+                      size="xs"
+                      checked={isCombined}
+                      indeterminate={!isCombined && selectedBomIds.length > 0}
+                      onChange={(e) => toggleCombinedChecked(e.currentTarget.checked)}
+                      aria-label="Select all BOMs"
+                    />
+                  )}
+                  <UnstyledButton
+                    onClick={selectCombinedSbom}
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '2px 4px',
+                      borderRadius: 6,
+                      background: paneFocus === 'sbom' ? 'var(--mantine-color-blue-light)' : undefined,
+                    }}
+                  >
+                    <Text
+                      size="xs"
+                      fw={paneFocus === 'sbom' || (editing && versionMetaDirty) ? 650 : 500}
+                      truncate
+                      style={{ flex: 1 }}
+                      c={editing && versionMetaDirty ? 'blue' : undefined}
+                    >
+                      {treeVersionLabel(bom.version)}
+                    </Text>
+                    {paneFocus === 'sbom' && (
+                      <Badge size="xs" variant="light">
+                        Open
+                      </Badge>
+                    )}
+                  </UnstyledButton>
+                </Group>
+                {bomTreeOpen &&
+                  visibleBoms.map((row) => {
+                    const checked = selectedBomIds.includes(row.id)
+                    const onlyThis = paneFocus === 'bom' && selectedBom?.id === row.id
+                    const singleBom = visibleBoms.length === 1
+                    const label = singleBom ? 'BOM' : row.name
+                    const changed = bomRowChanged(row.id)
+                    return (
+                      <Group
+                        key={row.id}
+                        gap={6}
+                        wrap="nowrap"
+                        py={2}
+                        style={{ paddingLeft: singleBom && !editing ? 36 : editing || !singleBom ? 56 : 36, paddingRight: 8 }}
+                      >
+                        {editing && visibleBoms.length >= 2 && (
+                          <Radio
+                            size="xs"
+                            checked={selectedBom?.id === row.id || activeEditBomId === row.id}
+                            onChange={() => void switchEditBom(row.id)}
+                            aria-label={`Edit ${row.name}`}
+                          />
+                        )}
+                        {!editing && !singleBom && (
+                          <Checkbox
+                            size="xs"
+                            checked={checked}
+                            onChange={(e) => toggleBomSelected(row.id, e.currentTarget.checked)}
+                            aria-label={`Select ${row.name}`}
+                          />
+                        )}
+                        <UnstyledButton
+                          onClick={() => selectSingleBom(row.id)}
+                          style={{
+                            flex: 1,
+                            minWidth: 0,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            padding: '2px 4px',
+                            borderRadius: 6,
+                            background: onlyThis ? 'var(--mantine-color-blue-light)' : undefined,
+                          }}
+                        >
+                          <Text
+                            size="xs"
+                            truncate
+                            fw={onlyThis || changed ? 650 : 400}
+                            c={changed ? 'blue' : undefined}
+                            style={{ flex: 1, minWidth: 0 }}
+                          >
+                            {label}
+                          </Text>
+                          {onlyThis && (
+                            <Badge size="xs" variant="light">
+                              Open
+                            </Badge>
+                          )}
+                        </UnstyledButton>
+                      </Group>
+                    )
+                  })}
+              </Stack>
+            )}
+          </ScrollArea>
+          <Divider
+            my={8}
+            mx={4}
+            label="Assets"
+            labelPosition="left"
+            styles={{
+              label: {
+                fontSize: 10,
+                fontWeight: 650,
+                color: 'var(--mantine-color-dimmed)',
+                marginRight: 8,
+              },
+            }}
+          />
+          <Group gap={6} wrap="nowrap" mb="xs" align="center">
+            <SearchInput
+              size="xs"
+              style={{ flex: 1, minWidth: 0 }}
+              placeholder="Filter by name"
+              value={paneSearch}
+              onValueChange={setPaneSearch}
+            />
             <Group gap={4} wrap="nowrap">
               <Tooltip label="Expand all" withArrow>
                 <ActionIcon
@@ -1102,37 +2373,14 @@ export function ApplicationDetailPage() {
               )}
             </Group>
           </Group>
-          <SearchInput
-            size="xs"
-            mb="xs"
-            placeholder="Filter by name"
-            value={paneSearch}
-            onValueChange={setPaneSearch}
-          />
-          <ScrollArea style={{ flex: 1 }} viewportRef={paneScrollRef}>
-            <UnstyledButton
-              onClick={selectApplication}
-              style={{
-                display: 'flex',
-                width: '100%',
-                padding: '6px 8px',
-                borderRadius: 6,
-                marginBottom: 4,
-                alignItems: 'center',
-                background: appSelected ? 'var(--mantine-color-blue-light)' : undefined,
-              }}
-            >
-              <Text size="sm" fw={appSelected ? 650 : 600} truncate style={{ flex: 1, minWidth: 0 }}>
-                {app?.name || 'Application'}
-              </Text>
-            </UnstyledButton>
+          <ScrollArea style={{ flex: 1, minHeight: 0 }} viewportRef={paneScrollRef} offsetScrollbars>
             {grouped.length === 0 && (
-              <Text size="sm" c="dimmed" px="xs">
+              <Text size="sm" c="dimmed" px="xs" style={{ paddingLeft: 16 }}>
                 {writable ? 'No assets yet. Add an existing asset or create a new one.' : 'No assets in this version.'}
               </Text>
             )}
             {grouped.length > 0 && groupedVisible.length === 0 && (
-              <Text size="sm" c="dimmed" px="xs">
+              <Text size="sm" c="dimmed" px="xs" style={{ paddingLeft: 16 }}>
                 {paneChangesOnly ? 'No pending changes.' : 'No matching assets.'}
               </Text>
             )}
@@ -1150,7 +2398,7 @@ export function ApplicationDetailPage() {
                       width: '100%',
                       gap: 6,
                       alignItems: 'center',
-                      padding: '6px 8px',
+                      padding: '6px 8px 6px 16px',
                       borderRadius: 6,
                       background: typeIsSelected
                         ? 'var(--mantine-color-blue-light)'
@@ -1192,7 +2440,7 @@ export function ApplicationDetailPage() {
                         style={{
                           display: 'flex',
                           width: '100%',
-                          padding: '4px 8px 4px 28px',
+                          padding: '4px 8px 4px 36px',
                           borderRadius: 6,
                           alignItems: 'center',
                           background:
@@ -1216,6 +2464,34 @@ export function ApplicationDetailPage() {
             })}
           </ScrollArea>
         </Paper>
+        <Box
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize application tree"
+          onPointerDown={onSplitterPointerDown}
+          onPointerMove={onSplitterPointerMove}
+          onPointerUp={onSplitterPointerUp}
+          onPointerCancel={onSplitterPointerUp}
+          style={{
+            width: SPLITTER_WIDTH,
+            flexShrink: 0,
+            cursor: 'col-resize',
+            display: 'flex',
+            alignItems: 'stretch',
+            justifyContent: 'center',
+            touchAction: 'none',
+            userSelect: 'none',
+          }}
+        >
+          <Box
+            style={{
+              width: 3,
+              margin: '8px 0',
+              borderRadius: 2,
+              background: 'var(--mantine-color-default-border)',
+            }}
+          />
+        </Box>
         <Paper withBorder p="sm" style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', position: 'relative' }}>
           <LoadingOverlay
             visible={contentLoading && tab === 'assets'}
@@ -1235,19 +2511,20 @@ export function ApplicationDetailPage() {
           >
             <Group justify="space-between" wrap="nowrap" align="center">
               <Tabs.List>
-                <Tabs.Tab value="assets">{appSelected ? 'Application' : 'Assets'}</Tabs.Tab>
+                <Tabs.Tab value="assets">
+                  {appSelected
+                    ? paneFocus === 'sbom'
+                      ? bom
+                        ? treeVersionLabel(bom.version)
+                        : 'BOM'
+                      : paneFocus === 'bom'
+                        ? selectedBom?.name || 'BOM'
+                        : 'Application'
+                    : 'Assets'}
+                </Tabs.Tab>
                 <Tabs.Tab value="graph">Graph</Tabs.Tab>
               </Tabs.List>
               <Group gap="sm" wrap="nowrap">
-                  {tab === 'assets' && selectedAsset && (
-                    <Button
-                      size="xs"
-                      variant="light"
-                      onClick={() => showOnGraph(selectedAsset.id)}
-                    >
-                      Show on graph
-                    </Button>
-                  )}
                   {tab === 'graph' && (
                     <>
                   <Group gap={6} wrap="nowrap">
@@ -1435,6 +2712,13 @@ export function ApplicationDetailPage() {
                           </Button>
                         </>
                       )}
+                      <Button
+                        size="xs"
+                        variant="light"
+                        onClick={() => showOnGraph(selectedAsset.id)}
+                      >
+                        Show on graph
+                      </Button>
                       {writable && isChanged(draft.assetStatus.get(selectedAsset.id)) && (
                         <>
                           <DraftStatusPill status={draft.assetStatus.get(selectedAsset.id)} />
@@ -1531,7 +2815,94 @@ export function ApplicationDetailPage() {
                     </Table.Tbody>
                   </Table>
                 </Stack>
-              ) : (
+              ) : paneFocus === 'sbom' ? (
+                <Stack gap="md">
+                  <Paper withBorder radius="md" p="md">
+                    <Stack gap="md">
+                      {editing && bom?.version.status === 'DRAFT' && !fingerprintView ? (
+                        <>
+                          <TextInput
+                            label="Target version"
+                            size="sm"
+                            required
+                            value={editTargetVersion}
+                            onChange={(e) => setEditTargetVersion(e.currentTarget.value)}
+                          />
+                          <TagsInput
+                            label="Version tags"
+                            placeholder="Add a tag"
+                            size="sm"
+                            value={editVersionTags}
+                            onChange={setEditVersionTags}
+                            clearable
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <MetaField label="Version">
+                            {bom ? treeVersionLabel(bom.version) : '—'}
+                          </MetaField>
+                          <MetaField label="Version tags">{(bom?.version.tags ?? []).join(', ')}</MetaField>
+                        </>
+                      )}
+                    </Stack>
+                  </Paper>
+                  {editing && bom?.version.status === 'DRAFT' && !fingerprintView && boms.length >= 1 && (
+                    <Group justify="flex-start">
+                      <Button size="sm" variant="light" onClick={openCreateBomModal}>
+                        Create BOM
+                      </Button>
+                    </Group>
+                  )}
+                  {visibleBoms.length >= 2 && (
+                    <Table striped highlightOnHover>
+                      <Table.Thead>
+                        <Table.Tr>
+                          <Table.Th>BOM</Table.Th>
+                          <Table.Th>Status</Table.Th>
+                          <Table.Th />
+                        </Table.Tr>
+                      </Table.Thead>
+                      <Table.Tbody>
+                        {visibleBoms.map((row) => {
+                          return (
+                            <Table.Tr
+                              key={row.id}
+                              style={{ cursor: 'pointer' }}
+                              onClick={() => selectSingleBom(row.id)}
+                            >
+                              <Table.Td>
+                                <Text size="sm">{row.name}</Text>
+                              </Table.Td>
+                              <Table.Td>
+                                <Text size="sm" c="dimmed">
+                                  BOM
+                                </Text>
+                              </Table.Td>
+                              <Table.Td>
+                                {editing && bom?.version.status === 'DRAFT' && (
+                                  <Button
+                                    size="xs"
+                                    color="red"
+                                    variant="subtle"
+                                    leftSection={<IconTrash size={14} />}
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      askDeleteBom(row)
+                                    }}
+                                  >
+                                    Delete
+                                  </Button>
+                                )}
+                              </Table.Td>
+                            </Table.Tr>
+                          )
+                        })}
+                      </Table.Tbody>
+                    </Table>
+                  )}
+                </Stack>
+              ) : paneFocus === 'bom' && selectedBom ? (
                 <Stack gap="md">
                   {writable && (
                     <Group justify="flex-end">
@@ -1541,7 +2912,48 @@ export function ApplicationDetailPage() {
                   )}
                   <Paper withBorder radius="md" p="md">
                     <Stack gap="md">
-                      {writable ? (
+                      {editing && bom?.version.status === 'DRAFT' ? (
+                        <>
+                          <TextInput
+                            label="BOM name"
+                            size="sm"
+                            value={editBomName}
+                            onChange={(e) => setEditBomName(e.currentTarget.value)}
+                          />
+                          <Textarea
+                            label="BOM description"
+                            size="sm"
+                            autosize
+                            minRows={2}
+                            value={editBomDescription}
+                            onChange={(e) => setEditBomDescription(e.currentTarget.value)}
+                          />
+                          <TagsInput
+                            label="BOM tags"
+                            placeholder="Add a tag"
+                            size="sm"
+                            value={editBomTags}
+                            onChange={setEditBomTags}
+                            clearable
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <MetaField label="Name">
+                            {boms.length === 1 ? 'BOM' : selectedBom.name}
+                          </MetaField>
+                          <MetaField label="Description">{selectedBom.description || ''}</MetaField>
+                          <MetaField label="Tags">{(selectedBom.tags ?? []).join(', ')}</MetaField>
+                        </>
+                      )}
+                    </Stack>
+                  </Paper>
+                </Stack>
+              ) : (
+                <Stack gap="md">
+                  <Paper withBorder radius="md" p="md">
+                    <Stack gap="md">
+                      {editing && bom?.version.status === 'DRAFT' && !fingerprintView ? (
                         <>
                           <TextInput
                             label="Name"
@@ -1557,11 +2969,20 @@ export function ApplicationDetailPage() {
                             value={editDescription}
                             onChange={(e) => setEditDescription(e.currentTarget.value)}
                           />
+                          <TagsInput
+                            label="Tags"
+                            placeholder="Add a tag"
+                            size="sm"
+                            value={editAppTags}
+                            onChange={setEditAppTags}
+                            clearable
+                          />
                         </>
                       ) : (
                         <>
                           <MetaField label="Name">{app?.name || ''}</MetaField>
                           <MetaField label="Description">{app?.description || ''}</MetaField>
+                          <MetaField label="Tags">{(app?.tags ?? []).join(', ')}</MetaField>
                         </>
                       )}
                     </Stack>
@@ -1585,12 +3006,16 @@ export function ApplicationDetailPage() {
                             <Table.Tr>
                               <Table.Th>Version</Table.Th>
                               <Table.Th>Status</Table.Th>
+                              <Table.Th>BOM</Table.Th>
+                              <Table.Th>Based on</Table.Th>
                               <Table.Th>Captured</Table.Th>
+                              <Table.Th />
                             </Table.Tr>
                           </Table.Thead>
                           <Table.Tbody>
                             {versions.map((v) => {
                               const open = versionOpen && v.id === versionId
+                              const multiBom = (v.bomCount ?? (v.id === versionId ? boms.length : 1)) >= 2
                               return (
                               <Table.Tr
                                 key={v.id}
@@ -1623,8 +3048,34 @@ export function ApplicationDetailPage() {
                                 </Table.Td>
                                 <Table.Td>
                                   <Text size="sm" c="dimmed">
+                                    {multiBom ? 'Multi' : 'Single'}
+                                  </Text>
+                                </Table.Td>
+                                <Table.Td>
+                                  <Text size="sm" c="dimmed">
+                                    {basedOnLabel(v)}
+                                  </Text>
+                                </Table.Td>
+                                <Table.Td>
+                                  <Text size="sm" c="dimmed">
                                     {new Date(v.capturedAt).toLocaleString()}
                                   </Text>
+                                </Table.Td>
+                                <Table.Td>
+                                  {v.status === 'DRAFT' && (
+                                    <Button
+                                      size="xs"
+                                      color="red"
+                                      variant="subtle"
+                                      leftSection={<IconTrash size={14} />}
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        askDeleteDraft(v)
+                                      }}
+                                    >
+                                      Delete
+                                    </Button>
+                                  )}
                                 </Table.Td>
                               </Table.Tr>
                             )
@@ -1642,7 +3093,8 @@ export function ApplicationDetailPage() {
                         <Table striped highlightOnHover stickyHeader>
                           <Table.Thead>
                             <Table.Tr>
-                              <Table.Th>Fingerprint</Table.Th>
+                              <Table.Th>Name</Table.Th>
+                              <Table.Th>Category</Table.Th>
                               <Table.Th>Version</Table.Th>
                               <Table.Th>Created</Table.Th>
                               <Table.Th>SHA-256</Table.Th>
@@ -1667,7 +3119,7 @@ export function ApplicationDetailPage() {
                                       fw={600}
                                       onClick={() => switchFingerprint(fp)}
                                     >
-                                      {fp.note?.trim() || fp.contentSha256.slice(0, 12)}
+                                      {fingerprintTitle(fp)}
                                     </Anchor>
                                     {open && (
                                       <Badge size="xs" variant="light">
@@ -1675,6 +3127,11 @@ export function ApplicationDetailPage() {
                                       </Badge>
                                     )}
                                   </Group>
+                                </Table.Td>
+                                <Table.Td>
+                                  <Text size="sm" c="dimmed">
+                                    {fingerprintCategory(fp)}
+                                  </Text>
                                 </Table.Td>
                                 <Table.Td>
                                   <Text size="sm" c="dimmed">
@@ -1726,7 +3183,7 @@ export function ApplicationDetailPage() {
                   changesOnly={editing && changesOnly}
                   onSelectAsset={(assetId) => {
                     if (!assetId) {
-                      selectApplication()
+                      writeSelection({ asset: null, type: null })
                       return
                     }
                     selectAsset(assetId, { pan: false })
@@ -1740,7 +3197,16 @@ export function ApplicationDetailPage() {
 
       <Modal opened={promoteOpen} onClose={() => setPromoteOpen(false)} title="Promote draft">
         <Stack>
-          <TextInput label="Version" value={promoteName} onChange={(e) => setPromoteName(e.currentTarget.value)} />
+          <Text size="sm" c="dimmed">
+            Re-type the version to confirm. You may override the current target
+            {bom?.version.version ? ` (${bom.version.version})` : ''} if the new value is unique.
+          </Text>
+          <TextInput
+            label="Version"
+            required
+            value={promoteName}
+            onChange={(e) => setPromoteName(e.currentTarget.value)}
+          />
           <Button
             disabled={!promoteName.trim() || !bom}
             onClick={() => {
@@ -1755,6 +3221,86 @@ export function ApplicationDetailPage() {
             }}
           >
             Promote
+          </Button>
+        </Stack>
+      </Modal>
+      <Modal opened={draftOpen} onClose={() => setDraftOpen(false)} title="New draft">
+        <Stack>
+          <Select
+            label="Based on"
+            required
+            searchable
+            data={draftSourceOptions}
+            value={draftFrom}
+            onChange={(value) => {
+              setDraftFrom(value)
+              setDraftCombine(false)
+            }}
+          />
+          <TextInput
+            label="Target version"
+            required
+            placeholder="1.0.0"
+            value={draftTarget}
+            onChange={(e) => setDraftTarget(e.currentTarget.value)}
+          />
+          {draftFrom?.startsWith('v:') && draftFromBomCount > 1 && (
+            <Checkbox
+              label="Combine into a single BOM"
+              checked={draftCombine}
+              onChange={(e) => setDraftCombine(e.currentTarget.checked)}
+            />
+          )}
+          <Button disabled={!draftTarget.trim() || !draftFrom || busy} onClick={() => void submitNewDraft()}>
+            Create draft
+          </Button>
+        </Stack>
+      </Modal>
+      <Modal opened={fpOpen} onClose={() => setFpOpen(false)} title="Create fingerprint">
+        <Stack>
+          <TextInput
+            label="Name"
+            required
+            value={fpName}
+            onChange={(e) => setFpName(e.currentTarget.value)}
+          />
+          <Select
+            label="Category"
+            required
+            data={FINGERPRINT_CATEGORIES}
+            value={fpCategory}
+            onChange={setFpCategory}
+            allowDeselect={false}
+          />
+          <Button disabled={!fpName.trim() || !fpCategory || busy} onClick={() => void submitFingerprint()}>
+            Create fingerprint
+          </Button>
+        </Stack>
+      </Modal>
+      <Modal opened={createBomOpen} onClose={() => setCreateBomOpen(false)} title="Create BOM">
+        <Stack>
+          <TextInput
+            label="Name"
+            required
+            value={newBomName}
+            onChange={(e) => setNewBomName(e.currentTarget.value)}
+          />
+          <Textarea
+            label="Description"
+            autosize
+            minRows={2}
+            value={newBomDescription}
+            onChange={(e) => setNewBomDescription(e.currentTarget.value)}
+          />
+          <TagsInput
+            label="Tags"
+            placeholder="Add a tag"
+            value={newBomTags}
+            onChange={setNewBomTags}
+            clearable
+          />
+          <Button disabled={!newBomName.trim() || busy} onClick={() => void submitCreateBom()}>
+            Create BOM
           </Button>
         </Stack>
       </Modal>
@@ -1867,12 +3413,49 @@ export function ApplicationDetailPage() {
         onCreated={onPickCreated}
       />
       <BomImpactDialog plan={impact} onClose={() => setImpact(null)} onConfirm={applyImpact} />
+      <Modal
+        opened={blocker.state === 'blocked'}
+        onClose={() => blocker.reset?.()}
+        title="Unsaved changes"
+        centered
+      >
+        <Stack>
+          <Text size="sm">You have unsaved draft changes. Leave this application and discard them?</Text>
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => blocker.reset?.()}>
+              Stay
+            </Button>
+            <Button
+              color="red"
+              onClick={() => {
+                void (async () => {
+                  if (bom) {
+                    for (const bomId of pendingCreateBomIds) {
+                      try {
+                        await api.deleteBom(id, bom.version.id, bomId)
+                      } catch {
+                        /* best-effort */
+                      }
+                    }
+                  }
+                  // Keep editing true until navigation so the blocker stays armed; id change resets session.
+                  blocker.proceed?.()
+                })()
+              }}
+            >
+              Discard and leave
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
       <Modal opened={!!confirm} onClose={() => setConfirm(null)} title={confirm?.title} centered>
         <Stack>
-          <Text size="sm">{confirm?.message}</Text>
+          <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
+            {confirm?.message}
+          </Text>
           <Group justify="flex-end">
             <Button variant="default" onClick={() => setConfirm(null)}>
-              Cancel
+              {confirm?.cancelLabel || 'Cancel'}
             </Button>
             {confirm?.onDiscard && (
               <Button
