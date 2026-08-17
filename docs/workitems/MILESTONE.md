@@ -37,6 +37,7 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`asset-repository-demo-seeds`](completed/20260814-asset-repository-demo-seeds/STORY.md) — Extensible seed kinds, AI catalog demo volumes, qsynth load-data, collection query exec stats (D-4).
 - [`asset-repository-ops-fixes`](completed/20260814-asset-repository-ops-fixes/STORY.md) — Postgres collection search casts, SPA deep-link filters, batched `load.py` (D-5).
 - [`sbom-inventory-app`](completed/20260816-sbom-inventory-app/STORY.md) — Applications \| Portfolios inventory app; portfolio-scoped MI (latest-version graphs + Gremlin); weak CDX; programmatic objs (D-2). WI-000…WI-015.
+- [`spa-url-classpath-align`](completed/20260817-spa-url-classpath-align/STORY.md) — Align SPA URL prefix with classpath folder (`/workbench`, `/ar`, `/sbom`); rename `:objs-app` → `:objs-service-app`; UI JAR on the runner only (P-2). WI-000…WI-004.
 
 ### In Progress
 

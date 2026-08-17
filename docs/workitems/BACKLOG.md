@@ -65,6 +65,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | # | Item | Type | Status | Source |
 |---|------|------|--------|--------|
 | P-1 | Gradle cleanup: `platform()` BOM, prune deps, minimize plugins | improvement | done | [`completed/20260813-build-system-cleanup/`](completed/20260813-build-system-cleanup/STORY.md) |
+| P-2 | Align SPA URL prefix with classpath `static/<name>/`; rename workbench runner `:objs-service-app` | improvement | done | [`completed/20260817-spa-url-classpath-align/`](completed/20260817-spa-url-classpath-align/STORY.md) |
 
 ---
 
@@ -75,4 +76,4 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | backlog | 2 |
 | planned | 0 |
 | in-progress | 0 |
-| done | 24 |
+| done | 25 |
