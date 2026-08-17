@@ -22,5 +22,6 @@ Organised by logical component (not by story). Story process lives under
 | Typed domain | [`graph/typed-domain.md`](graph/typed-domain.md) | Reusable typed façades / GraphBuilder on the foundation |
 | UI manual | [`ui.md`](ui.md) | User guide for graph exploration, schema browsing, and schema authoring |
 | SBOM example | [`sbom/example.md`](sbom/example.md) | Concrete SBOM app on the entity store |
+| SBOM user guide | [`sbom/user.md`](sbom/user.md) | Inventory SPA: applications, multi-BOM versions, drafts, graph |
 | Canonical software graph | [`sbom/canonical-spec.md`](sbom/canonical-spec.md) | Ontology draft (types + relationships) |
 | Asset repository example | [`asset-repository/example.md`](asset-repository/example.md) | Collections-as-graphs object store example |

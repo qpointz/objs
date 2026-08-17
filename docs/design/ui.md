@@ -44,7 +44,8 @@ docker compose -f deploy/local-dev/docker-compose.yml up -d
 ./gradlew :objs-service-app:run --args="--spring.profiles.active=postgres"
 ```
 
-(The SBOM inventory app is a separate process: `./gradlew :sbom-service:run` on port **8080**.)
+(The SBOM inventory app is a separate process: `./gradlew :sbom-service:run` on port **8080**.
+Inventory UI: [`sbom/user.md`](sbom/user.md).)
 
 The **top header** shows **Workbench** (links home), then the view switcher, and a compact
 dark/light toggle on the right:
