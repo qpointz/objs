@@ -2,6 +2,7 @@ package org.poc.objs.sbom.demo
 
 import org.poc.objs.sbom.domain.CreateApplicationRequest
 import org.poc.objs.sbom.domain.CreateBomRequest
+import org.poc.objs.sbom.domain.BomSummary
 import org.poc.objs.sbom.domain.CreateDraftVersionRequest
 import org.poc.objs.sbom.domain.CreateFingerprintRequest
 import org.poc.objs.sbom.domain.CreatePoolAssetRequest
@@ -341,28 +342,47 @@ class SbomDemoInventorySeeder(
         rels: List<DraftRelationWrite>,
         bomCount: Int,
     ) {
+        val names = if (bomCount <= 1) listOf("BOM") else listOf("Build", "Runtime", "Image").take(bomCount)
         val existing = boms.list(applicationId, versionId)
-        val primary = existing.first()
-        if (bomCount <= 1) {
-            versions.replaceBom(applicationId, versionId, ReplaceVersionBomRequest(assetIds, rels), primary.id)
-            return
+        val used = mutableSetOf<UUID>()
+        val slots = mutableListOf<BomSummary>()
+        for (name in names) {
+            val named = existing.firstOrNull { it.name == name && it.id !in used }
+            if (named != null) {
+                used += named.id
+                slots += named
+                continue
+            }
+            val leftover = existing.firstOrNull { it.id !in used }
+            slots +=
+                if (leftover != null) {
+                    used += leftover.id
+                    boms.update(
+                        applicationId,
+                        versionId,
+                        leftover.id,
+                        UpdateBomRequest(name = name, tags = listOf(name.lowercase())),
+                    )
+                } else {
+                    boms.create(
+                        applicationId,
+                        versionId,
+                        CreateBomRequest(name = name, tags = listOf(name.lowercase())),
+                    )
+                }
         }
-        val names = listOf("Build", "Runtime", "Image").take(bomCount)
-        boms.update(applicationId, versionId, primary.id, UpdateBomRequest(name = names[0], tags = listOf(names[0].lowercase())))
-        val chunk = (assetIds.size / bomCount).coerceAtLeast(1)
-        val firstSlice = assetIds.take(chunk)
-        val firstRels = rels.filter { it.fromAssetId in firstSlice && it.toAssetId in firstSlice }
-        versions.replaceBom(applicationId, versionId, ReplaceVersionBomRequest(firstSlice, firstRels), primary.id)
-        for (i in 1 until bomCount) {
-            val created =
-                boms.create(
-                    applicationId,
-                    versionId,
-                    CreateBomRequest(name = names[i], tags = listOf(names[i].lowercase())),
-                )
+        val chunk = (assetIds.size / names.size).coerceAtLeast(1)
+        for ((i, row) in slots.withIndex()) {
             val from = i * chunk
-            val slice = if (i == bomCount - 1) assetIds.drop(from) else assetIds.drop(from).take(chunk)
-            versions.replaceBom(applicationId, versionId, ReplaceVersionBomRequest(slice, emptyList()), created.id)
+            val slice = if (i == names.lastIndex) assetIds.drop(from) else assetIds.drop(from).take(chunk)
+            val sliceSet = slice.toSet()
+            val sliceRels =
+                if (i == 0) {
+                    rels.filter { it.fromAssetId in sliceSet && it.toAssetId in sliceSet }
+                } else {
+                    emptyList()
+                }
+            versions.replaceBom(applicationId, versionId, ReplaceVersionBomRequest(slice, sliceRels), row.id)
         }
     }
 

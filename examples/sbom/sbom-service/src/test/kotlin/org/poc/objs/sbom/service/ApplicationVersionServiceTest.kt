@@ -20,6 +20,7 @@ import org.poc.objs.sbom.domain.DraftRelationWrite
 import org.poc.objs.sbom.domain.PromoteVersionRequest
 import org.poc.objs.sbom.domain.RenameVersionRequest
 import org.poc.objs.sbom.domain.ReplaceVersionBomRequest
+import org.poc.objs.sbom.domain.UpdateBomRequest
 import org.poc.objs.sbom.persistence.SbomApplicationSbomRepository
 import org.poc.objs.sbom.persistence.SbomPersistenceConfiguration
 import org.poc.objs.sbom.registry.SbomRoles
@@ -258,6 +259,36 @@ class ApplicationVersionServiceTest {
         assertThat(flatBoms[0].name).isEqualTo("BOM")
         assertThat(flatBoms[0].tags).containsExactly("rt")
         assertThat(flat.assets.map { it.label }).anyMatch { it.startsWith("core") }
+    }
+
+    @Test
+    fun shouldReuseCopiedBomNamesOnNextDraft() {
+        val app = inventory.create(CreateApplicationRequest(name = "SeedCopy", targetVersion = "1.0.0"))
+        val draftId = versions.draft(app.id)!!.id
+        val primary = bomService.list(app.id, draftId).single()
+        bomService.update(app.id, draftId, primary.id, UpdateBomRequest(name = "Build", tags = listOf("build")))
+        bomService.create(app.id, draftId, CreateBomRequest(name = "Runtime", tags = listOf("runtime")))
+        val released = versions.promote(app.id, draftId, PromoteVersionRequest("1.0.0"))
+        val next =
+            versions.createDraft(
+                app.id,
+                CreateDraftVersionRequest(
+                    fromVersionId = released.version.id,
+                    targetVersion = "1.1.0",
+                    combineConstituents = false,
+                ),
+            )
+        val copied = bomService.list(app.id, next.version.id)
+        assertThat(copied.map { it.name }).containsExactly("Build", "Runtime")
+        val clash =
+            assertThrows<ResponseStatusException> {
+                bomService.create(app.id, next.version.id, CreateBomRequest(name = "Runtime"))
+            }
+        assertThat(clash.statusCode.value()).isEqualTo(409)
+        copied.forEach { row ->
+            versions.replaceBom(app.id, next.version.id, ReplaceVersionBomRequest(emptyList(), emptyList()), row.id)
+        }
+        assertThat(bomService.list(app.id, next.version.id).map { it.name }).containsExactly("Build", "Runtime")
     }
 
     @Test
