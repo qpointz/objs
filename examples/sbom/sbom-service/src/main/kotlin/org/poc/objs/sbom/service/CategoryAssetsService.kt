@@ -31,22 +31,24 @@ class CategoryAssetsService(
         val nameByApp = apps.associate { it.applicationId to it.applicationName }
         data class Acc(val entity: BoMEntity, val apps: MutableSet<UUID>)
         val groups = linkedMapOf<String, Acc>()
-        for ((appId, graphId) in resolution.graphByApp) {
-            val contents = namedGraphs.get(graphId)?.contents ?: continue
-            for (entity in contents.entities) {
-                val schema =
-                    schemas.listByType(entity.type)
-                        .filter { it.usage == BoMSchemaUsage.ENTITY }
-                        .maxByOrNull { it.version }
-                val identity = schema?.let { BoMIdentityProjection.project(it.contentSchema, entity.payload) }.orEmpty()
-                val identityKey =
-                    if (identity.isEmpty()) {
-                        entity.id?.toString() ?: continue
-                    } else {
-                        identity.entries.sortedBy { it.key }.joinToString("|") { "${it.key}=${it.value}" }
-                    }
-                val key = "${entity.type}|$identityKey"
-                groups.getOrPut(key) { Acc(entity, linkedSetOf()) }.apps.add(appId)
+        for ((appId, graphIds) in resolution.graphByApp) {
+            for (graphId in graphIds) {
+                val contents = namedGraphs.get(graphId)?.contents ?: continue
+                for (entity in contents.entities) {
+                    val schema =
+                        schemas.listByType(entity.type)
+                            .filter { it.usage == BoMSchemaUsage.ENTITY }
+                            .maxByOrNull { it.version }
+                    val identity = schema?.let { BoMIdentityProjection.project(it.contentSchema, entity.payload) }.orEmpty()
+                    val identityKey =
+                        if (identity.isEmpty()) {
+                            entity.id?.toString() ?: continue
+                        } else {
+                            identity.entries.sortedBy { it.key }.joinToString("|") { "${it.key}=${it.value}" }
+                        }
+                    val key = "${entity.type}|$identityKey"
+                    groups.getOrPut(key) { Acc(entity, linkedSetOf()) }.apps.add(appId)
+                }
             }
         }
         val rows =

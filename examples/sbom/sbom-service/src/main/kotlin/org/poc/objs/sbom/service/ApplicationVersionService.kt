@@ -2,6 +2,7 @@ package org.poc.objs.sbom.service
 
 import org.poc.objs.core.domain.BoMEdge
 import org.poc.objs.core.domain.BoMEntity
+import org.poc.objs.core.domain.BoMGraphContents
 import org.poc.objs.core.domain.BoMGraphDelete
 import org.poc.objs.core.domain.BoMGraphException
 import org.poc.objs.core.domain.BoMGraphMutation
@@ -12,19 +13,27 @@ import org.poc.objs.sbom.annotations.SbomAnnotationKeys
 import org.poc.objs.sbom.domain.ApplicationFingerprintSummary
 import org.poc.objs.sbom.domain.ApplicationVersionSummary
 import org.poc.objs.sbom.domain.AssetView
+import org.poc.objs.sbom.domain.BomUnion
+import org.poc.objs.sbom.domain.RenameVersionRequest
 import org.poc.objs.sbom.domain.CreateDraftVersionRequest
 import org.poc.objs.sbom.domain.CreateFingerprintRequest
 import org.poc.objs.sbom.domain.DraftAssetWrite
 import org.poc.objs.sbom.domain.DraftRelationWrite
 import org.poc.objs.sbom.domain.InferredAppDependency
+import org.poc.objs.sbom.domain.PatchVersionRequest
 import org.poc.objs.sbom.domain.PromoteVersionRequest
 import org.poc.objs.sbom.domain.RelationView
 import org.poc.objs.sbom.domain.ReplaceVersionBomRequest
 import org.poc.objs.sbom.domain.VersionBomView
 import org.poc.objs.sbom.model.CanonicalEdgeType
+import org.poc.objs.sbom.domain.SemVerVersionComparer
+import org.poc.objs.sbom.domain.VersionComparer
 import org.poc.objs.sbom.persistence.ApplicationVersionStatus
 import org.poc.objs.sbom.persistence.SbomApplicationFingerprintRecord
 import org.poc.objs.sbom.persistence.SbomApplicationFingerprintRepository
+import org.poc.objs.sbom.persistence.FingerprintCategory
+import org.poc.objs.sbom.persistence.SbomApplicationSbomRecord
+import org.poc.objs.sbom.persistence.SbomApplicationSbomRepository
 import org.poc.objs.sbom.persistence.SbomApplicationRecord
 import org.poc.objs.sbom.persistence.SbomApplicationRepository
 import org.poc.objs.sbom.persistence.SbomApplicationVersionRecord
@@ -42,48 +51,53 @@ class ApplicationVersionService(
     private val applications: SbomApplicationRepository,
     private val versions: SbomApplicationVersionRepository,
     private val fingerprints: SbomApplicationFingerprintRepository,
+    private val boms: SbomApplicationSbomRepository,
     private val namedGraphs: BoMNamedGraphStore,
     private val sbom: SbomService,
 ) {
+    private val versionComparer: VersionComparer = SemVerVersionComparer()
     fun list(applicationId: UUID): List<ApplicationVersionSummary> {
         requireApplication(applicationId)
         return versions.findByApplicationIdOrderByCapturedAtDescIdDesc(applicationId).map { it.toSummary() }
     }
 
-    fun draft(applicationId: UUID): SbomApplicationVersionRecord? =
-        versions.findByApplicationIdAndStatus(applicationId, ApplicationVersionStatus.DRAFT).firstOrNull()
+    fun drafts(applicationId: UUID): List<SbomApplicationVersionRecord> =
+        versions.findByApplicationIdAndStatus(applicationId, ApplicationVersionStatus.DRAFT)
+            .sortedWith(compareByDescending<SbomApplicationVersionRecord> { it.capturedAt }.thenByDescending { it.id })
+
+    fun draft(applicationId: UUID): SbomApplicationVersionRecord? = drafts(applicationId).firstOrNull()
 
     fun latestReleased(applicationId: UUID): ApplicationVersionSummary? =
         versions.findByApplicationIdOrderByCapturedAtDescIdDesc(applicationId)
             .filter { it.status == ApplicationVersionStatus.RELEASED }
-            .maxWithOrNull(compareBy<SbomApplicationVersionRecord> { it.promotedAt ?: it.capturedAt }.thenBy { it.id })
+            .maxWithOrNull(compareBy<SbomApplicationVersionRecord> { it.versionSerial }.thenBy { it.id })
             ?.toSummary()
 
     fun latest(applicationId: UUID): ApplicationVersionSummary? = latestReleased(applicationId)
 
-    fun latestGraphIds(applicationIds: Collection<UUID>): Map<UUID, UUID> {
-        val out = linkedMapOf<UUID, UUID>()
+    fun latestGraphIds(applicationIds: Collection<UUID>): Map<UUID, List<UUID>> {
+        val out = linkedMapOf<UUID, List<UUID>>()
         for (appId in applicationIds.distinct()) {
             val row =
                 versions.findByApplicationIdOrderByCapturedAtDescIdDesc(appId)
                     .filter { it.status == ApplicationVersionStatus.RELEASED }
                     .maxWithOrNull(
-                        compareBy<SbomApplicationVersionRecord> { it.promotedAt ?: it.capturedAt }.thenBy { it.id },
+                        compareBy<SbomApplicationVersionRecord> { it.versionSerial }.thenBy { it.id },
                     )
             if (row != null) {
-                out[appId] = row.graphId
+                out[appId] = bomGraphIds(row)
             }
         }
         return out
     }
 
-    fun currentGraphId(applicationId: UUID): UUID? =
-        draft(applicationId)?.graphId ?: latestGraphIds(listOf(applicationId))[applicationId]
+    fun currentGraphIds(applicationId: UUID): List<UUID> =
+        draft(applicationId)?.let { bomGraphIds(it) } ?: latestGraphIds(listOf(applicationId))[applicationId].orEmpty()
 
     fun getBom(applicationId: UUID, versionId: UUID): VersionBomView {
         val app = requireApplication(applicationId)
         val row = requireVersion(applicationId, versionId)
-        return toBomView(app, row, row.graphId)
+        return toBomView(app, row)
     }
 
     fun getFingerprintBom(applicationId: UUID, versionId: UUID, fingerprintId: UUID): VersionBomView {
@@ -101,74 +115,113 @@ class ApplicationVersionService(
     }
 
     @Transactional
-    fun createEmptyDraft(app: SbomApplicationRecord): SbomApplicationVersionRecord {
-        if (draft(app.id) != null) {
-            throw ResponseStatusException(HttpStatus.CONFLICT, "Application already has a draft")
-        }
-        val graph =
-            namedGraphs.create(
-                BoMGraphSpec(
-                    annotations =
-                        mapOf(
-                            "kind" to "application-version",
-                            "status" to ApplicationVersionStatus.DRAFT,
-                            "applicationId" to app.id.toString(),
-                            "applicationName" to app.name,
-                        ),
+    fun createEmptyDraft(app: SbomApplicationRecord, targetVersion: String? = null): SbomApplicationVersionRecord {
+        val ident = allocateVersion(app.id, targetVersion)
+        val row =
+            versions.save(
+                SbomApplicationVersionRecord(
+                    applicationId = app.id,
+                    capturedAt = Instant.now(),
+                    status = ApplicationVersionStatus.DRAFT,
+                    version = ident,
+                    label = ident,
+                    versionSerial = versionComparer.toSerial(ident),
+                    tags = app.tags.copyOf(),
                 ),
             )
-        return versions.save(
-            SbomApplicationVersionRecord(
-                applicationId = app.id,
-                capturedAt = Instant.now(),
-                graphId = graph.id,
-                status = ApplicationVersionStatus.DRAFT,
-            ),
-        )
+        createPrimaryBom(app, row, ApplicationVersionStatus.DRAFT)
+        return row
     }
 
     @Transactional
     fun createDraft(applicationId: UUID, request: CreateDraftVersionRequest): VersionBomView {
         sbom.ensureRegistry()
         val app = requireApplication(applicationId)
-        if (draft(applicationId) != null) {
-            throw ResponseStatusException(HttpStatus.CONFLICT, "Application already has a draft")
+        if (request.fromVersionId != null && request.fromFingerprintId != null) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Provide fromVersionId or fromFingerprintId, not both")
         }
-        val sourceId = request.fromVersionId
-        val graphId =
-            if (sourceId == null) {
-                namedGraphs.create(
-                    BoMGraphSpec(
-                        annotations =
-                            mapOf(
-                                "kind" to "application-version",
-                                "status" to ApplicationVersionStatus.DRAFT,
-                                "applicationId" to app.id.toString(),
-                                "applicationName" to app.name,
-                            ),
-                    ),
-                ).id
-            } else {
-                val source = requireVersion(applicationId, sourceId)
-                copyGraph(
-                    source.graphId,
-                    mapOf(
-                        "kind" to "application-version",
-                        "status" to ApplicationVersionStatus.DRAFT,
-                        "applicationId" to app.id.toString(),
-                        "applicationName" to app.name,
-                    ),
-                )
+        val ident = allocateVersion(applicationId, request.targetVersion)
+        val sourceVersion =
+            request.fromVersionId?.let { requireVersion(applicationId, it) }
+        val sourceFingerprint =
+            request.fromFingerprintId?.let { fpId ->
+                val fp =
+                    fingerprints.findById(fpId).orElseThrow {
+                        ResponseStatusException(HttpStatus.NOT_FOUND, "Fingerprint not found: $fpId")
+                    }
+                val parent =
+                    versions.findById(fp.versionId).orElseThrow {
+                        ResponseStatusException(HttpStatus.NOT_FOUND, "Fingerprint version not found")
+                    }
+                if (parent.applicationId != applicationId) {
+                    throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Fingerprint does not belong to this application")
+                }
+                fp to parent
+            }
+        val basedTags =
+            when {
+                sourceVersion != null -> sourceVersion.tags
+                sourceFingerprint != null -> sourceFingerprint.second.tags
+                else -> app.tags
             }
         val row =
             versions.save(
                 SbomApplicationVersionRecord(
                     applicationId = app.id,
                     capturedAt = Instant.now(),
-                    graphId = graphId,
                     status = ApplicationVersionStatus.DRAFT,
+                    version = ident,
+                    label = ident,
+                    versionSerial = versionComparer.toSerial(ident),
+                    tags = basedTags.copyOf(),
+                    basedOnVersionId = sourceVersion?.id,
+                    basedOnFingerprintId = sourceFingerprint?.first?.id,
                 ),
             )
+        when {
+            sourceFingerprint != null -> {
+                copyBomFromGraph(
+                    app,
+                    row,
+                    sourceFingerprint.first.graphId,
+                    name = "BOM",
+                    tags = emptyArray(),
+                    description = null,
+                    sortOrder = 0,
+                )
+            }
+            sourceVersion != null -> {
+                val sourceBoms = boms.findByVersionIdOrderBySortOrderAscIdAsc(sourceVersion.id)
+                val combine = request.combineConstituents == true && sourceBoms.size > 1
+                if (combine) {
+                    val contents =
+                        BomUnion.of(sourceBoms.mapNotNull { namedGraphs.get(it.graphId) })
+                    val tagUnion = BomUnion.combinedTags(emptyArray(), emptyArray(), sourceBoms.map { it.tags })
+                    copyBomFromContents(
+                        app,
+                        row,
+                        contents,
+                        name = "BOM",
+                        tags = tagUnion.toTypedArray(),
+                        description = null,
+                        sortOrder = 0,
+                    )
+                } else {
+                    for (sourceBom in sourceBoms) {
+                        copyBomFromGraph(
+                            app,
+                            row,
+                            sourceBom.graphId,
+                            name = sourceBom.name,
+                            tags = sourceBom.tags.copyOf(),
+                            description = sourceBom.description,
+                            sortOrder = sourceBom.sortOrder,
+                        )
+                    }
+                }
+            }
+            else -> createPrimaryBom(app, row, ApplicationVersionStatus.DRAFT)
+        }
         return toBomView(app, row)
     }
 
@@ -184,28 +237,30 @@ class ApplicationVersionService(
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "version is required")
         }
         val clash =
-            versions.findByApplicationIdOrderByCapturedAtDescIdDesc(applicationId).any {
-                it.status == ApplicationVersionStatus.RELEASED && it.version.equals(ident, ignoreCase = true)
-            }
-        if (clash) {
+            versions.findByApplicationIdAndVersion(applicationId, ident)?.takeIf { it.id != row.id }
+        if (clash != null) {
             throw ResponseStatusException(HttpStatus.CONFLICT, "Version already exists: $ident")
         }
         val now = Instant.now()
         row.status = ApplicationVersionStatus.RELEASED
         row.version = ident
         row.label = ident
+        row.versionSerial = versionComparer.toSerial(ident)
         row.promotedAt = now
-        namedGraphs.updateAnnotations(
-            row.graphId,
-            mapOf(
-                "kind" to "application-version",
-                "status" to ApplicationVersionStatus.RELEASED,
-                "applicationId" to app.id.toString(),
-                "applicationName" to app.name,
-                "version" to ident,
-                "versionId" to row.id.toString(),
-            ),
-        )
+        for (bom in boms.findByVersionIdOrderBySortOrderAscIdAsc(row.id)) {
+            namedGraphs.updateAnnotations(
+                bom.graphId,
+                mapOf(
+                    "kind" to "application-bom",
+                    "status" to ApplicationVersionStatus.RELEASED,
+                    "applicationId" to app.id.toString(),
+                    "applicationName" to app.name,
+                    "version" to ident,
+                    "versionId" to row.id.toString(),
+                    "bomId" to bom.id.toString(),
+                ),
+            )
+        }
         return toBomView(app, versions.save(row))
     }
 
@@ -214,8 +269,8 @@ class ApplicationVersionService(
         sbom.ensureRegistry()
         val app = requireApplication(applicationId)
         val row = requireWritable(applicationId, versionId)
-        forbidFingerprintGraph(row.graphId)
-        applyAssetWrite(app, row.graphId, write)
+        forbidFingerprintGraph(bomGraphId(row))
+        applyAssetWrite(app, bomGraphId(row), write)
         return toBomView(app, row)
     }
 
@@ -229,9 +284,9 @@ class ApplicationVersionService(
     fun removeAsset(applicationId: UUID, versionId: UUID, assetId: UUID): VersionBomView {
         val app = requireApplication(applicationId)
         val row = requireWritable(applicationId, versionId)
-        forbidFingerprintGraph(row.graphId)
+        forbidFingerprintGraph(bomGraphId(row))
         try {
-            namedGraphs.detach(row.graphId, assetId)
+            namedGraphs.detach(bomGraphId(row), assetId)
         } catch (ex: BoMGraphException) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, ex.message)
         }
@@ -249,8 +304,8 @@ class ApplicationVersionService(
         sbom.ensureRegistry()
         val app = requireApplication(applicationId)
         val row = requireWritable(applicationId, versionId)
-        forbidFingerprintGraph(row.graphId)
-        applyRelation(row.graphId, write)
+        forbidFingerprintGraph(bomGraphId(row))
+        applyRelation(bomGraphId(row), write)
         return toBomView(app, row)
     }
 
@@ -264,8 +319,8 @@ class ApplicationVersionService(
     fun removeRelation(applicationId: UUID, versionId: UUID, relationId: UUID): VersionBomView {
         val app = requireApplication(applicationId)
         val row = requireWritable(applicationId, versionId)
-        forbidFingerprintGraph(row.graphId)
-        applyDeleteEdges(row.graphId, listOf(relationId))
+        forbidFingerprintGraph(bomGraphId(row))
+        applyDeleteEdges(bomGraphId(row), listOf(relationId))
         return toBomView(app, row)
     }
 
@@ -276,41 +331,47 @@ class ApplicationVersionService(
     }
 
     @Transactional
-    fun replaceBom(applicationId: UUID, versionId: UUID, request: ReplaceVersionBomRequest): VersionBomView {
+    fun replaceBom(
+        applicationId: UUID,
+        versionId: UUID,
+        request: ReplaceVersionBomRequest,
+        bomId: UUID? = null,
+    ): VersionBomView {
         sbom.ensureRegistry()
         val app = requireApplication(applicationId)
         val row = requireWritable(applicationId, versionId)
-        forbidFingerprintGraph(row.graphId)
+        val graphId = if (bomId == null) bomGraphId(row) else requireBom(row.id, bomId).graphId
+        forbidFingerprintGraph(graphId)
         val resolved =
-            namedGraphs.get(row.graphId)
+            namedGraphs.get(graphId)
                 ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Version graph missing")
         val currentIds = resolved.contents.entities.mapNotNull { it.id }.toSet()
         val desired = request.assetIds.toSet()
         for (id in desired - currentIds) {
             try {
-                namedGraphs.attach(row.graphId, id)
+                namedGraphs.attach(graphId, id)
             } catch (ex: BoMGraphException) {
                 throw ResponseStatusException(HttpStatus.BAD_REQUEST, ex.message)
             }
         }
         for (id in currentIds - desired) {
             try {
-                namedGraphs.detach(row.graphId, id)
+                namedGraphs.detach(graphId, id)
             } catch (ex: BoMGraphException) {
                 throw ResponseStatusException(HttpStatus.BAD_REQUEST, ex.message)
             }
         }
         val after =
-            namedGraphs.get(row.graphId)
+            namedGraphs.get(graphId)
                 ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Version graph missing")
         val existingEdgeIds = after.contents.edges.mapNotNull { it.id }
         if (existingEdgeIds.isNotEmpty()) {
-            applyDeleteEdges(row.graphId, existingEdgeIds)
+            applyDeleteEdges(graphId, existingEdgeIds)
         }
         for (rel in request.relations) {
-            applyRelation(row.graphId, rel)
+            applyRelation(graphId, rel)
         }
-        return toBomView(app, row)
+        return toBomView(app, row, graphId)
     }
 
     @Transactional
@@ -322,9 +383,10 @@ class ApplicationVersionService(
         sbom.ensureRegistry()
         requireApplication(applicationId)
         val row = requireVersion(applicationId, versionId)
+        val union = BomUnion.of(bomGraphIds(row).mapNotNull { namedGraphs.get(it) })
         val graphId =
-            copyGraph(
-                row.graphId,
+            materialize(
+                union,
                 mapOf(
                     "kind" to "application-fingerprint",
                     "applicationId" to applicationId.toString(),
@@ -332,16 +394,35 @@ class ApplicationVersionService(
                 ),
             )
         val hash = contentHash(graphId)
+        val name =
+            request.name?.trim()?.takeIf { it.isNotEmpty() }
+                ?: request.note?.trim()?.takeIf { it.isNotEmpty() }
+                ?: "Fingerprint"
+        val categoryRaw = request.category?.trim()?.lowercase()
+        if (categoryRaw != null && categoryRaw !in FingerprintCategory.ALL) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "category must be approval, history, or unknown")
+        }
+        val category = categoryRaw ?: FingerprintCategory.UNKNOWN
         val saved =
             fingerprints.save(
                 SbomApplicationFingerprintRecord(
                     versionId = versionId,
                     graphId = graphId,
                     createdAt = Instant.now(),
-                    note = request.note?.trim()?.takeIf { it.isNotEmpty() },
+                    name = name,
+                    category = category,
                     contentSha256 = hash,
                 ),
             )
+        namedGraphs.updateAnnotations(
+            graphId,
+            mapOf(
+                "kind" to "application-fingerprint",
+                "applicationId" to applicationId.toString(),
+                "versionId" to versionId.toString(),
+                "fingerprintId" to saved.id.toString(),
+            ),
+        )
         return saved.toSummary()
     }
 
@@ -353,21 +434,16 @@ class ApplicationVersionService(
     fun inferDependsOn(applicationId: UUID, versionId: UUID): List<InferredAppDependency> {
         requireApplication(applicationId)
         val row = requireVersion(applicationId, versionId)
-        val source = namedGraphs.get(row.graphId) ?: return emptyList()
-        val sourceIds = source.contents.entities.mapNotNull { it.id }.toSet()
+        val sourceIds = unionEntityIds(bomGraphIds(row))
         if (sourceIds.isEmpty()) {
             return emptyList()
         }
         val out = mutableListOf<InferredAppDependency>()
         for (other in applications.findAll()) {
             if (other.id == applicationId) continue
-            val peerGraphId = currentGraphId(other.id) ?: continue
-            val peer = namedGraphs.get(peerGraphId) ?: continue
-            val shared =
-                peer.contents.entities
-                    .mapNotNull { it.id }
-                    .filter { it in sourceIds }
-                    .sorted()
+            val peerIds = currentGraphIds(other.id)
+            if (peerIds.isEmpty()) continue
+            val shared = unionEntityIds(peerIds).filter { it in sourceIds }.sorted()
             if (shared.isNotEmpty()) {
                 out +=
                     InferredAppDependency(
@@ -383,6 +459,84 @@ class ApplicationVersionService(
     fun inferDependsOnDraft(applicationId: UUID): List<InferredAppDependency> {
         val row = requireDraft(applicationId)
         return inferDependsOn(applicationId, row.id)
+    }
+
+    @Transactional
+    fun renameDraft(applicationId: UUID, versionId: UUID, request: RenameVersionRequest): ApplicationVersionSummary {
+        val row = requireVersion(applicationId, versionId)
+        if (row.status != ApplicationVersionStatus.DRAFT) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Released version cannot be renamed")
+        }
+        val ident = request.version.trim()
+        if (ident.isEmpty()) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "version is required")
+        }
+        val clash = versions.findByApplicationIdAndVersion(applicationId, ident)?.takeIf { it.id != row.id }
+        if (clash != null) {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "Version already exists: $ident")
+        }
+        row.version = ident
+        row.label = ident
+        row.versionSerial = versionComparer.toSerial(ident)
+        return versions.save(row).toSummary()
+    }
+
+    fun deleteImpact(applicationId: UUID, versionId: UUID): List<ApplicationVersionSummary> {
+        val row = requireVersion(applicationId, versionId)
+        if (row.status != ApplicationVersionStatus.DRAFT) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Only a draft can be deleted")
+        }
+        return collectDependentIds(row.id).map { versions.findById(it).get().toSummary() }
+            .sortedBy { it.version ?: "" }
+    }
+
+    @Transactional
+    fun deleteDraft(applicationId: UUID, versionId: UUID, confirmDependents: Boolean = false) {
+        val row = requireVersion(applicationId, versionId)
+        if (row.status != ApplicationVersionStatus.DRAFT) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Only a draft can be deleted")
+        }
+        val dependentIds = collectDependentIds(row.id)
+        if (dependentIds.isNotEmpty() && !confirmDependents) {
+            throw ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "Draft has dependent drafts; confirm to delete them too: ${dependentIds.joinToString()}",
+            )
+        }
+        val graphIds = mutableListOf<UUID>()
+        for (id in dependentIds + row.id) {
+            graphIds += boms.findByVersionIdOrderBySortOrderAscIdAsc(id).map { it.graphId }
+            graphIds += fingerprints.findByVersionIdOrderByCreatedAtDesc(id).map { it.graphId }
+        }
+        versions.delete(row)
+        for (graphId in graphIds.distinct()) {
+            namedGraphs.delete(graphId)
+        }
+    }
+
+    @Transactional
+    fun patchDraft(applicationId: UUID, versionId: UUID, request: PatchVersionRequest): ApplicationVersionSummary {
+        val row = requireVersion(applicationId, versionId)
+        if (row.status != ApplicationVersionStatus.DRAFT) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Only a draft can be patched")
+        }
+        request.version?.let { raw ->
+            val ident = raw.trim()
+            if (ident.isEmpty()) {
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "version is required")
+            }
+            val clash = versions.findByApplicationIdAndVersion(applicationId, ident)?.takeIf { it.id != row.id }
+            if (clash != null) {
+                throw ResponseStatusException(HttpStatus.CONFLICT, "Version already exists: $ident")
+            }
+            row.version = ident
+            row.label = ident
+            row.versionSerial = versionComparer.toSerial(ident)
+        }
+        if (request.tags != null) {
+            row.tags = BomUnion.sanitizeTags(request.tags)
+        }
+        return versions.save(row).toSummary()
     }
 
     private fun applyAssetWrite(app: SbomApplicationRecord, graphId: UUID, write: DraftAssetWrite) {
@@ -474,15 +628,19 @@ class ApplicationVersionService(
         val source =
             namedGraphs.get(sourceGraphId)
                 ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Source graph missing")
+        return materialize(source.contents, annotations)
+    }
+
+    private fun materialize(contents: BoMGraphContents, annotations: Map<String, String>): UUID {
         val graph =
             namedGraphs.create(
                 BoMGraphSpec(
                     annotations = annotations,
-                    entityIds = source.contents.entities.mapNotNull { it.id }.toSet(),
+                    entityIds = contents.entities.mapNotNull { it.id }.toSet(),
                 ),
             )
         val edgeCopies =
-            source.contents.edges
+            contents.edges
                 .map { edge ->
                     BoMEdge(
                         source = edge.source,
@@ -529,7 +687,7 @@ class ApplicationVersionService(
     private fun toBomView(
         app: SbomApplicationRecord,
         row: SbomApplicationVersionRecord,
-        graphId: UUID = row.graphId,
+        graphId: UUID = bomGraphId(row),
     ): VersionBomView {
         val resolved =
             namedGraphs.get(graphId)
@@ -572,15 +730,156 @@ class ApplicationVersionService(
         return requireVersion(applicationId, versionId)
     }
 
+    private fun bomGraphId(row: SbomApplicationVersionRecord): UUID = primaryBom(row).graphId
+
+    private fun bomGraphIds(row: SbomApplicationVersionRecord): List<UUID> =
+        boms.findByVersionIdOrderBySortOrderAscIdAsc(row.id).map { it.graphId }
+
+    private fun unionEntityIds(graphIds: List<UUID>): Set<UUID> =
+        BomUnion.of(graphIds.mapNotNull { namedGraphs.get(it) }).entities.mapNotNull { it.id }.toSet()
+
+    private fun allocateVersion(applicationId: UUID, requested: String?): String {
+        val ident = requested?.trim()?.takeIf { it.isNotEmpty() } ?: nextDraftVersion(applicationId)
+        val clash = versions.findByApplicationIdAndVersion(applicationId, ident)
+        if (clash != null) {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "Version already exists: $ident")
+        }
+        return ident
+    }
+
+    private fun copyBomFromGraph(
+        app: SbomApplicationRecord,
+        row: SbomApplicationVersionRecord,
+        sourceGraphId: UUID,
+        name: String,
+        tags: Array<String>,
+        description: String?,
+        sortOrder: Int,
+    ) {
+        val source =
+            namedGraphs.get(sourceGraphId)
+                ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Source graph missing")
+        copyBomFromContents(app, row, source.contents, name, tags, description, sortOrder)
+    }
+
+    private fun copyBomFromContents(
+        app: SbomApplicationRecord,
+        row: SbomApplicationVersionRecord,
+        contents: BoMGraphContents,
+        name: String,
+        tags: Array<String>,
+        description: String?,
+        sortOrder: Int,
+    ) {
+        val bomId = UUID.randomUUID()
+        val annotations =
+            linkedMapOf(
+                "kind" to "application-bom",
+                "status" to row.status,
+                "applicationId" to app.id.toString(),
+                "applicationName" to app.name,
+                "versionId" to row.id.toString(),
+                "bomId" to bomId.toString(),
+            )
+        row.version.takeIf { it.isNotBlank() }?.let { annotations["version"] = it }
+        boms.save(
+            SbomApplicationSbomRecord(
+                id = bomId,
+                versionId = row.id,
+                name = name,
+                description = description,
+                tags = tags,
+                graphId = materialize(contents, annotations),
+                sortOrder = sortOrder,
+            ),
+        )
+    }
+
+    private fun collectDependentIds(versionId: UUID): Set<UUID> {
+        val out = linkedSetOf<UUID>()
+        fun walk(id: UUID) {
+            for (child in versions.findByBasedOnVersionId(id)) {
+                if (out.add(child.id)) walk(child.id)
+            }
+            for (fp in fingerprints.findByVersionIdOrderByCreatedAtDesc(id)) {
+                for (child in versions.findByBasedOnFingerprintId(fp.id)) {
+                    if (out.add(child.id)) walk(child.id)
+                }
+            }
+        }
+        walk(versionId)
+        return out
+    }
+
+    private fun requireBom(versionId: UUID, bomId: UUID): SbomApplicationSbomRecord =
+        boms.findByIdAndVersionId(bomId, versionId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "BOM not found: $bomId")
+
+    private fun primaryBom(row: SbomApplicationVersionRecord): SbomApplicationSbomRecord =
+        boms.findByVersionIdOrderBySortOrderAscIdAsc(row.id).firstOrNull()
+            ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Version has no BOM")
+
+    private fun createPrimaryBom(
+        app: SbomApplicationRecord,
+        row: SbomApplicationVersionRecord,
+        status: String,
+        sourceGraphId: UUID? = null,
+    ): SbomApplicationSbomRecord {
+        val bomId = UUID.randomUUID()
+        val annotations =
+            linkedMapOf(
+                "kind" to "application-bom",
+                "status" to status,
+                "applicationId" to app.id.toString(),
+                "applicationName" to app.name,
+                "versionId" to row.id.toString(),
+                "bomId" to bomId.toString(),
+            )
+        row.version.takeIf { it.isNotBlank() }?.let { annotations["version"] = it }
+        val graphId =
+            if (sourceGraphId == null) {
+                namedGraphs.create(BoMGraphSpec(annotations = annotations)).id
+            } else {
+                copyGraph(sourceGraphId, annotations)
+            }
+        return boms.save(
+            SbomApplicationSbomRecord(
+                id = bomId,
+                versionId = row.id,
+                name = "BOM",
+                graphId = graphId,
+                sortOrder = 0,
+            ),
+        )
+    }
+
+    private fun nextDraftVersion(applicationId: UUID): String {
+        val used =
+            versions.findByApplicationIdOrderByCapturedAtDescIdDesc(applicationId)
+                .map { it.version }
+                .toMutableSet()
+        if ("0.1.0" !in used) return "0.1.0"
+        var i = 1
+        while (true) {
+            val candidate = "0.0.0-draft.$i"
+            if (candidate !in used) return candidate
+            i++
+        }
+    }
+
     private fun SbomApplicationVersionRecord.toSummary() =
         ApplicationVersionSummary(
             id = id,
             applicationId = applicationId,
             status = status,
             version = version,
-            label = label ?: version ?: if (status == ApplicationVersionStatus.DRAFT) "Draft" else null,
+            label = label ?: version.ifBlank { null } ?: if (status == ApplicationVersionStatus.DRAFT) "Draft" else null,
             capturedAt = capturedAt,
             promotedAt = promotedAt,
+            tags = tags.toList(),
+            basedOnVersionId = basedOnVersionId,
+            basedOnFingerprintId = basedOnFingerprintId,
+            bomCount = boms.countByVersionId(id).toInt(),
         )
 
     private fun SbomApplicationFingerprintRecord.toSummary() =
@@ -588,7 +887,9 @@ class ApplicationVersionService(
             id = id,
             versionId = versionId,
             createdAt = createdAt,
-            note = note,
+            note = name.takeIf { it.isNotEmpty() },
+            name = name,
+            category = category,
             contentSha256 = contentSha256,
         )
 

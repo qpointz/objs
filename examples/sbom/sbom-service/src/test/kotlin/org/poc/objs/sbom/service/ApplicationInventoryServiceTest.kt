@@ -173,4 +173,15 @@ class ApplicationInventoryServiceTest {
             inventory.create(CreateApplicationRequest(name = "dup"))
         }.isInstanceOf(ResponseStatusException::class.java)
     }
+
+    @Test
+    fun shouldReturnPortalStatsWithoutLatestReleased() {
+        val app = inventory.create(CreateApplicationRequest(name = "StatsApp", targetVersion = "1.0.0"))
+        val stats = inventory.portalStats(app.id)
+        assertThat(stats.applicationId).isEqualTo(app.id)
+        assertThat(stats.versionCount).isEqualTo(1)
+        assertThat(stats.bomCount).isEqualTo(1)
+        assertThat(stats.latestVersion).isNull()
+        assertThat(stats.latestMultiBom).isFalse()
+    }
 }

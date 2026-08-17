@@ -7,6 +7,7 @@ import org.poc.objs.core.persistence.BoMNamedGraphStore
 import org.poc.objs.sbom.domain.SchemaCatalogEntry
 import org.poc.objs.sbom.domain.SchemaUsedInRef
 import org.poc.objs.sbom.persistence.SbomApplicationRepository
+import org.poc.objs.sbom.persistence.SbomApplicationSbomRepository
 import org.poc.objs.sbom.persistence.SbomApplicationVersionRepository
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
@@ -19,6 +20,7 @@ class SchemaBrowseService(
     private val sbom: SbomService,
     private val applications: SbomApplicationRepository,
     private val versions: SbomApplicationVersionRepository,
+    private val boms: SbomApplicationSbomRepository,
     private val namedGraphs: BoMNamedGraphStore,
 ) {
     fun list(typeFilter: String?): List<BoMSchema> {
@@ -94,7 +96,8 @@ class SchemaBrowseService(
             }
         }
         for (version in versions.findAll()) {
-            val graph = namedGraphs.get(version.graphId) ?: continue
+            val graphId = boms.findByVersionIdOrderBySortOrderAscIdAsc(version.id).firstOrNull()?.graphId ?: continue
+            val graph = namedGraphs.get(graphId) ?: continue
             add(version.applicationId, graph.contents.entities.map { it.type }.toSet())
         }
         return byType.mapValues { it.value.values.toList() }
