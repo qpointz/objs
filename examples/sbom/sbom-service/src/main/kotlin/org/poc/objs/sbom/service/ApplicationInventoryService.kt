@@ -1,6 +1,7 @@
 package org.poc.objs.sbom.service
 
 import org.poc.objs.sbom.domain.ApplicationSummary
+import org.poc.objs.sbom.domain.BomUnion
 import org.poc.objs.sbom.domain.CreateApplicationRequest
 import org.poc.objs.sbom.domain.DraftAssetWrite
 import org.poc.objs.sbom.domain.DraftRelationWrite
@@ -48,17 +49,19 @@ class ApplicationInventoryService(
         if (applications.existsById(id)) {
             throw ResponseStatusException(HttpStatus.CONFLICT, "Application already exists: $id")
         }
+        val tags = BomUnion.sanitizeTags(request.tags)
         val app =
             applications.save(
                 SbomApplicationRecord(
                     id = id,
                     name = name,
                     description = request.description?.trim()?.takeIf { it.isNotEmpty() },
+                    tags = tags,
                     createdAt = now,
                     updatedAt = now,
                 ),
             )
-        versions.createEmptyDraft(app)
+        versions.createEmptyDraft(app, request.targetVersion)
         return app.toSummary()
     }
 
@@ -74,6 +77,9 @@ class ApplicationInventoryService(
         }
         if (request.description != null) {
             app.description = request.description.trim().takeIf { it.isNotEmpty() }
+        }
+        if (request.tags != null) {
+            app.tags = BomUnion.sanitizeTags(request.tags)
         }
         app.updatedAt = Instant.now()
         return applications.save(app).toSummary()
@@ -105,5 +111,5 @@ class ApplicationInventoryService(
         ResponseStatusException(HttpStatus.NOT_FOUND, "$what not found: $id")
 
     private fun SbomApplicationRecord.toSummary() =
-        ApplicationSummary(id = id, name = name, description = description)
+        ApplicationSummary(id = id, name = name, description = description, tags = tags.toList())
 }

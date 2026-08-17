@@ -73,7 +73,7 @@ Extend the SBOM inventory app so an **application version** is a **combination o
 - [x] WI-001 — Product design + glossary (`WI-001-product-glossary.md`)
 - [x] WI-002 — Graph and retrieval mapping (`WI-002-graph-and-retrieval.md`)
 - [x] WI-003 — Flyway BOMs, multi-draft, tags, fingerprint (`WI-003-persistence.md`)
-- [ ] WI-004 — Ephemeral Combined SBOM + domain services (`WI-004-domain-services.md`)
+- [x] WI-004 — Ephemeral Combined SBOM + domain services (`WI-004-domain-services.md`)
 - [ ] WI-005 — REST constituents + multi-draft + fingerprint (`WI-005-rest-api.md`)
 - [ ] WI-006 — Progressive UI + drafts + metadata (`WI-006-ui.md`)
 - [ ] WI-007 — Demo seeder + Applications portal (`WI-007-demo-portal.md`)

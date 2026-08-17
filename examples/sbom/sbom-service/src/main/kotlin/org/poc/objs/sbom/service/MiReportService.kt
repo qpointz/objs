@@ -51,7 +51,7 @@ class MiReportService(
         val resolution = graphs.selectCurrentBom(uniqueness, inScope)
         val withVersion = inScope.filter { it.applicationId in resolution.graphByApp }
         val withoutVersion = resolution.omitted
-        val graphIds = resolution.graphByApp.values.distinct()
+        val graphIds = resolution.graphByApp.values.flatten().distinct()
         val graphByApp = resolution.graphByApp
         val nameByApp = inScope.associate { it.applicationId to it.applicationName }
 
@@ -126,14 +126,17 @@ class MiReportService(
 
     private fun dependencyMap(
         apps: List<PortfolioAppRef>,
-        graphByApp: Map<UUID, UUID>,
+        graphByApp: Map<UUID, List<UUID>>,
         nameByApp: Map<UUID, String>,
     ): List<MiDependencyEdge> {
         val members =
             apps.associate { app ->
-                val gId = graphByApp.getValue(app.applicationId)
-                val entities = namedGraphs.get(gId)?.contents?.entities.orEmpty()
-                app.applicationId to entities.mapNotNull { it.id }.toSet()
+                val entityIds =
+                    graphByApp.getValue(app.applicationId)
+                        .flatMap { namedGraphs.get(it)?.contents?.entities.orEmpty() }
+                        .mapNotNull { it.id }
+                        .toSet()
+                app.applicationId to entityIds
             }
         val out = mutableListOf<MiDependencyEdge>()
         for (i in apps.indices) {
@@ -161,18 +164,19 @@ class MiReportService(
 
     private fun sharedAssets(
         apps: List<PortfolioAppRef>,
-        graphByApp: Map<UUID, UUID>,
+        graphByApp: Map<UUID, List<UUID>>,
         nameByApp: Map<UUID, String>,
     ): List<MiSharedAsset> {
         val owners = linkedMapOf<UUID, MutableSet<UUID>>()
         val entityById = linkedMapOf<UUID, BoMEntity>()
         for (app in apps) {
-            val gId = graphByApp.getValue(app.applicationId)
-            val contents = namedGraphs.get(gId)?.contents ?: continue
-            for (entity in contents.entities) {
-                val id = entity.id ?: continue
-                owners.getOrPut(id) { linkedSetOf() }.add(app.applicationId)
-                entityById.putIfAbsent(id, entity)
+            for (gId in graphByApp.getValue(app.applicationId)) {
+                val contents = namedGraphs.get(gId)?.contents ?: continue
+                for (entity in contents.entities) {
+                    val id = entity.id ?: continue
+                    owners.getOrPut(id) { linkedSetOf() }.add(app.applicationId)
+                    entityById.putIfAbsent(id, entity)
+                }
             }
         }
         return owners.entries

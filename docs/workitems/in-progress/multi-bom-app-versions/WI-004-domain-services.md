@@ -2,7 +2,7 @@
 
 **Story:** [`STORY.md`](STORY.md)  
 **Stage:** 2 — Persistence + domain  
-**Status:** pending  
+**Status:** done  
 **Depends on:** WI-003
 
 ## Goal
@@ -11,18 +11,18 @@ Implement BOM CRUD, ephemeral Combined SBOM union, multi-draft create/promote/de
 
 ## Deliverables
 
-- [ ] Union helper (membership + edges; collapse duplicates) — **not persisted** on the version
-- [ ] `combinedTags` helper: App+Ver+all BOMs of the open version
-- [ ] BOM create/update metadata/save graph/delete (forbid last)
-- [ ] Delete DRAFT version (cascade BOMs + fingerprints of that draft); if other drafts are based on it or its fingerprints, delete those dependents too after confirm (G-Q12); forbid delete RELEASED
-- [ ] Application create sets bootstrap DRAFT `version` = required `targetVersion`; one empty BOM named **BOM** (hidden at count = 1)
-- [ ] `createDraft(targetVersion, fromVersionId | fromFingerprintId, combineConstituents?)` — version source: keep split or flatten; fingerprint source: always one BOM from fingerprint graph; set based-on FK; copy version tags from based-on version (fingerprint’s parent version)
-- [ ] `fingerprint(name, category)` materializes **full union snapshot**; validate category
-- [ ] PATCH DRAFT `version` (rename target); uniqueness CONFLICT; RELEASED version immutable
-- [ ] `promote(version)` — required re-typed version string; may differ from draft target; uniqueness check; then RELEASED
-- [ ] `fun interface VersionComparer` — strict SemVer 2.0 compare + `toSerial(String): Numeric`; write `version_serial` on every version-string change; `latestReleased` = max serial among RELEASED; MI / depends-on / CDX-of-latest / `GET …/latest` all use that (G-Q11); drafts never included
-- [ ] Remove `draft(appId).firstOrNull()` single-draft API; fix callers (seeder, CDX, portfolio resolver, etc.)
-- [ ] Unit/integration tests (parallel drafts; flatten vs keep; fingerprint not copying BOM rows)
+- [x] Union helper (membership + edges; collapse duplicates) — **not persisted** on the version
+- [x] `combinedTags` helper: App+Ver+all BOMs of the open version
+- [x] BOM create/update metadata/save graph/delete (forbid last)
+- [x] Delete DRAFT version (cascade BOMs + fingerprints of that draft); if other drafts are based on it or its fingerprints, delete those dependents too after confirm (G-Q12); forbid delete RELEASED
+- [x] Application create sets bootstrap DRAFT `version` = required `targetVersion`; one empty BOM named **BOM** (hidden at count = 1)
+- [x] `createDraft(targetVersion, fromVersionId | fromFingerprintId, combineConstituents?)` — version source: keep split or flatten; fingerprint source: always one BOM from fingerprint graph; set based-on FK; copy version tags from based-on version (fingerprint’s parent version)
+- [x] `fingerprint(name, category)` materializes **full union snapshot**; validate category
+- [x] PATCH DRAFT `version` (rename target); uniqueness CONFLICT; RELEASED version immutable
+- [x] `promote(version)` — required re-typed version string; may differ from draft target; uniqueness check; then RELEASED
+- [x] `fun interface VersionComparer` — strict SemVer 2.0 compare + `toSerial(String): Numeric`; write `version_serial` on every version-string change; `latestReleased` = max serial among RELEASED; MI / depends-on / CDX-of-latest / `GET …/latest` all use that (G-Q11); drafts never included
+- [x] Remove `draft(appId).firstOrNull()` single-draft API; fix callers (seeder, CDX, portfolio resolver, etc.)
+- [x] Unit/integration tests (parallel drafts; flatten vs keep; fingerprint not copying BOM rows)
 
 ## Out of scope
 

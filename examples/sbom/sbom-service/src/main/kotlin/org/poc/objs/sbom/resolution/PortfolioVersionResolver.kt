@@ -12,7 +12,7 @@ import org.springframework.web.server.ResponseStatusException
 import java.util.UUID
 
 data class GraphResolution(
-    val graphByApp: Map<UUID, UUID>,
+    val graphByApp: Map<UUID, List<UUID>>,
     val omitted: List<PortfolioAppRef>,
 )
 
@@ -57,7 +57,7 @@ class PortfolioGraphSelector(
     }
 
     /**
-     * Current BOM for the Assets tab: edit draft when present, else latest version.
+     * Current BOM graphs for the Assets tab: newest draft when present, else latest RELEASED.
      * [UNIQUE_APP_VERSION] still uses the pinned version on the placement.
      */
     fun selectCurrentBom(
@@ -68,25 +68,27 @@ class PortfolioGraphSelector(
             return pinnedVersions(apps)
         }
         val latestIds = latest.resolve(apps).graphByApp
-        val graphByApp = linkedMapOf<UUID, UUID>()
+        val graphByApp = linkedMapOf<UUID, List<UUID>>()
         val omitted = mutableListOf<PortfolioAppRef>()
         for (app in apps) {
-            val graphId =
+            val draft =
                 versionRows.findByApplicationIdAndStatus(app.applicationId, ApplicationVersionStatus.DRAFT)
-                    .firstOrNull()
-                    ?.let { bomGraphId(it.id) }
-                    ?: latestIds[app.applicationId]
-            if (graphId == null) {
+                    .maxWithOrNull(
+                        compareBy<org.poc.objs.sbom.persistence.SbomApplicationVersionRecord> { it.capturedAt }
+                            .thenBy { it.id },
+                    )
+            val graphIds = draft?.let { bomGraphIds(it.id) } ?: latestIds[app.applicationId].orEmpty()
+            if (graphIds.isEmpty()) {
                 omitted += app
             } else {
-                graphByApp[app.applicationId] = graphId
+                graphByApp[app.applicationId] = graphIds
             }
         }
         return GraphResolution(graphByApp, omitted)
     }
 
     private fun pinnedVersions(apps: List<PortfolioAppRef>): GraphResolution {
-        val graphByApp = linkedMapOf<UUID, UUID>()
+        val graphByApp = linkedMapOf<UUID, List<UUID>>()
         val omitted = mutableListOf<PortfolioAppRef>()
         for (app in apps) {
             val versionId = app.versionId
@@ -95,20 +97,16 @@ class PortfolioGraphSelector(
                 continue
             }
             val row = versionRows.findByIdAndApplicationId(versionId, app.applicationId)
-            if (row == null) {
+            val graphIds = row?.let { bomGraphIds(it.id) }.orEmpty()
+            if (graphIds.isEmpty()) {
                 omitted += app
             } else {
-                val graphId = bomGraphId(row.id)
-                if (graphId == null) {
-                    omitted += app
-                } else {
-                    graphByApp[app.applicationId] = graphId
-                }
+                graphByApp[app.applicationId] = graphIds
             }
         }
         return GraphResolution(graphByApp, omitted)
     }
 
-    private fun bomGraphId(versionId: UUID): UUID? =
-        boms.findByVersionIdOrderBySortOrderAscIdAsc(versionId).firstOrNull()?.graphId
+    private fun bomGraphIds(versionId: UUID): List<UUID> =
+        boms.findByVersionIdOrderBySortOrderAscIdAsc(versionId).map { it.graphId }
 }

@@ -1,7 +1,9 @@
 package org.poc.objs.sbom.service
 
 import org.poc.objs.core.domain.BoMEntity
+import org.poc.objs.core.domain.BoMGraphContents
 import org.poc.objs.core.persistence.BoMNamedGraphStore
+import org.poc.objs.sbom.domain.BomUnion
 import org.poc.objs.sbom.persistence.SbomApplicationRepository
 import org.poc.objs.sbom.persistence.SbomApplicationSbomRepository
 import org.poc.objs.sbom.persistence.SbomApplicationVersionRepository
@@ -26,10 +28,14 @@ class CycloneDxExportService(
     fun exportDraft(applicationId: UUID): Map<String, Any?> {
         val app = requireApp(applicationId)
         val draft =
-            versions.findByApplicationIdAndStatus(applicationId, "DRAFT").firstOrNull()
+            versions.findByApplicationIdAndStatus(applicationId, "DRAFT")
+                .maxWithOrNull(
+                    compareBy<org.poc.objs.sbom.persistence.SbomApplicationVersionRecord> { it.capturedAt }
+                        .thenBy { it.id },
+                )
                 ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "No draft for application: $applicationId")
-        return exportGraph(
-            graphId = requireBomGraphId(draft.id),
+        return exportContents(
+            contents = unionOf(draft.id),
             applicationName = app.name,
             versionLabel = "draft",
         )
@@ -40,29 +46,26 @@ class CycloneDxExportService(
         val version =
             versions.findByIdAndApplicationId(versionId, applicationId)
                 ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Version not found: $versionId")
-        return exportGraph(
-            graphId = requireBomGraphId(version.id),
+        return exportContents(
+            contents = unionOf(version.id),
             applicationName = app.name,
             versionLabel = version.version.ifBlank { null } ?: version.label ?: version.capturedAt.toString(),
         )
     }
 
-    private fun exportGraph(
-        graphId: UUID,
+    private fun exportContents(
+        contents: BoMGraphContents,
         applicationName: String,
         versionLabel: String,
     ): Map<String, Any?> {
-        val resolved =
-            namedGraphs.get(graphId)
-                ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "BOM graph missing")
         val components =
-            resolved.contents.entities
+            contents.entities
                 .filter { it.type == "Component" }
                 .mapNotNull { it.toCdxComponent() }
         val componentIds = components.mapNotNull { it["bom-ref"] as? String }.toSet()
 
         val dependsOnByRef = linkedMapOf<String, MutableList<String>>()
-        for (edge in resolved.contents.edges) {
+        for (edge in contents.edges) {
             if (edge.role != SbomRoles.DEPENDS_ON) continue
             val from = edge.source.toString()
             val to = edge.target.toString()
@@ -137,9 +140,13 @@ class CycloneDxExportService(
         return out
     }
 
-    private fun requireBomGraphId(versionId: UUID): UUID =
-        boms.findByVersionIdOrderBySortOrderAscIdAsc(versionId).firstOrNull()?.graphId
-            ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Version has no BOM")
+    private fun unionOf(versionId: UUID): BoMGraphContents {
+        val graphIds = boms.findByVersionIdOrderBySortOrderAscIdAsc(versionId).map { it.graphId }
+        if (graphIds.isEmpty()) {
+            throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Version has no BOM")
+        }
+        return BomUnion.of(graphIds.mapNotNull { namedGraphs.get(it) })
+    }
 
     private fun requireApp(id: UUID) =
         applications.findById(id).orElseThrow {

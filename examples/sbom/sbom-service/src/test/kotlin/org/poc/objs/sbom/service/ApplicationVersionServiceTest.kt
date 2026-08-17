@@ -12,11 +12,13 @@ import org.poc.objs.core.persistence.BoMNamedGraphStore
 import org.poc.objs.core.persistence.BoMPoolEntityReader
 import org.poc.objs.core.persistence.ObjsCoreAutoConfiguration
 import org.poc.objs.sbom.domain.CreateApplicationRequest
+import org.poc.objs.sbom.domain.CreateBomRequest
 import org.poc.objs.sbom.domain.CreateDraftVersionRequest
 import org.poc.objs.sbom.domain.CreateFingerprintRequest
 import org.poc.objs.sbom.domain.DraftAssetWrite
 import org.poc.objs.sbom.domain.DraftRelationWrite
 import org.poc.objs.sbom.domain.PromoteVersionRequest
+import org.poc.objs.sbom.domain.RenameVersionRequest
 import org.poc.objs.sbom.domain.ReplaceVersionBomRequest
 import org.poc.objs.sbom.persistence.SbomApplicationSbomRepository
 import org.poc.objs.sbom.persistence.SbomPersistenceConfiguration
@@ -40,6 +42,8 @@ import javax.sql.DataSource
     SbomService::class,
     ApplicationInventoryService::class,
     ApplicationVersionService::class,
+    ApplicationBomService::class,
+    BomGraphSupport::class,
 )
 @TestPropertySource(
     properties = [
@@ -66,6 +70,9 @@ class ApplicationVersionServiceTest {
 
     @Autowired
     lateinit var boms: SbomApplicationSbomRepository
+
+    @Autowired
+    lateinit var bomService: ApplicationBomService
 
     @Autowired
     lateinit var namedGraphs: BoMNamedGraphStore
@@ -207,6 +214,88 @@ class ApplicationVersionServiceTest {
         assertThat(deps).hasSize(1)
         assertThat(deps[0].applicationName).isEqualTo("B")
         assertThat(deps[0].sharedAssetIds).containsExactly(assetId)
+    }
+
+    @Test
+    fun shouldAllowParallelDraftsWithDistinctTargets() {
+        val app = inventory.create(CreateApplicationRequest(name = "Parallel", targetVersion = "1.0.0"))
+        val first = versions.draft(app.id)!!
+        val second =
+            versions.createDraft(
+                app.id,
+                CreateDraftVersionRequest(fromVersionId = first.id, targetVersion = "2.0.0"),
+            )
+        assertThat(versions.drafts(app.id).map { it.version }).containsExactlyInAnyOrder("1.0.0", "2.0.0")
+        assertThat(second.version.basedOnVersionId).isEqualTo(first.id)
+        val renamed = versions.renameDraft(app.id, first.id, RenameVersionRequest("1.1.0"))
+        assertThat(renamed.version).isEqualTo("1.1.0")
+        val clash =
+            assertThrows<ResponseStatusException> {
+                versions.renameDraft(app.id, first.id, RenameVersionRequest("2.0.0"))
+            }
+        assertThat(clash.statusCode.value()).isEqualTo(409)
+    }
+
+    @Test
+    fun shouldKeepSplitOrFlattenWhenCopyingMultiBomDraft() {
+        val app = inventory.create(CreateApplicationRequest(name = "SplitApp", targetVersion = "0.1.0"))
+        val draftId = versions.draft(app.id)!!.id
+        addComponent(app.id, "core")
+        bomService.create(app.id, draftId, CreateBomRequest(name = "runtime", tags = listOf("rt")))
+        val kept =
+            versions.createDraft(
+                app.id,
+                CreateDraftVersionRequest(fromVersionId = draftId, targetVersion = "0.2.0", combineConstituents = false),
+            )
+        assertThat(bomService.list(app.id, kept.version.id).map { it.name }).containsExactly("BOM", "runtime")
+        val flat =
+            versions.createDraft(
+                app.id,
+                CreateDraftVersionRequest(fromVersionId = draftId, targetVersion = "0.3.0", combineConstituents = true),
+            )
+        val flatBoms = bomService.list(app.id, flat.version.id)
+        assertThat(flatBoms).hasSize(1)
+        assertThat(flatBoms[0].name).isEqualTo("BOM")
+        assertThat(flatBoms[0].tags).containsExactly("rt")
+        assertThat(flat.assets.map { it.label }).anyMatch { it.startsWith("core") }
+    }
+
+    @Test
+    fun shouldFingerprintUnionWithoutCopyingBomRows() {
+        val app = inventory.create(CreateApplicationRequest(name = "FpUnion"))
+        val draftId = versions.draft(app.id)!!.id
+        addComponent(app.id, "a")
+        bomService.create(app.id, draftId, CreateBomRequest(name = "extra"))
+        val before = boms.countByVersionId(draftId)
+        val fp = versions.fingerprint(app.id, draftId, CreateFingerprintRequest(name = "gate", category = "history"))
+        assertThat(fp.name).isEqualTo("gate")
+        assertThat(fp.category).isEqualTo("history")
+        assertThat(boms.countByVersionId(draftId)).isEqualTo(before)
+        assertThat(bomService.list(app.id, draftId)).hasSize(2)
+    }
+
+    @Test
+    fun shouldForbidDeletingLastBomAndCascadeDependentDrafts() {
+        val app = inventory.create(CreateApplicationRequest(name = "DelApp", targetVersion = "0.1.0"))
+        val parent = versions.draft(app.id)!!
+        val only = bomService.list(app.id, parent.id).single()
+        val last =
+            assertThrows<ResponseStatusException> {
+                bomService.delete(app.id, parent.id, only.id)
+            }
+        assertThat(last.statusCode.value()).isEqualTo(400)
+        val child =
+            versions.createDraft(
+                app.id,
+                CreateDraftVersionRequest(fromVersionId = parent.id, targetVersion = "0.2.0"),
+            )
+        val blocked =
+            assertThrows<ResponseStatusException> {
+                versions.deleteDraft(app.id, parent.id)
+            }
+        assertThat(blocked.statusCode.value()).isEqualTo(409)
+        versions.deleteDraft(app.id, parent.id, confirmDependents = true)
+        assertThat(versions.list(app.id).map { it.id }).doesNotContain(parent.id, child.version.id)
     }
 
     private fun addComponent(appId: UUID, name: String) =
