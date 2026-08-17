@@ -76,7 +76,7 @@ Extend the SBOM inventory app so an **application version** is a **combination o
 - [x] WI-004 — Ephemeral Combined SBOM + domain services (`WI-004-domain-services.md`)
 - [x] WI-005 — REST constituents + multi-draft + fingerprint (`WI-005-rest-api.md`)
 - [x] WI-006 — Progressive UI + drafts + metadata (`WI-006-ui.md`)
-- [ ] WI-007 — Demo seeder + Applications portal (`WI-007-demo-portal.md`)
+- [x] WI-007 — Demo seeder + Applications portal (`WI-007-demo-portal.md`)
 - [ ] WI-008 — Living docs (`WI-008-living-docs.md`)
 
 ## Out of scope

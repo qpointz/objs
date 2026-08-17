@@ -1,6 +1,7 @@
 package org.poc.objs.sbom.demo
 
 import org.poc.objs.sbom.domain.CreateApplicationRequest
+import org.poc.objs.sbom.domain.CreateBomRequest
 import org.poc.objs.sbom.domain.CreateDraftVersionRequest
 import org.poc.objs.sbom.domain.CreateFingerprintRequest
 import org.poc.objs.sbom.domain.CreatePoolAssetRequest
@@ -8,8 +9,10 @@ import org.poc.objs.sbom.domain.DraftRelationWrite
 import org.poc.objs.sbom.domain.PlaceApplicationRequest
 import org.poc.objs.sbom.domain.PromoteVersionRequest
 import org.poc.objs.sbom.domain.ReplaceVersionBomRequest
+import org.poc.objs.sbom.domain.UpdateBomRequest
 import org.poc.objs.sbom.persistence.SbomApplicationRepository
 import org.poc.objs.sbom.registry.SbomRoles
+import org.poc.objs.sbom.service.ApplicationBomService
 import org.poc.objs.sbom.service.ApplicationInventoryService
 import org.poc.objs.sbom.service.ApplicationVersionService
 import org.poc.objs.sbom.service.AssetInventoryService
@@ -35,6 +38,7 @@ class SbomDemoInventorySeeder(
     private val applications: SbomApplicationRepository,
     private val inventory: ApplicationInventoryService,
     private val versions: ApplicationVersionService,
+    private val boms: ApplicationBomService,
     private val assets: AssetInventoryService,
     private val portfolioService: PortfolioService,
 ) : ApplicationRunner {
@@ -49,34 +53,82 @@ class SbomDemoInventorySeeder(
         require(SbomDemoApps.all.size == 70) { "Demo catalog must contain 70 applications" }
 
         val pool = SharedPool()
-        for (spec in SbomDemoApps.all) {
-            inventory.create(CreateApplicationRequest(spec.name, spec.description, id = spec.id))
+        for ((index, spec) in SbomDemoApps.all.withIndex()) {
+            val bomCount = demoBomCount(index)
+            val bootstrap = spec.releasedVersions.firstOrNull() ?: "0.1.0"
+            inventory.create(
+                CreateApplicationRequest(
+                    spec.name,
+                    spec.description,
+                    id = spec.id,
+                    targetVersion = bootstrap,
+                    tags = demoTags(index),
+                ),
+            )
             var lastReleasedId: UUID? = null
-            spec.releasedVersions.forEachIndexed { index, versionName ->
+            spec.releasedVersions.forEachIndexed { vIndex, versionName ->
                 val draft = versions.draft(spec.id) ?: error("Missing draft for ${spec.name}")
-                val generation = index.coerceAtMost(2)
+                val generation = vIndex.coerceAtMost(2)
                 val (assetIds, rels) = assemble(spec, pool, versionName, generation)
-                versions.replaceBom(spec.id, draft.id, ReplaceVersionBomRequest(assetIds, rels))
+                fillBoms(spec.id, draft.id, assetIds, rels, bomCount)
                 val released = versions.promote(spec.id, draft.id, PromoteVersionRequest(versionName))
                 lastReleasedId = released.version.id
-                if (spec.fingerprint && index == spec.releasedVersions.lastIndex) {
-                    versions.fingerprint(spec.id, released.version.id, CreateFingerprintRequest("Baseline demo fingerprint"))
+                if (spec.fingerprint && vIndex == spec.releasedVersions.lastIndex) {
+                    versions.fingerprint(
+                        spec.id,
+                        released.version.id,
+                        CreateFingerprintRequest(
+                            name = "Baseline ${spec.name}",
+                            category = fingerprintCategory(index),
+                        ),
+                    )
                 }
-                val needAnother =
-                    index < spec.releasedVersions.lastIndex || spec.openDraft
+                val needAnother = vIndex < spec.releasedVersions.lastIndex || spec.openDraft
                 if (needAnother) {
-                    versions.createDraft(spec.id, CreateDraftVersionRequest(fromVersionId = released.version.id))
+                    val nextTarget =
+                        spec.releasedVersions.getOrNull(vIndex + 1) ?: "$versionName-draft"
+                    versions.createDraft(
+                        spec.id,
+                        CreateDraftVersionRequest(
+                            fromVersionId = released.version.id,
+                            targetVersion = nextTarget,
+                            combineConstituents = spec.openDraft && vIndex == spec.releasedVersions.lastIndex && bomCount > 1 && index % 8 == 1,
+                        ),
+                    )
                 }
             }
             if (spec.releasedVersions.isEmpty()) {
                 val draft = versions.draft(spec.id) ?: error("Missing draft for ${spec.name}")
                 val (assetIds, rels) = assemble(spec, pool, "0.1.0-SNAPSHOT", 0)
-                versions.replaceBom(spec.id, draft.id, ReplaceVersionBomRequest(assetIds, rels))
+                fillBoms(spec.id, draft.id, assetIds, rels, bomCount)
                 if (spec.fingerprint) {
-                    versions.fingerprint(spec.id, draft.id, CreateFingerprintRequest("Baseline demo fingerprint"))
+                    versions.fingerprint(
+                        spec.id,
+                        draft.id,
+                        CreateFingerprintRequest(
+                            name = "Baseline ${spec.name}",
+                            category = fingerprintCategory(index),
+                        ),
+                    )
                 }
             } else if (spec.openDraft && lastReleasedId != null && versions.draft(spec.id) == null) {
-                versions.createDraft(spec.id, CreateDraftVersionRequest(fromVersionId = lastReleasedId))
+                versions.createDraft(
+                    spec.id,
+                    CreateDraftVersionRequest(
+                        fromVersionId = lastReleasedId,
+                        targetVersion = "${spec.releasedVersions.last()}-draft",
+                    ),
+                )
+            }
+            if (index < 3 && lastReleasedId != null) {
+                versions.createDraft(
+                    spec.id,
+                    CreateDraftVersionRequest(
+                        fromVersionId = lastReleasedId,
+                        targetVersion = "9.9.$index",
+                        combineConstituents = bomCount > 1,
+                    ),
+                )
             }
             portfolioService.placeApplication(
                 SbomDemoIds.PORTFOLIO,
@@ -263,6 +315,55 @@ class SbomDemoInventorySeeder(
                 DemoStack.WEB -> mit
                 DemoStack.MIXED -> apache2
             }
+    }
+
+    private fun demoBomCount(index: Int): Int =
+        when {
+            index % 2 == 0 -> 1
+            index % 4 == 1 -> 2
+            else -> 3
+        }
+
+    private fun demoTags(index: Int): List<String> =
+        if (index % 5 == 0) listOf("demo", if (index % 2 == 0) "core" else "edge") else emptyList()
+
+    private fun fingerprintCategory(index: Int): String =
+        when (index % 3) {
+            0 -> "approval"
+            1 -> "history"
+            else -> "unknown"
+        }
+
+    private fun fillBoms(
+        applicationId: UUID,
+        versionId: UUID,
+        assetIds: List<UUID>,
+        rels: List<DraftRelationWrite>,
+        bomCount: Int,
+    ) {
+        val existing = boms.list(applicationId, versionId)
+        val primary = existing.first()
+        if (bomCount <= 1) {
+            versions.replaceBom(applicationId, versionId, ReplaceVersionBomRequest(assetIds, rels), primary.id)
+            return
+        }
+        val names = listOf("Build", "Runtime", "Image").take(bomCount)
+        boms.update(applicationId, versionId, primary.id, UpdateBomRequest(name = names[0], tags = listOf(names[0].lowercase())))
+        val chunk = (assetIds.size / bomCount).coerceAtLeast(1)
+        val firstSlice = assetIds.take(chunk)
+        val firstRels = rels.filter { it.fromAssetId in firstSlice && it.toAssetId in firstSlice }
+        versions.replaceBom(applicationId, versionId, ReplaceVersionBomRequest(firstSlice, firstRels), primary.id)
+        for (i in 1 until bomCount) {
+            val created =
+                boms.create(
+                    applicationId,
+                    versionId,
+                    CreateBomRequest(name = names[i], tags = listOf(names[i].lowercase())),
+                )
+            val from = i * chunk
+            val slice = if (i == bomCount - 1) assetIds.drop(from) else assetIds.drop(from).take(chunk)
+            versions.replaceBom(applicationId, versionId, ReplaceVersionBomRequest(slice, emptyList()), created.id)
+        }
     }
 
     private fun assemble(
