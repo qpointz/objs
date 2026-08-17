@@ -12,7 +12,7 @@ const colorSchemeManager = localStorageColorSchemeManager({
   key: 'sbom.ui.colorScheme',
 })
 
-const router = createBrowserRouter(createRoutesFromElements(appRoutes), { basename: '/ui' })
+const router = createBrowserRouter(createRoutesFromElements(appRoutes), { basename: '/sbom' })
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

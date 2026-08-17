@@ -14,7 +14,7 @@ export default defineConfig({
     },
   },
   build: {
-    // Gradle module output — packaged into the JAR at classpath static/ui/
+    // Gradle module output — packaged into the JAR at classpath static/workbench/
     outDir: 'build/generated/vite',
     emptyOutDir: true,
   },

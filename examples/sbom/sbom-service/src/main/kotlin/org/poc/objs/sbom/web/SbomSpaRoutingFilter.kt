@@ -14,7 +14,7 @@ import java.util.function.Predicate
 import java.util.regex.Pattern
 
 /**
- * Browser SPA routing for the inventory UI at `/ui`.
+ * Browser SPA routing for the inventory UI at `/sbom`.
  * Copied from foundation `SpaRoutingFilter` so `:sbom-service` does not compile against `:objs-service`.
  */
 @Component
@@ -23,9 +23,9 @@ class SbomSpaRoutingFilter : Filter {
 
     private val log = LoggerFactory.getLogger(javaClass)
 
-    private val normalizedBase = "/ui"
-    private val spaIndexPath = "/ui/index.html"
-    private val redirectToAppSlash = "/ui/"
+    private val normalizedBase = "/sbom"
+    private val spaIndexPath = "/sbom/index.html"
+    private val redirectToAppSlash = "/sbom/"
 
     private val staticResourcePredicate: Predicate<String> =
         Pattern.compile(

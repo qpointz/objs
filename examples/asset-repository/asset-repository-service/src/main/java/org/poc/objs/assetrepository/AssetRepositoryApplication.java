@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 /**
  * Launchable asset-repository example: domain API + objs-service (workbench at {@code /workbench/})
- * + domain SPA at {@code /app/}.
+ * + domain SPA at {@code /ar/}.
  *
  * <p>Core JPA packages come from {@code ObjsCoreAutoConfiguration}; domain entities from
  * {@link AssetRepositoryJpaConfig}.

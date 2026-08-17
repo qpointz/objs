@@ -16,7 +16,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <MantineProvider defaultColorScheme="light" colorSchemeManager={colorSchemeManager}>
       <Notifications position="top-right" />
-      <BrowserRouter basename="/app">
+      <BrowserRouter basename="/ar">
         <App />
       </BrowserRouter>
     </MantineProvider>

@@ -14,7 +14,7 @@ description = "SBOM applications inventory — domain + Boot-launchable example 
  * (`runtimeOnly` only). Inventory Kotlin must not compile against those modules.
  */
 val forbiddenFoundationCompileProjects =
-    setOf(":objs-service", ":objs-service-ui", ":objs-gremlin-service")
+    setOf(":objs-service", ":objs-service-ui", ":objs-gremlin-service", ":objs-service-app")
 
 fun Configuration.forbidsFoundationCompile(): Boolean {
     val n = name
@@ -87,7 +87,7 @@ testing {
     suites {
         configureEach {
             if (this is JvmTestSuite) {
-                useJUnitJupiter(libs.versions.junit.get())
+                useJUnitJupiter()
                 dependencies {
                     implementation(project())
                     implementation(libs.boot.starter.test)

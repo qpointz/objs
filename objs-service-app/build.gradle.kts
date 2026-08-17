@@ -5,15 +5,15 @@ plugins {
 }
 
 description =
-    "Foundation side service: objs-service + objs-service-ui (+ gremlin REST). " +
-        "Must not be depended on by :sbom-service."
+    "Workbench-only runnable: objs-service + objs-service-ui + gremlin REST. " +
+        "Must not depend on examples or other concrete product modules."
 
 dependencies {
     implementation(platform(libs.boot.dependencies))
-    // Side service libraries (workbench SPA via objs-service → objs-service-ui runtimeOnly)
     implementation(project(":objs-service"))
     implementation(project(":objs-gremlin-service"))
     implementation(libs.kotlin.reflect)
+    runtimeOnly(project(":objs-service-ui"))
     runtimeOnly(libs.h2.database)
     runtimeOnly(libs.postgresql)
     runtimeOnly(libs.flyway.postgresql)
@@ -32,5 +32,5 @@ application {
 
 tasks.named<JavaExec>("run") {
     group = "application"
-    description = "Runs foundation side service locally (H2, port 8081)."
+    description = "Runs the workbench (foundation REST + SPA, H2, port 8081)."
 }

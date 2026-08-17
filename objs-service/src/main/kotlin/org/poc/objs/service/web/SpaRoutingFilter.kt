@@ -83,7 +83,7 @@ open class SpaRoutingFilter(
     companion object {
         fun normalizeBasePath(raw: String?): String {
             if (raw.isNullOrBlank()) {
-                return "/app"
+                return "/workbench"
             }
             var b = raw.trim()
             if (!b.startsWith("/")) {

@@ -24,7 +24,7 @@ class SpaRoutingFilterTest {
     @BeforeEach
     fun setUp() {
         workbench = SpaRoutingFilter("/workbench", "/workbench/index.html", false)
-        domain = SpaRoutingFilter("/app", "/app/index.html", true)
+        domain = SpaRoutingFilter("/ar", "/ar/index.html", true)
         request = mock(HttpServletRequest::class.java)
         response = mock(HttpServletResponse::class.java)
         chain = mock(FilterChain::class.java)
@@ -32,12 +32,12 @@ class SpaRoutingFilterTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = ["/", "", "/app/index.html"])
+    @ValueSource(strings = ["/", "", "/ar/index.html"])
     fun shouldRedirectRootToApp_whenDomainFilter(url: String) {
         `when`(request.requestURI).thenReturn(url)
         `when`(request.method).thenReturn("GET")
         domain.doFilter(request, response, chain)
-        verify(response).sendRedirect("/app/")
+        verify(response).sendRedirect("/ar/")
         verifyNoInteractions(chain)
     }
 
@@ -61,12 +61,12 @@ class SpaRoutingFilterTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = ["/app/", "/app/collections", "/app/collections/abc-123/objects/x"])
+    @ValueSource(strings = ["/ar/", "/ar/collections", "/ar/collections/abc-123/objects/x"])
     fun shouldForwardDomainSpaRoute(url: String) {
         `when`(request.requestURI).thenReturn(url)
         `when`(request.method).thenReturn("GET")
         val dispatcher = mock(RequestDispatcher::class.java)
-        `when`(request.getRequestDispatcher("/app/index.html")).thenReturn(dispatcher)
+        `when`(request.getRequestDispatcher("/ar/index.html")).thenReturn(dispatcher)
         domain.doFilter(request, response, chain)
         verify(dispatcher).forward(request, response)
         verifyNoInteractions(chain)

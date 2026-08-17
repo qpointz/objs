@@ -5,7 +5,7 @@ include(":objs-service")
 include(":objs-service-ui")
 include(":objs-gremlin-core")
 include(":objs-gremlin-service")
-include(":objs-app")
+include(":objs-service-app")
 
 include(":sbom-service")
 include(":sbom-service-ui")

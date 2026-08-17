@@ -15,7 +15,7 @@ spring:
     locations: classpath:db/migration
 
 server:
-  # Side service next to :sbom-service (8080). Not consumed by the SBOM app.
+  # Workbench-only runner. Example apps use 8080.
   port: 8081
 
 objs:
@@ -29,7 +29,7 @@ springdoc:
 
 ---
 # PostgreSQL persistence. Start PostgreSQL separately, then run with:
-#   ./gradlew :objs-app:run --args="--spring.profiles.active=postgres"
+#   ./gradlew :objs-service-app:run --args="--spring.profiles.active=postgres"
 spring:
   config:
     activate:

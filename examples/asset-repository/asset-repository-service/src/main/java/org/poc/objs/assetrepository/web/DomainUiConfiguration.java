@@ -13,20 +13,20 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.web.servlet.resource.PathResourceResolver;
 
 /**
- * Serves the domain SPA from classpath {@code static/ar} at {@code /app/}.
+ * Serves the domain SPA from classpath {@code static/ar} at {@code /ar/}.
  */
 @Configuration
 public class DomainUiConfiguration implements WebMvcConfigurer {
 
     @Override
     public void addViewControllers(ViewControllerRegistry registry) {
-        registry.addRedirectViewController("/app", "/app/");
-        registry.addRedirectViewController("/", "/app/");
+        registry.addRedirectViewController("/ar", "/ar/");
+        registry.addRedirectViewController("/", "/ar/");
     }
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        registry.addResourceHandler("/app/**")
+        registry.addResourceHandler("/ar/**")
                 .addResourceLocations("classpath:/static/ar/")
                 .resourceChain(true)
                 .addResolver(new PathResourceResolver() {
@@ -52,7 +52,7 @@ public class DomainUiConfiguration implements WebMvcConfigurer {
     @Controller
     static class DomainSpaController {
 
-        @GetMapping(value = "/app/", produces = MediaType.TEXT_HTML_VALUE)
+        @GetMapping(value = "/ar/", produces = MediaType.TEXT_HTML_VALUE)
         ResponseEntity<Resource> index() {
             Resource index = new ClassPathResource("static/ar/index.html");
             if (!index.exists()) {

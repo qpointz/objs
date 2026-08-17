@@ -8,7 +8,7 @@ plugins {
     alias(libs.plugins.node.gradle)
 }
 
-description = "Objs workbench SPA (Vite/React) packaged as classpath static/ui."
+description = "Objs workbench SPA (Vite/React) packaged as classpath static/workbench."
 
 val viteOutDir = layout.buildDirectory.dir("generated/vite")
 
@@ -45,15 +45,15 @@ val npmBuildWorkbench by tasks.registering(NpmTask::class) {
 }
 
 // Project dependencies consume resources/ + classes/ dirs, not the jar artifact.
-// Put SPA files into main resources so :objs-app:run sees classpath:/static/ui/.
-// Stub: src/main/resources/static/ui/index.html (used when -PskipUi=true).
+// Put SPA files into main resources so :objs-service-app:run sees classpath:/static/workbench/.
+// Stub: src/main/resources/static/workbench/index.html (used when -PskipUi=true).
 // When the UI builds, drop the stub tree and copy Vite output instead.
 tasks.named<ProcessResources>("processResources") {
     dependsOn(npmBuildWorkbench)
     if (!uiSkipped()) {
-        exclude("static/ui/**")
+        exclude("static/workbench/**")
         from(viteOutDir) {
-            into("static/ui")
+            into("static/workbench")
         }
     }
 }

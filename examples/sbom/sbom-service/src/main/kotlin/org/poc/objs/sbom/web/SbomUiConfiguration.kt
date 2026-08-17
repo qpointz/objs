@@ -14,17 +14,17 @@ import org.springframework.web.servlet.resource.PathResourceResolver
 import java.nio.charset.StandardCharsets
 
 /**
- * Serves the inventory SPA from classpath `static/sbom` at `/ui/`
- * (distinct from workbench `static/ui` at `/workbench/`).
+ * Serves the inventory SPA from classpath `static/sbom` at `/sbom/`
+ * (distinct from workbench `static/workbench` at `/workbench/`).
  */
 @Configuration
 class SbomUiConfiguration : WebMvcConfigurer {
     override fun addViewControllers(registry: ViewControllerRegistry) {
-        registry.addRedirectViewController("/ui", "/ui/")
+        registry.addRedirectViewController("/sbom", "/sbom/")
     }
 
     override fun addResourceHandlers(registry: ResourceHandlerRegistry) {
-        registry.addResourceHandler("/ui/**")
+        registry.addResourceHandler("/sbom/**")
             .addResourceLocations("classpath:/static/sbom/")
             .resourceChain(true)
             .addResolver(
@@ -49,7 +49,7 @@ class SbomUiConfiguration : WebMvcConfigurer {
 
     @Controller
     class SbomSpaController {
-        @GetMapping(value = ["/ui/"], produces = [MediaType.TEXT_HTML_VALUE])
+        @GetMapping(value = ["/sbom/"], produces = [MediaType.TEXT_HTML_VALUE])
         fun index(): ResponseEntity<Resource> {
             val index = ClassPathResource("static/sbom/index.html")
             if (!index.exists()) {

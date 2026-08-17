@@ -16,6 +16,7 @@ dependencies {
     implementation(libs.boot.starter.flyway)
     implementation(libs.commons.jexl)
     runtimeOnly(project(":asset-repository-service-ui"))
+    runtimeOnly(project(":objs-service-ui"))
     runtimeOnly(libs.h2.database)
     runtimeOnly(libs.postgresql)
     runtimeOnly(libs.flyway.postgresql)
@@ -44,7 +45,7 @@ tasks.named<JavaExec>("run") {
 testing {
     suites {
         val test by getting(JvmTestSuite::class) {
-            useJUnitJupiter(libs.versions.junit.get())
+            useJUnitJupiter()
             dependencies {
                 implementation(project())
                 implementation(libs.boot.starter.test)

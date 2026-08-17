@@ -30,12 +30,12 @@ class SbomSpaRoutingFilterTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = ["/", "", "/ui", "/ui/index.html"])
+    @ValueSource(strings = ["/", "", "/sbom", "/sbom/index.html"])
     fun shouldRedirectRootToUiSlash(url: String) {
         `when`(request.requestURI).thenReturn(url)
         `when`(request.method).thenReturn("GET")
         filter.doFilter(request, response, chain)
-        verify(response).sendRedirect("/ui/")
+        verify(response).sendRedirect("/sbom/")
         verifyNoInteractions(chain)
     }
 
@@ -50,7 +50,7 @@ class SbomSpaRoutingFilterTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = ["/ui/assets/index.js", "/ui/style.css"])
+    @ValueSource(strings = ["/sbom/assets/index.js", "/sbom/style.css"])
     fun shouldPassThroughStaticFile(url: String) {
         `when`(request.requestURI).thenReturn(url)
         `when`(request.method).thenReturn("GET")
@@ -59,12 +59,12 @@ class SbomSpaRoutingFilterTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = ["/ui/", "/ui/applications", "/ui/applications/abc/versions/v1", "/ui/portfolios", "/ui/portfolios/abc"])
+    @ValueSource(strings = ["/sbom/", "/sbom/applications", "/sbom/applications/abc/versions/v1", "/sbom/portfolios", "/sbom/portfolios/abc"])
     fun shouldForwardSpaRoute(url: String) {
         `when`(request.requestURI).thenReturn(url)
         `when`(request.method).thenReturn("GET")
         val dispatcher = mock(RequestDispatcher::class.java)
-        `when`(request.getRequestDispatcher("/ui/index.html")).thenReturn(dispatcher)
+        `when`(request.getRequestDispatcher("/sbom/index.html")).thenReturn(dispatcher)
         filter.doFilter(request, response, chain)
         verify(dispatcher).forward(request, response)
         verifyNoInteractions(chain)

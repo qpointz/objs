@@ -26,7 +26,7 @@ testing {
     suites {
         configureEach {
             if (this is JvmTestSuite) {
-                useJUnitJupiter(libs.versions.junit.get())
+                useJUnitJupiter()
                 dependencies {
                     implementation(project())
                     implementation(libs.assertj.core)

@@ -16,11 +16,11 @@ import java.io.IOException
 import java.nio.charset.StandardCharsets
 
 /**
- * Serves the workbench SPA from classpath `static/ui` at `/workbench/`.
+ * Serves the workbench SPA from classpath `static/workbench` at `/workbench/`.
  *
  * Index HTML is served by [WorkbenchSpaController] (not a view-controller forward into
  * [org.springframework.web.servlet.resource.ResourceHttpRequestHandler]), so a missing
- * `static/ui/index.html` returns 503 with a plain message instead of FileNotFoundException/500
+ * `static/workbench/index.html` returns 503 with a plain message instead of FileNotFoundException/500
  * from `Resource.lastModified()`.
  */
 @Configuration
@@ -31,7 +31,7 @@ class ObjsWorkbenchUiConfiguration : WebMvcConfigurer {
 
     override fun addResourceHandlers(registry: ResourceHandlerRegistry) {
         registry.addResourceHandler("/workbench/**")
-            .addResourceLocations("classpath:/static/ui/")
+            .addResourceLocations("classpath:/static/workbench/")
             .resourceChain(true)
             .addResolver(object : PathResourceResolver() {
                 @Throws(IOException::class)
@@ -58,7 +58,7 @@ class ObjsWorkbenchUiConfiguration : WebMvcConfigurer {
                 null
             }
 
-        fun workbenchIndex(): Resource = ClassPathResource("static/ui/index.html")
+        fun workbenchIndex(): Resource = ClassPathResource("static/workbench/index.html")
 
         fun looksLikeStaticFile(path: String): Boolean {
             val last = path.substringAfterLast('/')
@@ -76,8 +76,8 @@ class WorkbenchSpaController {
         if (!index.isReadable) {
             val message =
                 """
-                Workbench UI is not on the classpath (static/ui/index.html missing).
-                Rebuild without -PskipUi=true, e.g. ./gradlew :objs-app:run
+                Workbench UI is not on the classpath (static/workbench/index.html missing).
+                Rebuild without -PskipUi=true, e.g. ./gradlew :objs-service-app:run
                 """.trimIndent()
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                 .contentType(MediaType.TEXT_PLAIN)

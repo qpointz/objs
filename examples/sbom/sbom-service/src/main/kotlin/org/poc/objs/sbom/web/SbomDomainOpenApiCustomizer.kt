@@ -69,7 +69,7 @@ class SbomDomainOpenApiCustomizer(
                 "Entity `payload` on PUT/GET is documented as **oneOf** registered domain schemas " +
                     "(`$SBOM_GRAPH` / `$SBOM_ENTITY`). Edge `properties` oneOf `CanonicalEdge.*`. " +
                     "Catalog source: `BoMSchemaCatalog` (ontology seed). " +
-                    "Foundation registry REST (`/api/v1/objs/**`) is the `:objs-app` side service only.",
+                    "Foundation registry REST (`/api/v1/objs/**`) is the `:objs-service-app` workbench runner only.",
             )
             appendLine()
             if (typeList.isNotBlank()) {
