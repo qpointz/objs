@@ -42,7 +42,7 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 
 ### In Progress
 
-_(none)_
+- [`flyway-module-isolation`](in-progress/flyway-module-isolation/STORY.md) — Two Flyway lines: objs-core vendor SQL + `flyway_schema_history_objs` before Boot Flyway; examples as derived apps (P-3). WI-000…WI-004.
 
 ### Planned
 

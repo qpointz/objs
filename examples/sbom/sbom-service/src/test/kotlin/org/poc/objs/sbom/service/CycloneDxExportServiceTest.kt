@@ -42,7 +42,7 @@ import org.springframework.test.context.TestPropertySource
         "spring.datasource.driver-class-name=org.h2.Driver",
         "spring.jpa.hibernate.ddl-auto=validate",
         "spring.flyway.enabled=true",
-        "spring.flyway.locations=classpath:db/migration",
+        "spring.flyway.locations=classpath:db/migration/{vendor}",
         "objs.seeds.enabled=false",
     ],
 )

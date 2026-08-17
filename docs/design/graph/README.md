@@ -20,7 +20,7 @@ Objs is an **entity store**: independent informational **entities** linked by **
 | [gremlin.md](gremlin.md) | Matcher → TinkerGraph → gremlin-lang → `BoMGremlinResult` |
 | [gremlin-examples.md](gremlin-examples.md) | Sample gremlin-lang scripts (vertices, tables, SBOM roles) |
 | [validation.md](validation.md) | Persist gate, batch two-stage validation, create/update by id |
-| [persistence.md](persistence.md) | PostgreSQL, JSONB, Flyway, H2 tests |
+| [persistence.md](persistence.md) | PostgreSQL, JSONB, two Flyway lines, H2 tests |
 | [apps-vs-foundation.md](apps-vs-foundation.md) | Store vs example apps: missing graph APIs, lift candidates, duplicates |
 
 ## Core ideas (summary)
@@ -51,7 +51,7 @@ flowchart LR
 ## Access
 
 - **Entity SDK** (`objs-core`): construct any in-memory graph without validation enforcement.
-- **Persistence**: two-stage gate; Flyway; PostgreSQL runtime; H2 plus Testcontainers coverage.
+- **Persistence**: two-stage gate; two Flyway lines (objs `bom_*` then app tables); PostgreSQL runtime; H2 plus Testcontainers coverage.
 - **Read**: return whatever exists, including non-conforming data.
 
 ## Coordinates
@@ -59,7 +59,7 @@ flowchart LR
 | Concern | Choice |
 |---------|--------|
 | Java package root (target) | `org.poc.objs` (WI-001) |
-| Primary DB | PostgreSQL + **Flyway** |
+| Primary DB | PostgreSQL + **two Flyway lines** (see [persistence.md](persistence.md)) |
 | Tests (foundation) | **H2** |
 | HTTP prefix (later) | `/api/v1/objs/**` |
 

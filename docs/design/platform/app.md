@@ -13,7 +13,7 @@ launchables and do not use this module.
 | Type / resource | Purpose |
 |-----------------|---------|
 | `ObjsApplication` | `@SpringBootApplication` — `./gradlew :objs-service-app:run` |
-| `application.yml` | Local defaults: in-memory H2 (`MODE=PostgreSQL`), Flyway, **port 8081** |
+| `application.yml` | Local defaults: in-memory H2 (`MODE=PostgreSQL`), **objs Flyway** (`bom_*`), Boot Flyway **off**, **port 8081** |
 
 ```bash
 ./gradlew :objs-service-app:run

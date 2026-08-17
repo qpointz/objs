@@ -12,7 +12,7 @@ spring:
     open-in-view: false
   flyway:
     enabled: true
-    locations: classpath:db/migration
+    locations: classpath:db/migration/{vendor}
 
 server:
   port: 8080
@@ -59,3 +59,4 @@ spring:
       ddl-auto: validate
   flyway:
     enabled: true
+    locations: classpath:db/migration/{vendor}

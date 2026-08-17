@@ -49,8 +49,7 @@ class BoMGraphStorePostgresIT {
             registry.add("spring.datasource.password") { pg.password }
             registry.add("spring.datasource.driver-class-name") { "org.postgresql.Driver" }
             registry.add("spring.jpa.hibernate.ddl-auto") { "validate" }
-            registry.add("spring.flyway.enabled") { "true" }
-            registry.add("spring.flyway.locations") { "classpath:db/migration" }
+            registry.add("spring.flyway.enabled") { "false" }
         }
     }
 

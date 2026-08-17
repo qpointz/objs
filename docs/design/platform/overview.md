@@ -85,7 +85,8 @@ Object/graph capabilities that examples still reimplement (reverse lookup, ident
 - UI
 - GitLab CI / Maven Central publishing credentials
 
-**Persistence migrations:** **Flyway** for domain tables (G-10).
+**Persistence migrations:** **two Flyway lines** — objs-core `bom_*` (`flyway_schema_history_objs`)
+then the embedding app’s Boot Flyway (G-10). See [`../graph/persistence.md`](../graph/persistence.md).
 
 ## Open questions
 

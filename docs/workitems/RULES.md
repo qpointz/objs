@@ -373,6 +373,50 @@ This keeps each WI a **reviewable, reproducible checkpoint** on the story branch
 
 ---
 
+## Flyway (library + derived apps)
+
+objs is a **library**. Schema for `bom_*` is owned by **objs-core** and applied by **objs autoconfig
+Flyway**, not by the embedding app’s Boot Flyway.
+
+### Two independent lines
+
+Same DataSource, two Flyway beans, two history tables. Version numbers are unique **per history
+table**, not globally. Both lines may ship `V1`.
+
+| Owner | Locations | History table | Versions |
+|-------|-----------|---------------|----------|
+| objs-core | `classpath:org/poc/objs/core/db/migration/{vendor}` | `flyway_schema_history_objs` | objs `V1…VN` |
+| Derived app (including `examples/*`) | Boot `classpath:db/migration` or `classpath:db/migration/{vendor}` (**app SQL only**) | `flyway_schema_history` | app `V1…VN` |
+
+`{vendor}` is the Spring Boot Flyway placeholder: `DatabaseDriver` id from the JDBC URL
+(`postgresql`, `h2`, …). Do **not** use JDBC `databaseProductName` (`"PostgreSQL"`). Unknown driver
+**fails fast**.
+
+Startup **order is Spring**, not version comparison: objs Flyway first, then Boot Flyway, then JPA
+`ddl-auto: validate`. App `V1` never races objs `V2`. Autoconfig sets Boot Flyway
+`baselineOnMigrate` with `baselineVersion` `0` so the app history can apply its own `V1`
+after objs has already created `bom_*`.
+
+### What a story must change
+
+- **`bom_*` schema** — add objs SQL for **both** `postgresql` and `h2` in objs-core in the **same
+  WI**. Do **not** add a version on SBOM, asset-repository, or any other app line.
+- **App-owned tables** — next version on **that app’s** Boot Flyway line only.
+- Derived apps **must not** add objs locations to `spring.flyway.locations`. Inclusion is the second
+  Flyway bean (autoconfig), not extra locations. Do **not** copy objs SQL into app `db/migration`.
+- Examples are derived apps. Workbench runner with no app DDL (`:objs-service-app`):
+  `spring.flyway.enabled=false`; objs autoconfig still runs.
+- Until existing databases are gone: **greenfield only** — recreate the database or drop both history
+  tables plus domain tables. Do not repair a split of one merged `flyway_schema_history`.
+
+### Do not
+
+- One `flyway_schema_history` + `classpath:db/migration` seeing both JARs (merged sequence).
+- Reserved version ranges (`V100`, skip objs numbers) to avoid collisions.
+- Putting objs folders on `spring.flyway.locations` “to include them”.
+
+---
+
 ## Concrete example integration (`examples/sbom`)
 
 `:sbom-service` (under `examples/sbom/`) is the **living consumer** of the graph foundation and the **canonical software
@@ -399,6 +443,7 @@ Update whichever of the following the change implies (all that apply, in the **s
 | API docs | OpenAPI customizer / example group when request/response shapes change |
 | Tests | module tests proving the new capability via the example path |
 | Design | [`docs/design/sbom/`](../design/sbom/) — especially `example.md` and, for ontology edits, **`canonical-spec.md`** |
+| Persistence / Flyway | objs `bom_*` → objs-core `{vendor}` SQL; app tables → that example’s `db/migration` only. See **Flyway (library + derived apps)** |
 
 Ontology additions or relationship-table changes are incomplete until **`canonical-spec.md`**, typed
 models, and `SbomRegistry` agree.

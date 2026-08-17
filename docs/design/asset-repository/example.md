@@ -38,9 +38,9 @@ Workbench (schema): `/workbench/` via `runtimeOnly` `:objs-service-ui` as a **si
 
 | Layer | Owns |
 |-------|------|
-| Domain DB `ar_collection` | name, description, owner, owner_email, support_email, sla, object_write_mode, graph_id |
+| Domain DB `ar_collection` | name, description, owner, owner_email, support_email, sla, object_write_mode, graph_id — Boot Flyway `V1` at `classpath:db/migration` |
 | Domain DB `ar_collection_type` | accepted object types (1-*) + optional per-type `metadata` |
-| objs | Object payloads, membership, in-collection edges |
+| objs | Object payloads, membership, in-collection edges — `bom_*` via objs-core Flyway, not this app’s locations |
 
 ## Type catalog (seed)
 

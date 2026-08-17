@@ -18,8 +18,7 @@ import org.springframework.test.context.TestPropertySource
         "spring.datasource.password=",
         "spring.datasource.driver-class-name=org.h2.Driver",
         "spring.jpa.hibernate.ddl-auto=validate",
-        "spring.flyway.enabled=true",
-        "spring.flyway.locations=classpath:db/migration",
+        "spring.flyway.enabled=false",
     ],
 )
 class BoMGraphPersistenceTest {

@@ -222,8 +222,8 @@ Select portfolio → select level → select report → Run → results
 
 | Layer | Owns |
 |-------|------|
-| **Domain tables** (`sbom-service`) | Application, version (incl. tags, based-on, `version_serial`), BOM rows (`sbom_application_sbom`), fingerprint metadata, portfolio + subject areas + membership |
-| **objs graphs** (`objs-core`) | Each **BOM** has a named graph. Combined SBOM is computed at read time. Fingerprint stores a snapshot graph. |
+| **Domain tables** (`sbom-service`) | Application, version (incl. tags, based-on, `version_serial`), BOM rows (`sbom_application_sbom`), fingerprint metadata, portfolio + subject areas + membership. Boot Flyway `V1` at `classpath:db/migration/{vendor}` (`flyway_schema_history`). |
+| **objs graphs** (`objs-core`) | Each **BOM** has a named graph. Combined SBOM is computed at read time. Fingerprint stores a snapshot graph. `bom_*` is objs Flyway (`flyway_schema_history_objs`), not this app’s locations. |
 
 Rules:
 

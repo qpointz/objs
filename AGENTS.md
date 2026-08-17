@@ -15,7 +15,8 @@ Gradle multi-module Kotlin project. Foundation leaf modules at the repository ro
 - `examples/sbom/sbom-service-ui` (`:sbom-service-ui`) — Inventory SPA; same node-gradle packaging as `:objs-service-ui`
 - `examples/asset-repository/` — Asset repository example (`:asset-repository-service` + `:asset-repository-service-ui`); objs as object store — see [`docs/design/asset-repository/example.md`](docs/design/asset-repository/example.md)
 
-Keep example apps in sync with foundation features — see [`docs/workitems/RULES.md`](docs/workitems/RULES.md) **Concrete example integration**.
+Keep example apps in sync with foundation features — see [`docs/workitems/RULES.md`](docs/workitems/RULES.md)
+**Concrete example integration** and **Flyway (library + derived apps)**.
 
 Production sources: `src/main/kotlin`. Tests: `src/test/kotlin` (integration suites under `src/testIT/kotlin` when present).
 

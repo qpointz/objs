@@ -11,8 +11,7 @@ spring:
       ddl-auto: validate
     open-in-view: false
   flyway:
-    enabled: true
-    locations: classpath:db/migration
+    enabled: false
 
 server:
   # Workbench-only runner. Example apps use 8080.
@@ -46,4 +45,4 @@ spring:
     hibernate:
       ddl-auto: validate
   flyway:
-    enabled: true
+    enabled: false

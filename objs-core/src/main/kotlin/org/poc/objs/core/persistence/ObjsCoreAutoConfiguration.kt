@@ -12,6 +12,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.persistence.autoconfigure.EntityScan
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.ComponentScan
+import org.springframework.context.annotation.Import
 import org.springframework.core.Ordered
 import org.springframework.core.annotation.Order
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories
@@ -25,6 +26,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories
  * beans.
  */
 @AutoConfiguration
+@Import(ObjsFlywayAutoConfiguration::class)
 @ComponentScan(basePackages = ["org.poc.objs.core"])
 @EntityScan(basePackages = ["org.poc.objs.core.persistence"])
 @EnableJpaRepositories(basePackages = ["org.poc.objs.core.persistence"])

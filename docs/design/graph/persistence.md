@@ -24,10 +24,46 @@ No global graph: an entity **pool** (`bom_entity`) shared by many **graphs** (`b
 | `bom_edge_schema` | Edge allow-list `(source_type, role, target_type)` + properties policy + cardinality |
 | `bom_seed_ledger` | Startup seed fingerprints |
 
-**Flyway:** migrations `V1__bom_schema` + `V2__bom_graph_header_indexes` (Java) create this schema
-for empty databases. PostgreSQL uses JSONB (+ GIN on entity **and** graph-header annotations); H2
-uses JSON. There is no intermediate rename/backfill history — greenfield apply only (reset
-`flyway_schema_history` / recreate the DB if an older V1–V6 history is present).
+**Flyway (objs line):** objs-core ships vendor SQL `V1__bom_schema.sql` under
+`classpath:org/poc/objs/core/db/migration/{vendor}` (`postgresql`, `h2` — Spring Boot
+`DatabaseDriver` id from the JDBC URL, not JDBC `databaseProductName`). Autoconfig
+(`ObjsFlywayAutoConfiguration`) applies it into `flyway_schema_history_objs` **before** Boot
+Flyway and JPA `ddl-auto: validate`. PostgreSQL uses JSONB (+ GIN on entity **and** graph-header
+annotations); H2 uses JSON.
+
+**Flyway (derived app):** a **separate** Boot Flyway (`flyway_schema_history`) owns only app
+tables. Locations are `classpath:db/migration` or `classpath:db/migration/{vendor}` — never objs
+paths. Both lines may use `V1`. Autoconfig sets Boot `baselineOnMigrate` with `baselineVersion` `0`
+so the app `V1` still runs after `bom_*` exist. Process lock:
+[`docs/workitems/RULES.md`](../../workitems/RULES.md) **Flyway (library + derived apps)**.
+
+Greenfield only: recreate the DB or drop **both** history tables plus domain tables if an older
+merged `flyway_schema_history` (or pre-split V1–V6) is present.
+
+### Embedder `application.yml`
+
+App **with** its own SQL (SBOM uses `{vendor}` for `TEXT[]` vs `VARCHAR ARRAY`; asset repository
+uses a single dialect-neutral `V1`):
+
+```yaml
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration/{vendor}   # or classpath:db/migration
+    # table: flyway_schema_history   # Boot default; app line V1..Vn
+# objs.flyway defaults: enabled, table flyway_schema_history_objs
+```
+
+Workbench runner **without** app DDL (`:objs-service-app`):
+
+```yaml
+spring:
+  flyway:
+    enabled: false   # objs autoconfig still creates bom_*
+```
 
 ```mermaid
 erDiagram
@@ -141,7 +177,8 @@ Persistence is the **enforcement** point for payload schema and allowed edges �
 - Foundation story tests use **H2** (G-11).
 - **Primary runtime database remains PostgreSQL**; document H2 vs JSONB/dialect limitations if any appear during implementation.
 
-- **Flyway from day one** — migrations are the source of truth for PostgreSQL DDL.
+- **Flyway from day one** — migrations are the source of truth for PostgreSQL DDL. objs `bom_*`
+  and derived-app tables are **two Flyway lines** (two history tables); do not merge locations.
 - Do **not** rely on Hibernate `ddl-auto` to invent/evolve production schema (dev may use validate / none against migrated DB).
 
 ## Open
