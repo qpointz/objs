@@ -1,10 +1,10 @@
 # SBOM applications inventory
 
-**Status:** living — D-2 inventory plus [`multi-bom-app-versions`](../../workitems/in-progress/multi-bom-app-versions/STORY.md) (D-8: multi-BOM versions, parallel drafts, tags, fingerprints)  
+**Status:** living — D-2 inventory plus [`multi-bom-app-versions`](../../workitems/completed/20260817-multi-bom-app-versions/STORY.md) (D-8: multi-BOM versions, parallel drafts, tags, fingerprints)  
 **Modules:** `:sbom-service` + `:sbom-service-ui` under [`examples/sbom/`](../../../examples/sbom/)  
 **Run:** `./gradlew :sbom-service:run` → UI **`http://localhost:8080/sbom/`** (demo seeds via `demo` profile)  
-**Engineer mapping:** [`GRAPH-AND-RETRIEVAL.md`](../../workitems/in-progress/multi-bom-app-versions/GRAPH-AND-RETRIEVAL.md)  
-**Gaps:** [`GAPS.md`](../../workitems/in-progress/multi-bom-app-versions/GAPS.md)  
+**Engineer mapping:** [`GRAPH-AND-RETRIEVAL.md`](../../workitems/completed/20260817-multi-bom-app-versions/GRAPH-AND-RETRIEVAL.md)  
+**Gaps:** [`GAPS.md`](../../workitems/completed/20260817-multi-bom-app-versions/GAPS.md)  
 **Ontology:** [`canonical-spec.md`](canonical-spec.md) (reuse; extend only when journeys require)
 
 This document is the **product** design for the inventory app. End-user UI and **domain** API use the glossary below — never graph / entity / edge / matcher vocabulary.
@@ -48,7 +48,7 @@ Visual split only (**no auth / roles**). Keep the UI **clean and obvious**: two 
 | **MI report** | Management information report. Portfolio owner only. Always scoped by portfolio → level. |
 | **CycloneDX export (demo)** | Weak export of a Combined SBOM (or fingerprint snapshot) to CycloneDX-shaped JSON. UI link hidden on application detail. |
 
-**User guide:** how to operate this model in the inventory SPA is [`user.md`](user.md). Engineer storage/union mapping is [`GRAPH-AND-RETRIEVAL.md`](../../workitems/in-progress/multi-bom-app-versions/GRAPH-AND-RETRIEVAL.md).
+**User guide:** how to operate this model in the inventory SPA is [`user.md`](user.md). Engineer storage/union mapping is [`GRAPH-AND-RETRIEVAL.md`](../../workitems/completed/20260817-multi-bom-app-versions/GRAPH-AND-RETRIEVAL.md).
 
 ---
 
@@ -233,7 +233,7 @@ Rules:
 - Tags live on domain rows only (not in graphs / fingerprint hash).  
 - Domain tables must not become a parallel asset store.
 
-See [`GRAPH-AND-RETRIEVAL.md`](../../workitems/in-progress/multi-bom-app-versions/GRAPH-AND-RETRIEVAL.md).
+See [`GRAPH-AND-RETRIEVAL.md`](../../workitems/completed/20260817-multi-bom-app-versions/GRAPH-AND-RETRIEVAL.md).
 
 ---
 
@@ -324,9 +324,9 @@ Full schema→Kotlin codegen remains optional when the modeling team supplies ge
 
 ## Related
 
-- Story + gaps: [`multi-bom-app-versions`](../../workitems/in-progress/multi-bom-app-versions/STORY.md) · prior D-2 [`sbom-inventory-app`](../../workitems/completed/20260816-sbom-inventory-app/STORY.md)  
+- Story + gaps: [`multi-bom-app-versions`](../../workitems/completed/20260817-multi-bom-app-versions/STORY.md) · prior D-2 [`sbom-inventory-app`](../../workitems/completed/20260816-sbom-inventory-app/STORY.md)  
 - User guide (inventory SPA): [`user.md`](user.md)  
 - Canonical ontology: [`canonical-spec.md`](canonical-spec.md)  
 - Seeds: [`../graph/seeds.md`](../graph/seeds.md)  
-- Engineer mapping: [`GRAPH-AND-RETRIEVAL.md`](../../workitems/in-progress/multi-bom-app-versions/GRAPH-AND-RETRIEVAL.md)  
+- Engineer mapping: [`GRAPH-AND-RETRIEVAL.md`](../../workitems/completed/20260817-multi-bom-app-versions/GRAPH-AND-RETRIEVAL.md)  
 - Foundation workbench (separate app): [`../ui.md`](../ui.md) · `:objs-service-app`  

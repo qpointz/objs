@@ -192,5 +192,5 @@ Under **Applications** chrome, **Assets** searches the global pool (type + searc
 ## Related
 
 - Product locks and API sketch: [`example.md`](example.md)  
-- Storage and union: [`GRAPH-AND-RETRIEVAL.md`](../../workitems/in-progress/multi-bom-app-versions/GRAPH-AND-RETRIEVAL.md)  
+- Storage and union: [`GRAPH-AND-RETRIEVAL.md`](../../workitems/completed/20260817-multi-bom-app-versions/GRAPH-AND-RETRIEVAL.md)  
 - Example README: [`../../../examples/sbom/README.md`](../../../examples/sbom/README.md)  

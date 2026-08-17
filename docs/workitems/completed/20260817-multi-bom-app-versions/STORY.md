@@ -2,8 +2,8 @@
 
 **Slug:** `multi-bom-app-versions`  
 **Branch:** `multi-bom-app-versions`  
-**Status:** in-progress  
-**Folder:** [`docs/workitems/in-progress/multi-bom-app-versions/`](.)  
+**Status:** closed  
+**Folder:** [`docs/workitems/completed/20260817-multi-bom-app-versions/`](.)  
 **Backlog:** [D-8](../../BACKLOG.md)  
 **Base:** `origin/dev`  
 **Design (product):** [`docs/design/sbom/example.md`](../../../design/sbom/example.md)  

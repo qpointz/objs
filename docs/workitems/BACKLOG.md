@@ -57,7 +57,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | D-5 | Asset repository Postgres search, SPA refresh routing, batched load.py | fix | done | [`completed/20260814-asset-repository-ops-fixes/`](completed/20260814-asset-repository-ops-fixes/STORY.md) |
 | D-6 | Inventory Save as one transactional request (payloads + version graph + application meta) | improvement | backlog | [`completed/20260816-sbom-inventory-app/GAPS.md`](completed/20260816-sbom-inventory-app/GAPS.md) G-P13 |
 | D-7 | Demo inventory as file seeds under `examples/sbom/demo` (replace `SbomDemoInventorySeeder`) | improvement | backlog | [`completed/20260816-sbom-inventory-app/GAPS.md`](completed/20260816-sbom-inventory-app/GAPS.md) G-P14 |
-| D-8 | Multi-BOM app versions (constituents + Combined SBOM; multi-draft with target version) | feature | in-progress | [`in-progress/multi-bom-app-versions/`](in-progress/multi-bom-app-versions/STORY.md) |
+| D-8 | Multi-BOM app versions (constituents + Combined SBOM; multi-draft with target version) | feature | done | [`completed/20260817-multi-bom-app-versions/`](completed/20260817-multi-bom-app-versions/STORY.md) |
 
 ---
 
@@ -76,5 +76,5 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 |--------|------:|
 | backlog | 2 |
 | planned | 0 |
-| in-progress | 1 |
-| done | 25 |
+| in-progress | 0 |
+| done | 26 |

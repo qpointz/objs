@@ -38,10 +38,11 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`asset-repository-ops-fixes`](completed/20260814-asset-repository-ops-fixes/STORY.md) — Postgres collection search casts, SPA deep-link filters, batched `load.py` (D-5).
 - [`sbom-inventory-app`](completed/20260816-sbom-inventory-app/STORY.md) — Applications \| Portfolios inventory app; portfolio-scoped MI (latest-version graphs + Gremlin); weak CDX; programmatic objs (D-2). WI-000…WI-015.
 - [`spa-url-classpath-align`](completed/20260817-spa-url-classpath-align/STORY.md) — Align SPA URL prefix with classpath folder (`/workbench`, `/ar`, `/sbom`); rename `:objs-app` → `:objs-service-app`; UI JAR on the runner only (P-2). WI-000…WI-004.
+- [`multi-bom-app-versions`](completed/20260817-multi-bom-app-versions/STORY.md) — Multi-BOM constituents + Combined SBOM; multi-draft (target + optional combine); tags; fingerprint name/category; inventory UI polish (D-8). WI-000…WI-008.
 
 ### In Progress
 
-- [`multi-bom-app-versions`](in-progress/multi-bom-app-versions/STORY.md) — Multi-BOM constituents + Combined SBOM; multi-draft (target + optional combine); tags; fingerprint name/category (D-8). WI-000 done; WI-001…WI-008 pending.
+_(none)_
 
 ### Planned
 

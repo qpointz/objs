@@ -10,6 +10,7 @@ docs/workitems/completed/YYYYMMDD-<story-slug>/
 
 ## Index (optional, newest first)
 
+- [`20260817-multi-bom-app-versions`](20260817-multi-bom-app-versions/STORY.md) — Multi-BOM versions, Combined SBOM, parallel drafts, fingerprints (D-8)
 - [`20260817-spa-url-classpath-align`](20260817-spa-url-classpath-align/STORY.md) — SPA URL = classpath folder; `:objs-service-app` workbench runner (P-2)
 - [`20260816-sbom-inventory-app`](20260816-sbom-inventory-app/STORY.md) — Applications \| Portfolios inventory app; portfolio MI; weak CDX (D-2)
 - [`20260814-asset-repository-ops-fixes`](20260814-asset-repository-ops-fixes/STORY.md) — Postgres collection search, SPA refresh filters, batched load.py (D-5)
