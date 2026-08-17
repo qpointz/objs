@@ -1,4 +1,4 @@
-import { Alert, Stack, TextInput, Textarea, Title } from '@mantine/core'
+import { Alert, Stack, TagsInput, TextInput, Textarea, Title } from '@mantine/core'
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
@@ -8,15 +8,23 @@ export function ApplicationFormPage() {
   const navigate = useNavigate()
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const [targetVersion, setTargetVersion] = useState('')
+  const [tags, setTags] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
+    if (!targetVersion.trim()) {
+      setError('Target version is required')
+      return
+    }
     try {
       const created = await api.createApplication({
         name: name.trim(),
         description: description.trim() || undefined,
+        targetVersion: targetVersion.trim(),
+        tags,
       })
       navigate(`/applications/${created.id}`)
     } catch (err) {
@@ -35,6 +43,20 @@ export function ApplicationFormPage() {
         minRows={2}
         value={description}
         onChange={(e) => setDescription(e.currentTarget.value)}
+      />
+      <TextInput
+        label="Target version"
+        required
+        placeholder="1.0.0"
+        value={targetVersion}
+        onChange={(e) => setTargetVersion(e.currentTarget.value)}
+      />
+      <TagsInput
+        label="Tags"
+        placeholder="Add a tag"
+        value={tags}
+        onChange={setTags}
+        clearable
       />
       <FormFooterActions
         secondary={{ label: 'Cancel', to: '/applications' }}

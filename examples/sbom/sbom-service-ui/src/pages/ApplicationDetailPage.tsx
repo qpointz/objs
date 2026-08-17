@@ -4,6 +4,7 @@ import {
   Anchor,
   Badge,
   Button,
+  Checkbox,
   Divider,
   Group,
   LoadingOverlay,
@@ -17,6 +18,7 @@ import {
   Switch,
   Table,
   Tabs,
+  TagsInput,
   Text,
   Textarea,
   TextInput,
@@ -37,6 +39,7 @@ import type {
   AssetRelationshipSpec,
   AssetTypeSummary,
   AssetView,
+  BomSummary,
   BoMSchema,
   BoMSchemaField,
   RelationView,
@@ -104,6 +107,7 @@ type ConfirmRequest = {
   confirmLabel: string
   color?: string
   onConfirm: () => void
+  cancelLabel?: string
   discardLabel?: string
   onDiscard?: () => void
 }
@@ -126,9 +130,63 @@ const GRAPH_LAYOUTS: { value: GraphLayoutDir; label: string }[] = [
 ]
 
 function versionLabel(v: ApplicationVersionSummary): string {
-  if (v.status === 'DRAFT') return 'Draft'
+  if (v.status === 'DRAFT') return v.version || v.label || 'Draft'
   return v.version || v.label || 'Released'
 }
+
+function fingerprintTitle(fp: ApplicationFingerprintSummary): string {
+  return fp.name?.trim() || fp.note?.trim() || fp.contentSha256.slice(0, 12)
+}
+
+function fingerprintCategory(fp: ApplicationFingerprintSummary): string {
+  return fp.category?.trim() || 'unknown'
+}
+
+function fingerprintMenuLabel(fp: ApplicationFingerprintSummary): string {
+  return `${fingerprintTitle(fp)} · ${fingerprintCategory(fp)}`
+}
+
+function uniqueTags(...lists: (string[] | undefined | null)[]): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const list of lists) {
+    for (const raw of list ?? []) {
+      const tag = raw.trim()
+      if (!tag || seen.has(tag)) continue
+      seen.add(tag)
+      out.push(tag)
+    }
+  }
+  return out
+}
+
+function sameTags(a: string[] | undefined | null, b: string[] | undefined | null): boolean {
+  const left = a ?? []
+  const right = b ?? []
+  if (left.length !== right.length) return false
+  return left.every((tag, i) => tag === right[i])
+}
+
+function parseSbomQuery(param: string | null, bomList: BomSummary[]): string[] {
+  if (bomList.length < 2) return bomList.map((b) => b.id)
+  if (!param || param === 'combined') return bomList.map((b) => b.id)
+  const wanted = param.split(',').map((part) => part.trim()).filter(Boolean)
+  const ids = wanted.filter((id) => bomList.some((b) => b.id === id))
+  return ids.length > 0 ? ids : bomList.map((b) => b.id)
+}
+
+function formatSbomQuery(ids: string[], bomList: BomSummary[]): string | null {
+  if (bomList.length < 2) return null
+  if (ids.length === 0 || ids.length === bomList.length) return 'combined'
+  if (ids.length === 1) return ids[0]
+  return ids.join(',')
+}
+
+const FINGERPRINT_CATEGORIES = [
+  { value: 'approval', label: 'approval' },
+  { value: 'history', label: 'history' },
+  { value: 'unknown', label: 'unknown' },
+]
 
 type FingerprintRow = ApplicationFingerprintSummary & { versionLabel: string }
 
@@ -150,6 +208,7 @@ export function ApplicationDetailPage() {
   const [params, setParams] = useSearchParams()
   const versionParam = params.get('version')
   const fingerprintParam = params.get('fingerprint')
+  const sbomParam = params.get('sbom')
   const tab = params.get('tab') === 'graph' ? 'graph' : 'assets'
   const graphRef = useRef<SbomGraphHandle>(null)
   const paneScrollRef = useRef<HTMLDivElement>(null)
@@ -166,6 +225,25 @@ export function ApplicationDetailPage() {
   const [fingerprints, setFingerprints] = useState<FingerprintRow[]>([])
   const [editName, setEditName] = useState('')
   const [editDescription, setEditDescription] = useState('')
+  const [editAppTags, setEditAppTags] = useState<string[]>([])
+  const [editTargetVersion, setEditTargetVersion] = useState('')
+  const [editVersionTags, setEditVersionTags] = useState<string[]>([])
+  const [editBomName, setEditBomName] = useState('')
+  const [editBomDescription, setEditBomDescription] = useState('')
+  const [editBomTags, setEditBomTags] = useState<string[]>([])
+  const [boms, setBoms] = useState<BomSummary[]>([])
+  const [draftOpen, setDraftOpen] = useState(false)
+  const [draftTarget, setDraftTarget] = useState('')
+  const [draftFrom, setDraftFrom] = useState<string | null>(null)
+  const [draftCombine, setDraftCombine] = useState(false)
+  const [draftFromBomCount, setDraftFromBomCount] = useState(0)
+  const [fpOpen, setFpOpen] = useState(false)
+  const [fpName, setFpName] = useState('')
+  const [fpCategory, setFpCategory] = useState<string | null>('unknown')
+  const [createBomOpen, setCreateBomOpen] = useState(false)
+  const [newBomName, setNewBomName] = useState('')
+  const [newBomDescription, setNewBomDescription] = useState('')
+  const [newBomTags, setNewBomTags] = useState<string[]>([])
   const [changesOnly, setChangesOnly] = useState(false)
   const [roleSpecs, setRoleSpecs] = useState<AssetRelationshipSpec[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -205,11 +283,24 @@ export function ApplicationDetailPage() {
   const versionId = bom?.version.id ?? versionParam
   const currentFingerprint = fingerprints.find((fp) => fp.id === fingerprintParam) ?? null
   const versionOpen = currentFingerprint == null
+  const fingerprintView = currentFingerprint != null
+  const selectedBomIds = useMemo(() => parseSbomQuery(sbomParam, boms), [sbomParam, boms])
+  const multiBomChrome = boms.length >= 2 && !fingerprintView
+  const isCombined = multiBomChrome && selectedBomIds.length === boms.length
+  const exactlyOneBom = !fingerprintView && (boms.length === 1 || (multiBomChrome && selectedBomIds.length === 1))
+  const selectedBom =
+    exactlyOneBom
+      ? boms.find((b) => b.id === (boms.length === 1 ? boms[0].id : selectedBomIds[0])) ?? null
+      : null
   const snapshotLabel = currentFingerprint
-    ? currentFingerprint.note?.trim() || currentFingerprint.contentSha256.slice(0, 12)
+    ? fingerprintMenuLabel(currentFingerprint)
     : versions.find((v) => v.id === versionId)
       ? versionLabel(versions.find((v) => v.id === versionId)!)
       : 'Version'
+  const combinedTagList = useMemo(
+    () => bom?.combinedTags ?? uniqueTags(app?.tags, bom?.version.tags, ...boms.map((b) => b.tags)),
+    [app?.tags, bom?.combinedTags, bom?.version.tags, boms],
+  )
 
   const filteredSnapshots = useMemo(() => {
     const q = snapshotSearch.trim().toLowerCase()
@@ -218,7 +309,7 @@ export function ApplicationDetailPage() {
       : versions
     const fps = q
       ? fingerprints.filter((fp) =>
-          `${fp.note ?? ''} ${fp.versionLabel} ${fp.contentSha256}`.toLowerCase().includes(q),
+          `${fingerprintMenuLabel(fp)} ${fp.versionLabel} ${fp.contentSha256}`.toLowerCase().includes(q),
         )
       : fingerprints
     return { vers, fps }
@@ -230,6 +321,7 @@ export function ApplicationDetailPage() {
     setApp(a)
     setEditName(a.name)
     setEditDescription(a.description ?? '')
+    setEditAppTags(a.tags ?? [])
     setVersions(list)
     const preferred =
       list.find((v) => v.id === preferredVersion) ||
@@ -238,6 +330,7 @@ export function ApplicationDetailPage() {
       list[0]
     if (!preferred) {
       setBom(null)
+      setBoms([])
       return
     }
     const fpRows = (
@@ -254,13 +347,43 @@ export function ApplicationDetailPage() {
       requestedFp && fpRows.some((fp) => fp.id === requestedFp && fp.versionId === preferred.id)
         ? requestedFp
         : null
-    const view = validFp
-      ? await api.getFingerprint(id, preferred.id, validFp)
-      : await api.getVersion(id, preferred.id)
+    let view: VersionBomView
+    let bomList: BomSummary[] = []
+    if (validFp) {
+      view = await api.getFingerprint(id, preferred.id, validFp)
+      setBoms([])
+    } else {
+      bomList = await api.listBoms(id, preferred.id)
+      setBoms(bomList)
+      const selectedIds = parseSbomQuery(sbomParam, bomList)
+      if (bomList.length >= 2) {
+        if (selectedIds.length === 1) {
+          view = await api.getBom(id, preferred.id, selectedIds[0])
+        } else {
+          view = await api.getCombined(
+            id,
+            preferred.id,
+            selectedIds.length === bomList.length ? undefined : selectedIds,
+          )
+        }
+      } else {
+        view = await api.getVersion(id, preferred.id)
+      }
+    }
     setBom(view)
     setWorkingAssets(view.assets)
     setWorkingRels(view.relations)
     setDirty(false)
+    setEditTargetVersion(view.version.version ?? '')
+    setEditVersionTags(view.version.tags ?? [])
+    const oneBom =
+      !validFp && (bomList.length === 1 || (bomList.length >= 2 && parseSbomQuery(sbomParam, bomList).length === 1))
+    const currentBom = oneBom
+      ? bomList.find((b) => b.id === (bomList.length === 1 ? bomList[0].id : parseSbomQuery(sbomParam, bomList)[0]))
+      : undefined
+    setEditBomName(currentBom?.name ?? '')
+    setEditBomDescription(currentBom?.description ?? '')
+    setEditBomTags(currentBom?.tags ?? [])
     setEditing(enterEditAfterLoad.current)
     if (!enterEditAfterLoad.current) setPaneChangesOnly(false)
     const next = new URLSearchParams(params)
@@ -270,7 +393,7 @@ export function ApplicationDetailPage() {
       urlChanged = true
     }
     const assetQ = next.get('asset')
-    if (assetQ && !view.assets.some((a) => a.id === assetQ)) {
+    if (assetQ && !view.assets.some((item) => item.id === assetQ)) {
       next.delete('asset')
       urlChanged = true
     }
@@ -279,9 +402,25 @@ export function ApplicationDetailPage() {
         next.set('fingerprint', validFp)
         urlChanged = true
       }
-    } else if (next.get('fingerprint')) {
-      next.delete('fingerprint')
-      urlChanged = true
+      if (next.get('sbom')) {
+        next.delete('sbom')
+        urlChanged = true
+      }
+    } else {
+      if (next.get('fingerprint')) {
+        next.delete('fingerprint')
+        urlChanged = true
+      }
+      const sbomQuery = formatSbomQuery(parseSbomQuery(sbomParam, bomList), bomList)
+      if (sbomQuery) {
+        if (next.get('sbom') !== sbomQuery) {
+          next.set('sbom', sbomQuery)
+          urlChanged = true
+        }
+      } else if (next.get('sbom')) {
+        next.delete('sbom')
+        urlChanged = true
+      }
     }
     if (urlChanged) setParams(next, { replace: true })
   }
@@ -289,7 +428,7 @@ export function ApplicationDetailPage() {
   useEffect(() => {
     if (id) void load(versionParam, fingerprintParam).catch((e) => setError(e instanceof Error ? e.message : 'Load failed'))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, versionParam, fingerprintParam])
+  }, [id, versionParam, fingerprintParam, sbomParam])
 
   const draft = useMemo(
     () => computeBomDraft(bom?.assets ?? [], bom?.relations ?? [], workingAssets, workingRels),
@@ -320,14 +459,34 @@ export function ApplicationDetailPage() {
   const appSelected = !selectedAssetId && !selectedTypeParam
   const selectedType = selectedTypeParam || selectedAsset?.type || null
   const typeAssets = selectedType ? (editing ? draft.graphAssets : workingAssets).filter((a) => a.type === selectedType) : []
-  const writable = editing && bom != null && !fingerprintParam
+  const writable =
+    editing &&
+    bom != null &&
+    bom.version.status === 'DRAFT' &&
+    !fingerprintParam &&
+    (boms.length <= 1 || selectedBomIds.length === 1)
   const appMetaDirty =
-    app != null && (editName.trim() !== app.name || (editDescription.trim() || '') !== (app.description ?? ''))
+    app != null &&
+    (editName.trim() !== app.name ||
+      (editDescription.trim() || '') !== (app.description ?? '') ||
+      !sameTags(editAppTags, app.tags ?? []))
+  const versionMetaDirty =
+    bom != null &&
+    bom.version.status === 'DRAFT' &&
+    !fingerprintView &&
+    (editTargetVersion.trim() !== (bom.version.version ?? '') || !sameTags(editVersionTags, bom.version.tags ?? []))
+  const bomMetaDirty =
+    selectedBom != null &&
+    boms.length >= 2 &&
+    !fingerprintView &&
+    (editBomName.trim() !== selectedBom.name ||
+      (editBomDescription.trim() || '') !== (selectedBom.description ?? '') ||
+      !sameTags(editBomTags, selectedBom.tags ?? []))
   const payloadUnapplied =
     selectedAsset != null &&
     editPayload != null &&
     JSON.stringify(editPayload) !== JSON.stringify(selectedAsset.payload)
-  const versionDirty = dirty || appMetaDirty
+  const versionDirty = dirty || appMetaDirty || versionMetaDirty || bomMetaDirty
 
   const groupedVisible = useMemo(() => {
     const q = paneSearch.trim().toLowerCase()
@@ -454,26 +613,62 @@ export function ApplicationDetailPage() {
 
   function switchSnapshot(nextId: string, fingerprintId: string | null) {
     enterEditAfterLoad.current = false
+    askLeaveUnsaved(() => {
+      const next = new URLSearchParams(params)
+      next.set('version', nextId)
+      if (fingerprintId) next.set('fingerprint', fingerprintId)
+      else next.delete('fingerprint')
+      next.delete('sbom')
+      setParams(next)
+    })
+  }
+
+  function askLeaveUnsaved(then: () => void) {
     if (versionDirty || payloadUnapplied) {
       setConfirm({
-        title: 'Discard unsaved changes?',
-        message: 'Switching version will drop edits that have not been saved.',
-        confirmLabel: 'Discard and switch',
+        title: 'Leave unsaved changes?',
+        message: 'Leave this selection to drop edits that have not been saved.',
+        confirmLabel: 'Leave',
+        cancelLabel: 'Stay',
         color: 'red',
-        onConfirm: () => void applySwitchVersion(nextId, fingerprintId),
+        onConfirm: () => {
+          discard()
+          then()
+        },
       })
       return
     }
-    void applySwitchVersion(nextId, fingerprintId)
+    then()
   }
 
-  async function applySwitchVersion(nextId: string, fingerprintId: string | null = null) {
-    await load(nextId, fingerprintId)
-    const next = new URLSearchParams(params)
-    next.set('version', nextId)
-    if (fingerprintId) next.set('fingerprint', fingerprintId)
-    else next.delete('fingerprint')
-    setParams(next)
+  function switchBomSelection(ids: string[]) {
+    askLeaveUnsaved(() => {
+      enterEditAfterLoad.current = false
+      const next = new URLSearchParams(params)
+      const query = formatSbomQuery(ids, boms)
+      if (query) next.set('sbom', query)
+      else next.delete('sbom')
+      setParams(next)
+    })
+  }
+
+  function selectCombinedSbom() {
+    switchBomSelection(boms.map((b) => b.id))
+  }
+
+  function selectSingleBom(bomId: string) {
+    switchBomSelection([bomId])
+  }
+
+  function toggleBomSelected(bomId: string, checked: boolean) {
+    if (checked) {
+      const next = selectedBomIds.includes(bomId) ? selectedBomIds : [...selectedBomIds, bomId]
+      switchBomSelection(next)
+      return
+    }
+    const next = selectedBomIds.filter((id) => id !== bomId)
+    if (next.length === 0) switchBomSelection([bomId])
+    else switchBomSelection(next)
   }
 
   async function save() {
@@ -501,22 +696,55 @@ export function ApplicationDetailPage() {
           await api.updateAsset(asset.id, asset.payload)
         }
       }
-      const saved = await api.saveVersionBom(id, bom.version.id, {
-        assetIds: assetsToSave.map((a) => a.id),
-        relations: workingRels.map((r) => ({
-          fromAssetId: r.fromAssetId,
-          toAssetId: r.toAssetId,
-          role: r.role,
-        })),
-      })
+      const relationBody = workingRels.map((r) => ({
+        fromAssetId: r.fromAssetId,
+        toAssetId: r.toAssetId,
+        role: r.role,
+      }))
+      let saved: VersionBomView = bom
+      if ((dirty || payloadUnapplied) && writable) {
+        if (boms.length >= 2 && selectedBomIds.length === 1) {
+          saved = await api.saveBom(id, bom.version.id, selectedBomIds[0], {
+            assetIds: assetsToSave.map((a) => a.id),
+            relations: relationBody,
+          })
+        } else if (boms.length <= 1) {
+          saved = await api.saveVersionBom(id, bom.version.id, {
+            assetIds: assetsToSave.map((a) => a.id),
+            relations: relationBody,
+          })
+        }
+      }
       if (app && appMetaDirty) {
         const updatedApp = await api.updateApplication(id, {
           name: editName.trim(),
           description: editDescription.trim() || null,
+          tags: editAppTags,
         })
         setApp(updatedApp)
         setEditName(updatedApp.name)
         setEditDescription(updatedApp.description ?? '')
+        setEditAppTags(updatedApp.tags ?? [])
+      }
+      if (versionMetaDirty) {
+        const patched = await api.patchVersion(id, bom.version.id, {
+          version: editTargetVersion.trim(),
+          tags: editVersionTags,
+        })
+        saved = { ...saved, version: { ...saved.version, ...patched } }
+        setEditTargetVersion(patched.version ?? '')
+        setEditVersionTags(patched.tags ?? [])
+      }
+      if (bomMetaDirty && selectedBom) {
+        const patchedBom = await api.patchBom(id, bom.version.id, selectedBom.id, {
+          name: editBomName.trim(),
+          description: editBomDescription.trim() || null,
+          tags: editBomTags,
+        })
+        setBoms((prev) => prev.map((b) => (b.id === patchedBom.id ? patchedBom : b)))
+        setEditBomName(patchedBom.name)
+        setEditBomDescription(patchedBom.description ?? '')
+        setEditBomTags(patchedBom.tags ?? [])
       }
       setBom(saved)
       setWorkingAssets(saved.assets)
@@ -526,6 +754,11 @@ export function ApplicationDetailPage() {
       enterEditAfterLoad.current = false
       setPaneChangesOnly(false)
       setVersions(await api.listVersions(id))
+      if (!fingerprintView) {
+        setBoms(await api.listBoms(id, bom.version.id))
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Save failed')
     } finally {
       setBusy(false)
     }
@@ -542,10 +775,269 @@ export function ApplicationDetailPage() {
     if (app) {
       setEditName(app.name)
       setEditDescription(app.description ?? '')
+      setEditAppTags(app.tags ?? [])
+    }
+    setEditTargetVersion(bom.version.version ?? '')
+    setEditVersionTags(bom.version.tags ?? [])
+    if (selectedBom) {
+      setEditBomName(selectedBom.name)
+      setEditBomDescription(selectedBom.description ?? '')
+      setEditBomTags(selectedBom.tags ?? [])
     }
     if (selectedAssetId) {
       const restored = bom.assets.find((a) => a.id === selectedAssetId)
       setEditPayload(restored ? { ...restored.payload } : null)
+    }
+  }
+
+  function basedOnLabel(v: ApplicationVersionSummary): string {
+    if (v.basedOnFingerprintId) {
+      const fp = fingerprints.find((item) => item.id === v.basedOnFingerprintId)
+      return fp ? fingerprintTitle(fp) : 'Fingerprint'
+    }
+    if (v.basedOnVersionId) {
+      const src = versions.find((item) => item.id === v.basedOnVersionId)
+      return src ? versionLabel(src) : '—'
+    }
+    return '—'
+  }
+
+  function dependentLine(d: ApplicationVersionSummary): string {
+    const target = d.version || d.label || 'Draft'
+    if (d.basedOnFingerprintId) {
+      const fp = fingerprints.find((item) => item.id === d.basedOnFingerprintId)
+      return fp ? `${target} (based on ${fingerprintTitle(fp)})` : `${target} (based on fingerprint)`
+    }
+    return target
+  }
+
+  const draftSourceOptions = useMemo(() => {
+    const released = versions
+      .filter((v) => v.status === 'RELEASED')
+      .map((v) => ({ value: `v:${v.id}`, label: versionLabel(v) }))
+    const drafts = versions
+      .filter((v) => v.status === 'DRAFT')
+      .map((v) => ({ value: `v:${v.id}`, label: versionLabel(v) }))
+    const fps = fingerprints.map((fp) => ({
+      value: `fp:${fp.id}`,
+      label: `${fingerprintMenuLabel(fp)} · ${fp.versionLabel}`,
+    }))
+    const groups: { group: string; items: { value: string; label: string }[] }[] = []
+    if (released.length) groups.push({ group: 'Released', items: released })
+    if (drafts.length) groups.push({ group: 'Drafts', items: drafts })
+    if (fps.length) groups.push({ group: 'Fingerprints', items: fps })
+    return groups
+  }, [versions, fingerprints])
+
+  useEffect(() => {
+    if (!draftOpen || !draftFrom?.startsWith('v:')) {
+      if (draftFrom?.startsWith('fp:')) setDraftFromBomCount(0)
+      return
+    }
+    const fromVersionId = draftFrom.slice(2)
+    let cancelled = false
+    void api
+      .listBoms(id, fromVersionId)
+      .then((list) => {
+        if (!cancelled) setDraftFromBomCount(list.length)
+      })
+      .catch(() => {
+        if (!cancelled) setDraftFromBomCount(0)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [draftOpen, draftFrom, id])
+
+  function openNewDraftModal() {
+    askLeaveUnsaved(() => {
+      setDraftTarget('')
+      setDraftFrom(bom ? `v:${bom.version.id}` : null)
+      setDraftCombine(false)
+      setDraftFromBomCount(0)
+      setDraftOpen(true)
+    })
+  }
+
+  function openFingerprintModal() {
+    setFpName('')
+    setFpCategory('unknown')
+    setFpOpen(true)
+  }
+
+  function openCreateBomModal() {
+    askLeaveUnsaved(() => {
+      setNewBomName('')
+      setNewBomDescription('')
+      setNewBomTags([])
+      setCreateBomOpen(true)
+    })
+  }
+
+  async function submitNewDraft() {
+    if (!draftTarget.trim() || !draftFrom) return
+    setBusy(true)
+    setError(null)
+    try {
+      const body: {
+        targetVersion: string
+        fromVersionId?: string
+        fromFingerprintId?: string
+        combineConstituents?: boolean
+      } = { targetVersion: draftTarget.trim() }
+      if (draftFrom.startsWith('fp:')) {
+        body.fromFingerprintId = draftFrom.slice(3)
+      } else {
+        body.fromVersionId = draftFrom.slice(2)
+        if (draftFromBomCount > 1) body.combineConstituents = draftCombine
+      }
+      enterEditAfterLoad.current = true
+      const created = await api.createDraftVersion(id, body)
+      setDraftOpen(false)
+      const next = new URLSearchParams(params)
+      next.set('version', created.version.id)
+      next.delete('fingerprint')
+      next.delete('sbom')
+      setParams(next)
+    } catch (e) {
+      enterEditAfterLoad.current = false
+      setError(e instanceof Error ? e.message : 'Could not create draft')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function submitFingerprint() {
+    if (!bom || !fpName.trim() || !fpCategory) return
+    setBusy(true)
+    setError(null)
+    try {
+      const fp = await api.createFingerprint(id, bom.version.id, {
+        name: fpName.trim(),
+        category: fpCategory,
+      })
+      setFingerprints((prev) => [{ ...fp, versionLabel: versionLabel(bom.version) }, ...prev])
+      setFpOpen(false)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not create fingerprint')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function submitCreateBom() {
+    if (!bom || !newBomName.trim()) return
+    setBusy(true)
+    setError(null)
+    try {
+      const created = await api.createBom(id, bom.version.id, {
+        name: newBomName.trim(),
+        description: newBomDescription.trim() || undefined,
+        tags: newBomTags,
+      })
+      setCreateBomOpen(false)
+      enterEditAfterLoad.current = bom.version.status === 'DRAFT'
+      const next = new URLSearchParams(params)
+      next.set('sbom', created.id)
+      next.delete('fingerprint')
+      setParams(next)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not create BOM')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function askDeleteDraft(v: ApplicationVersionSummary) {
+    askLeaveUnsaved(() => {
+      void (async () => {
+        try {
+          const dependents = await api.listVersionDependents(id, v.id)
+          if (dependents.length === 0) {
+            setConfirm({
+              title: 'Delete draft?',
+              message: `Delete draft ${versionLabel(v)}? This removes its BOMs and fingerprints.`,
+              confirmLabel: 'Delete',
+              color: 'red',
+              onConfirm: () => void deleteDraft(v, false),
+            })
+            return
+          }
+          const lines = dependents.map((d) => `• ${dependentLine(d)}`).join('\n')
+          setConfirm({
+            title: 'Delete draft and dependents?',
+            message: `Deleting this draft will also delete the listed drafts (their BOMs and fingerprints):\n${lines}`,
+            confirmLabel: 'Delete all',
+            color: 'red',
+            onConfirm: () => void deleteDraft(v, true),
+          })
+        } catch (e) {
+          setError(e instanceof Error ? e.message : 'Could not list dependents')
+        }
+      })()
+    })
+  }
+
+  async function deleteDraft(v: ApplicationVersionSummary, confirmDependents: boolean) {
+    setBusy(true)
+    setError(null)
+    try {
+      await api.deleteVersion(id, v.id, confirmDependents)
+      const next = new URLSearchParams(params)
+      if (versionId === v.id) {
+        next.delete('version')
+        next.delete('fingerprint')
+        next.delete('sbom')
+      }
+      if (next.get('version') === v.id) {
+        next.delete('version')
+      }
+      setParams(next)
+      await load(versionId === v.id ? null : versionId, fingerprintParam)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not delete draft')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function askDeleteBom(row: BomSummary) {
+    if (boms.length <= 1) return
+    askLeaveUnsaved(() => {
+      setConfirm({
+        title: 'Delete BOM?',
+        message: `Delete BOM “${row.name}”? This cannot be undone.`,
+        confirmLabel: 'Delete',
+        color: 'red',
+        onConfirm: () => void deleteBomRow(row),
+      })
+    })
+  }
+
+  async function deleteBomRow(row: BomSummary) {
+    if (!bom) return
+    setBusy(true)
+    setError(null)
+    try {
+      await api.deleteBom(id, bom.version.id, row.id)
+      const remaining = await api.listBoms(id, bom.version.id)
+      const next = new URLSearchParams(params)
+      if (remaining.length <= 1) {
+        next.delete('sbom')
+      } else if (selectedBomIds.length === 1 && selectedBomIds[0] === row.id) {
+        next.set('sbom', 'combined')
+      } else {
+        const kept = selectedBomIds.filter((bomId) => bomId !== row.id)
+        const query = formatSbomQuery(kept, remaining)
+        if (query) next.set('sbom', query)
+        else next.delete('sbom')
+      }
+      setParams(next)
+      setBoms(remaining)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not delete BOM')
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -908,6 +1400,15 @@ export function ApplicationDetailPage() {
           <Title order={3} lineClamp={1}>
             {app?.name || 'Application'}
           </Title>
+          {!editing && combinedTagList.length > 0 && (
+            <Group gap={4} mt={4} wrap="wrap">
+              {combinedTagList.map((tag) => (
+                <Badge key={tag} size="xs" variant="light">
+                  {tag}
+                </Badge>
+              ))}
+            </Group>
+          )}
         </div>
         <Group gap="xs" wrap="nowrap">
           <Menu width={300} position="bottom-end" withinPortal onClose={() => setSnapshotSearch('')}>
@@ -946,6 +1447,9 @@ export function ApplicationDetailPage() {
                         rightSection={open ? <Badge size="xs">Open</Badge> : undefined}
                       >
                         {versionLabel(v)}
+                        <Text span size="xs" c="dimmed" ml={6}>
+                          {v.status}
+                        </Text>
                       </Menu.Item>
                     )
                   })
@@ -964,7 +1468,7 @@ export function ApplicationDetailPage() {
                         onClick={() => switchFingerprint(fp)}
                         rightSection={open ? <Badge size="xs">Open</Badge> : undefined}
                       >
-                        {fp.note?.trim() || fp.contentSha256.slice(0, 12)}
+                        {fingerprintMenuLabel(fp)}
                         <Text span size="xs" c="dimmed" ml={6}>
                           {fp.versionLabel}
                         </Text>
@@ -975,12 +1479,16 @@ export function ApplicationDetailPage() {
               </ScrollArea.Autosize>
             </Menu.Dropdown>
           </Menu>
-          {bom && !editing && !fingerprintParam && (
+          {bom &&
+            !editing &&
+            !fingerprintParam &&
+            bom.version.status === 'DRAFT' &&
+            (boms.length <= 1 || selectedBomIds.length === 1) && (
             <Button size="sm" onClick={() => setEditing(true)}>
               Edit
             </Button>
           )}
-          {writable && (
+          {bom && !fingerprintParam && (editing || versionDirty) && (
             <>
               <Button size="sm" disabled={!versionDirty || busy} onClick={() => void save()}>
                 Save
@@ -988,52 +1496,29 @@ export function ApplicationDetailPage() {
               <Button size="sm" variant="default" disabled={busy} onClick={discard}>
                 Discard
               </Button>
-              {bom.version.status === 'DRAFT' && (
-                <Button size="sm" variant="light" onClick={() => setPromoteOpen(true)}>
-                  Promote
-                </Button>
-              )}
             </>
           )}
-          {bom &&
-            bom.version.status === 'RELEASED' &&
-            !editing &&
-            !fingerprintParam &&
-            !versions.some((v) => v.status === 'DRAFT') && (
+          {bom && bom.version.status === 'DRAFT' && !fingerprintParam && (
             <Button
               size="sm"
               variant="light"
               onClick={() => {
-                enterEditAfterLoad.current = true
-                void api
-                  .createDraftVersion(id, bom.version.id)
-                  .then((draft) => load(draft.version.id, null))
-                  .catch((e) => {
-                    enterEditAfterLoad.current = false
-                    setError(e.message)
-                  })
+                setPromoteName('')
+                setPromoteOpen(true)
               }}
             >
+              Promote
+            </Button>
+          )}
+          {bom && !fingerprintParam && (
+            <Button size="sm" variant="light" onClick={openNewDraftModal}>
               New draft
             </Button>
           )}
           {bom && !fingerprintParam && (
-            <Button
-              size="sm"
-              variant="subtle"
-              onClick={() =>
-                void api.createFingerprint(id, bom.version.id).then((fp) =>
-                  setFingerprints((p) => [{ ...fp, versionLabel: versionLabel(bom.version) }, ...p]),
-                )
-              }
-            >
+            <Button size="sm" variant="light" onClick={openFingerprintModal}>
               Fingerprint
             </Button>
-          )}
-          {bom && (
-            <Anchor size="sm" href={api.exportVersionCycloneDxUrl(id, bom.version.id)} download>
-              CycloneDX
-            </Anchor>
           )}
         </Group>
       </Group>
@@ -1102,6 +1587,72 @@ export function ApplicationDetailPage() {
               )}
             </Group>
           </Group>
+          {multiBomChrome && (
+            <Menu position="bottom-start" withinPortal width={240}>
+              <Menu.Target>
+                <div style={{ display: 'flex', marginBottom: 8 }}>
+                  <Button
+                    size="xs"
+                    variant="light"
+                    style={{ flex: 1, borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
+                  >
+                    <Text size="xs" truncate>
+                      {isCombined
+                        ? 'Combined SBOM'
+                        : selectedBom?.name || `${selectedBomIds.length} BOMs`}
+                    </Text>
+                  </Button>
+                  <Button
+                    size="xs"
+                    variant="light"
+                    aria-label="Switch BOM"
+                    px="xs"
+                    style={{
+                      borderTopLeftRadius: 0,
+                      borderBottomLeftRadius: 0,
+                      borderLeft: '1px solid var(--mantine-color-default-border)',
+                    }}
+                  >
+                    ▾
+                  </Button>
+                </div>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item
+                  onClick={selectCombinedSbom}
+                  rightSection={isCombined ? <Badge size="xs">Open</Badge> : undefined}
+                >
+                  Combined SBOM
+                </Menu.Item>
+                <Menu.Divider />
+                {boms.map((row) => {
+                  const checked = selectedBomIds.includes(row.id)
+                  const onlyThis = selectedBomIds.length === 1 && checked
+                  return (
+                    <Menu.Item
+                      key={row.id}
+                      closeMenuOnClick={false}
+                      onClick={() => selectSingleBom(row.id)}
+                      leftSection={
+                        <Checkbox
+                          size="xs"
+                          checked={checked}
+                          onChange={(e) => {
+                            e.stopPropagation()
+                            toggleBomSelected(row.id, e.currentTarget.checked)
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      }
+                      rightSection={onlyThis ? <Badge size="xs">Open</Badge> : undefined}
+                    >
+                      {row.name}
+                    </Menu.Item>
+                  )
+                })}
+              </Menu.Dropdown>
+            </Menu>
+          )}
           <SearchInput
             size="xs"
             mb="xs"
@@ -1123,9 +1674,66 @@ export function ApplicationDetailPage() {
               }}
             >
               <Text size="sm" fw={appSelected ? 650 : 600} truncate style={{ flex: 1, minWidth: 0 }}>
-                {app?.name || 'Application'}
+                {!multiBomChrome
+                  ? app?.name || 'Application'
+                  : exactlyOneBom && selectedBom
+                    ? `${app?.name || 'Application'} / ${selectedBom.name}`
+                    : isCombined && !appSelected
+                      ? 'Combined SBOM'
+                      : app?.name || 'Application'}
               </Text>
             </UnstyledButton>
+            {multiBomChrome && (
+              <Stack gap={2} mb="xs">
+                <UnstyledButton
+                  onClick={selectCombinedSbom}
+                  style={{
+                    display: 'flex',
+                    width: '100%',
+                    padding: '4px 8px 4px 16px',
+                    borderRadius: 6,
+                    alignItems: 'center',
+                    background: isCombined ? 'var(--mantine-color-blue-light)' : undefined,
+                  }}
+                >
+                  <Text size="xs" fw={isCombined ? 650 : 500} truncate style={{ flex: 1 }}>
+                    Combined SBOM
+                  </Text>
+                  {isCombined && (
+                    <Badge size="xs" variant="light">
+                      Open
+                    </Badge>
+                  )}
+                </UnstyledButton>
+                {boms.map((row) => {
+                  const checked = selectedBomIds.includes(row.id)
+                  const onlyThis = selectedBomIds.length === 1 && checked
+                  return (
+                    <Group key={row.id} gap={6} wrap="nowrap" px={8} py={2} style={{ paddingLeft: 28 }}>
+                      <Checkbox
+                        size="xs"
+                        checked={checked}
+                        onChange={(e) => toggleBomSelected(row.id, e.currentTarget.checked)}
+                        aria-label={`Select ${row.name}`}
+                      />
+                      <UnstyledButton
+                        onClick={() => selectSingleBom(row.id)}
+                        style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6 }}
+                      >
+                        <Text size="xs" truncate fw={onlyThis ? 650 : 400}>
+                          {row.name}
+                        </Text>
+                        {onlyThis && (
+                          <Badge size="xs" variant="light">
+                            Open
+                          </Badge>
+                        )}
+                      </UnstyledButton>
+                    </Group>
+                  )
+                })}
+              </Stack>
+            )}
             {grouped.length === 0 && (
               <Text size="sm" c="dimmed" px="xs">
                 {writable ? 'No assets yet. Add an existing asset or create a new one.' : 'No assets in this version.'}
@@ -1541,7 +2149,7 @@ export function ApplicationDetailPage() {
                   )}
                   <Paper withBorder radius="md" p="md">
                     <Stack gap="md">
-                      {writable ? (
+                      {editing ? (
                         <>
                           <TextInput
                             label="Name"
@@ -1564,8 +2172,154 @@ export function ApplicationDetailPage() {
                           <MetaField label="Description">{app?.description || ''}</MetaField>
                         </>
                       )}
+                      <TagsInput
+                        label="Tags"
+                        placeholder="Add a tag"
+                        size="sm"
+                        value={editAppTags}
+                        onChange={setEditAppTags}
+                        clearable
+                      />
+                      {bom && !fingerprintView && (
+                        bom.version.status === 'DRAFT' ? (
+                          <>
+                            <TextInput
+                              label="Target version"
+                              size="sm"
+                              required
+                              value={editTargetVersion}
+                              onChange={(e) => setEditTargetVersion(e.currentTarget.value)}
+                            />
+                            <TagsInput
+                              label="Version tags"
+                              placeholder="Add a tag"
+                              size="sm"
+                              value={editVersionTags}
+                              onChange={setEditVersionTags}
+                              clearable
+                            />
+                          </>
+                        ) : (
+                          <MetaField label="Version">{bom.version.version || bom.version.label || '—'}</MetaField>
+                        )
+                      )}
+                      {selectedBom && boms.length >= 2 && !fingerprintView && bom?.version.status === 'DRAFT' && (
+                        <>
+                          <TextInput
+                            label="BOM name"
+                            size="sm"
+                            value={editBomName}
+                            onChange={(e) => setEditBomName(e.currentTarget.value)}
+                          />
+                          <Textarea
+                            label="BOM description"
+                            size="sm"
+                            autosize
+                            minRows={2}
+                            value={editBomDescription}
+                            onChange={(e) => setEditBomDescription(e.currentTarget.value)}
+                          />
+                          <TagsInput
+                            label="BOM tags"
+                            placeholder="Add a tag"
+                            size="sm"
+                            value={editBomTags}
+                            onChange={setEditBomTags}
+                            clearable
+                          />
+                        </>
+                      )}
                     </Stack>
                   </Paper>
+                  {bom && bom.version.status === 'DRAFT' && !fingerprintView && (
+                    <Group justify="flex-start">
+                      <Button size="sm" variant="light" onClick={openCreateBomModal}>
+                        Create BOM
+                      </Button>
+                    </Group>
+                  )}
+                  {multiBomChrome && (
+                    <Table striped highlightOnHover>
+                      <Table.Thead>
+                        <Table.Tr>
+                          <Table.Th>BOM</Table.Th>
+                          <Table.Th>Status</Table.Th>
+                          <Table.Th />
+                        </Table.Tr>
+                      </Table.Thead>
+                      <Table.Tbody>
+                        <Table.Tr
+                          style={{
+                            background: isCombined ? 'var(--mantine-color-blue-light)' : undefined,
+                            cursor: 'pointer',
+                          }}
+                          onClick={selectCombinedSbom}
+                        >
+                          <Table.Td>
+                            <Group gap="xs" wrap="nowrap">
+                              <Text size="sm" fw={600}>
+                                Combined SBOM
+                              </Text>
+                              {isCombined && (
+                                <Badge size="xs" variant="light">
+                                  Open
+                                </Badge>
+                              )}
+                            </Group>
+                          </Table.Td>
+                          <Table.Td>
+                            <Text size="sm" c="dimmed">
+                              All BOMs
+                            </Text>
+                          </Table.Td>
+                          <Table.Td />
+                        </Table.Tr>
+                        {boms.map((row) => {
+                          const open = selectedBomIds.length === 1 && selectedBomIds[0] === row.id
+                          return (
+                            <Table.Tr
+                              key={row.id}
+                              style={{
+                                background: open ? 'var(--mantine-color-blue-light)' : undefined,
+                                cursor: 'pointer',
+                              }}
+                              onClick={() => selectSingleBom(row.id)}
+                            >
+                              <Table.Td>
+                                <Group gap="xs" wrap="nowrap" pl="md">
+                                  <Text size="sm">{row.name}</Text>
+                                  {open && (
+                                    <Badge size="xs" variant="light">
+                                      Open
+                                    </Badge>
+                                  )}
+                                </Group>
+                              </Table.Td>
+                              <Table.Td>
+                                <Text size="sm" c="dimmed">
+                                  BOM
+                                </Text>
+                              </Table.Td>
+                              <Table.Td>
+                                <Button
+                                  size="xs"
+                                  color="red"
+                                  variant="subtle"
+                                  leftSection={<IconTrash size={14} />}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    askDeleteBom(row)
+                                  }}
+                                >
+                                  Delete
+                                </Button>
+                              </Table.Td>
+                            </Table.Tr>
+                          )
+                        })}
+                      </Table.Tbody>
+                    </Table>
+                  )}
                   <Tabs
                     value={appCatalogTab}
                     onChange={(v) => setAppCatalogTab((v as 'versions' | 'fingerprints') || 'versions')}
@@ -1585,7 +2339,9 @@ export function ApplicationDetailPage() {
                             <Table.Tr>
                               <Table.Th>Version</Table.Th>
                               <Table.Th>Status</Table.Th>
+                              <Table.Th>Based on</Table.Th>
                               <Table.Th>Captured</Table.Th>
+                              <Table.Th />
                             </Table.Tr>
                           </Table.Thead>
                           <Table.Tbody>
@@ -1623,8 +2379,29 @@ export function ApplicationDetailPage() {
                                 </Table.Td>
                                 <Table.Td>
                                   <Text size="sm" c="dimmed">
+                                    {basedOnLabel(v)}
+                                  </Text>
+                                </Table.Td>
+                                <Table.Td>
+                                  <Text size="sm" c="dimmed">
                                     {new Date(v.capturedAt).toLocaleString()}
                                   </Text>
+                                </Table.Td>
+                                <Table.Td>
+                                  {v.status === 'DRAFT' && (
+                                    <Button
+                                      size="xs"
+                                      color="red"
+                                      variant="subtle"
+                                      leftSection={<IconTrash size={14} />}
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        askDeleteDraft(v)
+                                      }}
+                                    >
+                                      Delete
+                                    </Button>
+                                  )}
                                 </Table.Td>
                               </Table.Tr>
                             )
@@ -1642,7 +2419,8 @@ export function ApplicationDetailPage() {
                         <Table striped highlightOnHover stickyHeader>
                           <Table.Thead>
                             <Table.Tr>
-                              <Table.Th>Fingerprint</Table.Th>
+                              <Table.Th>Name</Table.Th>
+                              <Table.Th>Category</Table.Th>
                               <Table.Th>Version</Table.Th>
                               <Table.Th>Created</Table.Th>
                               <Table.Th>SHA-256</Table.Th>
@@ -1667,7 +2445,7 @@ export function ApplicationDetailPage() {
                                       fw={600}
                                       onClick={() => switchFingerprint(fp)}
                                     >
-                                      {fp.note?.trim() || fp.contentSha256.slice(0, 12)}
+                                      {fingerprintTitle(fp)}
                                     </Anchor>
                                     {open && (
                                       <Badge size="xs" variant="light">
@@ -1675,6 +2453,11 @@ export function ApplicationDetailPage() {
                                       </Badge>
                                     )}
                                   </Group>
+                                </Table.Td>
+                                <Table.Td>
+                                  <Text size="sm" c="dimmed">
+                                    {fingerprintCategory(fp)}
+                                  </Text>
                                 </Table.Td>
                                 <Table.Td>
                                   <Text size="sm" c="dimmed">
@@ -1740,7 +2523,16 @@ export function ApplicationDetailPage() {
 
       <Modal opened={promoteOpen} onClose={() => setPromoteOpen(false)} title="Promote draft">
         <Stack>
-          <TextInput label="Version" value={promoteName} onChange={(e) => setPromoteName(e.currentTarget.value)} />
+          <Text size="sm" c="dimmed">
+            Re-type the version to confirm. You may override the current target
+            {bom?.version.version ? ` (${bom.version.version})` : ''} if the new value is unique.
+          </Text>
+          <TextInput
+            label="Version"
+            required
+            value={promoteName}
+            onChange={(e) => setPromoteName(e.currentTarget.value)}
+          />
           <Button
             disabled={!promoteName.trim() || !bom}
             onClick={() => {
@@ -1755,6 +2547,86 @@ export function ApplicationDetailPage() {
             }}
           >
             Promote
+          </Button>
+        </Stack>
+      </Modal>
+      <Modal opened={draftOpen} onClose={() => setDraftOpen(false)} title="New draft">
+        <Stack>
+          <Select
+            label="Based on"
+            required
+            searchable
+            data={draftSourceOptions}
+            value={draftFrom}
+            onChange={(value) => {
+              setDraftFrom(value)
+              setDraftCombine(false)
+            }}
+          />
+          <TextInput
+            label="Target version"
+            required
+            placeholder="1.0.0"
+            value={draftTarget}
+            onChange={(e) => setDraftTarget(e.currentTarget.value)}
+          />
+          {draftFrom?.startsWith('v:') && draftFromBomCount > 1 && (
+            <Checkbox
+              label="Combine into a single BOM"
+              checked={draftCombine}
+              onChange={(e) => setDraftCombine(e.currentTarget.checked)}
+            />
+          )}
+          <Button disabled={!draftTarget.trim() || !draftFrom || busy} onClick={() => void submitNewDraft()}>
+            Create draft
+          </Button>
+        </Stack>
+      </Modal>
+      <Modal opened={fpOpen} onClose={() => setFpOpen(false)} title="Create fingerprint">
+        <Stack>
+          <TextInput
+            label="Name"
+            required
+            value={fpName}
+            onChange={(e) => setFpName(e.currentTarget.value)}
+          />
+          <Select
+            label="Category"
+            required
+            data={FINGERPRINT_CATEGORIES}
+            value={fpCategory}
+            onChange={setFpCategory}
+            allowDeselect={false}
+          />
+          <Button disabled={!fpName.trim() || !fpCategory || busy} onClick={() => void submitFingerprint()}>
+            Create fingerprint
+          </Button>
+        </Stack>
+      </Modal>
+      <Modal opened={createBomOpen} onClose={() => setCreateBomOpen(false)} title="Create BOM">
+        <Stack>
+          <TextInput
+            label="Name"
+            required
+            value={newBomName}
+            onChange={(e) => setNewBomName(e.currentTarget.value)}
+          />
+          <Textarea
+            label="Description"
+            autosize
+            minRows={2}
+            value={newBomDescription}
+            onChange={(e) => setNewBomDescription(e.currentTarget.value)}
+          />
+          <TagsInput
+            label="Tags"
+            placeholder="Add a tag"
+            value={newBomTags}
+            onChange={setNewBomTags}
+            clearable
+          />
+          <Button disabled={!newBomName.trim() || busy} onClick={() => void submitCreateBom()}>
+            Create BOM
           </Button>
         </Stack>
       </Modal>
@@ -1869,10 +2741,12 @@ export function ApplicationDetailPage() {
       <BomImpactDialog plan={impact} onClose={() => setImpact(null)} onConfirm={applyImpact} />
       <Modal opened={!!confirm} onClose={() => setConfirm(null)} title={confirm?.title} centered>
         <Stack>
-          <Text size="sm">{confirm?.message}</Text>
+          <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
+            {confirm?.message}
+          </Text>
           <Group justify="flex-end">
             <Button variant="default" onClick={() => setConfirm(null)}>
-              Cancel
+              {confirm?.cancelLabel || 'Cancel'}
             </Button>
             {confirm?.onDiscard && (
               <Button
