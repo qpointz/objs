@@ -84,6 +84,40 @@ class AssetTypeCatalogServiceTest {
     }
 
     @Test
+    fun shouldPreferHighestSchemaVersion_whenTypeHasMultipleVersions() {
+        schemas.register(
+            BoMSchema(
+                type = "Component",
+                version = "1.2.0",
+                usage = BoMSchemaUsage.ENTITY,
+                contentSchema = BoMSchemaDsl.obj("Component 1.2", "older patch line"),
+            ),
+        )
+        schemas.register(
+            BoMSchema(
+                type = "Component",
+                version = "2.0.0",
+                usage = BoMSchemaUsage.ENTITY,
+                contentSchema = BoMSchemaDsl.obj("Component v2", "latest"),
+            ),
+        )
+        schemas.register(
+            BoMSchema(
+                type = "Component",
+                version = "1.10.0",
+                usage = BoMSchemaUsage.ENTITY,
+                contentSchema = BoMSchemaDsl.obj("Component 1.10", "not latest"),
+            ),
+        )
+        val types = catalog.listEntityTypes()
+        assertThat(types).hasSize(1)
+        assertThat(types[0].version).isEqualTo("2.0.0")
+        assertThat(types[0].title).isEqualTo("Component v2")
+        assertThat(catalog.getEntityType("Component")!!.version).isEqualTo("2.0.0")
+        assertThat(catalog.getEntityType("Component", "1.10.0")!!.version).isEqualTo("1.10.0")
+    }
+
+    @Test
     fun shouldExposeSearchableAndIdentifierFieldsOnly() {
         val detail = catalog.getEntityType("Component")
         assertThat(detail).isNotNull

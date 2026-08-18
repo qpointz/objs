@@ -1,5 +1,6 @@
 package org.poc.objs.core.persistence
 
+import org.poc.objs.core.domain.CatalogMetadata
 import org.poc.objs.core.domain.BoMAllowedEdgeCatalog
 import org.poc.objs.core.domain.BoMAllowedEdgeRule
 import org.poc.objs.core.domain.BoMSchema
@@ -50,6 +51,8 @@ open class JpaBoMSchemaCatalog(
         }
         record.definitionDoc = PayloadMapper.toMap(normalized.contentSchema)
         record.usage = normalized.usage.name
+        record.tags = normalized.tags.toMutableList()
+        record.attributes = normalized.attributes.toMutableMap()
         record.updatedAt = now
         repository.save(record)
         cache.register(normalized)
@@ -124,9 +127,14 @@ open class JpaBoMAllowedEdgeCatalog(
         record.propertiesSchemaType = rule.propertiesSchemaType
         record.propertiesSchemaVersion = rule.propertiesSchemaVersion
         record.cardinality = rule.cardinality
+        record.description = CatalogMetadata.optionalText(rule.description)
+        record.sourceVerb = CatalogMetadata.optionalText(rule.sourceVerb)
+        record.targetVerb = CatalogMetadata.optionalText(rule.targetVerb)
+        record.tags = CatalogMetadata.tags(rule.tags).toMutableList()
+        record.attributes = CatalogMetadata.attributes(rule.attributes).toMutableMap()
         record.updatedAt = now
         repository.save(record)
-        cache.register(rule)
+        cache.register(record.toDomain())
         registerRollbackRehydration()
     }
 
@@ -177,6 +185,8 @@ fun BoMSchemaCatalogRecord.toDomain() = BoMSchema(
     version = version,
     contentSchema = PayloadMapper.fromMap(definitionDoc, BoMSchemaNode::class.java),
     usage = if (usage.isBlank()) BoMSchemaUsage.ENTITY else BoMSchemaUsage.valueOf(usage),
+    tags = CatalogMetadata.tags(tags),
+    attributes = CatalogMetadata.attributes(attributes),
 )
 
 fun BoMAllowedEdgeRuleRecord.toDomain() = BoMAllowedEdgeRule(
@@ -188,4 +198,9 @@ fun BoMAllowedEdgeRuleRecord.toDomain() = BoMAllowedEdgeRule(
     propertiesSchemaType = propertiesSchemaType,
     propertiesSchemaVersion = propertiesSchemaVersion,
     cardinality = cardinality,
+    description = CatalogMetadata.optionalText(description),
+    sourceVerb = CatalogMetadata.optionalText(sourceVerb),
+    targetVerb = CatalogMetadata.optionalText(targetVerb),
+    tags = CatalogMetadata.tags(tags),
+    attributes = CatalogMetadata.attributes(attributes),
 )

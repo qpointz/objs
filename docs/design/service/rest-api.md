@@ -61,7 +61,7 @@ graph's id). Same id in delete and upsert: upsert wins.
 | `GET` | `/registry/schemas/{type}` | Versions for type |
 | `DELETE` | `/registry/schemas/{type}` | Remove all versions of the type + incident allow-list rules (source/target match, properties-schema refs) |
 | `GET`/`PUT`/`DELETE` | `/registry/schemas/{type}/{version}` | Get / upsert / remove one version |
-| `GET`/`PUT` | `/registry/edges` | List / upsert edge definition (allow-list); body may include `cardinality` (`UNSPECIFIED` / `1:1` / `1:*`) |
+| `GET`/`PUT` | `/registry/edges` | List / upsert edge definition (allow-list); body may include `cardinality` (`UNSPECIFIED` / `1:1` / `1:*`), `description`, `sourceVerb`, `targetVerb`, `tags`, `attributes` |
 | `DELETE` | `/registry/edges?sourceType&role&targetType` | Remove exact triple |
 | `GET`/`PUT` | `/registry/schemas/{type}/{version}/edges` | List / replace relations for an edge-property schema (includes `cardinality`) |
 | `POST` | `/registry/import?format=seeds` | Multipart catalog seed YAML (MERGE); Graph kinds rejected |

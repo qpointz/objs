@@ -8,6 +8,8 @@ import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.IdClass
 import jakarta.persistence.Table
+import org.hibernate.annotations.JdbcTypeCode
+import org.hibernate.type.SqlTypes
 import org.poc.objs.core.domain.BoMEdgeCardinality
 import org.poc.objs.core.domain.BoMPropertiesPolicy
 import java.io.Serializable
@@ -52,6 +54,23 @@ class BoMAllowedEdgeRuleRecord(
     @Convert(converter = BoMEdgeCardinalityConverter::class)
     @Column(name = "cardinality", nullable = false, length = 32)
     var cardinality: BoMEdgeCardinality = BoMEdgeCardinality.UNSPECIFIED,
+
+    @Column(name = "description")
+    var description: String? = null,
+
+    @Column(name = "source_verb", length = 255)
+    var sourceVerb: String? = null,
+
+    @Column(name = "target_verb", length = 255)
+    var targetVerb: String? = null,
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "tags")
+    var tags: MutableList<String> = mutableListOf(),
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "attributes")
+    var attributes: MutableMap<String, String> = mutableMapOf(),
 
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant = Instant.now(),

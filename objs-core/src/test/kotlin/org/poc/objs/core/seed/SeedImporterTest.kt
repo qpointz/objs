@@ -96,6 +96,32 @@ class SeedImporterTest {
     }
 
     @Test
+    fun shouldParseAllowedEdgeMetadata() {
+        val yaml = """
+            apiVersion: objs.poc.org/v1
+            kind: AllowedEdgeRule
+            sourceType: Product
+            role: CONTAINS
+            targetType: Component
+            description: Product includes the component
+            sourceVerb: contains
+            targetVerb: contained in
+            tags: [composition]
+            attributes:
+              ui.group: structure
+        """.trimIndent()
+
+        val result = importer.importYaml(yaml)
+        assertThat(result.isSuccess).isTrue()
+        val rule = rules.find("Product", "CONTAINS", "Component")!!
+        assertThat(rule.description).isEqualTo("Product includes the component")
+        assertThat(rule.sourceVerb).isEqualTo("contains")
+        assertThat(rule.targetVerb).isEqualTo("contained in")
+        assertThat(rule.tags).containsExactly("composition")
+        assertThat(rule.attributes).containsEntry("ui.group", "structure")
+    }
+
+    @Test
     fun shouldRejectUnknownCardinality() {
         assertThatThrownBy {
             importer.importYaml(

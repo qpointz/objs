@@ -313,6 +313,7 @@ Users see **friendly** labels (beautifier of role codes, e.g. `DEPENDS_ON` → �
 |---------|------|
 | Asset types / relations | Reuse canonical ontology seed (`seeds/sbom-ontology.yaml`) |
 | Runtime UI / search forms | Read **`BoMSchemaCatalog`** via `GET /api/v1/inventory/asset-types` (`searchable` only) |
+| Schema browse allow-list | `GET /api/v1/inventory/schema-catalog/{type}/allowed-edges` — inbound/outbound rules including `*` wildcards; shown on the schema detail page, not inside JSON/YAML |
 | Typed Wave* / `SbomRegistry` | Builder parity helpers — **not** SoT |
 | Owning application | Annotation `owner` = application **name** |
 | App→app depends | Inferred shared assets — no ApplicationRef type |

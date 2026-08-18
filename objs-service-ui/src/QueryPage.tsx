@@ -16,6 +16,11 @@ import {
   Text,
   Title,
 } from '@mantine/core'
+import {
+  GraphGoToContextMenu,
+  buildGraphNeighborIndex,
+  type GraphGoToTarget,
+} from './graphGoToNav'
 import { IconHelp } from '@tabler/icons-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
@@ -34,7 +39,7 @@ import { NewGraphModal } from './NewGraphModal'
 import { OpenGraphModal } from './OpenGraphModal'
 import { formatQueryDuration } from './queryExecStats'
 import { SyntaxCodeEditor } from './SyntaxCodeEditor'
-import type { BoMGraphContents, GraphLink, GraphNode } from './types'
+import type { BoMGraphContents, GraphLink, GraphNode, GraphSelection } from './types'
 import { useCurrentGraphId } from './useCurrentGraph'
 
 const SCRIPT_STORAGE_KEY = 'objs.ui.query.script'
@@ -184,6 +189,11 @@ export function QueryPage() {
   const [result, setResult] = useState<BoMGremlinResult | null>(null)
   const [nodes, setNodes] = useState<GraphNode[]>([])
   const [links, setLinks] = useState<GraphLink[]>([])
+  const [querySelection, setQuerySelection] = useState<GraphSelection | null>(null)
+  const [goToMenu, setGoToMenu] = useState<{ x: number; y: number; target: GraphGoToTarget } | null>(
+    null,
+  )
+  const neighborIndex = useMemo(() => buildGraphNeighborIndex(nodes, links), [nodes, links])
   const [currentGraphId, setCurrentGraphId] = useCurrentGraphId()
   const [openGraphOpen, setOpenGraphOpen] = useState(false)
   const [newGraphOpen, setNewGraphOpen] = useState(false)
@@ -509,9 +519,41 @@ export function QueryPage() {
                     ref={graphRef}
                     nodes={nodes}
                     links={links}
-                    selection={null}
-                    onSelect={() => undefined}
+                    selection={querySelection}
+                    onSelect={setQuerySelection}
                     layout="TB"
+                    onNodeContextMenu={(event, node) => {
+                      event.preventDefault()
+                      setQuerySelection({ kind: 'node', node })
+                      setGoToMenu({
+                        x: event.clientX,
+                        y: event.clientY,
+                        target: { kind: 'node', nodeId: node.id },
+                      })
+                    }}
+                    onEdgeContextMenu={(event, edge) => {
+                      event.preventDefault()
+                      setQuerySelection({ kind: 'edge', edge })
+                      setGoToMenu({
+                        x: event.clientX,
+                        y: event.clientY,
+                        target: { kind: 'edge', sourceId: edge.source, targetId: edge.target },
+                      })
+                    }}
+                  />
+                  <GraphGoToContextMenu
+                    opened={goToMenu != null}
+                    x={goToMenu?.x ?? 0}
+                    y={goToMenu?.y ?? 0}
+                    onClose={() => setGoToMenu(null)}
+                    target={goToMenu?.target ?? null}
+                    nodes={nodes}
+                    index={neighborIndex}
+                    onGoTo={(id) => {
+                      const node = nodes.find((n) => n.id === id)
+                      if (node) setQuerySelection({ kind: 'node', node })
+                      requestAnimationFrame(() => graphRef.current?.focusNode(id))
+                    }}
                   />
                 </div>
               ) : result == null ? (

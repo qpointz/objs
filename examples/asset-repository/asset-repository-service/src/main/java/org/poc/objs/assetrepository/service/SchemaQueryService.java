@@ -9,6 +9,8 @@ import java.util.NoSuchElementException;
 import java.util.UUID;
 import org.poc.objs.assetrepository.domain.CollectionEntity;
 import org.poc.objs.assetrepository.web.dto.ApiDtos;
+import org.poc.objs.core.domain.BoMAllowedEdgeCatalog;
+import org.poc.objs.core.domain.BoMAllowedEdgeRule;
 import org.poc.objs.core.domain.BoMSchema;
 import org.poc.objs.core.domain.BoMSchemaCatalog;
 import org.poc.objs.core.domain.BoMSchemaUsage;
@@ -19,10 +21,16 @@ import org.springframework.transaction.annotation.Transactional;
 public class SchemaQueryService {
 
     private final BoMSchemaCatalog schemas;
+    private final BoMAllowedEdgeCatalog edges;
     private final CollectionService collections;
 
-    public SchemaQueryService(BoMSchemaCatalog schemas, CollectionService collections) {
+    public SchemaQueryService(
+            BoMSchemaCatalog schemas,
+            BoMAllowedEdgeCatalog edges,
+            CollectionService collections
+    ) {
         this.schemas = schemas;
+        this.edges = edges;
         this.collections = collections;
     }
 
@@ -68,13 +76,12 @@ public class SchemaQueryService {
     }
 
     /**
-     * Latest ENTITY schema per type, with collections that accept that type.
+     * Latest schema per type (entity and edge-property), with collections that accept that type.
      */
     @Transactional(readOnly = true)
     public List<ApiDtos.SchemaCatalogEntryDto> catalog() {
         Map<String, List<BoMSchema>> byType = new LinkedHashMap<>();
         schemas.all().stream()
-                .filter(s -> s.getUsage() == BoMSchemaUsage.ENTITY)
                 .sorted(Comparator.comparing(BoMSchema::getType).thenComparing(BoMSchema::getVersion))
                 .forEach(s -> byType.computeIfAbsent(s.getType(), k -> new ArrayList<>()).add(s));
 
@@ -101,5 +108,24 @@ public class SchemaQueryService {
                     usedIn.getOrDefault(e.getKey(), List.of())));
         }
         return out;
+    }
+
+    @Transactional(readOnly = true)
+    public ApiDtos.TypeAllowedEdgesDto allowedEdgesForType(String type) {
+        List<BoMAllowedEdgeRule> incoming = new ArrayList<>();
+        List<BoMAllowedEdgeRule> outgoing = new ArrayList<>();
+        for (BoMAllowedEdgeRule rule : edges.all()) {
+            if (matchesType(rule.getTargetType(), type)) {
+                incoming.add(rule);
+            }
+            if (matchesType(rule.getSourceType(), type)) {
+                outgoing.add(rule);
+            }
+        }
+        return new ApiDtos.TypeAllowedEdgesDto(incoming, outgoing);
+    }
+
+    private static boolean matchesType(String pattern, String type) {
+        return BoMAllowedEdgeRule.ANY.equals(pattern) || pattern.equals(type);
     }
 }

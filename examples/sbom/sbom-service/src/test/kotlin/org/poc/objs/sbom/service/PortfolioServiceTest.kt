@@ -33,6 +33,7 @@ import org.springframework.web.server.ResponseStatusException
     SbomService::class,
     ApplicationInventoryService::class,
     ApplicationVersionService::class,
+    AssetTypeCatalogService::class,
     PortfolioService::class,
     org.poc.objs.sbom.uniqueness.PortfolioUniquenessRules::class,
 )

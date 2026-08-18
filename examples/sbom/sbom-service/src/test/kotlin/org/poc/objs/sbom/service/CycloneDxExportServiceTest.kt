@@ -32,6 +32,7 @@ import org.springframework.test.context.TestPropertySource
     SbomService::class,
     ApplicationInventoryService::class,
     ApplicationVersionService::class,
+    AssetTypeCatalogService::class,
     CycloneDxExportService::class,
 )
 @TestPropertySource(

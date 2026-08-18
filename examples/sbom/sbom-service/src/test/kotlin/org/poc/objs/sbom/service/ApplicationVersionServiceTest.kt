@@ -43,6 +43,7 @@ import javax.sql.DataSource
     SbomService::class,
     ApplicationInventoryService::class,
     ApplicationVersionService::class,
+    AssetTypeCatalogService::class,
     ApplicationBomService::class,
     BomGraphSupport::class,
 )

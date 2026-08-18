@@ -115,12 +115,8 @@ export function CreateRelatedAssetDialog({
     setLoadingSchema(true)
     setError(null)
     void api
-      .listAssetTypes()
-      .then((types) => {
-        const summary = types.find((t) => t.type === spec.targetType)
-        if (!summary) throw new Error(`Unknown asset type: ${spec.targetType}`)
-        return api.getSchema(summary.type, summary.version)
-      })
+      .getAssetType(spec.targetType)
+      .then((detail) => api.getSchema(detail.type, detail.version))
       .then((next) => {
         if (cancelled) return
         setSchema(next)

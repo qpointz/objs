@@ -10,6 +10,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.poc.objs.core.domain.BoMSchema;
+import org.poc.objs.core.domain.BoMSchemaCatalog;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -30,6 +32,9 @@ class AssetRepositoryApiTest {
 
     @Autowired
     MockMvc mockMvc;
+
+    @Autowired
+    BoMSchemaCatalog schemas;
 
     private final ObjectMapper mapper = new ObjectMapper();
 
@@ -150,7 +155,8 @@ class AssetRepositoryApiTest {
                 .andExpect(jsonPath("$.type").value("Dataset"))
                 .andExpect(jsonPath("$.version").value("1.0.0"))
                 .andExpect(jsonPath("$.contentSchema.type").value("OBJECT"))
-                .andExpect(jsonPath("$.contentSchema.fields[0].name").value("datasetId"));
+                .andExpect(jsonPath("$.contentSchema.fields[0].name").value("datasetId"))
+                .andExpect(jsonPath("$.tags[0]").value("data"));
 
         mockMvc.perform(get("/api/v1/asset-repository/schemas").param("type", "Dataset"))
                 .andExpect(status().isOk())
@@ -258,12 +264,91 @@ class AssetRepositoryApiTest {
     }
 
     @Test
+    void shouldExposeAllowedEdgesForTypeWithMetadata() throws Exception {
+        MvcResult agent = mockMvc.perform(get("/api/v1/asset-repository/schema-catalog/AiAgent/allowed-edges"))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode outgoing = mapper.readTree(agent.getResponse().getContentAsString()).get("outgoing");
+        JsonNode usesModel = null;
+        for (JsonNode rule : outgoing) {
+            if ("USES_MODEL".equals(rule.get("role").asText())
+                    && "LlmModel".equals(rule.get("targetType").asText())) {
+                usesModel = rule;
+            }
+        }
+        assertThat(usesModel).isNotNull();
+        assertThat(usesModel.get("description").asText()).isEqualTo("Agent invokes the language model");
+        assertThat(usesModel.get("sourceVerb").asText()).isEqualTo("uses");
+        assertThat(usesModel.get("targetVerb").asText()).isEqualTo("used by");
+        assertThat(usesModel.get("tags").get(0).asText()).isEqualTo("runtime");
+
+        MvcResult dataset = mockMvc.perform(get("/api/v1/asset-repository/schema-catalog/Dataset/allowed-edges"))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode incoming = mapper.readTree(dataset.getResponse().getContentAsString()).get("incoming");
+        boolean foundIncoming = false;
+        for (JsonNode rule : incoming) {
+            if ("USES_DATA".equals(rule.get("role").asText())
+                    && "AiAgent".equals(rule.get("sourceType").asText())) {
+                foundIncoming = true;
+            }
+        }
+        assertThat(foundIncoming).isTrue();
+    }
+
+    @Test
+    void shouldDefaultCreateToHighestSchemaVersion() throws Exception {
+        BoMSchema v1 = schemas.get("Prompt", "1.0.0");
+        assertThat(v1).isNotNull();
+        schemas.register(new BoMSchema(
+                v1.getType(),
+                "2.0.0",
+                v1.getContentSchema(),
+                v1.getUsage(),
+                v1.getTags(),
+                v1.getAttributes()
+        ));
+
+        String createBody = mapper.writeValueAsString(Map.of(
+                "name", "latest-schema-create",
+                "owner", "ai-platform",
+                "objectWriteMode", "UUID_OR_IDENTIFIER",
+                "types", java.util.List.of(Map.of("objectType", "Prompt"))
+        ));
+        MvcResult created = mockMvc.perform(post("/api/v1/asset-repository/collections")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createBody))
+                .andReturn();
+        assertThat(created.getResponse().getStatus())
+                .as(created.getResponse().getContentAsString())
+                .isEqualTo(201);
+        String collectionId = mapper.readTree(created.getResponse().getContentAsString()).get("id").asText();
+
+        String writeBody = mapper.writeValueAsString(Map.of(
+                "type", "Prompt",
+                "payload", Map.of(
+                        "promptId", "prompt-latest-001",
+                        "name", "latest",
+                        "promptType", "Task",
+                        "owner", "ai-platform",
+                        "status", "Approved",
+                        "body", "Hello {{name}}")
+        ));
+        mockMvc.perform(post("/api/v1/asset-repository/collections/" + collectionId + "/objects")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(writeBody))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.schemaVersion").value("2.0.0"));
+    }
+
+    @Test
     void shouldExposeDomainOpenApiGroup() throws Exception {
         mockMvc.perform(get("/v3/api-docs/asset-repository"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.info.title").value("Asset repository API"))
                 .andExpect(jsonPath("$.paths['/api/v1/asset-repository/collections']").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/asset-repository/schemas/{type}/{version}']").exists())
-                .andExpect(jsonPath("$.paths['/api/v1/asset-repository/schema-catalog']").exists());
+                .andExpect(jsonPath("$.paths['/api/v1/asset-repository/schema-catalog']").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/asset-repository/schema-catalog/{type}/allowed-edges']").exists());
     }
 }

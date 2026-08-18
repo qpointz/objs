@@ -34,12 +34,21 @@ data class BoMSchemaField(
     val searchable: Boolean = false,
     /** Presentation hints only; ignored by validation. */
     val stereotype: List<String>? = null,
+    @get:JsonInclude(JsonInclude.Include.NON_EMPTY)
+    val tags: List<String> = emptyList(),
+    @get:JsonInclude(JsonInclude.Include.NON_EMPTY)
+    val attributes: Map<String, String> = emptyMap(),
 )
 
-/** String enum value with a human-readable description. */
+/**
+ * String enum entry: persisted [value], required long [description], optional UI [caption].
+ * Object editors show [caption] when non-blank, otherwise [value].
+ */
+@JsonInclude(JsonInclude.Include.NON_NULL)
 data class BoMEnumValue(
     val value: String,
     val description: String,
+    val caption: String? = null,
 )
 
 /** DSL node types. INTEGER is an Objs extension required by the SBOM domain. */
@@ -57,9 +66,6 @@ class BoMSchemaDefinitionException(message: String) : IllegalArgumentException(m
 
 /** Strict normalization and structural validation for object-schema definitions. */
 object BoMSchemaNormalizer {
-    val allowedStringFormats: Set<String> =
-        setOf("date", "date-time", "email", "uri", "uuid", "hostname", "ipv4", "ipv6")
-
     fun normalizeStrict(input: BoMSchema): BoMSchema {
         if (input.type.isBlank()) invalid("type must not be blank")
         if (input.version.isBlank()) invalid("version must not be blank")
@@ -72,6 +78,8 @@ object BoMSchemaNormalizer {
             version = input.version.trim(),
             contentSchema = content,
             usage = input.usage,
+            tags = CatalogMetadata.tags(input.tags),
+            attributes = CatalogMetadata.attributes(input.attributes),
         )
     }
 
@@ -103,6 +111,8 @@ object BoMSchemaNormalizer {
                             ?.filter(String::isNotEmpty)
                             ?.distinct()
                             ?.takeIf { it.isNotEmpty() },
+                        tags = CatalogMetadata.tags(field.tags),
+                        attributes = CatalogMetadata.attributes(field.attributes),
                     )
                 }
                 node.copy(
@@ -134,7 +144,8 @@ object BoMSchemaNormalizer {
                     if (value.isBlank()) invalid("$valuePath.value must not be blank")
                     if (description.isBlank()) invalid("$valuePath.description must not be blank")
                     if (!seen.add(value)) invalid("$path has duplicate enum value '$value'")
-                    entry.copy(value = value, description = description)
+                    val caption = entry.caption?.trim()?.takeIf { it.isNotEmpty() }
+                    entry.copy(value = value, description = description, caption = caption)
                 }
                 node.copy(
                     title = node.title.trim(),
@@ -145,10 +156,11 @@ object BoMSchemaNormalizer {
 
             BoMSchemaType.STRING -> {
                 reject(path, node, fields = true, items = true, values = true)
-                if (node.format != null && node.format !in allowedStringFormats) {
-                    invalid("$path.format must be one of ${allowedStringFormats.sorted().joinToString(", ")}")
-                }
-                node.copy(title = node.title.trim(), description = node.description.trim())
+                node.copy(
+                    title = node.title.trim(),
+                    description = node.description.trim(),
+                    format = CatalogMetadata.optionalText(node.format),
+                )
             }
 
             BoMSchemaType.NUMBER,
@@ -263,6 +275,8 @@ object BoMJsonSchema {
                 val values = schema.values.orEmpty()
                 out["enum"] = values.map { it.value }
                 out["x-objs-enumDescriptions"] = values.associate { it.value to it.description }
+                val captions = values.mapNotNull { v -> v.caption?.let { v.value to it } }.toMap()
+                if (captions.isNotEmpty()) out["x-objs-enumCaptions"] = captions
             }
         }
         return out
@@ -339,5 +353,7 @@ object BoMSchemaDsl {
         identifier: Boolean = false,
         searchable: Boolean = false,
         stereotype: List<String>? = null,
-    ) = BoMSchemaField(name, schema, required, identifier, searchable, stereotype)
+        tags: List<String> = emptyList(),
+        attributes: Map<String, String> = emptyMap(),
+    ) = BoMSchemaField(name, schema, required, identifier, searchable, stereotype, tags, attributes)
 }

@@ -34,18 +34,19 @@ import { Link, useBlocker, useParams, useSearchParams } from 'react-router-dom'
 import { DraftStatusPill } from '../DraftStatusPill'
 import { computeBomDraft, isChanged } from '../bomDraft'
 import { api } from '../api/client'
-import type {
-  ApplicationFingerprintSummary,
-  ApplicationSummary,
-  ApplicationVersionSummary,
-  AssetRelationshipSpec,
-  AssetTypeSummary,
-  AssetView,
-  BomSummary,
-  BoMSchema,
-  BoMSchemaField,
-  RelationView,
-  VersionBomView,
+import {
+  enumCaption,
+  type ApplicationFingerprintSummary,
+  type ApplicationSummary,
+  type ApplicationVersionSummary,
+  type AssetRelationshipSpec,
+  type AssetTypeSummary,
+  type AssetView,
+  type BomSummary,
+  type BoMSchema,
+  type BoMSchemaField,
+  type RelationView,
+  type VersionBomView,
 } from '../api/types'
 import { AddRelatedAssetsDialog, type AssetPickMode } from '../AddRelatedAssetsDialog'
 import { BomImpactDialog, type BomImpactPlan } from '../BomImpactDialog'
@@ -702,10 +703,9 @@ export function ApplicationDetailPage() {
       setAddSchema(null)
       return
     }
-    const summary = assetTypeOptions.find((t) => t.type === addType)
-    if (!summary) return
     void api
-      .getSchema(summary.type, summary.version)
+      .getAssetType(addType)
+      .then((detail) => api.getSchema(detail.type, detail.version))
       .then((schema) => {
         setAddSchema(schema)
         setAddFields((prev) => {
@@ -1698,6 +1698,7 @@ export function ApplicationDetailPage() {
     try {
       const created = await api.createAsset({
         type: addType,
+        schemaVersion: addSchema?.version,
         payload,
         owner: app?.name,
       })
@@ -3366,7 +3367,10 @@ export function ApplicationDetailPage() {
                         key={field.name}
                         label={field.schema.title || field.name}
                         required
-                        data={field.schema.values.map((v) => ({ value: v.value, label: v.value }))}
+                        data={field.schema.values.map((v) => ({
+                          value: v.value,
+                          label: enumCaption(v),
+                        }))}
                         value={addFields[field.name] ?? ''}
                         onChange={(v) => setAddFields((prev) => ({ ...prev, [field.name]: v || '' }))}
                       />

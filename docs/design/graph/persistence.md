@@ -20,8 +20,8 @@ No global graph: an entity **pool** (`bom_entity`) shared by many **graphs** (`b
 | `bom_graph` | Graph header: **`id` + `annotations` only** — no `parent_graph_id` / `kind` |
 | `bom_graph_entity` | Membership M2M `(graph_id, entity_id)` |
 | `bom_graph_edge` | Graph-local edge; **`graph_id` NOT NULL** — always owned by exactly one graph |
-| `bom_entity_schema` | Entity/payload schema catalog `(type, version)` |
-| `bom_edge_schema` | Edge allow-list `(source_type, role, target_type)` + properties policy + cardinality |
+| `bom_entity_schema` | Entity/payload schema catalog `(type, version)` + envelope `tags` / `attributes` |
+| `bom_edge_schema` | Edge allow-list `(source_type, role, target_type)` + properties policy + cardinality + description/verbs/tags/attributes |
 | `bom_seed_ledger` | Startup seed fingerprints |
 
 **Flyway (objs line):** objs-core ships vendor SQL `V1__bom_schema.sql` under
@@ -161,13 +161,18 @@ Persistence is the **enforcement** point for payload schema and allowed edges �
 
 ## Schema and edge-rule catalogs
 
-- `bom_entity_schema` stores `(type, version)`, authoritative DSL in `definition_doc`,
-  and schema `usage` (`ENTITY` / `EDGE_PROPERTIES`); see [object-schema-dsl.md](object-schema-dsl.md).
+- `bom_entity_schema` stores `(type, version)`, authoritative DSL in `definition_doc`
+  (the `contentSchema` node, including field `tags` / `attributes`), schema `usage`
+  (`ENTITY` / `EDGE_PROPERTIES`), and envelope `tags` / `attributes` as JSON columns.
+  See [object-schema-dsl.md](object-schema-dsl.md).
 - Generated JSON Schema is not persisted. It is projected from the DSL for validation and tooling.
+  Envelope/field tags and attributes are **not** copied into JSON Schema.
+  Entity envelope `attributes.color` (`#rrggbb` or `nocolor`) is the graph node accent.
 - `bom_edge_schema` stores directed allow-list rules, property policies, nullable
-  `properties_schema_type + properties_schema_version` references, and **cardinality**
-  (`UNSPECIFIED` / `1:1` / `1:*`, column default `UNSPECIFIED`). One property schema may be shared by
-  many source–role–target rules.
+  `properties_schema_type + properties_schema_version` references, **cardinality**
+  (`UNSPECIFIED` / `1:1` / `1:*`, column default `UNSPECIFIED`), plus optional `description`,
+  `source_verb`, `target_verb`, `tags`, and `attributes`. One property schema may be shared by
+  many source–role–target rules. Identity remains `(source_type, role, target_type)`.
 - PostgreSQL is authoritative; application memory is a hydrated read cache.
 - Registry writes persist first and then update the cache.
 - Schema/edge-rule catalogs are **not** graphs — they are global allow-lists, unaffected by the pool/graph split.

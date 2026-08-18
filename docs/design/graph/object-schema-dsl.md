@@ -45,6 +45,24 @@ The root must be `OBJECT`, because `BoMEntity.payload` and schema-governed
 | `version` | yes | Opaque schema version; trimmed, nonblank |
 | `usage` | yes | Exactly one of `ENTITY` or `EDGE_PROPERTIES` |
 | `contentSchema` | yes | Root recursive schema node; must be `OBJECT` |
+| `tags` | no | Ordered author labels (`List<String>`). Trim, drop blanks, de-dupe, preserve first-seen order. Omitted when empty |
+| `attributes` | no | String map (`Map<String, String>`). Duplicate keys: last wins. Omitted when empty |
+
+Envelope `tags` / `attributes` are catalog metadata on the schema row, not part of `contentSchema`. They are **not** projected into JSON Schema.
+
+### Reserved envelope attribute: `color`
+
+On **ENTITY** schemas, `attributes.color` is the graph node accent for that type (Explorer, Composer,
+Object linter, SBOM inventory graph).
+
+| Value | Effect |
+|-------|--------|
+| `#rrggbb` (six hex digits) | Use that color (stored lowercase) |
+| `nocolor` (case-insensitive) | Theme gray (`var(--mantine-color-gray-6)`), readable on light and dark workbench themes |
+| omitted / blank / other | Hash the type name into the built-in palette (same algorithm as before this attribute) |
+
+Edit `color` on Schema → **General**. It is catalog metadata, not a payload field. SBOM ontology
+seeds set a palette hex per entity type so workbench and inventory graphs stay aligned.
 
 `ENTITY` schemas describe entity payloads. `EDGE_PROPERTIES` schemas describe edge property
 objects. A schema applies to exactly one kind; dual usage is not allowed.
@@ -69,7 +87,7 @@ default: https://example.invalid
 | `fields` | `OBJECT` | Ordered object fields; required even when empty |
 | `items` | `ARRAY` | Schema of every array item |
 | `values` | `ENUM` | Ordered, nonempty string enum values |
-| `format` | `STRING` | Standard string format hint |
+| `format` | `STRING` | Optional application-specific format hint (free text) |
 | `default` | all | Optional default hint; it does not mutate stored payloads |
 
 There is **no** OBJECT-node `required: [...]` list in the DSL. JSON Schema projection still emits
@@ -84,25 +102,17 @@ Properties that do not apply to a node type are rejected rather than ignored.
 |----------|------------------|----------------------------|
 | `OBJECT` | `object` | `fields` must be present; objects are open (`additionalProperties: true`) |
 | `ARRAY` | `array` | `items` must be present |
-| `STRING` | `string` | Optional supported `format` |
+| `STRING` | `string` | Optional `format` (free text; blank omitted) |
 | `NUMBER` | `number` | Any JSON number |
 | `INTEGER` | `integer` | Objs extension for integral SBOM values such as byte sizes and replica counts |
 | `BOOLEAN` | `boolean` | JSON boolean |
 | `ENUM` | `string` + `enum` | Nonempty ordered string values with descriptions |
 
-Supported string formats are:
-
-- `date`
-- `date-time`
-- `email`
-- `uri`
-- `uuid`
-- `hostname`
-- `ipv4`
-- `ipv6`
-
-Formats are validation/tooling hints. Their exact assertion behavior follows the configured JSON
-Schema validator.
+`format` on `STRING` is optional **free text** (trimmed; blank → omit). There is no allow-list.
+Well-known JSON Schema values (`date`, `date-time`, `email`, `uri`, `uuid`, …) remain valid; so do
+application-specific tokens (`purl`, `semver`, …). Projection copies the string to JSON Schema
+`format` when set. Exact assertion behavior follows the configured validator (unknown formats are
+typically ignored).
 
 ## Object fields
 
@@ -167,9 +177,11 @@ fields:
 | `identifier` | no | `false` | Marks a scalar leaf as part of the entity/edge **identity map** (see below) |
 | `searchable` | no | `false` | Marks a scalar leaf as searchable metadata for a later search feature |
 | `stereotype` | no | absent | Ordered presentation hints; ignored by server validation |
+| `tags` | no | absent | Author labels (`List<String>`); same normalize rules as envelope tags. Not JSON Schema |
+| `attributes` | no | absent | String map; same rules as envelope attributes. Not JSON Schema |
 
 Stereotypes are trimmed, empty entries are removed, and duplicates are collapsed. They are
-projected as `x-objs-stereotype`.
+projected as `x-objs-stereotype`. `tags` is a separate label list — do not merge with `stereotype`.
 
 `required` means the property must be present. It does not add nullability: the DSL has no `NULL`
 type, so a present value must conform to its node type.
@@ -208,7 +220,8 @@ See story [`schema-field-identifiers`](../../workitems/completed/20260811-schema
 
 ## Enums
 
-Enums are string-valued and attach a description to every value:
+Enums are string-valued. Each value has a stored token, a required long description, and an
+optional short **caption** for UI:
 
 ```yaml
 type: ENUM
@@ -216,14 +229,25 @@ title: Severity
 description: Vulnerability severity
 values:
   - value: LOW
+    caption: Low
     description: Limited impact
   - value: HIGH
+    caption: High
     description: Serious impact
 default: LOW
 ```
 
-Values must be nonblank and unique; descriptions must be nonblank. JSON Schema receives the
-literal list as `enum` and the descriptions as `x-objs-enumDescriptions`.
+| Field | Required | Meaning |
+|-------|----------|---------|
+| `value` | yes | Persisted token; nonblank; unique within the enum |
+| `description` | yes | Long explanation of what the value means; nonblank |
+| `caption` | no | Short UI label (dropdowns, read views). Trim; blank → omit |
+
+Object editors show `caption` when set, otherwise `value`. They must not use `description` as the
+visible option label (it may appear as help text elsewhere).
+
+JSON Schema receives the token list as `enum`, descriptions as `x-objs-enumDescriptions`, and
+non-empty captions as `x-objs-enumCaptions` (map of value → caption; omitted when no captions).
 
 ## Recursive example
 
@@ -320,7 +344,7 @@ Projection rules:
 1. Preserve field and enum declaration order.
 2. Derive object `required` arrays from `BoMSchemaField.required` (DSL has no OBJECT-level list).
 3. Emit `additionalProperties: true` for every object.
-4. Emit enum, stereotype, identifier, and searchable metadata under `x-objs-*` extension keywords.
+4. Emit enum descriptions/captions, stereotype, identifier, and searchable metadata under `x-objs-*` extension keywords.
 5. Preserve titles, descriptions, formats, and defaults.
 6. Add the JSON Schema 2020-12 dialect and catalog identity at the root.
 
@@ -328,14 +352,14 @@ Projection rules:
 
 Definitions are normalized before entering either the in-memory or JPA catalog:
 
-- trim type, version, titles, descriptions, field names, enum values, and stereotypes;
+- trim type, version, titles, descriptions, field names, enum values/captions, and stereotypes;
 - do **not** store an OBJECT-level `required` list (ignore if present on input);
 - reject `identifier` / `searchable` on non-scalar fields or under ARRAY paths;
 - reject duplicate field names and enum values;
 - reject blank titles/descriptions/names;
 - require `fields`, `items`, or `values` where dictated by the node type;
 - reject fields that are invalid for the selected node type;
-- reject unsupported string formats;
+- reject blank (after trim) string `format` by omitting it; any non-blank `format` is accepted;
 - require an `OBJECT` root.
 
 Invalid definitions fail registration with `BoMSchemaDefinitionException`. REST maps this to
@@ -354,7 +378,9 @@ flowchart LR
     project --> rest[JSONSchemaEndpoint]
 ```
 
-- PostgreSQL `bom_graph_entity_schema.definition_doc` stores only the normalized DSL `contentSchema`.
+- PostgreSQL `bom_entity_schema.definition_doc` stores only the normalized DSL `contentSchema`
+  (including field `tags` / `attributes`).
+- Envelope `tags` / `attributes` are columns on `bom_entity_schema`, not inside `definition_doc`.
 - `bom_entity_schema.usage` stores the scalar usage (`ENTITY` / `EDGE_PROPERTIES`).
 - `(type, version)` remain relational key columns.
 - Startup hydrates typed definitions from PostgreSQL before registry consumers run.

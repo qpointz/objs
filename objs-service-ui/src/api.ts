@@ -18,13 +18,20 @@ import type {
 import type { MatcherMode } from './MatcherQueryForm'
 import { colorForType, nodeLabel } from './color'
 
-export function toGraphData(contents: BoMGraphContents): { nodes: GraphNode[]; links: GraphLink[] } {
+export function toGraphData(
+  contents: BoMGraphContents,
+  schemas?: { type: string; attributes?: Record<string, string> }[],
+): { nodes: GraphNode[]; links: GraphLink[] } {
+  const colorByType = new Map<string, string>()
+  for (const schema of schemas ?? []) {
+    colorByType.set(schema.type, colorForType(schema.type, schema.attributes))
+  }
   const nodes: GraphNode[] = (contents.entities ?? []).map((e) => ({
     id: e.id,
     name: nodeLabel(e.payload, e.id),
     type: e.type,
     schemaVersion: e.schemaVersion ?? '?',
-    color: colorForType(e.type),
+    color: colorByType.get(e.type) ?? colorForType(e.type),
     payload: e.payload ?? {},
     annotations: e.annotations ?? {},
   }))
@@ -517,6 +524,11 @@ export async function putEdge(rule: {
   propertiesSchemaType?: string | null
   propertiesSchemaVersion?: string | null
   cardinality?: string
+  description?: string | null
+  sourceVerb?: string | null
+  targetVerb?: string | null
+  tags?: string[]
+  attributes?: Record<string, string>
 }): Promise<BoMAllowedEdgeRule> {
   const res = await fetch('/api/v1/objs/registry/edges', {
     method: 'PUT',

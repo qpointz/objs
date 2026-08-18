@@ -68,8 +68,8 @@ are not how relations are stored or seeded (see [Part B](#part-b--relations-and-
 | `"type": "number"` | `type: NUMBER` | |
 | `"type": "integer"` | `type: INTEGER` | First-class in objs |
 | `"type": "boolean"` | `type: BOOLEAN` | |
-| `"enum": ["A","B"]` | `type: ENUM` + `values: [{value, description}, …]` | Every value needs a nonblank description |
-| `"format": "…"` | `format` on `STRING` only | Allow-list: `date`, `date-time`, `email`, `uri`, `uuid`, `hostname`, `ipv4`, `ipv6` |
+| `"enum": ["A","B"]` | `type: ENUM` + `values: [{value, description, caption?}, …]` | Every value needs a nonblank description; optional `caption` from `x-objs-enumCaptions` |
+| `"format": "…"` | `format` on `STRING` only | Free text (no allow-list); copy through |
 | `"title"` / `"description"` | `title` / `description` on **every** node | Required after normalization (nonblank) |
 | `"default"` | `default` | Hint only; does not mutate stored payloads |
 | `"required": ["name"]` on object | Field `required: true` on `name` | Properties **not** listed in JSON Schema `required` → emit **`required: false`** (DSL default is **true** if omitted) |
@@ -167,7 +167,7 @@ Notes:
 When objs projects DSL → JSON Schema it may add:
 
 - `$schema` dialect URI and `x-objs-type` / `x-objs-version`
-- `x-objs-enumDescriptions`, `x-objs-identifier`, `x-objs-searchable`, `x-objs-stereotype`
+- `x-objs-enumDescriptions`, `x-objs-enumCaptions`, `x-objs-identifier`, `x-objs-searchable`, `x-objs-stereotype`
 - Always `additionalProperties: true`
 - Full-catalog export: `$defs`, synthetic relation properties, `x-objs-export`, options echo
 

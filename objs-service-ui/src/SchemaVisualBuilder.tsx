@@ -9,12 +9,18 @@ import {
   ScrollArea,
   Select,
   Stack,
+  TagsInput,
   Text,
   TextInput,
   Textarea,
   Title,
   Tooltip,
 } from '@mantine/core'
+import {
+  KeyValueRowsEditor,
+  rowsToStringMap,
+  stringMapToRows,
+} from './KeyValueRowsEditor'
 import type { BoMSchemaField, BoMSchemaNode, BoMSchemaType } from './types'
 import {
   SchemaPath,
@@ -35,18 +41,6 @@ const TYPE_OPTIONS: { value: BoMSchemaType; label: string }[] = [
   { value: 'INTEGER', label: 'INTEGER' },
   { value: 'BOOLEAN', label: 'BOOLEAN' },
   { value: 'ENUM', label: 'ENUM' },
-]
-
-const FORMAT_OPTIONS = [
-  { value: '', label: '(none)' },
-  { value: 'date', label: 'date' },
-  { value: 'date-time', label: 'date-time' },
-  { value: 'email', label: 'email' },
-  { value: 'uri', label: 'uri' },
-  { value: 'uuid', label: 'uuid' },
-  { value: 'hostname', label: 'hostname' },
-  { value: 'ipv4', label: 'ipv4' },
-  { value: 'ipv6', label: 'ipv6' },
 ]
 
 type Selection =
@@ -258,11 +252,13 @@ function NodeFields({
   onChange,
   hideTitle = false,
   hideType = false,
+  hideDescription = false,
 }: {
   node: BoMSchemaNode
   onChange: (next: BoMSchemaNode) => void
   hideTitle?: boolean
   hideType?: boolean
+  hideDescription?: boolean
 }) {
   return (
     <>
@@ -284,19 +280,23 @@ function NodeFields({
           onChange={(e) => onChange({ ...node, title: e.currentTarget.value })}
         />
       )}
-      <Textarea
-        label="Description"
-        autosize
-        minRows={2}
-        value={node.description}
-        onChange={(e) => onChange({ ...node, description: e.currentTarget.value })}
-      />
+      {!hideDescription && (
+        <Textarea
+          label="Description"
+          autosize
+          minRows={2}
+          value={node.description}
+          onChange={(e) => onChange({ ...node, description: e.currentTarget.value })}
+        />
+      )}
       {node.type === 'STRING' && (
-        <Select
+        <TextInput
           label="Format"
-          data={FORMAT_OPTIONS}
+          description="Free text (uri, date-time, purl, …)"
           value={node.format ?? ''}
-          onChange={(value) => onChange({ ...node, format: value ? value : undefined })}
+          onChange={(e) =>
+            onChange({ ...node, format: e.currentTarget.value.trim() ? e.currentTarget.value : undefined })
+          }
         />
       )}
       {node.type === 'ENUM' && (
@@ -311,7 +311,10 @@ function NodeFields({
               onClick={() =>
                 onChange({
                   ...node,
-                  values: [...(node.values ?? []), { value: 'VALUE', description: 'Description' }],
+                  values: [
+                    ...(node.values ?? []),
+                    { value: 'VALUE', caption: '', description: 'Description' },
+                  ],
                 })
               }
             >
@@ -326,6 +329,17 @@ function NodeFields({
                 onChange={(e) => {
                   const values = [...(node.values ?? [])]
                   values[index] = { ...entry, value: e.currentTarget.value }
+                  onChange({ ...node, values })
+                }}
+              />
+              <TextInput
+                label="Caption"
+                description="UI label; empty uses value"
+                value={entry.caption ?? ''}
+                onChange={(e) => {
+                  const values = [...(node.values ?? [])]
+                  const caption = e.currentTarget.value
+                  values[index] = { ...entry, caption: caption.length > 0 ? caption : undefined }
                   onChange({ ...node, values })
                 }}
               />
@@ -448,10 +462,52 @@ function Inspector({
             </>
           ) : null}
         </Group>
+        <Textarea
+          label="Description"
+          autosize
+          minRows={2}
+          value={field.schema.description}
+          onChange={(e) =>
+            onChange(
+              updateFieldAt(root, selection.path, selection.fieldIndex, (f) => ({
+                ...f,
+                schema: { ...f.schema, description: e.currentTarget.value },
+              })),
+            )
+          }
+        />
+        <TagsInput
+          label="Tags"
+          placeholder="Add tag"
+          value={field.tags ?? []}
+          onChange={(tags) =>
+            onChange(
+              updateFieldAt(root, selection.path, selection.fieldIndex, (f) => ({
+                ...f,
+                tags,
+              })),
+            )
+          }
+        />
+        <Text size="sm" fw={500}>
+          Attributes
+        </Text>
+        <KeyValueRowsEditor
+          rows={stringMapToRows(field.attributes)}
+          onChange={(rows) =>
+            onChange(
+              updateFieldAt(root, selection.path, selection.fieldIndex, (f) => ({
+                ...f,
+                attributes: rowsToStringMap(rows),
+              })),
+            )
+          }
+        />
         <NodeFields
           node={field.schema}
           hideTitle
           hideType
+          hideDescription
           onChange={(schema) =>
             onChange(
               updateFieldAt(root, selection.path, selection.fieldIndex, (f) => {
@@ -475,6 +531,7 @@ function Inspector({
       <Title order={5}>Node</Title>
       <NodeFields
         node={node}
+        hideDescription={selection.path.length === 0}
         onChange={(next) => onChange(updateNodeAt(root, selection.path, () => next))}
       />
     </Stack>
@@ -491,31 +548,49 @@ export function SchemaVisualBuilder({
   const [selection, setSelection] = useState<Selection | null>({ kind: 'node', path: [] })
 
   return (
-    <Group align="stretch" grow preventGrowOverflow={false} gap="md" style={{ minHeight: 420 }}>
-      <Paper withBorder p="sm" style={{ flex: 1, minWidth: 0 }}>
-        <Text fw={600} mb="xs">
+    <Group
+      align="stretch"
+      grow
+      preventGrowOverflow={false}
+      gap="md"
+      style={{ flex: 1, minHeight: 0, height: '100%' }}
+    >
+      <Paper
+        withBorder
+        p="sm"
+        style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column' }}
+      >
+        <Text fw={600} mb="xs" style={{ flexShrink: 0 }}>
           Content schema
         </Text>
-        <ScrollArea h={420}>
-          <TreeRows
-            node={value}
-            path={[]}
-            selection={selection}
-            onSelect={setSelection}
-            onChange={onChange}
-          />
-        </ScrollArea>
+        <div style={{ flex: 1, minHeight: 0 }}>
+          <ScrollArea type="auto" h="100%">
+            <TreeRows
+              node={value}
+              path={[]}
+              selection={selection}
+              onSelect={setSelection}
+              onChange={onChange}
+            />
+          </ScrollArea>
+        </div>
       </Paper>
-      <Paper withBorder p="sm" style={{ flex: 1, minWidth: 0 }}>
-        <ScrollArea h={420}>
-          {selection ? (
-            <Inspector root={value} selection={selection} onChange={onChange} />
-          ) : (
-            <Text c="dimmed" size="sm">
-              Select a node or field to edit.
-            </Text>
-          )}
-        </ScrollArea>
+      <Paper
+        withBorder
+        p="sm"
+        style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column' }}
+      >
+        <div style={{ flex: 1, minHeight: 0 }}>
+          <ScrollArea type="auto" h="100%">
+            {selection ? (
+              <Inspector root={value} selection={selection} onChange={onChange} />
+            ) : (
+              <Text c="dimmed" size="sm">
+                Select a node or field to edit.
+              </Text>
+            )}
+          </ScrollArea>
+        </div>
       </Paper>
     </Group>
   )

@@ -5,6 +5,12 @@ export type KeyValueRow = { key: string; value: string }
 
 export const EMPTY_KEY_VALUE_ROWS: KeyValueRow[] = [{ key: '', value: '' }]
 
+export function stringMapToRows(map?: Record<string, string> | null): KeyValueRow[] {
+  const entries = Object.entries(map ?? {}).filter(([key]) => key.trim().length > 0)
+  if (entries.length === 0) return [{ key: '', value: '' }]
+  return entries.map(([key, value]) => ({ key, value }))
+}
+
 /** Non-blank keys only; later duplicate keys overwrite earlier ones. */
 export function rowsToStringMap(rows: KeyValueRow[]): Record<string, string> {
   const filter: Record<string, string> = {}

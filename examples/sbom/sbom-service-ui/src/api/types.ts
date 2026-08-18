@@ -159,6 +159,13 @@ export type BoMSchemaType =
 export type BoMEnumValue = {
   value: string
   description: string
+  /** Short UI label; omit to show [value] in editors. */
+  caption?: string | null
+}
+
+export function enumCaption(entry: { value: string; caption?: string | null }): string {
+  const caption = entry.caption?.trim()
+  return caption || entry.value
 }
 
 export type BoMSchemaField = {
@@ -185,6 +192,29 @@ export type BoMSchema = {
   version: string
   contentSchema: BoMSchemaNode
   usage?: string
+  tags?: string[]
+  attributes?: Record<string, string>
+}
+
+export type AllowedEdgeRuleView = {
+  sourceType: string
+  role: string
+  targetType: string
+  propertiesPolicy: string
+  emptyPropertiesAllowed?: boolean
+  propertiesSchemaType?: string | null
+  propertiesSchemaVersion?: string | null
+  cardinality?: string
+  description?: string | null
+  sourceVerb?: string | null
+  targetVerb?: string | null
+  tags?: string[]
+  attributes?: Record<string, string>
+}
+
+export type TypeAllowedEdges = {
+  incoming: AllowedEdgeRuleView[]
+  outgoing: AllowedEdgeRuleView[]
 }
 
 export type AssetUsageRelation = {

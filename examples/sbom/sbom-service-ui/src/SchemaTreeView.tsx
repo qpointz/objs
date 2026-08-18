@@ -37,7 +37,7 @@ function caption(node: BoMSchemaNode, fieldName?: string): string {
     parts.push(description)
   }
   if (node.type === 'ENUM' && node.values?.length) {
-    parts.push(`values: ${node.values.map((v) => v.value).join(', ')}`)
+    parts.push(`values: ${node.values.map((v) => (v.caption?.trim() ? `${v.caption.trim()} (${v.value})` : v.value)).join(', ')}`)
   }
   return parts.join(' — ')
 }

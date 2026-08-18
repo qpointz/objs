@@ -18,7 +18,7 @@ import {
 } from '@mantine/core'
 import { IconInfoCircle, IconPlus, IconTrash } from '@tabler/icons-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import type { BoMSchemaField, BoMSchemaNode } from './types'
+import { enumCaption, type BoMSchemaField, type BoMSchemaNode } from './types'
 
 /** Placeholder titles from the schema visual builder defaults — not useful as instance-form labels. */
 const GENERIC_FIELD_TITLES = new Set([
@@ -534,7 +534,7 @@ function FieldControl({
           size={size}
           data={(field.schema.values ?? []).map((v) => ({
             value: v.value,
-            label: v.description ? `${v.value} — ${v.description}` : v.value,
+            label: enumCaption(v),
           }))}
           value={typeof value === 'string' && value.length > 0 ? value : null}
           onChange={(v) => onChange(v ?? undefined)}
@@ -915,7 +915,7 @@ function LabeledScalar({
           required={required}
           data={(field.schema.values ?? []).map((v) => ({
             value: v.value,
-            label: v.description ? `${v.value} — ${v.description}` : v.value,
+            label: enumCaption(v),
           }))}
           value={typeof value === 'string' && value.length > 0 ? value : null}
           onChange={(v) => onChange(v ?? undefined)}

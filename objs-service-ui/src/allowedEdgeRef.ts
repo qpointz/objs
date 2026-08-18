@@ -4,10 +4,18 @@ export type AllowedEdgeRef = {
   sourceType: string
   role: string
   targetType: string
+  /** UI-only: which list a self-edge was clicked in. */
+  direction?: 'incoming' | 'outbound'
 }
 
 export function allowedEdgeKey(ref: AllowedEdgeRef): string {
   return `${ref.sourceType}|${ref.role}|${ref.targetType}`
+}
+
+export function directedEdgeKey(
+  ref: AllowedEdgeRef & { direction: 'incoming' | 'outbound' },
+): string {
+  return `${ref.direction}|${allowedEdgeKey(ref)}`
 }
 
 export function uniqueEdgeRules(edges: {
@@ -48,6 +56,11 @@ function edgePayload(rule: BoMAllowedEdgeRule): string {
     emptyPropertiesAllowed: rule.emptyPropertiesAllowed,
     propertiesSchemaType: rule.propertiesSchemaType ?? null,
     propertiesSchemaVersion: rule.propertiesSchemaVersion ?? null,
+    description: rule.description ?? null,
+    sourceVerb: rule.sourceVerb ?? null,
+    targetVerb: rule.targetVerb ?? null,
+    tags: rule.tags ?? [],
+    attributes: rule.attributes ?? {},
   })
 }
 

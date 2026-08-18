@@ -10,12 +10,12 @@ import {
   Text,
   Title,
 } from '@mantine/core'
-import { IconLayoutGrid, IconList, IconSchema } from '@tabler/icons-react'
+import { IconLayoutGrid, IconList } from '@tabler/icons-react'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { SchemaCatalogEntry } from './api/types'
 import { SearchInput } from './SearchInput'
-import { useSchemasOutlet } from './SchemasWorkspace'
+import { SchemaKindPill, useSchemasOutlet } from './SchemasWorkspace'
 
 function UsedInLabel({ entry, pending }: { entry: SchemaCatalogEntry; pending: boolean }) {
   if (pending) {
@@ -42,7 +42,7 @@ function SchemaCard({ entry, pending }: { entry: SchemaCatalogEntry; pending: bo
       <Stack gap="xs" style={{ flex: 1 }}>
         <Group justify="space-between" wrap="nowrap" align="flex-start">
           <Group gap="sm" wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
-            <IconSchema size={20} stroke={1.5} color="var(--mantine-color-dimmed)" aria-hidden />
+            <SchemaKindPill usage={entry.usage} />
             <Title order={5} lineClamp={1}>
               {entry.type}
             </Title>
@@ -54,7 +54,7 @@ function SchemaCard({ entry, pending }: { entry: SchemaCatalogEntry; pending: bo
         <Text size="sm" c="dimmed" lineClamp={3} style={{ flex: 1 }}>
           {entry.description || entry.title || 'No description'}
         </Text>
-        <UsedInLabel entry={entry} pending={pending} />
+        {entry.usage !== 'EDGE_PROPERTIES' && <UsedInLabel entry={entry} pending={pending} />}
       </Stack>
     </Paper>
   )
@@ -71,7 +71,7 @@ function SchemaListRow({ entry, pending }: { entry: SchemaCatalogEntry; pending:
       onClick={() => navigate(`/schemas/${encodeURIComponent(entry.type)}`)}
     >
       <Group wrap="nowrap" gap="md">
-        <IconSchema size={18} stroke={1.5} color="var(--mantine-color-dimmed)" aria-hidden />
+        <SchemaKindPill usage={entry.usage} />
         <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
           <Text size="sm" fw={600} truncate>
             {entry.type}
@@ -83,7 +83,7 @@ function SchemaListRow({ entry, pending }: { entry: SchemaCatalogEntry; pending:
         <Badge size="sm" variant="light">
           {entry.latestVersion}
         </Badge>
-        <UsedInLabel entry={entry} pending={pending} />
+        {entry.usage !== 'EDGE_PROPERTIES' && <UsedInLabel entry={entry} pending={pending} />}
       </Group>
     </Paper>
   )

@@ -1,9 +1,9 @@
 import {
   Alert,
   Badge,
+  Box,
   Group,
   Loader,
-  ScrollArea,
   SegmentedControl,
   Select,
   Skeleton,
@@ -13,8 +13,9 @@ import {
 } from '@mantine/core'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { AllowedEdgesSection } from './AllowedEdgesSection'
 import { api } from './api/client'
-import type { BoMSchema } from './api/types'
+import type { BoMSchema, TypeAllowedEdges } from './api/types'
 import { JsonYamlEditor, type EditorFormat } from './JsonYamlEditor'
 import { SchemaTreeView } from './SchemaTreeView'
 import { useSchemasOutlet } from './SchemasWorkspace'
@@ -27,6 +28,32 @@ const VIEW_MODES = [
   { value: 'yaml', label: 'YAML' },
 ]
 
+const HEX_COLOR = /^#[0-9a-fA-F]{6}$/
+
+function TypeColorSwatch({ color }: { color?: string }) {
+  const raw = color?.trim()
+  if (!raw) return null
+  const background =
+    raw.toLowerCase() === 'nocolor'
+      ? 'var(--mantine-color-gray-6)'
+      : HEX_COLOR.test(raw)
+        ? raw
+        : null
+  if (!background) return null
+  return (
+    <Box
+      w={14}
+      h={14}
+      style={{
+        flexShrink: 0,
+        borderRadius: 3,
+        background,
+        border: '1px solid var(--mantine-color-default-border)',
+      }}
+    />
+  )
+}
+
 export function SchemaViewPage() {
   const navigate = useNavigate()
   const { type, version } = useParams<{ type: string; version?: string }>()
@@ -34,6 +61,7 @@ export function SchemaViewPage() {
   const entry = catalog.find((s) => s.type === type)
   const resolvedVersion = version ?? entry?.latestVersion
   const [schema, setSchema] = useState<BoMSchema | null>(null)
+  const [allowedEdges, setAllowedEdges] = useState<TypeAllowedEdges>({ incoming: [], outgoing: [] })
   const [error, setError] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<SchemaViewMode>('form')
   const [rawFormat, setRawFormat] = useState<EditorFormat>('json')
@@ -61,6 +89,22 @@ export function SchemaViewPage() {
     }
   }, [type, resolvedVersion])
 
+  useEffect(() => {
+    if (!type) {
+      setAllowedEdges({ incoming: [], outgoing: [] })
+      return
+    }
+    let cancelled = false
+    void api.getAllowedEdges(type).then((edges) => {
+      if (!cancelled) setAllowedEdges(edges)
+    }).catch(() => {
+      if (!cancelled) setAllowedEdges({ incoming: [], outgoing: [] })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [type])
+
   function switchViewMode(next: SchemaViewMode) {
     setViewMode(next)
     if (next === 'json' || next === 'yaml') setRawFormat(next)
@@ -73,6 +117,7 @@ export function SchemaViewPage() {
   const versions = entry?.versions ?? (schema ? [schema.version] : [])
   const latestVersion = entry?.latestVersion
   const isLatest = Boolean(resolvedVersion && latestVersion && resolvedVersion === latestVersion)
+  const isEdgeSchema = (schema?.usage ?? entry?.usage) === 'EDGE_PROPERTIES'
   const versionOptions = useMemo(
     () =>
       versions.map((v) => ({
@@ -83,13 +128,19 @@ export function SchemaViewPage() {
   )
 
   return (
-    <Stack gap="sm" style={{ flex: 1, minHeight: 0, height: '100%' }}>
+    <Stack gap="sm" style={{ flex: 1, minHeight: 0, height: '100%', overflow: 'auto' }}>
       <div>
         <Group justify="space-between" align="center" wrap="nowrap" gap="md">
           <Group gap="xs" align="center" wrap="nowrap" style={{ minWidth: 0, flex: 1 }}>
+            {!isEdgeSchema && <TypeColorSwatch color={schema?.attributes?.color} />}
             <Title order={3} lineClamp={1}>
               {type}
             </Title>
+            {resolvedVersion && (
+              <Text size="sm" c="dimmed" style={{ flexShrink: 0 }}>
+                {resolvedVersion}
+              </Text>
+            )}
             {isLatest && (
               <Badge size="sm" variant="light" color="blue">
                 LATEST
@@ -124,19 +175,49 @@ export function SchemaViewPage() {
         <Text size="sm" c="dimmed">
           {entry?.description || entry?.title || schema?.contentSchema.description || ''}
         </Text>
-        {type && usagePending.has(type) ? (
-          <Skeleton height={12} width={180} mt={8} />
-        ) : (
-          <Text size="xs" c="dimmed" mt={8}>
-            {!entry || entry.usedIn.length === 0
-              ? 'Not used in applications'
-              : `Used in ${entry.usedIn.length} application${entry.usedIn.length === 1 ? '' : 's'}`}
-          </Text>
+        {((schema?.tags && schema.tags.length > 0) ||
+          Object.entries(schema?.attributes ?? {}).some(([name]) => name !== 'color')) && (
+          <Group gap={6} mt={8} wrap="wrap">
+            {(schema?.tags ?? []).map((tag) => (
+              <Badge key={tag} size="sm" variant="light" radius="xl" tt="none">
+                {tag}
+              </Badge>
+            ))}
+            {Object.entries(schema?.attributes ?? {})
+              .filter(([name]) => name !== 'color')
+              .map(([name, value]) => (
+              <Badge
+                key={name}
+                size="sm"
+                variant="light"
+                radius="xl"
+                tt="none"
+                leftSection={
+                  <Text span size="xs" fw={700}>
+                    {name}
+                  </Text>
+                }
+              >
+                {value}
+              </Badge>
+            ))}
+          </Group>
         )}
+        {!isEdgeSchema &&
+          (type && usagePending.has(type) ? (
+            <Skeleton height={12} width={180} mt={8} />
+          ) : (
+            <Text size="xs" c="dimmed" mt={8}>
+              {!entry || entry.usedIn.length === 0
+                ? 'Not used in applications'
+                : `Used in ${entry.usedIn.length} application${entry.usedIn.length === 1 ? '' : 's'}`}
+            </Text>
+          ))}
       </div>
 
       {(error || catalogError) && <Alert color="red">{error || catalogError}</Alert>}
 
+      <Title order={4}>Schema</Title>
       <SegmentedControl
         value={viewMode}
         onChange={(v) => switchViewMode(v as SchemaViewMode)}
@@ -149,23 +230,28 @@ export function SchemaViewPage() {
       ) : !schema && !error ? (
         <Loader size="sm" />
       ) : schema ? (
-        <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
-          <ScrollArea style={{ position: 'absolute', inset: 0 }}>
-            {viewMode === 'form' ? (
-              <SchemaTreeView schema={schema.contentSchema} />
-            ) : (
-              <JsonYamlEditor
-                value={schema}
-                onChange={() => undefined}
-                format={rawFormat}
-                onFormatChange={setRawFormat}
-                readOnly
-                showFormatToggle={false}
-              />
-            )}
-          </ScrollArea>
-        </div>
+        viewMode === 'form' ? (
+          <SchemaTreeView schema={schema.contentSchema} />
+        ) : (
+          <JsonYamlEditor
+            value={schema}
+            onChange={() => undefined}
+            format={rawFormat}
+            onFormatChange={setRawFormat}
+            readOnly
+            showFormatToggle={false}
+          />
+        )
       ) : null}
+
+      {!isEdgeSchema && (
+        <AllowedEdgesSection
+          incoming={allowedEdges.incoming}
+          outgoing={allowedEdges.outgoing}
+          currentType={type}
+          knownTypes={new Set(catalog.map((s) => s.type))}
+        />
+      )}
     </Stack>
   )
 }

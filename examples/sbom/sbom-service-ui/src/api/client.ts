@@ -16,6 +16,7 @@ import type {
   CombinedBomView,
   SchemaCatalogEntry,
   SchemaUsedInRef,
+  TypeAllowedEdges,
   InferredAppDependency,
   CategoryAssetPage,
   MiReportTable,
@@ -202,6 +203,11 @@ export const api = {
   getSchema: (type: string, version: string) =>
     request<BoMSchema>(
       `${schema}/schemas/${encodeURIComponent(type)}/${encodeURIComponent(version)}`,
+    ),
+
+  getAllowedEdges: (type: string) =>
+    request<TypeAllowedEdges>(
+      `${schema}/schema-catalog/${encodeURIComponent(type)}/allowed-edges`,
     ),
 
   searchAssets: (body: {

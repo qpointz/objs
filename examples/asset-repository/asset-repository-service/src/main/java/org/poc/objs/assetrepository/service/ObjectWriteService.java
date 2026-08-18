@@ -21,6 +21,7 @@ import org.poc.objs.core.domain.BoMGraphUpsert;
 import org.poc.objs.core.domain.BoMIdentityProjection;
 import org.poc.objs.core.domain.BoMSchema;
 import org.poc.objs.core.domain.BoMSchemaCatalog;
+import org.poc.objs.core.domain.BoMSchemaUsage;
 import org.poc.objs.core.match.BoMMatcher;
 import org.poc.objs.core.match.BoMMatcherDsl;
 import org.poc.objs.core.match.BoMMatcherFormat;
@@ -192,8 +193,8 @@ public class ObjectWriteService {
             throw new IllegalArgumentException("type is required");
         }
         String version = request.schemaVersion() != null && !request.schemaVersion().isBlank()
-                ? request.schemaVersion()
-                : "1.0.0";
+                ? request.schemaVersion().trim()
+                : latestSchemaVersion(request.type());
         Map<String, Object> payload =
                 request.payload() != null ? new HashMap<>(request.payload()) : new HashMap<>();
 
@@ -320,6 +321,36 @@ public class ObjectWriteService {
             payload.putAll(entity.getPayload());
         }
         return new ApiDtos.ObjectDto(entity.getId(), entity.getType(), entity.getSchemaVersion(), payload);
+    }
+
+    private String latestSchemaVersion(String type) {
+        return schemas.listByType(type).stream()
+                .filter(schema -> schema.getUsage() == BoMSchemaUsage.ENTITY)
+                .max((a, b) -> compareSchemaVersions(a.getVersion(), b.getVersion()))
+                .map(BoMSchema::getVersion)
+                .orElse("1.0.0");
+    }
+
+    static int compareSchemaVersions(String a, String b) {
+        String[] pa = a.split("[.+-]");
+        String[] pb = b.split("[.+-]");
+        int n = Math.max(pa.length, pb.length);
+        for (int i = 0; i < n; i++) {
+            int da = i < pa.length ? parseVersionPart(pa[i]) : 0;
+            int db = i < pb.length ? parseVersionPart(pb[i]) : 0;
+            if (da != db) {
+                return Integer.compare(da, db);
+            }
+        }
+        return a.compareTo(b);
+    }
+
+    private static int parseVersionPart(String part) {
+        try {
+            return Integer.parseInt(part);
+        } catch (NumberFormatException ex) {
+            return 0;
+        }
     }
 
     private static BoMMatcher matcher(String objExpr) {

@@ -120,6 +120,8 @@ Matchers use shared `MatcherQueryForm` (**`all`** / **`graph-expr`** / **`obj-ex
 1. Configure the matcher (or Open graph…).
 2. **Exec** / Open graph loads the canvas (mode switch as above).
 3. Select a node or edge to inspect. Schema type links open in a **new browser tab**.
+   Node header color comes from the type schema’s `attributes.color` (`#rrggbb` or `nocolor`
+   for theme gray); if unset, the type name is hashed into the built-in palette.
 4. **L2:** **Apply layout ▾**; mode exits below.
 
 ### L2 handoffs (entire canvas)
@@ -234,7 +236,7 @@ From a type, **Full schema** returns to the overview. The detail toolbar include
 
 ### Editors
 
-Tab order: **Visual**, **Schema**, **Edges** (objects).
+Tab order: **Visual**, **General**, **Schema**, **Edges** (objects).
 
 - **Visual** — read-only relationship graph of allow-list neighbours (ego view for the selected type).
 - **Schema** — consolidated content editor with sub-views:
@@ -242,6 +244,9 @@ Tab order: **Visual**, **Schema**, **Edges** (objects).
   - **YAML** / **JSON** — full schema document text editor; **Format**, **Rollback**, **Lint**, and
     **New UUID** (toast auto-hides after 3s)
   - **JSON Schema** — generated projection (read-only; existing schemas only)
+- **General** — description, then object-schema tags and string attributes. Envelope `color`
+  (`#rrggbb` or `nocolor`) is the graph node accent for that type; `nocolor` is theme gray.
+  Visual / General / Schema / Edges panels fill the remaining editor height.
 - **Edges** — allowed inbound/outbound edge rules for object schemas (add, edit, delete).
 
 Unsaved edits show an **Unsaved changes** badge with **Rollback** to the last loaded/saved
@@ -251,11 +256,15 @@ snapshot. Switching type, version, create draft, or leaving Schemas opens a conf
 ### Edges (objects)
 
 Object schemas include an **Edges** tab with the allowed-edges table (inbound then outbound).
-You can **add**, **edit**, and **delete** rules (direction, related type, role, cardinality,
-properties NONE or SCHEMA). Edge edits stay local until **Save** (with content-schema
-edits); **Rollback** restores both. Editing identity fields (source / role / target) replaces the
-draft rule. Edge-property schemas edit payload DSL only — relations are authored on the object
-Edges tab, not on the edge schema.
+Selecting a row highlights **one** list membership (incoming or outgoing), including self-edges
+such as `Component DEPENDS_ON Component`. A paper **details** panel below the table shows the same
+fields as the edit form (direction, types, role, cardinality, properties, description, verbs, tags,
+attributes). **Edit** keeps that layout and swaps values for inputs. **Delete** / **Edit** live on
+the details panel, not in the table. Deleted rules stay visible as **Deleted** until **Save** or
+**Rollback** / **Restore**. **Add allowed edge** opens the same paper as a blank form.
+Edge edits stay local until **Save** (with content-schema edits); **Rollback** restores both.
+Editing identity fields (source / role / target) replaces the draft rule. Edge-property schemas
+edit payload DSL only — relations are authored on the object Edges tab, not on the edge schema.
 
 ## Schema explorer (legacy name)
 
@@ -275,7 +284,7 @@ select a version badge to open that exact definition.
 An entity schema displays:
 
 - its type and version (kind is shown in the type list as O/E);
-- content editors (**Visual**, **Schema**, **Edges**);
+- content editors (**Visual**, **General**, **Schema**, **Edges**);
 - generated JSON Schema 2020-12 under Schema → **JSON Schema**.
 
 The **Edges** tab lists allowed inbound then outbound rules, with direction icons
@@ -572,7 +581,7 @@ Hit list uses **compact fixed-height** graph rows (single-line id + pills; list 
 | `SCHEMA_DEFINITION_INVALID` | Correct the field named in the lint message |
 | Title, description, or field name is blank | Supply a nonblank value |
 | Duplicate object field or enum value | Rename or remove the duplicate |
-| Unsupported string format | Select one of the formats offered by the visual editor |
+| STRING `format` | Optional free text (application-specific); blank omits |
 | Database validation fails after a schema change | Recheck compatibility between the updated schema version and stored payloads |
 
 ## Development mode

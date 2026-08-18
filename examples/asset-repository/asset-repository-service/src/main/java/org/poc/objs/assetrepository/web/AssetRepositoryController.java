@@ -67,6 +67,12 @@ public class AssetRepositoryController {
         return schemaQuery.get(type, version);
     }
 
+    @GetMapping("/schema-catalog/{type}/allowed-edges")
+    @Operation(summary = "Allowed-edge rules for a type, including wildcards")
+    ApiDtos.TypeAllowedEdgesDto allowedEdges(@PathVariable("type") String type) {
+        return schemaQuery.allowedEdgesForType(type);
+    }
+
     @GetMapping("/collections/{id}/schemas")
     @Operation(summary = "Schemas for a collection's accepted types")
     List<BoMSchema> collectionSchemas(@PathVariable("id") UUID id) {

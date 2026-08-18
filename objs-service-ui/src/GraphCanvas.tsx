@@ -496,9 +496,11 @@ function GraphCanvasInner(
       }}
       onPaneClick={() => onSelect(null)}
       onNodeContextMenu={(event, node) => {
+        event.preventDefault()
         onNodeContextMenu?.(event, (node.data as EntityCardData).entity)
       }}
       onEdgeContextMenu={(event, edge) => {
+        event.preventDefault()
         const data = edge.data as EdgeData | undefined
         if (data?.edge) onEdgeContextMenu?.(event, data.edge)
       }}

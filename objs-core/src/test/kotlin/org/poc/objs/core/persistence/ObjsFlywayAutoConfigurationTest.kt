@@ -37,7 +37,7 @@ class ObjsFlywayAutoConfigurationTest {
         val entityCount = jdbc.queryForObject("SELECT COUNT(*) FROM bom_entity", Int::class.java)
         assertThat(entityCount).isZero()
 
-        assertThat(objsFlyway.flyway.info().current()?.version?.toString()).isEqualTo("1")
+        assertThat(objsFlyway.flyway.info().current()?.version?.toString()).isEqualTo("2")
         assertThat(objsFlyway.flyway.configuration.table).isEqualTo("flyway_schema_history_objs")
     }
 }

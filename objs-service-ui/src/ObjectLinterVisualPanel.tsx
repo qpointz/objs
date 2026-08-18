@@ -31,6 +31,12 @@ import {
   Tooltip,
 } from '@mantine/core'
 import { IconX } from '@tabler/icons-react'
+import {
+  GraphGoToMenuItems,
+  buildGraphNeighborIndex,
+  graphGoToAvailable,
+  type GraphGoToTarget,
+} from './graphGoToNav'
 import { getSchema, getTypeEdges, listSchemas, schemaDetailPath, toGraphData } from './api'
 import { Link } from 'react-router-dom'
 import { AddObjectsPanel } from './AddObjectsPanel'
@@ -322,7 +328,7 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
     [schemas],
   )
   const graphView = useMemo(() => {
-    const base = toGraphData(canvasDocument)
+    const base = toGraphData(canvasDocument, schemas)
     return {
       nodes: base.nodes.map((n) => ({
         ...n,
@@ -350,6 +356,10 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
       compose: true,
     })
   }, [changesOnly, graphView, highlightedTypes])
+  const neighborIndex = useMemo(
+    () => buildGraphNeighborIndex(displayGraph.nodes, displayGraph.links),
+    [displayGraph],
+  )
   const clearTypeHighlight = useCallback(() => {
     setHighlightedTypes((prev) => (prev.size === 0 ? prev : new Set()))
   }, [])
@@ -372,6 +382,7 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
     pairCount: number
     hasEdge: boolean
     entityDeleted: boolean
+    goTo?: GraphGoToTarget
   } | null>(null)
   const [connectOptions, setConnectOptions] = useState<ConnectOption[]>([])
   const [connectOptionKey, setConnectOptionKey] = useState<string | null>(null)
@@ -708,7 +719,12 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
   const openCanvasMenuAt = useCallback(
     (
       event: { clientX: number; clientY: number; preventDefault: () => void },
-      snapshot: { pairCount: number; hasEdge: boolean; entityDeleted: boolean },
+      snapshot: {
+        pairCount: number
+        hasEdge: boolean
+        entityDeleted: boolean
+        goTo?: GraphGoToTarget
+      },
     ) => {
       event.preventDefault()
       setCanvasMenu({
@@ -736,6 +752,7 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
         pairCount,
         hasEdge: false,
         entityDeleted: draftState.pendingDeleteEntityIds.has(entity.id),
+        goTo: { kind: 'node', nodeId: node.id },
       })
     },
     [
@@ -756,6 +773,7 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
         pairCount: 0,
         hasEdge: true,
         entityDeleted: false,
+        goTo: { kind: 'edge', sourceId: edge.source, targetId: edge.target },
       })
     },
     [clearTypeHighlight, onSelect, openCanvasMenuAt],
@@ -1426,6 +1444,21 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
                 >
                   Apply layout
                 </Menu.Item>
+              </>
+            )}
+            {canvasMenu?.goTo && graphGoToAvailable(neighborIndex, canvasMenu.goTo) && (
+              <>
+                <Menu.Divider />
+                <GraphGoToMenuItems
+                  target={canvasMenu.goTo}
+                  nodes={displayGraph.nodes}
+                  index={neighborIndex}
+                  wrap
+                  onGoTo={(id) => {
+                    closeCanvasMenu()
+                    selectAndFocusEntity(id)
+                  }}
+                />
               </>
             )}
           </Menu.Dropdown>

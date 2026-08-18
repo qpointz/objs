@@ -56,7 +56,7 @@ export function defaultNodeForType(type: BoMSchemaType): BoMSchemaNode {
         type: 'ENUM',
         title: 'Choice',
         description: 'Enumerated value',
-        values: [{ value: 'VALUE', description: 'Example value' }],
+        values: [{ value: 'VALUE', caption: 'Value', description: 'Example value' }],
       }
   }
 }

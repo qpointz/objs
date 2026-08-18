@@ -51,6 +51,7 @@ import {
   type CatalogNodeData,
   type CatalogTypeNode,
 } from './catalogOverviewModel'
+import { GraphMenuSub } from './graphGoToNav'
 import { SyntaxCodeEditor, type SyntaxCodeEditorHandle } from './SyntaxCodeEditor'
 import type { BoMAllowedEdgeRule, BoMSchema, SeedImportResult } from './types'
 
@@ -213,6 +214,14 @@ function SchemaCatalogOverviewInner({
   const [textEpoch, setTextEpoch] = useState(0)
   const textEditorRef = useRef<SyntaxCodeEditorHandle>(null)
   const [jumpTo, setJumpTo] = useState<string | null>(null)
+  const [goToMenu, setGoToMenu] = useState<{
+    x: number
+    y: number
+    sourceType?: string
+    targetType?: string
+    type?: string
+    version?: string
+  } | null>(null)
   const fittedOnceRef = useRef(false)
   const [storedSession] = useState(() => loadCatalogLayout())
   const [layout, setLayout] = useState<CatalogLayout>(() => storedSession.direction)
@@ -541,11 +550,99 @@ function SchemaCatalogOverviewInner({
                   navigate(schemaDetailPath(data.type, data.version))
                 }
               }}
+              onNodeContextMenu={(event, node) => {
+                event.preventDefault()
+                const data = node.data as CatalogNodeData
+                if (data.kind !== 'entity' || !data.version) return
+                setGoToMenu({
+                  x: event.clientX,
+                  y: event.clientY,
+                  type: data.type,
+                  version: data.version,
+                })
+              }}
+              onEdgeContextMenu={(event, edge) => {
+                event.preventDefault()
+                const rule = edge.data as BoMAllowedEdgeRule | undefined
+                if (!rule) return
+                setGoToMenu({
+                  x: event.clientX,
+                  y: event.clientY,
+                  sourceType: rule.sourceType,
+                  targetType: rule.targetType,
+                })
+              }}
+              onMoveStart={() => setGoToMenu(null)}
               proOptions={{ hideAttribution: true }}
             >
               <Background gap={18} size={1} />
               <Controls showInteractive={false} />
             </ReactFlow>
+            <Menu
+              opened={goToMenu != null}
+              onChange={(opened) => {
+                if (!opened) setGoToMenu(null)
+              }}
+              position="bottom-start"
+              offset={0}
+              withinPortal
+            >
+              <Menu.Target>
+                <div
+                  style={{
+                    position: 'fixed',
+                    left: goToMenu?.x ?? 0,
+                    top: goToMenu?.y ?? 0,
+                    width: 1,
+                    height: 1,
+                    pointerEvents: 'none',
+                  }}
+                />
+              </Menu.Target>
+              <Menu.Dropdown>
+                {goToMenu?.sourceType != null && goToMenu.targetType != null ? (
+                  <GraphMenuSub label="Go to…">
+                    <Menu.Item
+                      onClick={() => {
+                        const sourceType = goToMenu.sourceType
+                        const version = entityTypes.find((t) => t.type === sourceType)?.version
+                        setGoToMenu(null)
+                        if (sourceType && sourceType !== '*' && version) {
+                          navigate(schemaDetailPath(sourceType, version))
+                        }
+                      }}
+                    >
+                      Source {goToMenu.sourceType}
+                    </Menu.Item>
+                    <Menu.Item
+                      onClick={() => {
+                        const targetType = goToMenu.targetType
+                        const version = entityTypes.find((t) => t.type === targetType)?.version
+                        setGoToMenu(null)
+                        if (targetType && targetType !== '*' && version) {
+                          navigate(schemaDetailPath(targetType, version))
+                        }
+                      }}
+                    >
+                      Target {goToMenu.targetType}
+                    </Menu.Item>
+                  </GraphMenuSub>
+                ) : goToMenu?.type && goToMenu.version ? (
+                  <GraphMenuSub label="Go to…">
+                    <Menu.Item
+                      onClick={() => {
+                        const type = goToMenu.type!
+                        const version = goToMenu.version!
+                        setGoToMenu(null)
+                        navigate(schemaDetailPath(type, version))
+                      }}
+                    >
+                      {goToMenu.type}
+                    </Menu.Item>
+                  </GraphMenuSub>
+                ) : null}
+              </Menu.Dropdown>
+            </Menu>
           </div>
         </Tabs.Panel>
 

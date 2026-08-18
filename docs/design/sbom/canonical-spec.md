@@ -16,6 +16,7 @@ A technology-neutral ontology for representing software systems. SBOMs, deployme
 | Module | `objs-sbom-example` |
 | Registry pack (typed / parity) | `org.poc.objs.sbom.registry.SbomRegistry.pack()` |
 | Runtime ontology seed | `classpath:seeds/sbom-ontology.yaml` via [`../graph/seeds.md`](../graph/seeds.md); JSON Schema → seeds [`../graph/json-schema-to-seeds.md`](../graph/json-schema-to-seeds.md) |
+| Graph type color | Entity envelope `attributes.color` (`#rrggbb` from the workbench palette, or `nocolor` for theme gray). See [`../graph/object-schema-dsl.md`](../graph/object-schema-dsl.md) |
 | Schema version | `1.0.0` for every entity type and shared edge properties |
 | Typed payloads | `org.poc.objs.sbom.model` (`WaveATypes`, `WaveBCDTypes`, `Component`) |
 | Edge properties | Shared schema type `CanonicalEdge` → `BoMEdge.properties` (`SCHEMA`, empty allowed) |

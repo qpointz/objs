@@ -54,10 +54,30 @@ const COMPOSITION_ROLES: Record<string, { role: string; target: string }[]> = {
   ModelVersion: [{ role: 'SUPPORTS', target: 'Modality' }],
 }
 
-function compositionTemplate(accepted: string[]): Record<string, unknown> {
+function compareSchemaVersions(a: string, b: string): number {
+  const pa = a.split(/[.+-]/).map((part) => Number.parseInt(part, 10))
+  const pb = b.split(/[.+-]/).map((part) => Number.parseInt(part, 10))
+  const n = Math.max(pa.length, pb.length)
+  for (let i = 0; i < n; i++) {
+    const da = Number.isFinite(pa[i]) ? pa[i] : 0
+    const db = Number.isFinite(pb[i]) ? pb[i] : 0
+    if (da !== db) return da - db
+  }
+  return a.localeCompare(b)
+}
+
+function latestSchema(versions: BoMSchema[]): BoMSchema | undefined {
+  if (versions.length === 0) return undefined
+  return [...versions].sort((x, y) => compareSchemaVersions(x.version, y.version)).at(-1)
+}
+
+function compositionTemplate(
+  accepted: string[],
+  latestByType: Record<string, string>,
+): Record<string, unknown> {
   const objects = accepted.map((objectType) => ({
     type: objectType,
-    schemaVersion: '1.0.0',
+    schemaVersion: latestByType[objectType] ?? '1.0.0',
     payload: { name: '' },
   }))
   const indexByType = new Map(accepted.map((t, i) => [t, i]))
@@ -206,6 +226,7 @@ function ObjectPage({ mode }: { mode: ObjectPageMode }) {
   const [object, setObject] = useState<ArObject | null>(null)
   const [type, setType] = useState('')
   const [schemaVersion, setSchemaVersion] = useState('1.0.0')
+  const [schemaVersions, setSchemaVersions] = useState<string[]>([])
   const [schema, setSchema] = useState<BoMSchema | null>(null)
   const [payload, setPayload] = useState<Record<string, unknown>>({})
   const [rawDocument, setRawDocument] = useState<unknown>({})
@@ -216,10 +237,11 @@ function ObjectPage({ mode }: { mode: ObjectPageMode }) {
 
   async function loadSchemaForType(objectType: string, preferredVersion?: string) {
     const versions = await listSchemasByType(objectType)
+    const ordered = [...versions].sort((a, b) => compareSchemaVersions(a.version, b.version))
+    setSchemaVersions(ordered.map((s) => s.version))
     const chosen =
-      versions.find((s) => s.version === preferredVersion) ??
-      versions.find((s) => s.version === '1.0.0') ??
-      versions[versions.length - 1]
+      (preferredVersion ? ordered.find((s) => s.version === preferredVersion) : undefined) ??
+      latestSchema(ordered)
     if (!chosen) {
       throw new Error(`No schema registered for type ${objectType}`)
     }
@@ -273,6 +295,20 @@ function ObjectPage({ mode }: { mode: ObjectPageMode }) {
     }
   }
 
+  async function onSchemaVersionChange(nextVersion: string) {
+    if (!type) return
+    try {
+      const s = await loadSchemaForType(type, nextVersion)
+      const next = defaultValueForSchema(s.contentSchema) as Record<string, unknown>
+      setPayload(next)
+      if (!isCompositionDocument(rawDocument)) {
+        setRawDocument({ type, schemaVersion: s.version, payload: next })
+      }
+    } catch (e) {
+      setError(String(e))
+    }
+  }
+
   function switchViewMode(next: ObjectViewMode) {
     if (next === viewMode) return
     if (readOnly) {
@@ -311,9 +347,18 @@ function ObjectPage({ mode }: { mode: ObjectPageMode }) {
     setViewMode(next)
   }
 
-  function loadCompositionTemplate() {
+  async function loadCompositionTemplate() {
     if (!collection) return
-    const doc = compositionTemplate(collection.types.map((t) => t.objectType))
+    const types = collection.types.map((t) => t.objectType)
+    const latestByType: Record<string, string> = {}
+    await Promise.all(
+      types.map(async (objectType) => {
+        const versions = await listSchemasByType(objectType)
+        const latest = latestSchema(versions)
+        if (latest) latestByType[objectType] = latest.version
+      }),
+    )
+    const doc = compositionTemplate(types, latestByType)
     setRawDocument(doc)
     setRawError(null)
     setError(null)
@@ -413,13 +458,25 @@ function ObjectPage({ mode }: { mode: ObjectPageMode }) {
                   /
                 </Text>
                 {mode === 'create' && !compositionMode ? (
-                  <Select
-                    size="xs"
-                    value={type}
-                    data={collection.types.map((t) => ({ value: t.objectType, label: t.objectType }))}
-                    onChange={(v) => v && void onTypeChange(v)}
-                    w={180}
-                  />
+                  <>
+                    <Select
+                      size="xs"
+                      value={type}
+                      data={collection.types.map((t) => ({ value: t.objectType, label: t.objectType }))}
+                      onChange={(v) => v && void onTypeChange(v)}
+                      w={180}
+                    />
+                    {schemaVersions.length > 0 && (
+                      <Select
+                        size="xs"
+                        aria-label="Schema version"
+                        value={schemaVersion}
+                        data={schemaVersions.map((v) => ({ value: v, label: v }))}
+                        onChange={(v) => v && void onSchemaVersionChange(v)}
+                        w={110}
+                      />
+                    )}
+                  </>
                 ) : (
                   <Anchor
                     component={Link}

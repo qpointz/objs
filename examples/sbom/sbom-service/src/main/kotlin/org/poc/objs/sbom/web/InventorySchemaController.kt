@@ -63,6 +63,9 @@ class InventorySchemaController(
         @PathVariable version: String,
     ): BoMSchema = schemaBrowse.get(type, version)
 
+    @GetMapping("/schema-catalog/{type}/allowed-edges")
+    fun allowedEdgesForType(@PathVariable type: String) = schemaBrowse.allowedEdgesForType(type)
+
     @GetMapping("/relation-labels")
     fun relationLabel(@RequestParam role: String): Map<String, String> =
         mapOf("role" to role, "label" to RelationLabels.display(role))

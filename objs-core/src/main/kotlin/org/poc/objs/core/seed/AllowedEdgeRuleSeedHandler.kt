@@ -1,5 +1,6 @@
 package org.poc.objs.core.seed
 
+import org.poc.objs.core.domain.CatalogMetadata
 import org.poc.objs.core.domain.BoMAllowedEdgeCatalog
 import org.poc.objs.core.domain.BoMAllowedEdgeRule
 import org.poc.objs.core.domain.BoMEdgeCardinality
@@ -67,6 +68,11 @@ class AllowedEdgeRuleSeedHandler(
             propertiesSchemaType = propertiesSchemaType,
             propertiesSchemaVersion = propertiesSchemaVersion,
             cardinality = cardinality,
+            description = CatalogMetadata.optionalText(document.raw["description"]?.toString()),
+            sourceVerb = CatalogMetadata.optionalText(document.raw["sourceVerb"]?.toString()),
+            targetVerb = CatalogMetadata.optionalText(document.raw["targetVerb"]?.toString()),
+            tags = parseSeedTags(document.raw["tags"], document.index),
+            attributes = parseSeedAttributes(document.raw["attributes"], document.index),
         )
         return ParsedSeedDocument(
             document = document,
@@ -104,6 +110,11 @@ class AllowedEdgeRuleSeedHandler(
         if (rule.propertiesSchemaVersion != null) {
             document["propertiesSchemaVersion"] = rule.propertiesSchemaVersion
         }
+        emitSeedText(document, "description", rule.description)
+        emitSeedText(document, "sourceVerb", rule.sourceVerb)
+        emitSeedText(document, "targetVerb", rule.targetVerb)
+        emitSeedTags(document, rule.tags)
+        emitSeedAttributes(document, rule.attributes)
         return document
     }
 }

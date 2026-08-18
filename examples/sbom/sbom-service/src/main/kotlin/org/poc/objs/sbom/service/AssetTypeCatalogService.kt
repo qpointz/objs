@@ -9,6 +9,7 @@ import org.poc.objs.core.domain.BoMSchemaUsage
 import org.poc.objs.sbom.domain.AssetFieldHint
 import org.poc.objs.sbom.domain.AssetTypeDetail
 import org.poc.objs.sbom.domain.AssetTypeSummary
+import org.poc.objs.sbom.domain.SemVerVersionComparer
 import org.springframework.stereotype.Service
 
 /**
@@ -19,11 +20,15 @@ import org.springframework.stereotype.Service
 class AssetTypeCatalogService(
     private val schemas: BoMSchemaCatalog,
 ) {
+    private val versions = SemVerVersionComparer()
+
     fun listEntityTypes(): List<AssetTypeSummary> =
         schemas.all()
             .filter { it.usage == BoMSchemaUsage.ENTITY }
-            .sortedWith(compareBy({ it.type }, { it.version }))
-            .map { schema ->
+            .groupBy { it.type }
+            .toSortedMap()
+            .map { (_, rows) ->
+                val schema = rows.maxWith { a, b -> versions.compare(a.version, b.version) }
                 AssetTypeSummary(
                     type = schema.type,
                     version = schema.version,
@@ -48,12 +53,12 @@ class AssetTypeCatalogService(
     }
 
     private fun resolve(type: String, version: String?): BoMSchema? {
-        if (version != null) {
+        if (!version.isNullOrBlank()) {
             return schemas.get(type, version)?.takeIf { it.usage == BoMSchemaUsage.ENTITY }
         }
         return schemas.listByType(type)
             .filter { it.usage == BoMSchemaUsage.ENTITY }
-            .maxByOrNull { it.version }
+            .maxWithOrNull { a, b -> versions.compare(a.version, b.version) }
     }
 
     private fun firstLevelScalarFields(root: BoMSchemaNode): List<AssetFieldHint> {

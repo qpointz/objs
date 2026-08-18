@@ -18,6 +18,11 @@ import {
   Tooltip,
 } from '@mantine/core'
 import { IconHelp, IconX } from '@tabler/icons-react'
+import {
+  GraphGoToContextMenu,
+  buildGraphNeighborIndex,
+  type GraphGoToTarget,
+} from './graphGoToNav'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   GraphCanvas,
@@ -26,7 +31,6 @@ import {
   type GraphNodePositions,
 } from './GraphCanvas'
 import { execMatcher, getGraph, graphContentsFromGraphView, listSchemas, schemaDetailPath, toGraphData } from './api'
-import { colorForType } from './color'
 import { OpenGraphModal } from './OpenGraphModal'
 import {
   EntityAnnotationsView,
@@ -165,6 +169,9 @@ export function GraphExplorerPage() {
   const [graphAnnotations, setGraphAnnotations] = useState<Record<string, string>>({})
   const [exploreMode, setExploreMode] = useState<ExploreMode>(() => initialExploreMode(storedSession))
   const [openGraphOpen, setOpenGraphOpen] = useState(false)
+  const [goToMenu, setGoToMenu] = useState<{ x: number; y: number; target: GraphGoToTarget } | null>(
+    null,
+  )
   const linksRef = useRef(links)
   linksRef.current = links
   const layoutRef = useRef(layout)
@@ -212,7 +219,7 @@ export function GraphExplorerPage() {
       .then((resolved) => {
         if (cancelled) return
         setGraphAnnotations(resolved.annotations ?? {})
-        const graph = toGraphData(resolved.graph)
+        const graph = toGraphData(resolved.graph, schemas)
         setNodes(graph.nodes)
         setLinks(graph.links)
         setHighlightedTypes(new Set())
@@ -246,7 +253,7 @@ export function GraphExplorerPage() {
   const types = useMemo(() => {
     const set = new Map<string, string>()
     for (const n of nodes) {
-      if (!set.has(n.type)) set.set(n.type, colorForType(n.type))
+      if (!set.has(n.type)) set.set(n.type, n.color)
     }
     return [...set.entries()].sort(([a], [b]) => a.localeCompare(b))
   }, [nodes])
@@ -263,6 +270,10 @@ export function GraphExplorerPage() {
   const displayGraph = useMemo(
     () => applyTypeHighlightDimming(nodesWithKinds, links, highlightedTypes),
     [highlightedTypes, links, nodesWithKinds],
+  )
+  const neighborIndex = useMemo(
+    () => buildGraphNeighborIndex(displayGraph.nodes, displayGraph.links),
+    [displayGraph],
   )
 
   const canvasNonEmpty = nodes.length > 0 || links.length > 0
@@ -336,7 +347,7 @@ export function GraphExplorerPage() {
       const started = performance.now()
       const contents = await execMatcher(mode, body, scopeGraphId)
       const durationMs = performance.now() - started
-      const graph = toGraphData(contents)
+      const graph = toGraphData(contents, schemas)
       const qid = beginQueryResult()
       setExecStats({
         durationMs,
@@ -401,7 +412,7 @@ export function GraphExplorerPage() {
     setCurrentGraphId(id)
     setGraphAnnotations(resolved.annotations ?? {})
     setLastMatcher(null)
-    const graph = toGraphData(resolved.graph)
+    const graph = toGraphData(resolved.graph, schemas)
     setNodes(graph.nodes)
     setLinks(graph.links)
     setHighlightedTypes(new Set())
@@ -434,6 +445,22 @@ export function GraphExplorerPage() {
     if (!node) return
     handleSelect({ kind: 'node', node })
     requestAnimationFrame(() => graphRef.current?.focusNode(nodeId))
+  }
+
+  function onCanvasNodeContextMenu(event: { preventDefault: () => void; clientX: number; clientY: number }, node: GraphNode) {
+    event.preventDefault()
+    handleSelect({ kind: 'node', node })
+    setGoToMenu({ x: event.clientX, y: event.clientY, target: { kind: 'node', nodeId: node.id } })
+  }
+
+  function onCanvasEdgeContextMenu(event: { preventDefault: () => void; clientX: number; clientY: number }, edge: GraphLink) {
+    event.preventDefault()
+    handleSelect({ kind: 'edge', edge })
+    setGoToMenu({
+      x: event.clientX,
+      y: event.clientY,
+      target: { kind: 'edge', sourceId: edge.source, targetId: edge.target },
+    })
   }
 
   function endpointLabel(nodeId: string): string {
@@ -639,11 +666,23 @@ export function GraphExplorerPage() {
               links={displayGraph.links}
               selection={selection}
               onSelect={handleSelect}
+              onNodeContextMenu={onCanvasNodeContextMenu}
+              onEdgeContextMenu={onCanvasEdgeContextMenu}
               layout={layout}
               autoLayoutOnDataChange={false}
               onPositionsChange={onPositionsChange}
             />
           )}
+          <GraphGoToContextMenu
+            opened={goToMenu != null}
+            x={goToMenu?.x ?? 0}
+            y={goToMenu?.y ?? 0}
+            onClose={() => setGoToMenu(null)}
+            target={goToMenu?.target ?? null}
+            nodes={displayGraph.nodes}
+            index={neighborIndex}
+            onGoTo={selectNodeFromCanvas}
+          />
         </Paper>
 
         <Paper withBorder p="md" style={{ flex: 1, minWidth: 260, maxWidth: 420, overflow: 'hidden' }}>

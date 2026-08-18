@@ -41,6 +41,8 @@ class SbomSeedParityTest {
             val actual = schemas.get(expected.type, expected.version)
             assertThat(actual).isNotNull
             assertThat(actual!!.usage).isEqualTo(expected.usage)
+            assertThat(actual.tags).isEqualTo(expected.tags)
+            assertThat(actual.attributes).isEqualTo(expected.attributes)
             assertThat(actual.contentSchema).isEqualTo(expected.contentSchema)
         }
 

@@ -3,6 +3,8 @@ apiVersion: "objs.poc.org/v1"
 kind: "ObjectSchema"
 type: "Dataset"
 version: "1.0.0"
+tags:
+  - "data"
 contentSchema:
   type: "OBJECT"
   title: "Dataset"
@@ -36,8 +38,10 @@ contentSchema:
       description: "Primary purpose"
       values:
         - value: "Training"
+          caption: "Training"
           description: "Used to train models"
         - value: "Validation"
+          caption: "Validation"
           description: "Used to validate models"
         - value: "Evaluation"
           description: "Used to evaluate quality"
@@ -1288,6 +1292,11 @@ role: "USES_MODEL"
 targetType: "LlmModel"
 propertiesPolicy: "NONE"
 cardinality: "1:*"
+description: "Agent invokes the language model"
+sourceVerb: "uses"
+targetVerb: "used by"
+tags:
+  - "runtime"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -1297,6 +1306,11 @@ role: "USES_DATA"
 targetType: "Dataset"
 propertiesPolicy: "NONE"
 cardinality: "1:*"
+description: "Agent reads or writes the dataset"
+sourceVerb: "uses"
+targetVerb: "used by"
+tags:
+  - "runtime"
 ---
 ---
 apiVersion: "objs.poc.org/v1"

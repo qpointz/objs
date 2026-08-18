@@ -2,6 +2,7 @@ package org.poc.objs.service.web
 
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
+import org.poc.objs.core.domain.CatalogMetadata
 import org.poc.objs.core.domain.BoMAllowedEdgeCatalog
 import org.poc.objs.core.domain.BoMAllowedEdgeRule
 import org.poc.objs.core.domain.BoMEdgeCardinality
@@ -271,6 +272,11 @@ class ObjsRegistryController(
                 propertiesSchemaType = type,
                 propertiesSchemaVersion = version,
                 cardinality = it.cardinality ?: BoMEdgeCardinality.UNSPECIFIED,
+                description = CatalogMetadata.optionalText(it.description),
+                sourceVerb = CatalogMetadata.optionalText(it.sourceVerb),
+                targetVerb = CatalogMetadata.optionalText(it.targetVerb),
+                tags = CatalogMetadata.tags(it.tags),
+                attributes = CatalogMetadata.attributes(it.attributes),
             )
         }
         val replacementKeys = replacements.map { Triple(it.sourceType, it.role, it.targetType) }.toSet()
@@ -453,6 +459,11 @@ class ObjsRegistryController(
             propertiesSchemaType = body.propertiesSchemaType,
             propertiesSchemaVersion = body.propertiesSchemaVersion,
             cardinality = body.cardinality ?: BoMEdgeCardinality.UNSPECIFIED,
+            description = CatalogMetadata.optionalText(body.description),
+            sourceVerb = CatalogMetadata.optionalText(body.sourceVerb),
+            targetVerb = CatalogMetadata.optionalText(body.targetVerb),
+            tags = CatalogMetadata.tags(body.tags),
+            attributes = CatalogMetadata.attributes(body.attributes),
         )
         edgeRules.register(rule)
         return rule
@@ -486,6 +497,8 @@ class ObjsRegistryController(
                 version = version,
                 contentSchema = body.contentSchema,
                 usage = usage,
+                tags = CatalogMetadata.tags(body.tags),
+                attributes = CatalogMetadata.attributes(body.attributes),
             ),
         )
     }
@@ -503,6 +516,8 @@ class ObjsRegistryController(
     data class SchemaDefinitionRequest(
         val contentSchema: BoMSchemaNode,
         val usage: BoMSchemaUsage? = null,
+        val tags: List<String> = emptyList(),
+        val attributes: Map<String, String> = emptyMap(),
     )
 
     data class SchemaLintResponse(
@@ -527,6 +542,11 @@ class ObjsRegistryController(
         val propertiesSchemaType: String? = null,
         val propertiesSchemaVersion: String? = null,
         val cardinality: BoMEdgeCardinality? = null,
+        val description: String? = null,
+        val sourceVerb: String? = null,
+        val targetVerb: String? = null,
+        val tags: List<String> = emptyList(),
+        val attributes: Map<String, String> = emptyMap(),
     )
 
     data class EdgeRelationRequest(
@@ -535,5 +555,10 @@ class ObjsRegistryController(
         val targetType: String,
         val emptyPropertiesAllowed: Boolean = true,
         val cardinality: BoMEdgeCardinality? = null,
+        val description: String? = null,
+        val sourceVerb: String? = null,
+        val targetVerb: String? = null,
+        val tags: List<String> = emptyList(),
+        val attributes: Map<String, String> = emptyMap(),
     )
 }

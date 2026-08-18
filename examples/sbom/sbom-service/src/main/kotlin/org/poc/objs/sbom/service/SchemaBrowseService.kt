@@ -1,5 +1,7 @@
 package org.poc.objs.sbom.service
 
+import org.poc.objs.core.domain.BoMAllowedEdgeCatalog
+import org.poc.objs.core.domain.BoMAllowedEdgeRule
 import org.poc.objs.core.domain.BoMSchema
 import org.poc.objs.core.domain.BoMSchemaCatalog
 import org.poc.objs.core.domain.BoMSchemaUsage
@@ -14,9 +16,15 @@ import org.springframework.stereotype.Service
 import org.springframework.web.server.ResponseStatusException
 import java.util.UUID
 
+data class TypeAllowedEdges(
+    val incoming: List<BoMAllowedEdgeRule>,
+    val outgoing: List<BoMAllowedEdgeRule>,
+)
+
 @Service
 class SchemaBrowseService(
     private val schemas: BoMSchemaCatalog,
+    private val edges: BoMAllowedEdgeCatalog,
     private val sbom: SbomService,
     private val applications: SbomApplicationRepository,
     private val versions: SbomApplicationVersionRepository,
@@ -41,6 +49,17 @@ class SchemaBrowseService(
         return rows
     }
 
+    fun allowedEdgesForType(type: String): TypeAllowedEdges {
+        sbom.ensureRegistry()
+        val incoming = mutableListOf<BoMAllowedEdgeRule>()
+        val outgoing = mutableListOf<BoMAllowedEdgeRule>()
+        for (rule in edges.all()) {
+            if (matchesType(rule.targetType, type)) incoming += rule
+            if (matchesType(rule.sourceType, type)) outgoing += rule
+        }
+        return TypeAllowedEdges(incoming = incoming, outgoing = outgoing)
+    }
+
     fun get(type: String, version: String): BoMSchema {
         sbom.ensureRegistry()
         return schemas.get(type, version)
@@ -51,7 +70,6 @@ class SchemaBrowseService(
         sbom.ensureRegistry()
         val byType = linkedMapOf<String, MutableList<BoMSchema>>()
         schemas.all()
-            .filter { it.usage == BoMSchemaUsage.ENTITY }
             .sortedWith(compareBy({ it.type }, { it.version }))
             .forEach { byType.getOrPut(it.type) { mutableListOf() }.add(it) }
         return byType.map { (type, versions) ->
@@ -102,4 +120,7 @@ class SchemaBrowseService(
         }
         return byType.mapValues { it.value.values.toList() }
     }
+
+    private fun matchesType(pattern: String, type: String): Boolean =
+        pattern == BoMAllowedEdgeRule.ANY || pattern == type
 }

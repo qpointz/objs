@@ -15,8 +15,10 @@ import {
   Select,
   Stack,
   Tabs,
+  TagsInput,
   Text,
   TextInput,
+  Textarea,
   Title,
   Tooltip,
   UnstyledButton,
@@ -37,6 +39,12 @@ import {
   schemaDetailPath,
   updateSchema,
 } from './api'
+import {
+  EMPTY_KEY_VALUE_ROWS,
+  KeyValueRowsEditor,
+  rowsToStringMap,
+  stringMapToRows,
+} from './KeyValueRowsEditor'
 import { JsonYamlEditor, type JsonYamlEditorHandle } from './JsonYamlEditor'
 import { ObjectEdgesEditor } from './ObjectEdgesEditor'
 import { SchemaCatalogOverview } from './SchemaCatalogOverview'
@@ -105,6 +113,66 @@ function KindPill({ kind }: { kind: 'object' | 'edge' }) {
   )
 }
 
+function AttributePill({ name, value }: { name: string; value: string }) {
+  return (
+    <Group gap={0} wrap="nowrap" title={`${name}: ${value}`}>
+      <Badge
+        size="sm"
+        variant="filled"
+        color="gray"
+        radius="xl"
+        tt="none"
+        style={{
+          borderTopRightRadius: 0,
+          borderBottomRightRadius: 0,
+          paddingLeft: 8,
+          paddingRight: 8,
+        }}
+      >
+        {name}
+      </Badge>
+      <Badge
+        size="sm"
+        variant="light"
+        color="gray"
+        radius="xl"
+        tt="none"
+        style={{
+          borderTopLeftRadius: 0,
+          borderBottomLeftRadius: 0,
+          paddingLeft: 8,
+          paddingRight: 8,
+        }}
+      >
+        {value || '—'}
+      </Badge>
+    </Group>
+  )
+}
+
+function CatalogMetaPills({
+  tags,
+  attributes,
+}: {
+  tags: string[]
+  attributes: { key: string; value: string }[]
+}) {
+  const filledAttributes = attributes.filter((row) => row.key.trim().length > 0)
+  if (tags.length === 0 && filledAttributes.length === 0) return null
+  return (
+    <Group gap={6} wrap="wrap">
+      {tags.map((tag) => (
+        <Badge key={tag} size="sm" variant="light" radius="xl" tt="none">
+          {tag}
+        </Badge>
+      ))}
+      {filledAttributes.map((row) => (
+        <AttributePill key={row.key} name={row.key.trim()} value={row.value} />
+      ))}
+    </Group>
+  )
+}
+
 function expertDoc(
   type: string,
   version: string,
@@ -121,8 +189,10 @@ function cloneDoc(doc: SchemaExpertDocument): SchemaExpertDocument {
 const schemaTabPanelStyle = {
   position: 'absolute',
   inset: 0,
-  overflow: 'auto',
   paddingTop: 'var(--mantine-spacing-sm)',
+  display: 'flex',
+  flexDirection: 'column',
+  overflow: 'hidden',
 } as const
 
 type SchemaView = 'editor' | 'yaml' | 'json' | 'json-schema'
@@ -158,7 +228,7 @@ export function SchemaExplorerPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lint, setLint] = useState<SchemaLintResponse | null>(null)
-  const [editorMode, setEditorMode] = useState<'visual' | 'schema' | 'edges'>('visual')
+  const [editorMode, setEditorMode] = useState<'visual' | 'general' | 'schema' | 'edges'>('visual')
   const [schemaView, setSchemaView] = useState<SchemaView>('editor')
   const [dirty, setDirty] = useState(false)
   const [expertDirty, setExpertDirty] = useState(false)
@@ -167,6 +237,8 @@ export function SchemaExplorerPage() {
   const [version, setVersion] = useState('1.0.0')
   const [usage, setUsage] = useState<BoMSchemaUsage>('ENTITY')
   const [contentSchema, setContentSchema] = useState<BoMSchemaNode>(emptyObjectSchema())
+  const [schemaTags, setSchemaTags] = useState<string[]>([])
+  const [schemaAttributeRows, setSchemaAttributeRows] = useState(EMPTY_KEY_VALUE_ROWS)
   const [expertSnapshot, setExpertSnapshot] = useState<SchemaExpertDocument>(() =>
     expertDoc('NewType', '1.0.0', 'ENTITY', emptyObjectSchema()),
   )
@@ -209,6 +281,8 @@ export function SchemaExplorerPage() {
 
   function rollbackUnsaved() {
     applyDocument(baseline)
+    setSchemaTags(selected?.tags ?? [])
+    setSchemaAttributeRows(stringMapToRows(selected?.attributes))
     setEdgeRules(cloneEdgeRules(baselineEdgeRules))
     setHighlightedEdge(null)
     setLint(null)
@@ -307,6 +381,8 @@ export function SchemaExplorerPage() {
       setVersion('1.0.0')
       setUsage(nextUsage)
       setContentSchema(emptyObjectSchema())
+      setSchemaTags([])
+      setSchemaAttributeRows(EMPTY_KEY_VALUE_ROWS)
       setExpertSnapshot(draft)
       setEdgeRules(null)
       setBaselineEdgeRules([])
@@ -382,6 +458,8 @@ export function SchemaExplorerPage() {
         setTypeName(schema.type)
         setUsage(schema.usage)
         setContentSchema(schema.contentSchema)
+        setSchemaTags(schema.tags ?? [])
+        setSchemaAttributeRows(stringMapToRows(schema.attributes))
         const doc = expertDoc(schema.type, schema.version, schema.usage, schema.contentSchema)
         setEdgeRules(cloneEdgeRules(rules))
         captureBaseline(doc, rules)
@@ -547,6 +625,8 @@ export function SchemaExplorerPage() {
       const result = await lintSchema(document.type || 'Draft', document.version || '0', {
         contentSchema: document.contentSchema,
         usage: document.usage,
+        tags: schemaTags,
+        attributes: rowsToStringMap(schemaAttributeRows),
       })
       setLint(result)
       if (result.valid && result.schema) {
@@ -577,6 +657,8 @@ export function SchemaExplorerPage() {
       const saved = await updateSchema(document.type, document.version, {
         contentSchema: document.contentSchema,
         usage: document.usage,
+        tags: schemaTags,
+        attributes: rowsToStringMap(schemaAttributeRows),
       })
       const draftEdges = edgeRules ?? []
       await persistEdgeChanges(baselineEdgeRules, draftEdges)
@@ -705,6 +787,8 @@ export function SchemaExplorerPage() {
       const created = await updateSchema(document.type, document.version || '1.0.0', {
         contentSchema: document.contentSchema,
         usage: document.usage,
+        tags: schemaTags,
+        attributes: rowsToStringMap(schemaAttributeRows),
       })
       await reloadSchemas()
       captureBaseline(
@@ -988,6 +1072,7 @@ export function SchemaExplorerPage() {
                     )}
                   </Group>
                 )}
+                <CatalogMetaPills tags={schemaTags} attributes={schemaAttributeRows} />
               </Stack>
 
               <Group>
@@ -1131,6 +1216,7 @@ export function SchemaExplorerPage() {
             >
               <Tabs.List style={{ flexShrink: 0 }}>
                 {!isNewDraft && <Tabs.Tab value="visual">Visual</Tabs.Tab>}
+                <Tabs.Tab value="general">General</Tabs.Tab>
                 <Tabs.Tab value="schema">Schema</Tabs.Tab>
                 {!isNewDraft && usage === 'ENTITY' && (
                   <Tabs.Tab value="edges">Edges</Tabs.Tab>
@@ -1163,19 +1249,43 @@ export function SchemaExplorerPage() {
                     />
                   </Tabs.Panel>
                 )}
+                <Tabs.Panel value="general" style={schemaTabPanelStyle}>
+                  <Stack gap="sm" maw={720} style={{ flex: 1, minHeight: 0, height: '100%', overflow: 'auto' }}>
+                    <Textarea
+                      label="Description"
+                      placeholder="Schema description"
+                      autosize
+                      minRows={4}
+                      value={contentSchema.description}
+                      onChange={(e) => {
+                        setContentSchema({ ...contentSchema, description: e.currentTarget.value })
+                        setDirty(true)
+                      }}
+                    />
+                    <TagsInput
+                      label="Tags"
+                      placeholder="Catalog tags"
+                      value={schemaTags}
+                      onChange={(next) => {
+                        setSchemaTags(next)
+                        setDirty(true)
+                      }}
+                    />
+                    <Text size="sm" fw={500}>
+                      Attributes
+                    </Text>
+                    <KeyValueRowsEditor
+                      rows={schemaAttributeRows}
+                      onChange={(rows) => {
+                        setSchemaAttributeRows(rows)
+                        setDirty(true)
+                      }}
+                    />
+                  </Stack>
+                </Tabs.Panel>
                 <Tabs.Panel
                   value="schema"
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    paddingTop: 'var(--mantine-spacing-sm)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    overflow:
-                      isTextSchemaView(schemaView) || schemaView === 'json-schema'
-                        ? 'hidden'
-                        : 'auto',
-                  }}
+                  style={schemaTabPanelStyle}
                 >
                   <Stack
                     gap="sm"
@@ -1242,13 +1352,15 @@ export function SchemaExplorerPage() {
                       </Alert>
                     )}
                     {schemaView === 'editor' && (
-                      <SchemaVisualBuilder
-                        value={contentSchema}
-                        onChange={(next) => {
-                          setContentSchema(next)
-                          setDirty(true)
-                        }}
-                      />
+                      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                        <SchemaVisualBuilder
+                          value={contentSchema}
+                          onChange={(next) => {
+                            setContentSchema(next)
+                            setDirty(true)
+                          }}
+                        />
+                      </div>
                     )}
                     {isTextSchemaView(schemaView) && (
                       <div
@@ -1310,14 +1422,19 @@ export function SchemaExplorerPage() {
                       selectedType={selectedType!}
                       incoming={edges.incoming}
                       outgoing={edges.outgoing}
+                      baselineRules={baselineEdgeRules}
                       entityTypes={entityTypes}
                       edgeSchemaOptions={edgeSchemaOptions}
                       busy={busy}
                       highlightedEdge={highlightedEdge}
+                      onHighlight={setHighlightedEdge}
                       onCreate={async (rule) => {
                         setEdgeRules((prev) => [...(prev ?? []), rule])
                         setDirty(true)
-                        setHighlightedEdge(rule)
+                        setHighlightedEdge({
+                          ...rule,
+                          direction: rule.sourceType === selectedType ? 'outbound' : 'incoming',
+                        })
                       }}
                       onUpdate={async (previous, next) => {
                         setEdgeRules((prev) => {
@@ -1327,14 +1444,20 @@ export function SchemaExplorerPage() {
                           return [...without, next]
                         })
                         setDirty(true)
-                        setHighlightedEdge(next)
+                        setHighlightedEdge({
+                          ...next,
+                          direction: next.sourceType === selectedType ? 'outbound' : 'incoming',
+                        })
                       }}
                       onDelete={async (rule) => {
                         setEdgeRules((prev) =>
                           (prev ?? []).filter((row) => allowedEdgeKey(row) !== allowedEdgeKey(rule)),
                         )
                         setDirty(true)
-                        setHighlightedEdge(null)
+                      }}
+                      onRestore={async (rule) => {
+                        setEdgeRules((prev) => [...(prev ?? []), rule])
+                        setDirty(true)
                       }}
                     />
                   </Tabs.Panel>

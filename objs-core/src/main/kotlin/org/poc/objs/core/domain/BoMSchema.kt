@@ -1,6 +1,7 @@
 package org.poc.objs.core.domain
 
 import com.fasterxml.jackson.annotation.JsonCreator
+import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonValue
 
 /** How a catalog schema is used by the graph model. */
@@ -18,6 +19,10 @@ data class BoMSchema(
     val version: String,
     val contentSchema: BoMSchemaNode,
     val usage: BoMSchemaUsage = BoMSchemaUsage.ENTITY,
+    @get:JsonInclude(JsonInclude.Include.NON_EMPTY)
+    val tags: List<String> = emptyList(),
+    @get:JsonInclude(JsonInclude.Include.NON_EMPTY)
+    val attributes: Map<String, String> = emptyMap(),
 ) {
     val key: BoMSchemaKey get() = BoMSchemaKey(type, version)
 
@@ -107,6 +112,13 @@ data class BoMAllowedEdgeRule(
     val propertiesSchemaVersion: String? = null,
     /** Declared source→target multiplicity; default [BoMEdgeCardinality.UNSPECIFIED]. */
     val cardinality: BoMEdgeCardinality = BoMEdgeCardinality.UNSPECIFIED,
+    val description: String? = null,
+    val sourceVerb: String? = null,
+    val targetVerb: String? = null,
+    @get:JsonInclude(JsonInclude.Include.NON_EMPTY)
+    val tags: List<String> = emptyList(),
+    @get:JsonInclude(JsonInclude.Include.NON_EMPTY)
+    val attributes: Map<String, String> = emptyMap(),
 ) {
     companion object {
         /** Wildcard token: matches any type or role in that position. */

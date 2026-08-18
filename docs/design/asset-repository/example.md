@@ -72,7 +72,7 @@ Prefix `/api/v1/asset-repository`:
 - `POST …/collections/{id}/objects`  
 - `POST …/collections/{id}/compositions`  
 - List/get objects; `GET …/objects/{objectId}/relations`; `POST …/collections/{id}/objects/search` (existing matchers, graph-scoped)  
-- Schema reads: `GET …/schema-catalog` (latest ENTITY schema per type + collections that accept it), `GET …/schemas`, `GET …/schemas/{type}`, `GET …/schemas/{type}/{version}`, `GET …/collections/{id}/schemas`  
+- Schema reads: `GET …/schema-catalog` (latest ENTITY schema per type + collections that accept it), `GET …/schema-catalog/{type}/allowed-edges` (inbound/outbound allow-list including `*`), `GET …/schemas`, `GET …/schemas/{type}`, `GET …/schemas/{type}/{version}`, `GET …/collections/{id}/schemas`  
 
 OpenAPI group **`asset-repository`** in Swagger UI (`/swagger-ui.html`, `/v3/api-docs/asset-repository`).
 
@@ -82,7 +82,7 @@ Mantine SPA (workbench look: dark/light, AppShell). Top nav: **Collections**, **
 
 Collections: portal (cards/list); left pane lists collections with incremental search when browsing a collection; content pane has an **obj-expr** query bar and object **grid** or raw **JSON**. Collection create/edit is a separate view; accepted types are picked from registered object schemas. Type pills link to the schema view. Object create/edit and object view share **Visual / JSON / YAML**. Object view also lists **related objects** (in-collection edges) as links. Object type / schema version link to that schema version.
 
-Schemas: portal of latest object schemas (used-in collections); left pane type list with search; hierarchical read-only schema tree with **linkable versions** (latest by default). Domain API only — not workbench REST.
+Schemas: portal of latest object schemas (used-in collections); left pane type list with search; hierarchical read-only schema tree with **linkable versions** (latest by default). The type detail page also lists inbound and outbound **allowed edges** (cardinality, properties policy, description/verbs/tags when set); that list is page chrome, not part of the JSON/YAML schema dump. Domain API only — not workbench REST.
 
 ## Python client
 

@@ -13,7 +13,7 @@ import {
   Tooltip,
 } from '@mantine/core'
 import { IconInfoCircle } from '@tabler/icons-react'
-import type { BoMSchemaField, BoMSchemaNode } from './api/types'
+import { enumCaption, type BoMSchemaField, type BoMSchemaNode } from './api/types'
 
 function fieldLabel(field: BoMSchemaField): string {
   return field.schema.title?.trim() || field.name
@@ -40,7 +40,7 @@ function enumLabel(field: BoMSchemaField, value: unknown): string {
   const raw = formatScalar(value)
   if (!raw) return ''
   const match = field.schema.values?.find((v) => v.value === raw)
-  if (match?.description?.trim()) return match.description.trim()
+  if (match) return enumCaption(match)
   return raw
 }
 
@@ -217,7 +217,7 @@ function SchemaScalarField({
         description={description}
         data={(field.schema.values ?? []).map((v) => ({
           value: v.value,
-          label: v.description ? `${v.value} — ${v.description}` : v.value,
+          label: enumCaption(v),
         }))}
         value={typeof value === 'string' && value.length > 0 ? value : null}
         onChange={(v) => onChange(v ?? undefined)}

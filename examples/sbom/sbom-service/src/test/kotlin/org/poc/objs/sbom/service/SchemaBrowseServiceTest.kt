@@ -3,6 +3,8 @@ package org.poc.objs.sbom.service
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.poc.objs.core.domain.BoMAllowedEdgeCatalog
+import org.poc.objs.core.domain.BoMAllowedEdgeRule
 import org.poc.objs.core.domain.BoMSchema
 import org.poc.objs.core.domain.BoMSchemaCatalog
 import org.poc.objs.core.domain.BoMSchemaDsl
@@ -56,9 +58,13 @@ class SchemaBrowseServiceTest {
     @Autowired
     lateinit var browse: SchemaBrowseService
 
+    @Autowired
+    lateinit var edges: BoMAllowedEdgeCatalog
+
     @BeforeEach
     fun reset() {
         schemas.clear()
+        edges.clear()
         val field = SbomService::class.java.getDeclaredField("packRegistered")
         field.isAccessible = true
         field.setBoolean(sbom, false)
@@ -68,7 +74,7 @@ class SchemaBrowseServiceTest {
     @Test
     fun shouldExposeEntityCatalogWithLatestVersion() {
         val catalog = browse.catalog()
-        assertThat(catalog.map { it.type }).contains("Component")
+        assertThat(catalog.map { it.type }).contains("Component", "CanonicalEdge")
         val component = catalog.single { it.type == "Component" }
         assertThat(component.latestVersion).isNotBlank()
         assertThat(component.versions).isNotEmpty()
@@ -102,5 +108,29 @@ class SchemaBrowseServiceTest {
         assertThat(entry.versions).containsExactly("1.0.0", "2.0.0")
         assertThat(entry.latestVersion).isEqualTo("2.0.0")
         assertThat(entry.description).isEqualTo("v2")
+    }
+
+    @Test
+    fun shouldListIncomingAndOutgoingAllowedEdgesIncludingWildcardsAndMetadata() {
+        val product = browse.allowedEdgesForType("Product")
+        val contains = product.outgoing.single { it.role == "CONTAINS" && it.targetType == "Component" }
+        assertThat(contains.description).isEqualTo("Product includes the software component in its bill")
+        assertThat(contains.sourceVerb).isEqualTo("contains")
+        assertThat(contains.targetVerb).isEqualTo("contained in")
+        assertThat(contains.tags).containsExactly("composition")
+
+        val component = browse.allowedEdgesForType("Component")
+        assertThat(component.incoming).anyMatch { it.sourceType == "Product" && it.role == "CONTAINS" }
+
+        edges.register(
+            BoMAllowedEdgeRule(
+                sourceType = BoMAllowedEdgeRule.ANY,
+                role = "ANNOTATES",
+                targetType = BoMAllowedEdgeRule.ANY,
+            ),
+        )
+        val withWild = browse.allowedEdgesForType("Component")
+        assertThat(withWild.incoming).anyMatch { it.role == "ANNOTATES" && it.sourceType == "*" }
+        assertThat(withWild.outgoing).anyMatch { it.role == "ANNOTATES" && it.targetType == "*" }
     }
 }

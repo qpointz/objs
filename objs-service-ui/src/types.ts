@@ -110,6 +110,14 @@ export type BoMSchemaType =
 export type BoMEnumValue = {
   value: string
   description: string
+  /** Short UI label; omit to show [value] in editors. */
+  caption?: string | null
+}
+
+/** Dropdown / read-view label: caption if set, otherwise stored value. */
+export function enumCaption(entry: { value: string; caption?: string | null }): string {
+  const caption = entry.caption?.trim()
+  return caption || entry.value
 }
 
 export type BoMSchemaField = {
@@ -119,6 +127,8 @@ export type BoMSchemaField = {
   identifier?: boolean
   searchable?: boolean
   stereotype?: string[]
+  tags?: string[]
+  attributes?: Record<string, string>
 }
 
 export type BoMSchemaNode = {
@@ -137,6 +147,8 @@ export type BoMSchema = {
   version: string
   contentSchema: BoMSchemaNode
   usage: BoMSchemaUsage
+  tags?: string[]
+  attributes?: Record<string, string>
 }
 
 export type BoMEdgeCardinality = 'UNSPECIFIED' | '1:1' | '1:*'
@@ -150,6 +162,11 @@ export type BoMAllowedEdgeRule = {
   propertiesSchemaType?: string | null
   propertiesSchemaVersion?: string | null
   cardinality?: BoMEdgeCardinality
+  description?: string | null
+  sourceVerb?: string | null
+  targetVerb?: string | null
+  tags?: string[]
+  attributes?: Record<string, string>
 }
 
 export type EdgeRelationRequest = {
@@ -174,6 +191,8 @@ export type BoMValidationIssue = {
 export type SchemaDefinitionRequest = {
   contentSchema: BoMSchemaNode
   usage?: BoMSchemaUsage
+  tags?: string[]
+  attributes?: Record<string, string>
 }
 
 export type SchemaLintResponse = {

@@ -17,6 +17,7 @@ import org.poc.objs.sbom.domain.CreateApplicationRequest
 import org.poc.objs.sbom.persistence.SbomPersistenceConfiguration
 import org.poc.objs.sbom.service.ApplicationInventoryService
 import org.poc.objs.sbom.service.ApplicationVersionService
+import org.poc.objs.sbom.service.AssetTypeCatalogService
 import org.poc.objs.sbom.service.PortfolioService
 import org.poc.objs.sbom.service.SbomService
 import org.poc.objs.sbom.uniqueness.PortfolioUniquenessRules
@@ -38,6 +39,7 @@ import java.util.UUID
     SbomService::class,
     ApplicationInventoryService::class,
     ApplicationVersionService::class,
+    AssetTypeCatalogService::class,
     PortfolioService::class,
     PortfolioUniquenessRules::class,
     PortfolioSeedHandler::class,

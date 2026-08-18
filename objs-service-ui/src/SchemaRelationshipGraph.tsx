@@ -1,4 +1,6 @@
-import { memo, useMemo } from 'react'
+import { memo, useMemo, useState } from 'react'
+import { Menu } from '@mantine/core'
+import { GraphMenuSub } from './graphGoToNav'
 import {
   Background,
   Controls,
@@ -13,7 +15,7 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { useNavigate } from 'react-router-dom'
-import { allowedEdgeKey, type AllowedEdgeRef } from './allowedEdgeRef'
+import { allowedEdgeKey, directedEdgeKey, type AllowedEdgeRef } from './allowedEdgeRef'
 import type {
   BoMAllowedEdgeRule,
   BoMEdgeCardinality,
@@ -92,10 +94,12 @@ export function schemaPropertyRows(root: BoMSchemaNode): PropertyRow[] {
 export function allowedEdgeLabel(
   role: string,
   cardinality: BoMEdgeCardinality | undefined | null = 'UNSPECIFIED',
+  sourceVerb?: string | null,
 ): string {
+  const name = sourceVerb?.trim() || role
   const value = cardinality ?? 'UNSPECIFIED'
-  if (value === 'UNSPECIFIED') return role
-  return `${role} · ${value}`
+  if (value === 'UNSPECIFIED') return name
+  return `${name} · ${value}`
 }
 
 function SelectedSchemaNode({ data }: NodeProps) {
@@ -285,7 +289,7 @@ export function schemaRelationshipElements(
       id: `incoming-edge:${index}:${rule.sourceType}:${rule.role}`,
       source: `incoming:${rule.sourceType}`,
       target: 'selected',
-      label: allowedEdgeLabel(rule.role, rule.cardinality),
+      label: allowedEdgeLabel(rule.role, rule.cardinality, rule.sourceVerb),
       type: 'smoothstep',
       style: edgeStyle,
       markerEnd,
@@ -296,13 +300,14 @@ export function schemaRelationshipElements(
         sourceType: rule.sourceType,
         role: rule.role,
         targetType: rule.targetType,
+        direction: 'incoming',
       } satisfies AllowedEdgeRef,
     })),
     ...relationships.outgoing.map((rule, index) => ({
       id: `outgoing-edge:${index}:${rule.targetType}:${rule.role}`,
       source: 'selected',
       target: `outgoing:${rule.targetType}`,
-      label: allowedEdgeLabel(rule.role, rule.cardinality),
+      label: allowedEdgeLabel(rule.role, rule.cardinality, rule.sourceVerb),
       type: 'smoothstep',
       style: edgeStyle,
       markerEnd,
@@ -313,6 +318,7 @@ export function schemaRelationshipElements(
         sourceType: rule.sourceType,
         role: rule.role,
         targetType: rule.targetType,
+        direction: 'outbound',
       } satisfies AllowedEdgeRef,
     })),
   ]
@@ -336,13 +342,37 @@ function SchemaRelationshipGraphInner({
     () => schemaRelationshipElements(schema, relationships),
     [schema, relationships],
   )
-  const highlightKey = highlightedEdge ? allowedEdgeKey(highlightedEdge) : null
+  const highlightKey = highlightedEdge
+    ? highlightedEdge.direction
+      ? directedEdgeKey(
+          highlightedEdge as AllowedEdgeRef & { direction: 'incoming' | 'outbound' },
+        )
+      : allowedEdgeKey(highlightedEdge)
+    : null
+  const [goToMenu, setGoToMenu] = useState<{
+    x: number
+    y: number
+    sourceType?: string
+    targetType?: string
+    type?: string
+  } | null>(null)
+
+  function goToType(type: string) {
+    setGoToMenu(null)
+    if (type && type !== '*') navigate(`/model/${encodeURIComponent(type)}`)
+  }
 
   const edges = useMemo(
     () =>
       elements.edges.map((edge) => {
         const ref = edge.data as AllowedEdgeRef | undefined
-        const selected = !!ref && highlightKey === allowedEdgeKey(ref)
+        const selected =
+          !!ref &&
+          !!highlightKey &&
+          (ref.direction
+            ? directedEdgeKey(ref as AllowedEdgeRef & { direction: 'incoming' | 'outbound' }) ===
+              highlightKey
+            : allowedEdgeKey(ref) === highlightKey)
         return {
           ...edge,
           selected,
@@ -363,6 +393,7 @@ function SchemaRelationshipGraphInner({
   )
 
   return (
+    <>
     <ReactFlow
       nodes={elements.nodes}
       edges={edges}
@@ -393,11 +424,69 @@ function SchemaRelationshipGraphInner({
         if (!ref) return
         onEdgeSelect?.(ref)
       }}
+      onNodeContextMenu={(event, node) => {
+        event.preventDefault()
+        const data = node.data as SchemaGraphNodeData
+        if (data.type === '*') return
+        setGoToMenu({ x: event.clientX, y: event.clientY, type: data.type })
+      }}
+      onEdgeContextMenu={(event, edge) => {
+        event.preventDefault()
+        const ref = edge.data as AllowedEdgeRef | undefined
+        if (!ref) return
+        onEdgeSelect?.(ref)
+        setGoToMenu({
+          x: event.clientX,
+          y: event.clientY,
+          sourceType: ref.sourceType,
+          targetType: ref.targetType,
+        })
+      }}
+      onMoveStart={() => setGoToMenu(null)}
       proOptions={{ hideAttribution: true }}
     >
       <Background gap={18} size={1} />
       <Controls showInteractive={false} />
     </ReactFlow>
+    <Menu
+      opened={goToMenu != null}
+      onChange={(opened) => {
+        if (!opened) setGoToMenu(null)
+      }}
+      position="bottom-start"
+      offset={0}
+      withinPortal
+    >
+      <Menu.Target>
+        <div
+          style={{
+            position: 'fixed',
+            left: goToMenu?.x ?? 0,
+            top: goToMenu?.y ?? 0,
+            width: 1,
+            height: 1,
+            pointerEvents: 'none',
+          }}
+        />
+      </Menu.Target>
+      <Menu.Dropdown>
+        {goToMenu?.sourceType != null && goToMenu.targetType != null ? (
+          <GraphMenuSub label="Go to…">
+            <Menu.Item onClick={() => goToType(goToMenu.sourceType!)}>
+              Source {goToMenu.sourceType}
+            </Menu.Item>
+            <Menu.Item onClick={() => goToType(goToMenu.targetType!)}>
+              Target {goToMenu.targetType}
+            </Menu.Item>
+          </GraphMenuSub>
+        ) : goToMenu?.type ? (
+          <GraphMenuSub label="Go to…">
+            <Menu.Item onClick={() => goToType(goToMenu.type!)}>{goToMenu.type}</Menu.Item>
+          </GraphMenuSub>
+        ) : null}
+      </Menu.Dropdown>
+    </Menu>
+    </>
   )
 }
 

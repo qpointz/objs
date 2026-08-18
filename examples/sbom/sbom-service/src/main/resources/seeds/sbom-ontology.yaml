@@ -3,6 +3,8 @@ apiVersion: "objs.poc.org/v1"
 kind: "ObjectSchema"
 type: "API"
 version: "1.0.0"
+attributes:
+  color: "#fab005"
 contentSchema:
   type: "OBJECT"
   title: "API"
@@ -42,6 +44,8 @@ apiVersion: "objs.poc.org/v1"
 kind: "ObjectSchema"
 type: "Artifact"
 version: "1.0.0"
+attributes:
+  color: "#fab005"
 contentSchema:
   type: "OBJECT"
   title: "Artifact"
@@ -88,6 +92,8 @@ apiVersion: "objs.poc.org/v1"
 kind: "ObjectSchema"
 type: "Build"
 version: "1.0.0"
+attributes:
+  color: "#82c91e"
 contentSchema:
   type: "OBJECT"
   title: "Build"
@@ -166,6 +172,8 @@ apiVersion: "objs.poc.org/v1"
 kind: "ObjectSchema"
 type: "Component"
 version: "1.0.0"
+attributes:
+  color: "#4c6ef5"
 contentSchema:
   type: "OBJECT"
   title: "Component"
@@ -221,6 +229,8 @@ apiVersion: "objs.poc.org/v1"
 kind: "ObjectSchema"
 type: "Container Image"
 version: "1.0.0"
+attributes:
+  color: "#228be6"
 contentSchema:
   type: "OBJECT"
   title: "Container Image"
@@ -267,6 +277,8 @@ apiVersion: "objs.poc.org/v1"
 kind: "ObjectSchema"
 type: "Container Layer"
 version: "1.0.0"
+attributes:
+  color: "#fab005"
 contentSchema:
   type: "OBJECT"
   title: "Container Layer"
@@ -306,6 +318,8 @@ apiVersion: "objs.poc.org/v1"
 kind: "ObjectSchema"
 type: "Database"
 version: "1.0.0"
+attributes:
+  color: "#fa5252"
 contentSchema:
   type: "OBJECT"
   title: "Database"
@@ -345,6 +359,8 @@ apiVersion: "objs.poc.org/v1"
 kind: "ObjectSchema"
 type: "Dataset"
 version: "1.0.0"
+attributes:
+  color: "#228be6"
 contentSchema:
   type: "OBJECT"
   title: "Dataset"
@@ -384,6 +400,8 @@ apiVersion: "objs.poc.org/v1"
 kind: "ObjectSchema"
 type: "Deployment"
 version: "1.0.0"
+attributes:
+  color: "#40c057"
 contentSchema:
   type: "OBJECT"
   title: "Deployment"
@@ -431,6 +449,8 @@ apiVersion: "objs.poc.org/v1"
 kind: "ObjectSchema"
 type: "Environment"
 version: "1.0.0"
+attributes:
+  color: "#fd7e14"
 contentSchema:
   type: "OBJECT"
   title: "Environment"
@@ -463,6 +483,8 @@ apiVersion: "objs.poc.org/v1"
 kind: "ObjectSchema"
 type: "Host"
 version: "1.0.0"
+attributes:
+  color: "#228be6"
 contentSchema:
   type: "OBJECT"
   title: "Host"
@@ -509,6 +531,8 @@ apiVersion: "objs.poc.org/v1"
 kind: "ObjectSchema"
 type: "Kubernetes Cluster"
 version: "1.0.0"
+attributes:
+  color: "#12b886"
 contentSchema:
   type: "OBJECT"
   title: "Kubernetes Cluster"
@@ -541,6 +565,8 @@ apiVersion: "objs.poc.org/v1"
 kind: "ObjectSchema"
 type: "License"
 version: "1.0.0"
+attributes:
+  color: "#40c057"
 contentSchema:
   type: "OBJECT"
   title: "License"
@@ -581,6 +607,8 @@ apiVersion: "objs.poc.org/v1"
 kind: "ObjectSchema"
 type: "Namespace"
 version: "1.0.0"
+attributes:
+  color: "#fd7e14"
 contentSchema:
   type: "OBJECT"
   title: "Namespace"
@@ -613,6 +641,8 @@ apiVersion: "objs.poc.org/v1"
 kind: "ObjectSchema"
 type: "Operating System"
 version: "1.0.0"
+attributes:
+  color: "#82c91e"
 contentSchema:
   type: "OBJECT"
   title: "Operating System"
@@ -659,6 +689,8 @@ apiVersion: "objs.poc.org/v1"
 kind: "ObjectSchema"
 type: "Organization"
 version: "1.0.0"
+attributes:
+  color: "#fd7e14"
 contentSchema:
   type: "OBJECT"
   title: "Organization"
@@ -706,6 +738,8 @@ apiVersion: "objs.poc.org/v1"
 kind: "ObjectSchema"
 type: "Policy"
 version: "1.0.0"
+attributes:
+  color: "#e64980"
 contentSchema:
   type: "OBJECT"
   title: "Policy"
@@ -745,6 +779,8 @@ apiVersion: "objs.poc.org/v1"
 kind: "ObjectSchema"
 type: "Product"
 version: "1.0.0"
+attributes:
+  color: "#fa5252"
 contentSchema:
   type: "OBJECT"
   title: "Product"
@@ -800,6 +836,8 @@ apiVersion: "objs.poc.org/v1"
 kind: "ObjectSchema"
 type: "Runtime"
 version: "1.0.0"
+attributes:
+  color: "#228be6"
 contentSchema:
   type: "OBJECT"
   title: "Runtime"
@@ -839,6 +877,8 @@ apiVersion: "objs.poc.org/v1"
 kind: "ObjectSchema"
 type: "Service"
 version: "1.0.0"
+attributes:
+  color: "#15aabf"
 contentSchema:
   type: "OBJECT"
   title: "Service"
@@ -879,6 +919,8 @@ apiVersion: "objs.poc.org/v1"
 kind: "ObjectSchema"
 type: "Source Module"
 version: "1.0.0"
+attributes:
+  color: "#40c057"
 contentSchema:
   type: "OBJECT"
   title: "Source Module"
@@ -919,6 +961,8 @@ apiVersion: "objs.poc.org/v1"
 kind: "ObjectSchema"
 type: "Source Repository"
 version: "1.0.0"
+attributes:
+  color: "#be4bdb"
 contentSchema:
   type: "OBJECT"
   title: "Source Repository"
@@ -966,6 +1010,8 @@ apiVersion: "objs.poc.org/v1"
 kind: "ObjectSchema"
 type: "Vulnerability"
 version: "1.0.0"
+attributes:
+  color: "#12b886"
 contentSchema:
   type: "OBJECT"
   title: "Vulnerability"
@@ -1017,6 +1063,9 @@ emptyPropertiesAllowed: true
 cardinality: "1:*"
 propertiesSchemaType: "CanonicalEdge"
 propertiesSchemaVersion: "1.0.0"
+description: "Build produces the artifact"
+sourceVerb: "builds"
+targetVerb: "built by"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -1029,6 +1078,9 @@ emptyPropertiesAllowed: true
 cardinality: "1:*"
 propertiesSchemaType: "CanonicalEdge"
 propertiesSchemaVersion: "1.0.0"
+description: "Build produces the container image"
+sourceVerb: "builds"
+targetVerb: "built by"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -1041,6 +1093,9 @@ emptyPropertiesAllowed: true
 cardinality: "1:*"
 propertiesSchemaType: "CanonicalEdge"
 propertiesSchemaVersion: "1.0.0"
+description: "Build compiles or consumes the component"
+sourceVerb: "uses"
+targetVerb: "used by"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -1053,6 +1108,9 @@ emptyPropertiesAllowed: true
 cardinality: "1:*"
 propertiesSchemaType: "CanonicalEdge"
 propertiesSchemaVersion: "1.0.0"
+description: "Component requires the other component at build or runtime"
+sourceVerb: "depends on"
+targetVerb: "depended on by"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -1065,6 +1123,9 @@ emptyPropertiesAllowed: true
 cardinality: "1:*"
 propertiesSchemaType: "CanonicalEdge"
 propertiesSchemaVersion: "1.0.0"
+description: "Component is affected by the vulnerability"
+sourceVerb: "has"
+targetVerb: "found in"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -1077,6 +1138,9 @@ emptyPropertiesAllowed: true
 cardinality: "1:*"
 propertiesSchemaType: "CanonicalEdge"
 propertiesSchemaVersion: "1.0.0"
+description: "Component is distributed under the license"
+sourceVerb: "licensed under"
+targetVerb: "licenses"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -1089,6 +1153,9 @@ emptyPropertiesAllowed: true
 cardinality: "1:1"
 propertiesSchemaType: "CanonicalEdge"
 propertiesSchemaVersion: "1.0.0"
+description: "Organization supplies the component"
+sourceVerb: "provided by"
+targetVerb: "provides"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -1101,6 +1168,9 @@ emptyPropertiesAllowed: true
 cardinality: "1:1"
 propertiesSchemaType: "CanonicalEdge"
 propertiesSchemaVersion: "1.0.0"
+description: "Image is based on the operating system"
+sourceVerb: "based on"
+targetVerb: "base of"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -1113,6 +1183,11 @@ emptyPropertiesAllowed: true
 cardinality: "1:*"
 propertiesSchemaType: "CanonicalEdge"
 propertiesSchemaVersion: "1.0.0"
+description: "Image is built from filesystem layers"
+sourceVerb: "contains"
+targetVerb: "contained in"
+tags:
+  - "composition"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -1125,6 +1200,9 @@ emptyPropertiesAllowed: true
 cardinality: "1:*"
 propertiesSchemaType: "CanonicalEdge"
 propertiesSchemaVersion: "1.0.0"
+description: "Image is affected by the vulnerability"
+sourceVerb: "has"
+targetVerb: "found in"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -1137,6 +1215,9 @@ emptyPropertiesAllowed: true
 cardinality: "1:*"
 propertiesSchemaType: "CanonicalEdge"
 propertiesSchemaVersion: "1.0.0"
+description: "Image packages the artifact in its filesystem"
+sourceVerb: "packages"
+targetVerb: "packaged in"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -1149,6 +1230,11 @@ emptyPropertiesAllowed: true
 cardinality: "1:*"
 propertiesSchemaType: "CanonicalEdge"
 propertiesSchemaVersion: "1.0.0"
+description: "Database hosts the dataset"
+sourceVerb: "contains"
+targetVerb: "contained in"
+tags:
+  - "composition"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -1161,6 +1247,9 @@ emptyPropertiesAllowed: true
 cardinality: "1:1"
 propertiesSchemaType: "CanonicalEdge"
 propertiesSchemaVersion: "1.0.0"
+description: "Deployment rolls out the container image"
+sourceVerb: "deploys"
+targetVerb: "deployed by"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -1173,6 +1262,9 @@ emptyPropertiesAllowed: true
 cardinality: "1:1"
 propertiesSchemaType: "CanonicalEdge"
 propertiesSchemaVersion: "1.0.0"
+description: "Deployment runs in the namespace"
+sourceVerb: "located in"
+targetVerb: "contains"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -1185,6 +1277,9 @@ emptyPropertiesAllowed: true
 cardinality: "1:*"
 propertiesSchemaType: "CanonicalEdge"
 propertiesSchemaVersion: "1.0.0"
+description: "Deployment runs on the host"
+sourceVerb: "runs on"
+targetVerb: "hosts"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -1197,6 +1292,9 @@ emptyPropertiesAllowed: true
 cardinality: "1:1"
 propertiesSchemaType: "CanonicalEdge"
 propertiesSchemaVersion: "1.0.0"
+description: "Deployment targets the runtime environment"
+sourceVerb: "targets"
+targetVerb: "targeted by"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -1209,6 +1307,9 @@ emptyPropertiesAllowed: true
 cardinality: "1:1"
 propertiesSchemaType: "CanonicalEdge"
 propertiesSchemaVersion: "1.0.0"
+description: "Host is a node in the Kubernetes cluster"
+sourceVerb: "member of"
+targetVerb: "includes"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -1221,6 +1322,9 @@ emptyPropertiesAllowed: true
 cardinality: "1:*"
 propertiesSchemaType: "CanonicalEdge"
 propertiesSchemaVersion: "1.0.0"
+description: "Product invokes the API"
+sourceVerb: "calls"
+targetVerb: "called by"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -1233,6 +1337,9 @@ emptyPropertiesAllowed: true
 cardinality: "1:*"
 propertiesSchemaType: "CanonicalEdge"
 propertiesSchemaVersion: "1.0.0"
+description: "Product is governed by the policy"
+sourceVerb: "complies with"
+targetVerb: "constrains"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -1245,6 +1352,9 @@ emptyPropertiesAllowed: true
 cardinality: "1:*"
 propertiesSchemaType: "CanonicalEdge"
 propertiesSchemaVersion: "1.0.0"
+description: "Product connects to the database"
+sourceVerb: "connects to"
+targetVerb: "connected from"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -1257,6 +1367,11 @@ emptyPropertiesAllowed: true
 cardinality: "1:*"
 propertiesSchemaType: "CanonicalEdge"
 propertiesSchemaVersion: "1.0.0"
+description: "Product includes the artifact in its bill"
+sourceVerb: "contains"
+targetVerb: "contained in"
+tags:
+  - "composition"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -1269,6 +1384,11 @@ emptyPropertiesAllowed: true
 cardinality: "1:*"
 propertiesSchemaType: "CanonicalEdge"
 propertiesSchemaVersion: "1.0.0"
+description: "Product includes the software component in its bill"
+sourceVerb: "contains"
+targetVerb: "contained in"
+tags:
+  - "composition"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -1281,6 +1401,9 @@ emptyPropertiesAllowed: true
 cardinality: "1:1"
 propertiesSchemaType: "CanonicalEdge"
 propertiesSchemaVersion: "1.0.0"
+description: "Organization owns the product"
+sourceVerb: "owned by"
+targetVerb: "owns"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -1293,6 +1416,9 @@ emptyPropertiesAllowed: true
 cardinality: "1:1"
 propertiesSchemaType: "CanonicalEdge"
 propertiesSchemaVersion: "1.0.0"
+description: "Product runs on the language runtime"
+sourceVerb: "runs on"
+targetVerb: "runs"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -1305,6 +1431,9 @@ emptyPropertiesAllowed: true
 cardinality: "1:1"
 propertiesSchemaType: "CanonicalEdge"
 propertiesSchemaVersion: "1.0.0"
+description: "Runtime runs on the operating system"
+sourceVerb: "runs on"
+targetVerb: "hosts"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -1317,6 +1446,9 @@ emptyPropertiesAllowed: true
 cardinality: "1:*"
 propertiesSchemaType: "CanonicalEdge"
 propertiesSchemaVersion: "1.0.0"
+description: "Service implements the API contract"
+sourceVerb: "implements"
+targetVerb: "implemented by"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -1329,6 +1461,9 @@ emptyPropertiesAllowed: true
 cardinality: "1:*"
 propertiesSchemaType: "CanonicalEdge"
 propertiesSchemaVersion: "1.0.0"
+description: "Source module produces the artifact"
+sourceVerb: "produces"
+targetVerb: "produced by"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -1341,3 +1476,8 @@ emptyPropertiesAllowed: true
 cardinality: "1:*"
 propertiesSchemaType: "CanonicalEdge"
 propertiesSchemaVersion: "1.0.0"
+description: "Repository contains the source module"
+sourceVerb: "contains"
+targetVerb: "contained in"
+tags:
+  - "composition"

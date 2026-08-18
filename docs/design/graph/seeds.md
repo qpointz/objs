@@ -93,6 +93,8 @@ language.
 | `version` | **yes** | — | Opaque version string (e.g. `"1.0.0"`); trimmed, nonblank |
 | `usage` | no | `ENTITY` | Scalar: `ENTITY` or `EDGE_PROPERTIES`. **Not** a list. Omit for entity schemas; export omits when `ENTITY` |
 | `contentSchema` | **yes** | — | Must be a root **`OBJECT`** node |
+| `tags` | no | absent | Envelope labels; omit when empty |
+| `attributes` | no | absent | Envelope string map; omit when empty. `color` is `#rrggbb` for graph nodes, or `nocolor` for theme gray |
 
 ### Minimal example
 
@@ -115,6 +117,8 @@ apiVersion: objs.poc.org/v1
 kind: ObjectSchema
 type: Component
 version: 1.0.0
+attributes:
+  color: "#4c6ef5"   # or nocolor for theme gray
 contentSchema:
   type: OBJECT
   title: Component
@@ -135,6 +139,9 @@ contentSchema:
         description: Component version string
       required: false
 ```
+
+`attributes.color` is reserved for graph node accent: six-digit `#rrggbb`, or `nocolor` for
+theme gray. See [`object-schema-dsl.md`](object-schema-dsl.md) (reserved envelope attribute).
 
 ### Edge-property schema example
 
@@ -166,8 +173,8 @@ Every schema **node** needs nonblank `title` and `description` after normalizati
 |-------------|-------------------------|
 | `OBJECT` | `fields` (may be `[]`) |
 | `ARRAY` | `items` |
-| `ENUM` | nonempty `values: [{value, description}, …]` |
-| `STRING` | optional `format` from allow-list: `date`, `date-time`, `email`, `uri`, `uuid`, `hostname`, `ipv4`, `ipv6` |
+| `ENUM` | nonempty `values: [{value, description, caption?}, …]` — `caption` is optional UI label |
+| `STRING` | optional `format` (free text; no allow-list) |
 | `NUMBER` / `INTEGER` / `BOOLEAN` | — |
 
 Object **fields**:
@@ -180,6 +187,8 @@ Object **fields**:
 | `identifier` | no | `false` | Scalar leaves only |
 | `searchable` | no | `false` | Scalar leaves only |
 | `stereotype` | no | absent | UI presentation hints |
+| `tags` | no | absent | Field labels; omit when empty |
+| `attributes` | no | absent | Field string map; omit when empty |
 
 There is **no** OBJECT-level `required: [...]` list. No `$ref`, composition, nullability, or
 bounds in v1.
@@ -203,8 +212,14 @@ Registers one directed allow-list triple. Relations are **not** embedded inside
 | `propertiesSchemaType` | if policy=`SCHEMA` | — | Must reference an `EDGE_PROPERTIES` schema `type` |
 | `propertiesSchemaVersion` | if policy=`SCHEMA` | — | Matching schema `version` |
 | `cardinality` | no | `UNSPECIFIED` | Wire values: `UNSPECIFIED`, `1:1`, `1:*`. Export always emits `cardinality`. Metadata for UI/codegen — **not** persist-enforced |
+| `description` | no | absent | What the relation means |
+| `sourceVerb` | no | absent | Source → target wording (display only) |
+| `targetVerb` | no | absent | Target → source wording (display only) |
+| `tags` | no | absent | Labels; omit when empty |
+| `attributes` | no | absent | String map; omit when empty |
 
-Upsert key: `(sourceType, role, targetType)`.
+Upsert key: `(sourceType, role, targetType)`. Verbs and description are **not** part of identity
+and are **not** used for matching or persist.
 
 ### Example
 
@@ -219,6 +234,11 @@ propertiesSchemaType: CanonicalEdge
 propertiesSchemaVersion: "1.0.0"
 emptyPropertiesAllowed: true
 cardinality: "1:*"
+description: Product includes the component in its bill
+sourceVerb: contains
+targetVerb: contained in
+tags:
+  - composition
 ```
 
 Bare relation (no properties):

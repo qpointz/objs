@@ -14,7 +14,7 @@ import {
 } from '@mantine/core'
 import { IconInfoCircle, IconPlus, IconTrash } from '@tabler/icons-react'
 import type { ReactNode } from 'react'
-import type { BoMSchemaField, BoMSchemaNode } from './api'
+import { enumCaption, type BoMSchemaField, type BoMSchemaNode } from './api'
 
 const GENERIC_FIELD_TITLES = new Set([
   'Text',
@@ -80,7 +80,7 @@ function formatViewValue(schema: BoMSchemaNode, value: unknown): string {
   if (schema.type === 'BOOLEAN') return value ? 'Yes' : 'No'
   if (schema.type === 'ENUM') {
     const found = (schema.values ?? []).find((v) => v.value === String(value))
-    return found?.description || String(value)
+    return found ? enumCaption(found) : String(value)
   }
   return String(value)
 }
@@ -359,7 +359,7 @@ function ScalarControl({
           value={value == null ? null : String(value)}
           data={(schema.values ?? []).map((v) => ({
             value: v.value,
-            label: v.description || v.value,
+            label: enumCaption(v),
           }))}
           onChange={(v) => onChange(v || undefined)}
         />

@@ -11,11 +11,11 @@ import {
   TextInput,
   Title,
 } from '@mantine/core'
-import { IconLayoutGrid, IconList, IconSchema } from '@tabler/icons-react'
+import { IconLayoutGrid, IconList } from '@tabler/icons-react'
 import { useMemo, useState, type MouseEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { SchemaCatalogEntry } from './api'
-import { useSchemasOutlet } from './SchemasWorkspace'
+import { SchemaKindPill, useSchemasOutlet } from './SchemasWorkspace'
 
 function UsedInLinks({ entry, compact }: { entry: SchemaCatalogEntry; compact?: boolean }) {
   const n = entry.usedIn.length
@@ -59,7 +59,7 @@ function SchemaCard({ entry }: { entry: SchemaCatalogEntry }) {
       <Stack gap="xs" style={{ flex: 1 }}>
         <Group justify="space-between" wrap="nowrap" align="flex-start">
           <Group gap="sm" wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
-            <IconSchema size={20} stroke={1.5} color="var(--mantine-color-dimmed)" aria-hidden />
+            <SchemaKindPill usage={entry.usage} />
             <Title order={5} lineClamp={1}>
               {entry.type}
             </Title>
@@ -71,7 +71,7 @@ function SchemaCard({ entry }: { entry: SchemaCatalogEntry }) {
         <Text size="sm" c="dimmed" lineClamp={3} style={{ flex: 1 }}>
           {entry.description || entry.title || 'No description'}
         </Text>
-        <UsedInLinks entry={entry} />
+        {entry.usage !== 'EDGE_PROPERTIES' && <UsedInLinks entry={entry} />}
       </Stack>
     </Paper>
   )
@@ -88,7 +88,7 @@ function SchemaListRow({ entry }: { entry: SchemaCatalogEntry }) {
       onClick={() => navigate(`/schemas/${encodeURIComponent(entry.type)}`)}
     >
       <Group wrap="nowrap" gap="md">
-        <IconSchema size={18} stroke={1.5} color="var(--mantine-color-dimmed)" aria-hidden />
+        <SchemaKindPill usage={entry.usage} />
         <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
           <Text size="sm" fw={600} truncate>
             {entry.type}
@@ -100,7 +100,7 @@ function SchemaListRow({ entry }: { entry: SchemaCatalogEntry }) {
         <Badge size="sm" variant="light">
           {entry.latestVersion}
         </Badge>
-        <UsedInLinks entry={entry} compact />
+        {entry.usage !== 'EDGE_PROPERTIES' && <UsedInLinks entry={entry} compact />}
       </Group>
     </Paper>
   )

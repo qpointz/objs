@@ -40,6 +40,7 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`spa-url-classpath-align`](completed/20260817-spa-url-classpath-align/STORY.md) — Align SPA URL prefix with classpath folder (`/workbench`, `/ar`, `/sbom`); rename `:objs-app` → `:objs-service-app`; UI JAR on the runner only (P-2). WI-000…WI-004.
 - [`multi-bom-app-versions`](completed/20260817-multi-bom-app-versions/STORY.md) — Multi-BOM constituents + Combined SBOM; multi-draft (target + optional combine); tags; fingerprint name/category; inventory UI polish (D-8). WI-000…WI-008.
 - [`flyway-module-isolation`](completed/20260817-flyway-module-isolation/STORY.md) — Two Flyway lines: objs-core vendor SQL + `flyway_schema_history_objs` before Boot Flyway; examples as derived apps (P-3). WI-000…WI-004.
+- [`catalog-schema-metadata`](completed/20260818-catalog-schema-metadata/STORY.md) — Allowed-edge description/verbs; free-text STRING `format`; tags + string attributes; enum `caption`; example schema browse lists allow-list rules (C-16). WI-000…WI-006.
 
 ### In Progress
 

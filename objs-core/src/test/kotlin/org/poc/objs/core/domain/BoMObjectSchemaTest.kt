@@ -267,4 +267,61 @@ class BoMObjectSchemaTest {
         }.isInstanceOf(BoMSchemaDefinitionException::class.java)
             .hasMessageContaining("not allowed under ARRAY")
     }
+
+    @Test
+    fun shouldAcceptOptionalEnumCaptionAndOmitBlank() {
+        val normalized = BoMSchemaNormalizer.normalizeStrict(
+            BoMSchema(
+                type = "Thing",
+                version = "1",
+                contentSchema = BoMSchemaDsl.obj(
+                    "Thing",
+                    "Thing payload",
+                    listOf(
+                        BoMSchemaDsl.field(
+                            "level",
+                            BoMSchemaDsl.enum(
+                                "Level",
+                                "Severity level",
+                                listOf(
+                                    BoMEnumValue("LOW", "Limited impact", "Low"),
+                                    BoMEnumValue("HIGH", "Serious impact", "  "),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val values = normalized.contentSchema.fields!!.single().schema.values!!
+        assertThat(values[0].caption).isEqualTo("Low")
+        assertThat(values[1].caption).isNull()
+
+        @Suppress("UNCHECKED_CAST")
+        val projected = normalized.toJsonSchema()["properties"] as Map<String, Map<String, Any?>>
+        val level = projected["level"]!!
+        assertThat(level["enum"]).isEqualTo(listOf("LOW", "HIGH"))
+        assertThat(level["x-objs-enumCaptions"]).isEqualTo(mapOf("LOW" to "Low"))
+    }
+
+    @Test
+    fun shouldAcceptApplicationSpecificStringFormat() {
+        val normalized = BoMSchemaNormalizer.normalizeStrict(
+            BoMSchema(
+                type = "Thing",
+                version = "1",
+                contentSchema = BoMSchemaDsl.obj(
+                    "Thing",
+                    "Thing payload",
+                    listOf(
+                        BoMSchemaDsl.field(
+                            "purl",
+                            BoMSchemaDsl.string("PURL", "Package URL", format = "purl"),
+                        ),
+                    ),
+                ),
+            ),
+        )
+        assertThat(normalized.contentSchema.fields!!.single().schema.format).isEqualTo("purl")
+    }
 }

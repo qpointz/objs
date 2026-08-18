@@ -47,6 +47,8 @@ class ObjectSchemaSeedHandler(
                     version = version,
                     contentSchema = contentSchema,
                     usage = usage,
+                    tags = parseSeedTags(document.raw["tags"], document.index),
+                    attributes = parseSeedAttributes(document.raw["attributes"], document.index),
                 ),
             )
         } catch (ex: BoMSchemaDefinitionException) {
@@ -81,6 +83,8 @@ class ObjectSchemaSeedHandler(
         if (schema.usage != BoMSchemaUsage.ENTITY) {
             document["usage"] = schema.usage.name
         }
+        emitSeedTags(document, schema.tags)
+        emitSeedAttributes(document, schema.attributes)
         document["contentSchema"] = PayloadMapper.toMap(schema.contentSchema)
         return document
     }

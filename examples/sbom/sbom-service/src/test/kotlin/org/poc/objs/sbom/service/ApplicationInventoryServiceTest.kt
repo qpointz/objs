@@ -32,6 +32,7 @@ import org.springframework.web.server.ResponseStatusException
     SbomService::class,
     ApplicationInventoryService::class,
     ApplicationVersionService::class,
+    AssetTypeCatalogService::class,
 )
 @TestPropertySource(
     properties = [

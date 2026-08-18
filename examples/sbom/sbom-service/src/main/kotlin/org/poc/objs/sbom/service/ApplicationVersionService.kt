@@ -54,6 +54,7 @@ class ApplicationVersionService(
     private val boms: SbomApplicationSbomRepository,
     private val namedGraphs: BoMNamedGraphStore,
     private val sbom: SbomService,
+    private val assetTypes: AssetTypeCatalogService,
 ) {
     private val versionComparer: VersionComparer = SemVerVersionComparer()
     fun list(applicationId: UUID): List<ApplicationVersionSummary> {
@@ -557,7 +558,8 @@ class ApplicationVersionService(
                 val entity =
                     BoMEntity(
                         type = write.type.trim(),
-                        schemaVersion = write.schemaVersion?.trim()?.takeIf { it.isNotEmpty() } ?: "1.0.0",
+                        schemaVersion = write.schemaVersion?.trim()?.takeIf { it.isNotEmpty() }
+                            ?: latestSchemaVersion(write.type.trim()),
                         payload = write.payload.toMutableMap(),
                         annotations = annotations,
                     )
@@ -915,6 +917,9 @@ class ApplicationVersionService(
             toAssetId = target,
         )
     }
+
+    private fun latestSchemaVersion(type: String): String =
+        assetTypes.getEntityType(type)?.version ?: "1.0.0"
 
     private fun assetLabel(payload: Map<String, Any?>, type: String): String {
         val name = payload["name"]?.toString()?.takeIf { it.isNotBlank() }

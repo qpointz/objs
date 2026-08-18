@@ -1,4 +1,4 @@
-import { Paper, ScrollArea, Stack, Text, UnstyledButton } from '@mantine/core'
+import { Badge, Group, Paper, ScrollArea, Stack, Text, UnstyledButton } from '@mantine/core'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, Outlet, useLocation, useOutletContext } from 'react-router-dom'
 import { api } from './api/client'
@@ -13,6 +13,15 @@ function schemaTypeFromPath(pathname: string): string | undefined {
 
 function isPortalPath(pathname: string): boolean {
   return pathname === '/schemas' || pathname === '/schemas/'
+}
+
+export function SchemaKindPill({ usage }: { usage?: string }) {
+  const edge = usage === 'EDGE_PROPERTIES'
+  return (
+    <Badge size="xs" variant="light" color={edge ? 'grape' : 'blue'} w={28} px={0}>
+      {edge ? 'E' : 'O'}
+    </Badge>
+  )
 }
 
 export type SchemasOutletContext = {
@@ -39,8 +48,8 @@ export function SchemasWorkspace() {
         if (cancelled) return
         setError(null)
         setRows(data)
-        setUsagePending(new Set(data.map((s) => s.type)))
-        setCatalogTypes(data.map((s) => s.type))
+        setUsagePending(new Set(data.filter((s) => s.usage === 'ENTITY').map((s) => s.type)))
+        setCatalogTypes(data.filter((s) => s.usage === 'ENTITY').map((s) => s.type))
       })
       .catch((e) => {
         if (!cancelled) setError(e instanceof Error ? e.message : String(e))
@@ -145,12 +154,15 @@ export function SchemasWorkspace() {
                         background: active ? 'var(--mantine-color-blue-light)' : undefined,
                       }}
                     >
-                      <Text size="xs" fw={active ? 700 : 500} truncate>
-                        {s.type}
-                      </Text>
-                      <Text size="xs" c="dimmed" truncate>
-                        {s.latestVersion}
-                      </Text>
+                      <Group gap={6} wrap="nowrap">
+                        <SchemaKindPill usage={s.usage} />
+                        <Text size="xs" fw={active ? 700 : 500} truncate style={{ flex: 1, minWidth: 0 }}>
+                          {s.type}
+                        </Text>
+                        <Text size="xs" c="dimmed" style={{ flexShrink: 0 }}>
+                          {s.latestVersion}
+                        </Text>
+                      </Group>
                     </UnstyledButton>
                   )
                 })}

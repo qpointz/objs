@@ -29,12 +29,30 @@ const NODE_H = 76
 const NODE_SEP = 88
 const RANK_SEP = 110
 const EDGE_SEP = 28
-const PALETTE = ['#228be6', '#40c057', '#fab005', '#fa5252', '#7950f2', '#15aabf', '#e64980', '#fd7e14']
+const PALETTE = [
+  '#228be6',
+  '#40c057',
+  '#fab005',
+  '#fa5252',
+  '#7950f2',
+  '#15aabf',
+  '#e64980',
+  '#fd7e14',
+  '#12b886',
+  '#4c6ef5',
+  '#82c91e',
+  '#be4bdb',
+]
 const DIMMED_OPACITY = 0.25
 const EDGE_COLOR = '#495057'
 const EDGE_SELECTED = '#228be6'
 
-export function colorForType(type: string): string {
+export const DEFAULT_TYPE_COLOR = 'var(--mantine-color-gray-6)'
+
+export function colorForType(type: string, attributes?: Record<string, string> | null): string {
+  const raw = attributes?.color?.trim()
+  if (raw && raw.toLowerCase() === 'nocolor') return DEFAULT_TYPE_COLOR
+  if (raw && /^#[0-9a-fA-F]{6}$/.test(raw)) return raw.toLowerCase()
   let h = 0
   for (let i = 0; i < type.length; i++) h = (h * 31 + type.charCodeAt(i)) >>> 0
   return PALETTE[h % PALETTE.length]
