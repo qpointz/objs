@@ -80,6 +80,9 @@ class ApplicationVersionServiceTest {
     lateinit var namedGraphs: BoMNamedGraphStore
 
     @Autowired
+    lateinit var graphStore: BoMGraphStore
+
+    @Autowired
     lateinit var dataSource: DataSource
 
     @Autowired
@@ -196,6 +199,13 @@ class ApplicationVersionServiceTest {
         val snapshot = versions.getFingerprintBom(app.id, draftId, fp.id)
         assertThat(snapshot.assets).hasSize(1)
         assertThat(snapshot.assets.map { it.id }).containsExactly(first)
+        val pinnedName = snapshot.assets.single().label
+        val liveEntity = graphStore.getEntity(first)!!
+        liveEntity.payload["name"] = "a-edited"
+        graphStore.upsertEntities(listOf(liveEntity))
+        val snapshotAfterEdit = versions.getFingerprintBom(app.id, draftId, fp.id)
+        assertThat(snapshotAfterEdit.assets.single().label).isEqualTo(pinnedName)
+        assertThat(graphStore.getEntity(first)!!.payload["name"]).isEqualTo("a-edited")
         val thrown =
             assertThrows<ResponseStatusException> {
                 versions.rejectFingerprintWrite(app.id, draftId, fp.id)

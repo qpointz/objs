@@ -90,6 +90,8 @@ class SbomApplicationFingerprintRecord(
     var versionId: UUID = UUID.randomUUID(),
     @Column(name = "graph_id", nullable = false, unique = true)
     var graphId: UUID = UUID.randomUUID(),
+    @Column(name = "graph_version", nullable = false)
+    var graphVersion: Long = 0,
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant = Instant.now(),
     @Column(nullable = false, length = 255)

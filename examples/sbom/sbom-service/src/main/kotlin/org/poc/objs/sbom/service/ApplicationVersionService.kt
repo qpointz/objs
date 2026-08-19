@@ -105,7 +105,7 @@ class ApplicationVersionService(
         val app = requireApplication(applicationId)
         val row = requireVersion(applicationId, versionId)
         val fingerprint = requireFingerprint(versionId, fingerprintId)
-        return toBomView(app, row, fingerprint.graphId)
+        return toBomView(app, row, fingerprint.graphId, fingerprint.graphVersion)
     }
 
     fun rejectFingerprintWrite(applicationId: UUID, versionId: UUID, fingerprintId: UUID): Nothing {
@@ -392,7 +392,12 @@ class ApplicationVersionService(
                     "versionId" to versionId.toString(),
                 ),
             )
-        val hash = contentHash(graphId)
+        val freeze =
+            namedGraphs.createDeepGraphVersion(
+                graphId,
+                mapOf("kind" to "application-fingerprint"),
+            )
+        val hash = contentHash(graphId, freeze.version)
         val name =
             request.name?.trim()?.takeIf { it.isNotEmpty() }
                 ?: request.note?.trim()?.takeIf { it.isNotEmpty() }
@@ -407,6 +412,7 @@ class ApplicationVersionService(
                 SbomApplicationFingerprintRecord(
                     versionId = versionId,
                     graphId = graphId,
+                    graphVersion = freeze.version,
                     createdAt = Instant.now(),
                     name = name,
                     category = category,
@@ -660,8 +666,13 @@ class ApplicationVersionService(
         return graph.id
     }
 
-    private fun contentHash(graphId: UUID): String {
-        val resolved = namedGraphs.get(graphId) ?: return ""
+    private fun contentHash(graphId: UUID, graphVersion: Long? = null): String {
+        val resolved =
+            if (graphVersion != null) {
+                namedGraphs.getGraphVersion(graphId, graphVersion)
+            } else {
+                namedGraphs.get(graphId) ?: return ""
+            }
         val entities =
             resolved.contents.entities
                 .mapNotNull { it.id }
@@ -681,10 +692,15 @@ class ApplicationVersionService(
         app: SbomApplicationRecord,
         row: SbomApplicationVersionRecord,
         graphId: UUID = bomGraphId(row),
+        graphVersion: Long? = null,
     ): VersionBomView {
         val resolved =
-            namedGraphs.get(graphId)
-                ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Version graph missing")
+            if (graphVersion != null) {
+                namedGraphs.getGraphVersion(graphId, graphVersion)
+            } else {
+                namedGraphs.get(graphId)
+                    ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Version graph missing")
+            }
         return VersionBomView(
             version = row.toSummary(),
             applicationName = app.name,
