@@ -1,7 +1,7 @@
 # Object store: foundation vs example apps
 
 **Status:** design note (2026-08-16), from SBOM inventory + asset repository  
-**Shipped:** [C-17 `live-store-apis`](../../workitems/completed/20260819-live-store-apis/STORY.md). Next: [C-18 versions](../../workitems/planned/versions-and-snapshots/STORY.md) → [C-19 after versions](../../workitems/planned/foundation-after-versions/STORY.md). Text `q`: [C-20 `store-text-search`](../../workitems/planned/store-text-search/STORY.md) (does not block C-18). Sequence: [`SEQUENCE.md`](../../workitems/SEQUENCE.md).  
+**Shipped:** [C-17 `live-store-apis`](../../workitems/completed/20260819-live-store-apis/STORY.md), [C-18 versions](../../workitems/completed/20260819-versions-and-snapshots/STORY.md) (clocks + HEAD/history + Snapshot freeze; `clone()` kept). Next: [C-19 after versions](../../workitems/planned/foundation-after-versions/STORY.md). Text `q`: [C-20 `store-text-search`](../../workitems/planned/store-text-search/STORY.md) (does not block C-18). Sequence: [`SEQUENCE.md`](../../workitems/SEQUENCE.md).  
 **Audience:** objs-core / graph APIs  
 **Not this doc:** product journeys, workbench REST (`objs-service`), Gradle/UI packaging (appendix only)
 
@@ -41,8 +41,8 @@ C-17 shipped catalog helpers, reverse/identity, live `copyGraph`/`mergeGraph`, a
 |------|------------------------------|--------|
 | **Searchable-field matcher pushdown** | Schema `searchable` + `obj-expr` should be the fast path | Incomplete operators → slow path (contains/`q` = C-20; rest C-19) |
 | **Text `q` on payload scalars** | Objects page, SBOM assets, AR collection objects all need substring search | Equality `obj-expr` or load-then-filter; graph **header** search is separate |
-| **`createdAt` / `updatedAt` on graph, node, edge** | Every consumer wants last-changed; must not live in payload | Catalog rows already stamped; `bom_entity` / `bom_graph` / `bom_graph_edge` are not |
-| **Versions + snapshots** | Fingerprints must not pollute the live pool or drift when HEAD moves | C-12 `clone()` into the pool. **C-18** [`versions-and-snapshots`](../../workitems/planned/versions-and-snapshots/STORY.md) |
+| **`createdAt` / `updatedAt` on graph, node, edge** | Every consumer wants last-changed; must not live in payload | Catalog already stamped. HEAD clocks are **C-18 WI-002** (not C-19) |
+| **Versions + snapshots** | Fingerprints must not pollute the live pool or drift when HEAD moves | Freeze = **`createDeepGraphVersion`** (same `graph_id`, pins). **`clone()` stays** a new-id deep copy with an empty history line. **C-18** [`versions-and-snapshots`](../../workitems/completed/20260819-versions-and-snapshots/STORY.md) |
 
 Shipped store APIs (C-17):
 
@@ -54,8 +54,8 @@ Shipped store APIs (C-17):
 - Catalog helpers (`BoMCatalogSupport`) — **shipped** (C-17 WI-002)
 - `copyGraph(sourceGraphId, annotations) → BoMResolvedGraph` — **shipped** (C-17 WI-005): one live graph, **same** pool entity ids, new edge ids
 - `mergeGraph(sourceGraphIds, annotations, GraphMergePolicy) → BoMResolvedGraph` — **shipped** (C-17 WI-005): persist-union; default first-seen
-- Store-managed `createdAt` / `updatedAt` — **C-19** on version rows, not C-17
-- Entity/edge versions + HEAD; snapshot graphs pin versions — **C-18** [`versions-and-snapshots`](../../workitems/planned/versions-and-snapshots/STORY.md), not C-17 |
+- Store-managed `createdAt` / `updatedAt` on HEAD + version rows — **C-18** (not C-17, not C-19)
+- Entity/edge versions + HEAD; Snapshot = `createDeepGraphVersion` (pins); `clone()` kept — **C-18** [`versions-and-snapshots`](../../workitems/completed/20260819-versions-and-snapshots/STORY.md), not C-17 |
 
 ## C-17 live graph copy vs merge vs clone
 
@@ -65,11 +65,12 @@ Lock for [`live-store-apis`](../../workitems/completed/20260819-live-store-apis/
 |-----|---------|---------------|-------|--------|---------|
 | `copyGraph(sourceId, annotations)` | exactly one | **same ids** (membership only) | copied, **new ids**, new `graphId` | none | SBOM **keep-split** new draft; AR **collection copy** |
 | `mergeGraph(sourceIds, annotations, policy)` | 1..n | same ids; collisions via policy | copied, new ids; collisions via policy | `GraphMergePolicy` (default `FirstSeenGraphMergePolicy`) | SBOM **combine-on-new-draft** |
-| `clone()` | one | **new ids** | new ids, remapped endpoints | n/a | Workbench Composer snapshot (unchanged this story) |
+| `clone()` | one | **new ids** | new ids, remapped endpoints | n/a | Workbench Composer **Clone** (C-18: empty history on the new graph) |
+| `createDeepGraphVersion` | one | **same ids** (pins) | same edge ids at pin versions | n/a | Composer **Create version**; SBOM fingerprint |
 
 `GraphMergePolicy`: `nodeKey` / `edgeKey` detect overlap; `onDuplicateNode` / `onDuplicateEdge` choose the survivor. Default: node key = entity id; edge key = `(source, role, target)`; keep first in caller order; do not merge property maps. Empty `sourceIds` → `GRAPH_MERGE_EMPTY`; any missing source → `GRAPH_NOT_FOUND` and no new graph.
 
-Do **not** overload `copyGraph` with a collection of ids. Combined SBOM **GET** / multi-select stays ephemeral `BomUnion` (not persist). Fingerprint freeze is **C-18 pins**, not copy or merge.
+Do **not** overload `copyGraph` with a collection of ids. Combined SBOM **GET** / multi-select stays ephemeral `BomUnion` (not persist). Fingerprint freeze is **C-18 `createDeepGraphVersion`**, not copy, merge, or clone.
 
 **Not missing as foundation:** applications, portfolios, collections-as-product, CycloneDX, MI *report definitions*, uniqueness of “app in portfolio”. Those stay domain.
 
@@ -97,7 +98,7 @@ Keep in apps:
 | Schema catalog + identifier/searchable hints | `BoMCatalogSupport` (latest schema, field hints, allow-list for type) |
 | “Where used” / duplicate grouping / type stats | `listGraphIdsForEntity`, `findDuplicateGroups`, `countByType` |
 | Identity-immutable payload update | Persist/update rule in core (`IDENTIFIER_IMMUTABLE`) |
-| Graph clone for snapshots | C-18 pins (not C-17 `copyGraph`). Live share = `copyGraph`; persist-union = `mergeGraph` |
+| Graph freeze for fingerprints | C-18 `createDeepGraphVersion` (not `clone()`, not C-17 `copyGraph`). Live share = `copyGraph`; persist-union = `mergeGraph`; independent duplicate = `clone()` |
 
 SPA chrome, schema *forms*, Gradle node-gradle packaging are duplicates too; they are **not** store APIs (see appendix).
 

@@ -8,7 +8,7 @@
 ## Graphs + entity pool
 
 No global graph: `/entities` is the pool (CRUD, no graph scope); `/graphs` is graph CRUD, membership,
-graph-local edges, resolve, query, and optional clone. See [`../graph/model.md`](../graph/model.md) and
+graph-local edges, resolve, query, clone, and graph versions. See [`../graph/model.md`](../graph/model.md) and
 [`../graph/annotations-and-matchers.md`](../graph/annotations-and-matchers.md).
 
 | Method | Path | Behaviour | Module |
@@ -27,7 +27,10 @@ graph-local edges, resolve, query, and optional clone. See [`../graph/model.md`]
 | `POST`/`DELETE` | `/graphs/{id}/members/{entityId}` | Attach / detach an existing pool entity id (membership row only; pool entity kept on detach) | `:objs-service` |
 | `POST` | `/graphs/{id}/query` | Matcher DSL (`obj-expr` / chained) scoped to this graph's members; edges induced within scope | `:objs-service` |
 | `POST` | `/graphs/query` | Matcher DSL (`all`, `graph-expr`, or chained starting with either) over graph headers → matching graphs' stored members + graph-local edges (distinct by id) | `:objs-service` |
-| `POST` | `/graphs/{id}/clone` | Optional: copy members + edges into a **new** independent graph (new ids); source unchanged; no parent/lineage link stored | `:objs-service` |
+| `POST` | `/graphs/{id}/clone` | Deep copy into a **new** independent graph (new entity/edge ids, current HEAD only); source unchanged; no parent/lineage link; clone history starts empty | `:objs-service` |
+| `POST` | `/graphs/{id}/versions` | **Snapshot** / `createDeepGraphVersion`: pin current HEAD on the **same** `graph_id`; body optional version `annotations` | `:objs-service` |
+| `GET` | `/graphs/{id}/versions` | List deep versions newest first (`version DESC`); empty if never snapshotted | `:objs-service` |
+| `GET` | `/graphs/{id}/versions/{version}` | Reconstruct pinned graph (read-only; slower OK). Works after HEAD delete | `:objs-service` |
 | `POST` | `/graph/traverse/gremlin` | Matcher + gremlin-lang script → `BoMGremlinResult` (OpenAPI tag **`traverse`**); matcher DSL scoping rules as above | `:objs-gremlin-service` |
 
 **Fail closed:** bare `obj-expr` on `/graphs/query` with no stage-0 `all` / `graph-expr` → `400`

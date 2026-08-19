@@ -53,5 +53,5 @@ _(none — remaining work is implementation)_
 | G-X6 | Change `clone()` to membership copy | **cancelled** | Keep hard clone; add `copyGraph` and `mergeGraph` |
 | G-X7 | Identity unique index / merge | **cancelled** | Find-only duplicates (G-P7) |
 | G-X8 | `created_by` / audit log / membership-row clocks | **cancelled** | |
-| G-X9 | Versions + snapshot pins | **deferred** | **C-18** [`versions-and-snapshots`](../../planned/versions-and-snapshots/STORY.md) |
+| G-X9 | Versions + snapshot pins | **deferred** | **C-18** [`versions-and-snapshots`](../../completed/20260819-versions-and-snapshots/STORY.md) |
 | G-X10 | Entity/edge/graph store clocks; pin reverse lookup; FB-3 remainder | **deferred** | **C-19** [`foundation-after-versions`](../../planned/foundation-after-versions/STORY.md) |

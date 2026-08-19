@@ -376,6 +376,28 @@ This keeps each WI a **reviewable, reproducible checkpoint** on the story branch
 
 ---
 
+## Workbench product tour
+
+The workbench ships a first-visit spotlight tour (`:objs-service-ui`: `WorkbenchTour.tsx`,
+steps in `workbenchTourSteps.ts`; replay from the header help icon).
+
+Whenever a WI **changes the workbench** — navigation, page chrome, primary actions, Explorer /
+Composer / Objects / Query / Schema layout, or user-visible graph version UX — that **same WI**
+**must** review the tour and update it if the walkthrough is now wrong or incomplete.
+
+Review means:
+
+- Read `WORKBENCH_TOUR_STEPS` against the shipped UI.
+- Keep `data-tour="…"` hooks on the real controls (or retarget / skip the step).
+- Fix copy that names buttons, panes, or flows that no longer exist (e.g. Snapshot vs Create
+  version, Versions pane placement).
+- Touch [`docs/design/ui.md`](../design/ui.md) if the tour’s user-facing description changes.
+
+Do **not** leave a stale tour for a follow-up story. Missing targets are skipped at runtime; that
+is a fallback, not a substitute for updating steps when chrome moves.
+
+---
+
 ## Flyway (library + derived apps)
 
 objs is a **library**. Schema for `bom_*` is owned by **objs-core** and applied by **objs autoconfig

@@ -16,7 +16,7 @@
 
 ## Goal
 
-**Slice 1 of 3** (versioning sequence) — live-graph lookups **before** versioning. Next: [C-18 versions](../../planned/versions-and-snapshots/STORY.md), then [C-19 after versions](../../planned/foundation-after-versions/STORY.md). Text search is a **sibling** story: [C-20 `store-text-search`](../../planned/store-text-search/STORY.md). Sequence: [`SEQUENCE.md`](../../SEQUENCE.md).
+**Slice 1 of 3** (versioning sequence) — live-graph lookups **before** versioning. Next: [C-18 versions](../../completed/20260819-versions-and-snapshots/STORY.md), then [C-19 after versions](../../planned/foundation-after-versions/STORY.md). Text search is a **sibling** story: [C-20 `store-text-search`](../../planned/store-text-search/STORY.md). Sequence: [`SEQUENCE.md`](../../SEQUENCE.md).
 
 Put **object-store** APIs in `:objs-core` for **live** catalog/graph use: catalog helpers, reverse membership, identity query, membership `copyGraph`, persist-union `mergeGraph`, paged pool select, label/filter helpers. **Each feature WI rewires every labeled consumer** in the same commit.
 
@@ -84,7 +84,7 @@ Order: WI-001 → WI-002 → WI-006 → (WI-003, WI-004, WI-005) → WI-007.
 - AR write-mode pipeline and SPI (except calling identity/copy/merge/count APIs)
 - Extracting `SpaRoutingFilter` / example compile-dep on `:objs-service` (platform follow-up)
 - Shared Mantine schema UI kit
-- Versions + snapshots — **C-18** [`versions-and-snapshots`](../../planned/versions-and-snapshots/STORY.md)
+- Versions + snapshots — **C-18** [`versions-and-snapshots`](../../completed/20260819-versions-and-snapshots/STORY.md)
 - Entity/edge/graph store clocks, pin reverse lookup, remaining matcher ops — **C-19** [`foundation-after-versions`](../../planned/foundation-after-versions/STORY.md)
 - SBOM **fingerprint as freeze snapshot** (C-18). C-17 `copyGraph` is **keep-split new draft / collection copy**; `mergeGraph` is **combine-on-new-draft** only
 

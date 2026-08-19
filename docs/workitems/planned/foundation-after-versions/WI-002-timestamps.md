@@ -1,7 +1,7 @@
 # WI-002 — Timestamps on versions + graph headers
 
 **Story:** [`STORY.md`](STORY.md)  
-**Depends on:** WI-001  
-**Examples:** **workbench + SBOM + AR**
+**Status:** **cancelled** — superseded by C-18 [`versions-and-snapshots`](../../completed/20260819-versions-and-snapshots/STORY.md) WI-002 (V3 clocks on all `bom_*`) and WI-003 (clocks on `*_version` rows).  
+**Examples:** **—**
 
-`createdAt` on version rows; identity `updatedAt` = HEAD move; graph header clocks. Rewire DTOs that would have used C-17 WI-009 in-place entity columns.
+Do not implement here. See [`../../completed/20260819-versions-and-snapshots/ER.md`](../../completed/20260819-versions-and-snapshots/ER.md).

@@ -12,11 +12,11 @@ member entities and graph-local edges (see [`graph/model.md`](graph/model.md)).
 |---------|-----------|
 | **Explorer** | **Read-only.** Two exclusive modes: **Graph** (one opened graph) or **Selection** (matcher result set). Never mutates the store. |
 | **Objects** | **Read-only.** Pool/cross-graph object search; client **shelf**; **New graph from shelf** → Composer (replace draft). |
-| **Composer** | Draft workspace; **Save** / **Snapshot**; owns all writes (including first Save that creates a graph from a Selection / shelf handoff). |
+| **Composer** | Draft workspace; **Save** / **Create version** (freeze) / **Clone** (new-id deep copy); owns all writes (including first Save that creates a graph from a Selection / shelf handoff). |
 | Matchers | **`all`** / **`graph-expr`** / **`obj-expr`** / **chained** only |
 | Schema catalog | Unchanged (global, not graph-scoped) |
 
-**Must have:** visible graph / explore-scope context; Open graph search (incremental, ≤15 hits — not a full catalog list); no whole-store Exec/Save. Snapshot hierarchy UI is **not** part of the objs workbench — that is an application concern (e.g. SBOM). Composer **Snapshot** (copy clean graph → new independent graph) is separate from Save.
+**Must have:** visible graph / explore-scope context; Open graph search (incremental, ≤15 hits — not a full catalog list); no whole-store Exec/Save. Snapshot *hierarchy* UI is **not** part of the objs workbench — that is an application concern (e.g. SBOM). Composer **Create version** freezes the **same** graph (`createDeepGraphVersion`). Composer **Clone** is a new-id deep copy (`POST …/clone`). Explorer Graph mode lists versions of the opened graph (newest first) + **Latest**.
 
 ### Chrome levels (Explorer / Composer / Query)
 
@@ -54,11 +54,13 @@ dark/light toggle on the right:
 |------|------|---------|
 | **Explorer** | `/workbench/explorer` | Read-only explore: Graph mode or Selection mode; hand off to Composer / Query |
 | **Objects** | `/workbench/objects` | Pool object search + shelf; **New graph from shelf** → Composer |
-| **Composer** | `/workbench/composer` | Draft workspace: Visual/Text edit, Validate / Save / Snapshot |
+| **Composer** | `/workbench/composer` | Draft workspace: Visual/Text edit, Validate / Save / Create version / Clone |
 | **Query** | `/workbench/query` | Tabs Query (script) / Matcher / Options; Exec → traverse API; Structured / Raw results |
 | **Schema** | `/workbench/model` | Browse and edit object/edge schemas |
 
 L0 header order: **Explorer · Objects · Composer · Query · Schema**.
+
+A **product tour** starts on first visit (stored in `localStorage` as `objs.ui.workbench.tour.v1`). Replay it from the header help icon (left of the color-scheme toggle). Missing targets (e.g. Versions when the opened graph has none) are skipped.
 
 ## Objects
 
@@ -83,7 +85,7 @@ call create / mutate / delete graph APIs. All writes happen in **Composer**.
 
 | Mode | Entered by | Canvas | Clears |
 |------|------------|--------|--------|
-| **Graph** | **Open graph…** | Members of one `bom_graph` | Selection canvas / matcher result |
+| **Graph** | **Open graph…** | Members of one `bom_graph`. If that graph has versions: **left** pane list (newest first; hidden when none); click reconstructs read-only; **Latest** returns to HEAD. Freeze view: tiny overlay on the canvas (top-right). Switching versions keeps node positions for matching ids | Selection canvas / matcher result |
 | **Selection** | Matcher **Exec** | Matcher hit set (may span graphs) | Opened graph id / Graph-mode header |
 
 Switching mode **resets** the previous mode’s view.
@@ -489,9 +491,10 @@ workspace** for editing graph membership and payloads. There is **no Browse sche
 | **Add objects…** | Visual canvas toolbar; side pane search (same matcher as Explorer) |
 | **Validate** | Dry-run mutation |
 | **Save** | Enabled when dirty or `graphId == null` (or never-saved). With **no** graph id: **creates** graph (`entityIds` membership + edge upserts). With id: `PUT …/graphs/{id}` mutation |
-| **Snapshot** | Enabled only when saved + clean; clone dialog → new independent graph; switches to new id |
+| **Create version** | Enabled only when saved + clean; dialog next to Save → `createDeepGraphVersion` on the **same** graph id; Explorer version list grows |
+| **Clone** | Enabled only when saved + clean; deep-copy dialog → `POST …/clone`; switches Composer to the **new** graph id (no versions until that graph is Snapshotted) |
 
-L1: title + help popover; **Reset** / **Clear** / **Validate** / **Save** / **Snapshot** (`size="sm"`, same row).  
+L1: title + help popover; **Reset** / **Clear** / **Validate** / **Save** / **Create version** / **Clone** (`size="sm"`, same row).  
 Tabs: Visual / Text only. Visual L2 toolbar: **New** ▾ / **Link** / **Add objects…** + draft actions + **N on canvas** / last-search badges (`size="xs"`).
 
 Empty selection: side pane may edit **graph-level annotations**.
@@ -504,7 +507,8 @@ Edit form: no duplicate Payload/Annotations section titles; per-field **delete**
 | Validate | `BoMGraphMutation` dry-run |
 | Save (existing graph) | `PUT /api/v1/objs/graphs/{id}` |
 | Save (no graph id) | `POST /api/v1/objs/graphs` with `entityIds` + edge upserts |
-| Snapshot | Clone semantics (`POST …/graphs/{id}/clone` or equivalent) |
+| Create version | Freeze (`POST …/graphs/{id}/versions`) |
+| Clone | Deep copy (`POST …/graphs/{id}/clone`) |
 | Open graph… | `GET /api/v1/objs/graphs/search` then `GET …/graphs/{id}` |
 
 Returning to Composer / Explorer with a persisted current graph id **reloads** that graph’s members into the canvas (not annotations only), so chrome and Visual stay consistent. If the graph is missing, the current-graph selection is cleared.
@@ -538,7 +542,7 @@ Invalid Text blocks switching to Visual; the last good draft is preserved.
 
 1. Open Composer.
 2. Optionally **Add objects…**, Open graph, or receive an Explorer handoff.
-3. **Validate** or **Save**. Use **Snapshot** only on a clean saved graph.
+3. **Validate** or **Save**. Use **Create version** only on a clean saved graph.
 
 Save clears pending deletes and refreshes the baseline on success.
 

@@ -106,7 +106,7 @@ Same algorithm for Combined SBOM, left-pane multi-select, fingerprint materializ
 2. Take **relations**. Duplicate edges with the same source, target, and role **collapse** to one.
 3. Return an in-memory subgraph. **Do not** write it onto the version.
 
-Fingerprint freeze is **C-18 snapshot pins** (not `copyGraph`). Combine-on-new-draft **persists** the union with store **`mergeGraph`** (default first-seen). Combined SBOM **GET** / multi-select stay in-memory **`BomUnion`** — do not persist.
+Fingerprint freeze is **C-18 `createDeepGraphVersion`** — store `(graph_id, graph_version)`, not a new snapshot graph and **not** `clone()`. Combine-on-new-draft **persists** the union with store **`mergeGraph`** (default first-seen). Combined SBOM **GET** / multi-select stay in-memory **`BomUnion`** — do not persist. Draft-from-fingerprint uses **`copyGraph` of live HEAD**, not restore of the freeze.
 
 **Latest** for portal content, MI, depends-on, and CDX-of-latest is the highest **RELEASED** version by **SemVer 2.0** (`version_serial`). Drafts are never latest. No RELEASED → no latest.
 

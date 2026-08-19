@@ -4,4 +4,4 @@
 **Depends on:** WI-000  
 **Examples:** **docs**
 
-Living design: version clocks, pin reverse lookup, leftover matcher ops. Align with C-18 model.
+Living design: pin reverse lookup, leftover matcher ops. Clocks and freeze/`clone()` split are **C-18** (do not re-lock clocks here). Align with C-18 ER.

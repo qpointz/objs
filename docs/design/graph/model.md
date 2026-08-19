@@ -22,11 +22,11 @@ There is **no global graph**. Two distinct concepts share the store:
 
 - An entity may belong to **zero, one, or many** graphs (M2M membership). Zero graphs = **orphan**; orphans are allowed.
 - An edge belongs to **exactly one** graph (`graph_id` NOT NULL) — edges are never shared across graphs. Both the source and target entity must already be members of that graph.
-- A graph header carries **no** parent/lineage columns. Three copy-like operations:
-  - **`clone()`** — new pool entity ids and new edge ids (hard snapshot; workbench Composer). Lineage is an **application-level** concern (e.g. annotations), not part of this model.
+- A graph header carries **no** parent/lineage columns. Four copy/freeze operations (C-18 lock: [`versions-and-snapshots`](../../workitems/completed/20260819-versions-and-snapshots/ER.md)):
+  - **`clone()`** — new graph id, **new** pool entity ids, new edge ids (endpoints remapped). Copies **current HEAD** only. Does **not** copy `*_version` history. The clone starts an **empty** history line (`head_version` NULL) until Snapshot on **that** graph. Lineage is an **application-level** concern (e.g. annotations), not a store FK.
   - **`copyGraph`** — new graph id, **same** pool entity ids, new edge ids (live membership copy; C-17).
   - **`mergeGraph`** — new graph id from 1..n sources with `GraphMergePolicy` (live persist-union; C-17).
-  - Freeze snapshots that pin versions are **C-18**, not `clone`/`copyGraph`.
+  - **`createDeepGraphVersion`** (product **Snapshot**) — **same** `graph_id`. Pins current HEAD members/edges into `*_version`. Live HEAD stays editable. Reconstruct is the slow path. Not a second graph. **Not** `clone()`.
 - See [persistence.md](persistence.md) for tables and [annotations-and-matchers.md](annotations-and-matchers.md) for how graphs and objects are selected.
 
 ### Why “Entity” not “Object”

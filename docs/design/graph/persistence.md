@@ -23,6 +23,12 @@ No global graph: an entity **pool** (`bom_entity`) shared by many **graphs** (`b
 | `bom_entity_schema` | Entity/payload schema catalog `(type, version)` + envelope `tags` / `attributes` |
 | `bom_edge_schema` | Edge allow-list `(source_type, role, target_type)` + properties policy + cardinality + description/verbs/tags/attributes |
 | `bom_seed_ledger` | Startup seed fingerprints |
+| `bom_entity.created_at` / `updated_at` (and every other `bom_*`) | Store-owned clocks — **C-18** Flyway V3. Client JSON ignored. |
+| `head_version` on `bom_entity` / `bom_graph` / `bom_graph_edge` | Nullable last **capture**. NULL until first Snapshot. Composite FK to `*_version` when set. |
+| `bom_entity_version` / `bom_graph_version` / `bom_graph_edge_version` | Immutable history. PK `(parent_id, version BIGINT)`. No FK back to HEAD. |
+| `bom_graph_version_member` / `bom_graph_version_edge` | Deep-freeze pins for `createDeepGraphVersion`. |
+
+Live GET **never** joins `*_version`. Default persist is in-place HEAD (no version row). Capture is explicit `createDeepGraphVersion` (C-18 default `ExplicitOnlyVersioningStrategy`). DIY edits to `*_version` are **unsupported — at your own risk** (H2 demo). As-built schema: [`database-model.md`](database-model.md). Historical lock: [`ER.md`](../../workitems/completed/20260819-versions-and-snapshots/ER.md).
 
 **Flyway (objs line):** objs-core ships vendor SQL `V1__bom_schema.sql` under
 `classpath:org/poc/objs/core/db/migration/{vendor}` (`postgresql`, `h2` — Spring Boot

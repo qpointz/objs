@@ -2,9 +2,11 @@
 
 **Story:** [`STORY.md`](STORY.md)  
 **Stage:** 0 — Scaffold  
-**Status:** planned (do not start a branch until C-18 is kicked off)  
+**Status:** done  
 **Examples:** **—**
 
 ## Goal
 
 Folder + BACKLOG C-18 + pointers from C-17. **No code.**
+
+Branch `versions-and-snapshots` from `origin/dev`. Folder moved to `in-progress/`.

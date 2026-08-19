@@ -26,7 +26,7 @@ No runtime code. Document the APIs and consumers ([`EXAMPLES.md`](EXAMPLES.md), 
 
 - Product code (WI-002+)
 - FB-3 contains/`q` (C-20) and remaining operators (C-19)
-- Versions and snapshots (C-18 [`versions-and-snapshots`](../../planned/versions-and-snapshots/STORY.md))
+- Versions and snapshots (C-18 [`versions-and-snapshots`](../../completed/20260819-versions-and-snapshots/STORY.md))
 
 ## Acceptance
 
