@@ -4,6 +4,8 @@ export type BoMEntity = {
   schemaVersion?: string
   payload?: Record<string, unknown>
   annotations?: Record<string, string>
+  createdAt?: string
+  updatedAt?: string
 }
 
 export type BoMEdge = {
@@ -26,6 +28,14 @@ export type BoMGraphResponse = {
   id: string
   annotations: Record<string, string>
   graph: BoMGraphContents
+}
+
+/** `GET /api/v1/objs/graphs/{id}/versions` row. */
+export type BoMGraphVersionSummary = {
+  graphId: string
+  version: number
+  createdAt: string
+  annotations: Record<string, string>
 }
 
 /** Header-only row from open-graph search (`GET …/graphs/search`). */

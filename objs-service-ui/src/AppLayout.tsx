@@ -2,6 +2,7 @@ import { AppShell, ActionIcon, Group, Text, Tooltip, UnstyledButton, useMantineC
 import {
   IconAffiliate,
   IconBox,
+  IconHelp,
   IconMoon,
   IconPencilCode,
   IconRoute,
@@ -11,15 +12,18 @@ import {
 } from '@tabler/icons-react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import type { ReactNode } from 'react'
+import { useWorkbenchTour, WorkbenchTourProvider } from './WorkbenchTour'
 
 function HeaderNavLink({
   to,
   label,
   icon,
+  tour,
 }: {
   to: string
   label: string
   icon: ReactNode
+  tour?: string
 }) {
   const location = useLocation()
   const active =
@@ -29,6 +33,7 @@ function HeaderNavLink({
     <UnstyledButton
       component={Link}
       to={to}
+      data-tour={tour}
       px="md"
       py={7}
       style={{
@@ -45,6 +50,23 @@ function HeaderNavLink({
         <span>{label}</span>
       </Group>
     </UnstyledButton>
+  )
+}
+
+function TourReplayButton() {
+  const { start, active } = useWorkbenchTour()
+  return (
+    <Tooltip label="Product tour" withArrow>
+      <ActionIcon
+        variant="subtle"
+        size="sm"
+        aria-label="Start product tour"
+        disabled={active}
+        onClick={() => start()}
+      >
+        <IconHelp size={16} stroke={1.5} />
+      </ActionIcon>
+    </Tooltip>
   )
 }
 
@@ -67,6 +89,7 @@ function ColorSchemeToggle() {
 
 export function AppLayout() {
   return (
+    <WorkbenchTourProvider>
     <AppShell
       header={{ height: 56 }}
       padding="md"
@@ -108,6 +131,7 @@ export function AppLayout() {
               wrap="nowrap"
               p={4}
               ml="lg"
+              data-tour="nav"
               style={{
                 borderRadius: 10,
                 background: 'var(--mantine-color-default-hover)',
@@ -116,33 +140,41 @@ export function AppLayout() {
             >
               <HeaderNavLink
                 to="/explorer"
+                tour="nav-explorer"
                 label="Explorer"
                 icon={<IconAffiliate size={16} stroke={1.75} />}
               />
               <HeaderNavLink
                 to="/objects"
+                tour="nav-objects"
                 label="Objects"
                 icon={<IconBox size={16} stroke={1.75} />}
               />
               <HeaderNavLink
                 to="/composer"
+                tour="nav-composer"
                 label="Composer"
                 icon={<IconPencilCode size={16} stroke={1.75} />}
               />
               <HeaderNavLink
                 to="/query"
+                tour="nav-query"
                 label="Query"
                 icon={<IconRoute size={16} stroke={1.75} />}
               />
               <HeaderNavLink
                 to="/model"
+                tour="nav-schema"
                 label="Schema"
                 icon={<IconSchema size={16} stroke={1.75} />}
               />
             </Group>
           </Group>
 
-          <ColorSchemeToggle />
+          <Group gap={4} wrap="nowrap">
+            <TourReplayButton />
+            <ColorSchemeToggle />
+          </Group>
         </Group>
       </AppShell.Header>
 
@@ -161,5 +193,6 @@ export function AppLayout() {
         </div>
       </AppShell.Main>
     </AppShell>
+    </WorkbenchTourProvider>
   )
 }

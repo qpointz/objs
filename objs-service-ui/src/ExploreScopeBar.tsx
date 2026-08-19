@@ -54,7 +54,7 @@ export function ExploreScopeBar({
   extra,
 }: ExploreScopeBarProps) {
   return (
-    <Paper withBorder p="xs" radius="md">
+    <Paper withBorder p="xs" radius="md" data-tour="explorer-scope">
       <Tabs
         value={mode}
         onChange={(v) => onModeChange((v as ExploreMode) ?? 'graph')}
@@ -73,7 +73,7 @@ export function ExploreScopeBar({
         <Tabs.Panel value="graph">
           <Stack gap="xs">
             <Group gap="xs" align="center" wrap="wrap">
-              <Button size="xs" variant="light" onClick={onOpenGraph}>
+              <Button size="xs" variant="light" onClick={onOpenGraph} data-tour="explorer-open-graph">
                 Open graph…
               </Button>
               <Text size="xs" c="dimmed">

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Alert, Button, Group, Modal, Stack, Text } from '@mantine/core'
-import { cloneGraph, createGraph } from './api'
+import { cloneGraph, createGraph, createGraphVersion, getGraph } from './api'
 import {
   EMPTY_KEY_VALUE_ROWS,
   KeyValueRowsEditor,
@@ -9,7 +9,7 @@ import {
 } from './KeyValueRowsEditor'
 import type { BoMGraphResponse } from './types'
 
-/** `new` creates an empty graph header; `clone`/`snapshot` copies [cloneSourceGraphId]'s members + edges. */
+/** `new` empty header; `clone` new-id deep copy; `snapshot` freeze on the same graph id. */
 export type NewGraphMode = 'new' | 'clone' | 'snapshot'
 
 type Props = {
@@ -46,15 +46,18 @@ export function NewGraphModal({
     setError(null)
     try {
       const annotations = rowsToStringMap(rows)
+      if (!cloneSourceGraphId && mode !== 'new') {
+        throw new Error('No current graph selected')
+      }
       const resolved =
         mode === 'new'
           ? await createGraph({ annotations })
-          : await (async () => {
-              if (!cloneSourceGraphId) {
-                throw new Error('No current graph selected to snapshot')
-              }
-              return cloneGraph(cloneSourceGraphId, annotations)
-            })()
+          : mode === 'clone'
+            ? await cloneGraph(cloneSourceGraphId!, annotations)
+            : await (async () => {
+                await createGraphVersion(cloneSourceGraphId!, annotations)
+                return getGraph(cloneSourceGraphId!)
+              })()
       onCreated(resolved.id, resolved)
       onClose()
     } catch (e: unknown) {
@@ -64,8 +67,9 @@ export function NewGraphModal({
     }
   }
 
-  const title = mode === 'new' ? 'New graph' : 'Snapshot'
-  const submitLabel = mode === 'new' ? 'Create graph' : 'Create snapshot'
+  const title = mode === 'new' ? 'New graph' : mode === 'clone' ? 'Clone graph' : 'Create version'
+  const submitLabel =
+    mode === 'new' ? 'Create graph' : mode === 'clone' ? 'Clone' : 'Create version'
 
   return (
     <Modal opened={opened} onClose={onClose} title={title} size="md">
@@ -78,7 +82,9 @@ export function NewGraphModal({
         <Text size="sm" c="dimmed">
           {mode === 'new'
             ? 'Creates a new, empty graph header. Set as the current graph after creation.'
-            : 'Copies the current graph\'s members and graph-local edges into a new, independent graph (no lineage recorded). Switches Composer to the new graph on success.'}
+            : mode === 'clone'
+              ? 'Deep-copies the current graph into a new graph with new object ids and an empty history. Switches Composer to the clone.'
+              : 'Creates a version of the current graph (same id). Composer stays here. Explorer can open that freeze later.'}
         </Text>
         <Text size="sm" fw={500}>
           Header annotations

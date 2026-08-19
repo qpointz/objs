@@ -6,6 +6,7 @@ import type {
   BoMGraphListItem,
   BoMGraphResponse,
   BoMGraphSearchResponse,
+  BoMGraphVersionSummary,
   EdgeRelationRequest,
   GraphLink,
   GraphNode,
@@ -244,6 +245,35 @@ export async function cloneGraph(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ annotations }),
   })
+  return parseResponse<BoMGraphResponse>(res)
+}
+
+export async function createGraphVersion(
+  id: string,
+  annotations: Record<string, string> = {},
+): Promise<BoMGraphVersionSummary> {
+  const res = await fetch(`/api/v1/objs/graphs/${encodeURIComponent(id)}/versions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ annotations }),
+  })
+  return parseResponse(res)
+}
+
+export async function listGraphVersions(
+  id: string,
+): Promise<BoMGraphVersionSummary[]> {
+  const res = await fetch(`/api/v1/objs/graphs/${encodeURIComponent(id)}/versions`)
+  return parseResponse(res)
+}
+
+export async function getGraphVersion(
+  id: string,
+  version: number,
+): Promise<BoMGraphResponse> {
+  const res = await fetch(
+    `/api/v1/objs/graphs/${encodeURIComponent(id)}/versions/${encodeURIComponent(String(version))}`,
+  )
   return parseResponse<BoMGraphResponse>(res)
 }
 

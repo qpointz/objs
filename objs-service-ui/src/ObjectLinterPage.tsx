@@ -129,6 +129,7 @@ export function ObjectLinterPage() {
   const [addObjectsOpen, setAddObjectsOpen] = useState(false)
   const [openGraphOpen, setOpenGraphOpen] = useState(false)
   const [snapshotOpen, setSnapshotOpen] = useState(false)
+  const [cloneOpen, setCloneOpen] = useState(false)
   const [handoffMatcher, setHandoffMatcher] = useState<unknown | null>(null)
   const [autoSearch, setAutoSearch] = useState(false)
   const [autoAddAllResults, setAutoAddAllResults] = useState(false)
@@ -579,7 +580,27 @@ export function ObjectLinterPage() {
             label={
               snapshotEnabled
                 ? undefined
-                : 'Snapshot requires a saved, clean graph (not dirty / not unsaved)'
+                : 'Create version requires a saved, clean graph (not dirty / not unsaved)'
+            }
+            disabled={snapshotEnabled}
+            withArrow
+          >
+            <span style={{ display: 'inline-flex' }} data-tour="composer-version">
+              <Button
+                size="sm"
+                variant="light"
+                disabled={!snapshotEnabled}
+                onClick={() => setSnapshotOpen(true)}
+              >
+                Create version
+              </Button>
+            </span>
+          </Tooltip>
+          <Tooltip
+            label={
+              snapshotEnabled
+                ? undefined
+                : 'Clone requires a saved, clean graph (not dirty / not unsaved)'
             }
             disabled={snapshotEnabled}
             withArrow
@@ -589,9 +610,9 @@ export function ObjectLinterPage() {
                 size="sm"
                 variant="light"
                 disabled={!snapshotEnabled}
-                onClick={() => setSnapshotOpen(true)}
+                onClick={() => setCloneOpen(true)}
               >
-                Snapshot
+                Clone
               </Button>
             </span>
           </Tooltip>
@@ -854,6 +875,13 @@ export function ObjectLinterPage() {
         cloneSourceGraphId={currentGraphId}
         onClose={() => setSnapshotOpen(false)}
         onCreated={onSnapshotCreated}
+      />
+      <NewGraphModal
+        opened={cloneOpen}
+        mode="clone"
+        cloneSourceGraphId={currentGraphId}
+        onClose={() => setCloneOpen(false)}
+        onCreated={onOpenGraph}
       />
     </Stack>
   )

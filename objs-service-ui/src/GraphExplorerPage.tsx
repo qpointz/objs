@@ -30,7 +30,16 @@ import {
   type GraphLayout,
   type GraphNodePositions,
 } from './GraphCanvas'
-import { execMatcher, getGraph, graphContentsFromGraphView, listSchemas, schemaDetailPath, toGraphData } from './api'
+import {
+  execMatcher,
+  getGraph,
+  getGraphVersion,
+  graphContentsFromGraphView,
+  listGraphVersions,
+  listSchemas,
+  schemaDetailPath,
+  toGraphData,
+} from './api'
 import { OpenGraphModal } from './OpenGraphModal'
 import {
   EntityAnnotationsView,
@@ -42,7 +51,14 @@ import {
 import { ExploreScopeBar, type ExploreMode } from './ExploreScopeBar'
 import { payloadFieldKindsByTypeVersion } from './payloadFieldKinds'
 import type { QueryExecStats } from './queryExecStats'
-import type { BoMGraphResponse, BoMSchema, GraphLink, GraphNode, GraphSelection } from './types'
+import type {
+  BoMGraphResponse,
+  BoMGraphVersionSummary,
+  BoMSchema,
+  GraphLink,
+  GraphNode,
+  GraphSelection,
+} from './types'
 import { applyTypeHighlightDimming, toggleTypeInSet } from './typeHighlightDimming'
 import { loadCurrentGraphId, useCurrentGraphId } from './useCurrentGraph'
 import { newGraphQueryId, useGraphSelectionHistory } from './useGraphSelectionHistory'
@@ -143,6 +159,18 @@ function clearStoredGraphSession() {
   }
 }
 
+function parseVersionTime(createdAt: string | undefined, version: number): Date | null {
+  if (createdAt) {
+    const fromStamp = new Date(createdAt)
+    if (!Number.isNaN(fromStamp.getTime())) return fromStamp
+  }
+  if (Number.isFinite(version) && version > 1_000_000_000_000) {
+    const fromVersion = new Date(version)
+    if (!Number.isNaN(fromVersion.getTime())) return fromVersion
+  }
+  return null
+}
+
 function initialExploreMode(session: StoredGraphSession | null): ExploreMode {
   const gid = loadCurrentGraphId()
   if (gid) return 'graph'
@@ -169,14 +197,37 @@ export function GraphExplorerPage() {
   const [graphAnnotations, setGraphAnnotations] = useState<Record<string, string>>({})
   const [exploreMode, setExploreMode] = useState<ExploreMode>(() => initialExploreMode(storedSession))
   const [openGraphOpen, setOpenGraphOpen] = useState(false)
+  const [graphVersions, setGraphVersions] = useState<BoMGraphVersionSummary[]>([])
+  const [viewingVersion, setViewingVersion] = useState<number | null>(null)
+  const viewingRow = useMemo(
+    () =>
+      viewingVersion == null ? null : graphVersions.find((r) => r.version === viewingVersion) ?? null,
+    [graphVersions, viewingVersion],
+  )
+  const viewingCreated = useMemo(
+    () =>
+      viewingVersion == null
+        ? null
+        : parseVersionTime(viewingRow?.createdAt, viewingVersion),
+    [viewingRow, viewingVersion],
+  )
+  const viewingAnnotations = useMemo(() => {
+    const entries = Object.entries(viewingRow?.annotations ?? {}).filter(
+      ([key, value]) => key.trim().length > 0 && value.trim().length > 0,
+    )
+    return Object.fromEntries(entries)
+  }, [viewingRow])
   const [goToMenu, setGoToMenu] = useState<{ x: number; y: number; target: GraphGoToTarget } | null>(
     null,
   )
   const linksRef = useRef(links)
   linksRef.current = links
+  const nodesRef = useRef(nodes)
+  nodesRef.current = nodes
   const layoutRef = useRef(layout)
   layoutRef.current = layout
   const queryIdRef = useRef<string | null>(null)
+  const loadedGraphIdRef = useRef<string | null>(null)
 
   const [initialQueryId] = useState(() => initialExplorerQueryId(storedSession))
   const onFocusNode = useCallback((nodeId: string) => {
@@ -208,27 +259,69 @@ export function GraphExplorerPage() {
     }
   }, [])
 
-  // Keep Graph-mode canvas in sync with the opened graph id (shared with Composer).
-  // Annotations-only restore left an empty canvas after navigating away and back.
+  useEffect(() => {
+    setViewingVersion(null)
+    if (exploreMode !== 'graph' || !currentGraphId) {
+      setGraphVersions([])
+      return
+    }
+    let cancelled = false
+    listGraphVersions(currentGraphId)
+      .then((rows) => {
+        if (!cancelled) setGraphVersions(rows)
+      })
+      .catch(() => {
+        if (!cancelled) setGraphVersions([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [currentGraphId, exploreMode])
+
+  // Keep Graph-mode canvas in sync with the opened graph. Version switches reuse
+  // node positions (stable ids) instead of remounting the canvas.
   useEffect(() => {
     if (exploreMode !== 'graph' || !currentGraphId) return
     let cancelled = false
-    setLoading(true)
+    const keepLayout =
+      loadedGraphIdRef.current === currentGraphId && nodesRef.current.length > 0
+    if (!keepLayout) setLoading(true)
     setError(null)
-    getGraph(currentGraphId)
+    const load =
+      viewingVersion == null
+        ? getGraph(currentGraphId)
+        : getGraphVersion(currentGraphId, viewingVersion)
+    load
       .then((resolved) => {
         if (cancelled) return
         setGraphAnnotations(resolved.annotations ?? {})
         const graph = toGraphData(resolved.graph, schemas)
-        setNodes(graph.nodes)
+        const prev = nodesRef.current
+        const nextNodes = keepLayout
+          ? graph.nodes.map((n) => {
+              const p = prev.find((x) => x.id === n.id)
+              return p != null && p.x != null && p.y != null ? { ...n, x: p.x, y: p.y } : n
+            })
+          : graph.nodes
+        setNodes(nextNodes)
         setLinks(graph.links)
+        loadedGraphIdRef.current = currentGraphId
+        if (keepLayout) {
+          persistSession(nextNodes, graph.links, layoutRef.current)
+          return
+        }
         setHighlightedTypes(new Set())
         const qid = beginQueryResult()
-        persistSession(graph.nodes, graph.links, layoutRef.current, qid)
+        persistSession(nextNodes, graph.links, layoutRef.current, qid)
         setCanvasEpoch((n) => n + 1)
       })
       .catch(() => {
         if (cancelled) return
+        if (viewingVersion != null) {
+          setViewingVersion(null)
+          return
+        }
+        loadedGraphIdRef.current = null
         setCurrentGraphId(null)
         setGraphAnnotations({})
         setNodes([])
@@ -241,9 +334,8 @@ export function GraphExplorerPage() {
     return () => {
       cancelled = true
     }
-    // beginQueryResult / persistSession are stable enough for mount hydration
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentGraphId, exploreMode, setCurrentGraphId])
+  }, [currentGraphId, exploreMode, setCurrentGraphId, viewingVersion])
 
   const fieldKindsByTypeVersion = useMemo(
     () => payloadFieldKindsByTypeVersion(schemas),
@@ -634,8 +726,120 @@ export function GraphExplorerPage() {
         </Group>
       )}
 
-      <Group align="stretch" grow preventGrowOverflow={false} style={{ flex: 1, minHeight: 0 }} gap="md">
-        <Paper withBorder style={{ flex: 2, minHeight: 280, overflow: 'hidden', position: 'relative' }}>
+      <Group align="stretch" wrap="nowrap" preventGrowOverflow={false} style={{ flex: 1, minHeight: 0 }} gap="md">
+        {exploreMode === 'graph' && graphVersions.length > 0 && (
+          <Paper
+            withBorder
+            p="sm"
+            h="100%"
+            data-tour="explorer-versions"
+            style={{ flex: '0 0 300px', width: 300, minWidth: 300, flexShrink: 0 }}
+          >
+            <Stack gap="xs" h="100%">
+              <Group justify="space-between" wrap="nowrap">
+                <Title order={6}>Versions</Title>
+                <Button
+                  size="compact-xs"
+                  variant={viewingVersion == null ? 'filled' : 'light'}
+                  onClick={() => setViewingVersion(null)}
+                >
+                  Latest
+                </Button>
+              </Group>
+              <ScrollArea style={{ flex: 1, minHeight: 0 }} type="auto" offsetScrollbars>
+                <Stack gap={8}>
+                  {graphVersions.map((row) => {
+                    const active = viewingVersion === row.version
+                    const created = parseVersionTime(row.createdAt, row.version)
+                    const annotations = Object.fromEntries(
+                      Object.entries(row.annotations ?? {}).filter(
+                        ([key, value]) => key.trim().length > 0 && value.trim().length > 0,
+                      ),
+                    )
+                    return (
+                      <button
+                        type="button"
+                        key={row.version}
+                        onClick={() => setViewingVersion(row.version)}
+                        style={{
+                          display: 'block',
+                          width: '100%',
+                          boxSizing: 'border-box',
+                          textAlign: 'left',
+                          padding: 10,
+                          borderRadius: 6,
+                          cursor: 'pointer',
+                          whiteSpace: 'normal',
+                          overflow: 'visible',
+                          height: 'auto',
+                          border: active
+                            ? '1px solid var(--mantine-color-blue-filled)'
+                            : '1px solid var(--mantine-color-default-border)',
+                          background: active
+                            ? 'var(--mantine-color-blue-light)'
+                            : 'var(--mantine-color-body)',
+                          color: 'inherit',
+                          font: 'inherit',
+                        }}
+                      >
+                        <Text size="xs" ff="monospace" lh={1.4} style={{ overflowWrap: 'anywhere' }}>
+                          {String(row.version)}
+                        </Text>
+                        {created && (
+                          <Text size="xs" c="dimmed" mt={4} style={{ whiteSpace: 'nowrap' }}>
+                            {created.toLocaleDateString()} {created.toLocaleTimeString()}
+                          </Text>
+                        )}
+                        {Object.keys(annotations).length > 0 && (
+                          <div style={{ marginTop: 6 }}>
+                            <EntityAnnotationsView annotations={annotations} size="card" />
+                          </div>
+                        )}
+                      </button>
+                    )
+                  })}
+                </Stack>
+              </ScrollArea>
+            </Stack>
+          </Paper>
+        )}
+
+        <Paper withBorder style={{ flex: 2, minWidth: 0, minHeight: 280, overflow: 'hidden', position: 'relative' }}>
+          {exploreMode === 'graph' && viewingVersion != null && (
+            <Paper
+              withBorder
+              shadow="sm"
+              p={6}
+              radius="sm"
+              style={{
+                position: 'absolute',
+                top: 8,
+                right: 8,
+                left: 'auto',
+                zIndex: 4,
+                maxWidth: 320,
+                pointerEvents: 'auto',
+              }}
+            >
+              <Text size="xs" lh={1.4} style={{ overflowWrap: 'anywhere' }}>
+                version: {String(viewingVersion)}
+                {viewingCreated ? `, date: ${viewingCreated.toLocaleString()}` : ''}. open{' '}
+                <Anchor
+                  component="button"
+                  type="button"
+                  size="xs"
+                  onClick={() => setViewingVersion(null)}
+                >
+                  latest
+                </Anchor>
+              </Text>
+              {Object.keys(viewingAnnotations).length > 0 && (
+                <div style={{ marginTop: 6 }}>
+                  <EntityAnnotationsView annotations={viewingAnnotations} size="card" />
+                </div>
+              )}
+            </Paper>
+          )}
           {loading && (
             <Stack
               align="center"
