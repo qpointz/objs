@@ -26,6 +26,7 @@ Production sources: `src/main/kotlin`. Tests: `src/test/kotlin` (integration sui
 - `./gradlew test` — unit tests (all leaf modules)
 - `./gradlew :objs-core:test` / `./gradlew :objs-service:test` — scoped tests
 - `./gradlew :objs-core:testIT` — integration tests when defined
+- GitLab CI: [`docs/design/platform/ci-pipeline.md`](docs/design/platform/ci-pipeline.md) — unit child on MRs; `testIT` on protected `dev` or `RUN_INTEGRATION=true`
 - `./gradlew :objs-service-app:run` — workbench only (H2, port 8081; `/workbench/` + `/api/v1/objs/**`)
 - `./gradlew :sbom-service:run` — SBOM inventory example (H2, port 8080; inventory UI `/sbom/`; must not call objs-service)
 - `./gradlew :asset-repository-service:run` — asset repository example (demo profile; domain UI `/ar/`)

@@ -27,7 +27,8 @@ See [`../graph/README.md`](../graph/README.md).
 | Persistence | Spring Data JPA (`objs-core`); **PostgreSQL** primary DB; JSONB for payloads |
 | HTTP | Spring WebMVC (`objs-service`) |
 | Libraries | Lombok, Jackson 3, JUnit Jupiter, Mockito, AssertJ |
-| Packaging style | Publishable **libraries** (no runnable fat app yet) |
+| Packaging style | Libraries + workbench/example apps; Maven/Docker publish reserved in CI |
+| CI | GitLab child pipelines — [`ci-pipeline.md`](ci-pipeline.md) |
 
 No custom Gradle convention plugins (`build-logic` was deliberately omitted). Shared
 group/version/toolchain live in the root [`build.gradle.kts`](../../../build.gradle.kts).
@@ -78,12 +79,12 @@ Object/graph capabilities that examples still reimplement (reverse lookup, ident
 - Agent guidelines: [`AGENTS.md`](../../../AGENTS.md)
 - Branching: story branches from `dev`, per-WI commits, bracketed commit prefixes
 - Design docs by component under `docs/design/` (this tree)
+- CI: [`ci-pipeline.md`](ci-pipeline.md) (unit + gated `testIT`; Docker/Maven publish reserved)
 
 ## Explicitly out of scope (current scaffold)
 
 - Security / OAuth
-- UI
-- GitLab CI / Maven Central publishing credentials
+- Maven Central / Docker Hub credentials and publish jobs (CI stages reserved only)
 
 **Persistence migrations:** **two Flyway lines** — objs-core `bom_*` (`flyway_schema_history_objs`)
 then the embedding app’s Boot Flyway (G-10). See [`../graph/persistence.md`](../graph/persistence.md).

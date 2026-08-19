@@ -317,8 +317,10 @@ implementation on the feature branch:
    `./gradlew :objs-core:test :objs-service:test`) **before** push; CI is the remote
    confirmation, not a substitute for local verification when the WI touches that code.
 
-Which pipeline jobs apply depends on the change (Gradle modules, etc.); at minimum expect the
-**default / build / test** stage jobs for the project to pass.
+Which jobs run is defined in [`docs/design/platform/ci-pipeline.md`](../design/platform/ci-pipeline.md).
+At minimum expect the **unit-test child** (`test:downstream` → `./gradlew test`) to pass on MRs.
+Integration (`integration:downstream` → `./gradlew testIT`) runs on protected `dev` or when
+`RUN_INTEGRATION=true`, not on every MR.
 
 #### Last WI in the story (before MR)
 
@@ -326,10 +328,11 @@ When completing the **final** WI in `STORY.md` (all other items already `[x]`):
 
 1. Complete the usual per-WI loop (track, commit, push).
 2. **Run or confirm the integration-test pipeline** — ensure integration-stage jobs pass for the branch.
-   In this repo that typically includes downstream integration jobs (e.g. **`integration:downstream`**
-   from [`.gitlab-ci.yml`](../../.gitlab-ci.yml) / `.gitlab/pipelines/integration.yml`), subject to
-   project CI variables (`RUN_INTEGRATION`, MR rules, etc.). Use GitLab MCP to verify integration jobs
-   **success** on the latest commit; fix and re-push if they fail.
+   In this repo that is **`integration:downstream`** in [`.gitlab-ci.yml`](../../.gitlab-ci.yml)
+   (child [`.gitlab/pipelines/integration.yml`](../../.gitlab/pipelines/integration.yml)), gated by
+   protected `dev` or **`RUN_INTEGRATION=true`**. Use GitLab MCP to verify those jobs **succeed** on
+   the latest commit; fix and re-push if they fail. See
+   [`docs/design/platform/ci-pipeline.md`](../design/platform/ci-pipeline.md).
 3. **Optional early merge request** — when GitLab MCP is available, an MR may be opened from the
    story branch into the merge target (usually **`dev`**) with a summary of the story, WI list, test
    evidence, and link to the green pipeline. If an MR already exists for the branch, update its
