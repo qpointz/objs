@@ -6,6 +6,7 @@ import jakarta.persistence.Id
 import jakarta.persistence.Table
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -31,6 +32,15 @@ class BoMEntityRecord(
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "annotations", nullable = false, columnDefinition = "json")
     var annotations: MutableMap<String, String> = mutableMapOf(),
+
+    @Column(name = "created_at", nullable = false)
+    var createdAt: Instant = Instant.now(),
+
+    @Column(name = "updated_at", nullable = false)
+    var updatedAt: Instant = Instant.now(),
+
+    @Column(name = "head_version")
+    var headVersion: Long? = null,
 )
 
 /**
@@ -64,4 +74,13 @@ class BoMEdgeRecord(
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "properties", columnDefinition = "json")
     var properties: MutableMap<String, Any?>? = null,
+
+    @Column(name = "created_at", nullable = false)
+    var createdAt: Instant = Instant.now(),
+
+    @Column(name = "updated_at", nullable = false)
+    var updatedAt: Instant = Instant.now(),
+
+    @Column(name = "head_version")
+    var headVersion: Long? = null,
 )

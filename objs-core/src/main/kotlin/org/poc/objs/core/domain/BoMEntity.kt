@@ -1,5 +1,6 @@
 package org.poc.objs.core.domain
 
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -8,12 +9,14 @@ import java.util.UUID
  * [id] absent means create on persist; present means update (G-20).
  * [type] + [schemaVersion] select the JSON Schema from the central catalog.
  */
-data class BoMEntity(
+data class BoMEntity @JvmOverloads constructor(
     var id: UUID? = null,
     var type: String,
     var schemaVersion: String,
     var payload: MutableMap<String, Any?> = mutableMapOf(),
     var annotations: MutableMap<String, String> = mutableMapOf(),
+    var createdAt: Instant? = null,
+    var updatedAt: Instant? = null,
 )
 
 /**
@@ -22,7 +25,7 @@ data class BoMEntity(
  * [source] / [target] reference entity ids. [type]/[schemaVersion]/[properties] used when
  * the allow-list properties policy is [BoMPropertiesPolicy.SCHEMA].
  */
-data class BoMEdge(
+data class BoMEdge @JvmOverloads constructor(
     var id: UUID? = null,
     var graphId: UUID? = null,
     var source: UUID,
@@ -31,6 +34,8 @@ data class BoMEdge(
     var type: String? = null,
     var schemaVersion: String? = null,
     var properties: MutableMap<String, Any?>? = null,
+    var createdAt: Instant? = null,
+    var updatedAt: Instant? = null,
 )
 
 /** In-memory bag of entities and edges (SDK / write payload). */

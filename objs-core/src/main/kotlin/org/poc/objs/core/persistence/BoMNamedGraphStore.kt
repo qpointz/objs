@@ -44,6 +44,7 @@ class BoMNamedGraphStore(
     private val validator: BoMValidator,
     private val dataSource: DataSource,
     @Lazy private val graphStore: BoMGraphStore,
+    private val deepVersions: BoMDeepGraphVersionService,
 ) {
     private val jdbc = JdbcTemplate(dataSource)
     private val objectMapper = ObjectMapper()
@@ -63,6 +64,8 @@ class BoMNamedGraphStore(
         BoMGraphHeader(
             id = rs.getObject("id", UUID::class.java),
             annotations = annotations,
+            createdAt = rs.getTimestamp("created_at")?.toInstant(),
+            updatedAt = rs.getTimestamp("updated_at")?.toInstant(),
         )
     }
 
@@ -101,6 +104,7 @@ class BoMNamedGraphStore(
                 message = "Subgraph not found: $id",
             )
         existing.annotations = annotations.toMutableMap()
+        existing.updatedAt = java.time.Instant.now()
         graphRepository.save(existing)
         return requireNotNull(get(id))
     }
@@ -114,6 +118,7 @@ class BoMNamedGraphStore(
             )
         validateMembership(spec.entityIds, spec.edgeIds)
         existing.annotations = spec.annotations.toMutableMap()
+        existing.updatedAt = java.time.Instant.now()
         graphRepository.save(existing)
         membershipRepository.deleteByGraphId(id)
         replaceMembership(id, spec.entityIds, spec.edgeIds)
@@ -145,6 +150,8 @@ class BoMNamedGraphStore(
                 annotations = header.annotations.toMap(),
                 entityCount = membershipRepository.countByGraphId(header.id),
                 edgeCount = edgeRepository.countByGraphId(header.id),
+                createdAt = header.createdAt,
+                updatedAt = header.updatedAt,
             )
         }
 
@@ -194,7 +201,7 @@ class BoMNamedGraphStore(
         }
         return graphRepository.findAll()
             .asSequence()
-            .map { BoMGraphHeader(id = it.id, annotations = it.annotations.toMap()) }
+            .map { it.toHeader() }
             .filter { matcher.matchesHeader(it.id, it.annotations) }
             .sortedBy { it.id }
             .toList()
@@ -205,7 +212,7 @@ class BoMNamedGraphStore(
         if (pushdown != null && postgres) {
             return findHeadersByPushdown(pushdown, sqlLimit)
         }
-        return graphRepository.findAll().map { BoMGraphHeader(id = it.id, annotations = it.annotations.toMap()) }
+        return graphRepository.findAll().map { it.toHeader() }
     }
 
     private fun findHeadersByPushdown(pushdown: BoMGraphExprPushdown, limit: Int?): List<BoMGraphHeader> {
@@ -237,7 +244,9 @@ class BoMNamedGraphStore(
             groupSql += "(${clauses.joinToString(" AND ")})"
         }
         require(groupSql.isNotEmpty()) { "graph-expr pushdown WHERE must not be empty" }
-        val sql = StringBuilder("SELECT id, annotations::text AS annotations FROM bom_graph WHERE ")
+        val sql = StringBuilder(
+            "SELECT id, annotations::text AS annotations, created_at, updated_at FROM bom_graph WHERE ",
+        )
         sql.append(groupSql.joinToString(" OR "))
         sql.append(" ORDER BY id")
         if (limit != null) {
@@ -316,6 +325,19 @@ class BoMNamedGraphStore(
     @Transactional
     fun clone(sourceId: UUID, annotations: Map<String, String> = emptyMap()): BoMResolvedGraph =
         snapshot(sourceId, annotations)
+
+    @Transactional
+    @JvmOverloads
+    fun createDeepGraphVersion(
+        graphId: UUID,
+        versionAnnotations: Map<String, String> = emptyMap(),
+    ) = deepVersions.createDeepGraphVersion(graphId, versionAnnotations)
+
+    @Transactional(readOnly = true)
+    fun listGraphVersions(graphId: UUID) = deepVersions.listGraphVersions(graphId)
+
+    @Transactional(readOnly = true)
+    fun getGraphVersion(graphId: UUID, version: Long) = deepVersions.getGraphVersion(graphId, version)
 
     /** Graphs that contain [entityId] (G-A5). Empty for orphans. */
     @Transactional(readOnly = true)
@@ -492,6 +514,7 @@ class BoMNamedGraphStore(
             throw BoMGraphException(code = "GRAPH_ENTITY_MISSING", message = "Entity not found: $entityId")
         }
         membershipRepository.save(BoMGraphMembershipRecord(graphId = graphId, entityId = entityId))
+        touch(graphId)
     }
 
     /**
@@ -505,6 +528,7 @@ class BoMNamedGraphStore(
         edgeRepository.findByGraphId(graphId)
             .filter { it.sourceId == entityId || it.targetId == entityId }
             .forEach { edgeRepository.delete(it) }
+        touch(graphId)
     }
 
     /**
@@ -531,6 +555,7 @@ class BoMNamedGraphStore(
             }
         }
         applyGraphEdgeUpserts(graphId, mutation.upsert.edges)
+        touch(graphId)
         return BoMValidationResult.ok()
     }
 
@@ -638,7 +663,8 @@ class BoMNamedGraphStore(
         for (edge in edges) {
             val id = requireNotNull(edge.id)
             val existing = edgeRepository.findById(id).orElse(null)
-            val record = existing ?: BoMEdgeRecord(id = id)
+            val now = java.time.Instant.now()
+            val record = existing ?: BoMEdgeRecord(id = id, createdAt = now, updatedAt = now)
             record.graphId = graphId
             record.sourceId = edge.source
             record.targetId = edge.target
@@ -646,6 +672,7 @@ class BoMNamedGraphStore(
             record.type = edge.type
             record.schemaVersion = edge.schemaVersion
             record.properties = edge.properties?.toMutableMap()
+            record.updatedAt = now
             edgeRepository.save(record)
         }
     }
@@ -739,8 +766,25 @@ class BoMNamedGraphStore(
             id = header.id,
             annotations = header.annotations.toMap(),
             contents = BoMGraphContents(entities = entities, edges = edges),
+            createdAt = header.createdAt,
+            updatedAt = header.updatedAt,
         )
     }
+
+    /** Bump graph HEAD `updated_at`. No-op if the header is gone. */
+    @Transactional
+    fun touch(graphId: UUID) {
+        val header = graphRepository.findById(graphId).orElse(null) ?: return
+        header.updatedAt = java.time.Instant.now()
+        graphRepository.save(header)
+    }
+
+    private fun BoMGraphRecord.toHeader() = BoMGraphHeader(
+        id = id,
+        annotations = annotations.toMap(),
+        createdAt = createdAt,
+        updatedAt = updatedAt,
+    )
 
     companion object {
         const val DEFAULT_SEARCH_LIMIT = 15

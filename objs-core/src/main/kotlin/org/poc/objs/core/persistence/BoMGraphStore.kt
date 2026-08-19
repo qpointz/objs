@@ -28,6 +28,10 @@ import org.poc.objs.core.validation.BoMValidationException
 import org.poc.objs.core.validation.BoMValidationIssue
 import org.poc.objs.core.validation.BoMValidationResult
 import org.poc.objs.core.validation.BoMValidator
+import org.poc.objs.core.versioning.BomVersioningStrategy
+import org.poc.objs.core.versioning.VersionedKind
+import org.poc.objs.core.versioning.VersioningContext
+import org.poc.objs.core.versioning.VersioningOp
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
@@ -49,6 +53,7 @@ class BoMGraphStore(
     private val poolReader: BoMPoolEntityReader,
     private val schemas: BoMSchemaCatalog,
     private val catalog: BoMCatalogSupport,
+    private val versioning: BomVersioningStrategy,
 ) {
     private fun gate(): BoMPersistGate = BoMPersistGate(
         validator = validator,
@@ -187,18 +192,22 @@ class BoMGraphStore(
     }
 
     private fun applyDeletes(mutation: BoMGraphMutation) {
+        val touchedGraphs = linkedSetOf<UUID>()
         for (id in mutation.delete.edges.distinct()) {
-            if (edgeRepository.existsById(id)) {
-                edgeRepository.deleteById(id)
-            }
+            val edge = edgeRepository.findById(id).orElse(null) ?: continue
+            touchedGraphs += edge.graphId
+            edgeRepository.delete(edge)
         }
         val entityIds = mutation.delete.entities.distinct().filter { entityRepository.existsById(it) }
-        if (entityIds.isEmpty()) {
-            return
+        if (entityIds.isNotEmpty()) {
+            edgeRepository.findBySourceIdInOrTargetIdIn(entityIds, entityIds)
+                .forEach { edge ->
+                    touchedGraphs += edge.graphId
+                    edgeRepository.delete(edge)
+                }
+            entityIds.forEach { entityRepository.deleteById(it) }
         }
-        edgeRepository.findBySourceIdInOrTargetIdIn(entityIds, entityIds)
-            .forEach { edgeRepository.delete(it) }
-        entityIds.forEach { entityRepository.deleteById(it) }
+        touchedGraphs.forEach { namedGraphs.touch(it) }
     }
 
     private fun applyUpserts(graph: BoMGraph) {
@@ -206,7 +215,8 @@ class BoMGraphStore(
         for (edge in graph.edges) {
             val id = requireNotNull(edge.id)
             val existing = edgeRepository.findById(id).orElse(null)
-            val record = existing ?: BoMEdgeRecord(id = id)
+            val now = java.time.Instant.now()
+            val record = existing ?: BoMEdgeRecord(id = id, createdAt = now, updatedAt = now)
             record.graphId = edge.graphId ?: existing?.graphId
                 ?: error("edge $id requires graphId when creating a new edge")
             record.sourceId = edge.source
@@ -215,7 +225,18 @@ class BoMGraphStore(
             record.type = edge.type
             record.schemaVersion = edge.schemaVersion
             record.properties = edge.properties?.toMutableMap()
+            record.updatedAt = now
             edgeRepository.save(record)
+            versioning.shouldCapture(
+                VersioningContext(
+                    graphId = record.graphId,
+                    kind = VersionedKind.EDGE,
+                    op = if (existing == null) VersioningOp.CREATE else VersioningOp.UPDATE,
+                    parentId = id,
+                    headVersion = record.headVersion,
+                ),
+            )
+            namedGraphs.touch(record.graphId)
         }
     }
 
@@ -363,12 +384,24 @@ class BoMGraphStore(
     fun upsertEntities(entities: Collection<BoMEntity>) {
         for (entity in entities) {
             val id = requireNotNull(entity.id)
-            val record = entityRepository.findById(id).orElseGet { BoMEntityRecord(id = id) }
+            val existing = entityRepository.findById(id).orElse(null)
+            val now = java.time.Instant.now()
+            val record = existing ?: BoMEntityRecord(id = id, createdAt = now, updatedAt = now)
             record.type = entity.type
             record.schemaVersion = entity.schemaVersion
             record.payload = entity.payload.toMutableMap()
             record.annotations = entity.annotations.toMutableMap()
+            record.updatedAt = now
             entityRepository.save(record)
+            versioning.shouldCapture(
+                VersioningContext(
+                    graphId = null,
+                    kind = VersionedKind.ENTITY,
+                    op = if (existing == null) VersioningOp.CREATE else VersioningOp.UPDATE,
+                    parentId = id,
+                    headVersion = record.headVersion,
+                ),
+            )
         }
     }
 
@@ -490,6 +523,8 @@ fun BoMEntityRecord.toDomain() = BoMEntity(
     schemaVersion = schemaVersion,
     payload = payload.toMutableMap(),
     annotations = annotations.toMutableMap(),
+    createdAt = createdAt,
+    updatedAt = updatedAt,
 )
 
 fun BoMEdgeRecord.toDomain() = BoMEdge(
@@ -501,4 +536,6 @@ fun BoMEdgeRecord.toDomain() = BoMEdge(
     type = type,
     schemaVersion = schemaVersion,
     properties = properties?.toMutableMap(),
+    createdAt = createdAt,
+    updatedAt = updatedAt,
 )

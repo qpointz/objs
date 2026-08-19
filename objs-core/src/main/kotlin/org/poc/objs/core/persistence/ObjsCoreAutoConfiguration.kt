@@ -5,6 +5,8 @@ import org.poc.objs.core.domain.BoMSchemaCatalog
 import org.poc.objs.core.seed.BoMSeedProperties
 import org.poc.objs.core.seed.BoMSeedStartupLoader
 import org.poc.objs.core.validation.BoMValidator
+import org.poc.objs.core.versioning.BomVersioningStrategy
+import org.poc.objs.core.versioning.ExplicitOnlyVersioningStrategy
 import org.springframework.boot.ApplicationRunner
 import org.springframework.boot.autoconfigure.AutoConfiguration
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
@@ -64,6 +66,10 @@ class ObjsCoreAutoConfiguration {
         ApplicationRunner { loader.loadConfiguredResources() }
 
     // ── Validator ──
+
+    @Bean
+    @ConditionalOnMissingBean(BomVersioningStrategy::class)
+    fun bomVersioningStrategy(): BomVersioningStrategy = ExplicitOnlyVersioningStrategy()
 
     @Bean
     fun bomValidator(

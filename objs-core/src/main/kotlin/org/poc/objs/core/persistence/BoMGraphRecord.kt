@@ -8,6 +8,7 @@ import jakarta.persistence.Table
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
 import java.io.Serializable
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -23,6 +24,15 @@ class BoMGraphRecord(
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "annotations", nullable = false, columnDefinition = "json")
     var annotations: MutableMap<String, String> = mutableMapOf(),
+
+    @Column(name = "created_at", nullable = false)
+    var createdAt: Instant = Instant.now(),
+
+    @Column(name = "updated_at", nullable = false)
+    var updatedAt: Instant = Instant.now(),
+
+    @Column(name = "head_version")
+    var headVersion: Long? = null,
 )
 
 data class BoMGraphMembershipId(
@@ -42,4 +52,10 @@ class BoMGraphMembershipRecord(
     @Id
     @Column(name = "entity_id", nullable = false)
     var entityId: UUID = UUID.randomUUID(),
+
+    @Column(name = "created_at", nullable = false)
+    var createdAt: Instant = Instant.now(),
+
+    @Column(name = "updated_at", nullable = false)
+    var updatedAt: Instant = Instant.now(),
 )

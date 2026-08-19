@@ -129,6 +129,9 @@ class BoMGraphStorePostgresIT {
         assertThat(alice.payload["name"]).isEqualTo("Alice")
         assertThat(alice.annotations["env"]).isEqualTo("test")
         assertThat(alice.annotations["team"]).isEqualTo("core")
+        assertThat(alice.createdAt).isNotNull
+        assertThat(alice.updatedAt).isNotNull
+        assertThat(alice.updatedAt).isAfterOrEqualTo(alice.createdAt)
     }
 
     @Test

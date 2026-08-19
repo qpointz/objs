@@ -272,6 +272,30 @@ class ObjsGraphsController(
         return ResponseEntity.status(HttpStatus.CREATED).body(cloned.toResponse())
     }
 
+    @PostMapping("/{id}/versions")
+    @Operation(summary = "Snapshot: pin current HEAD as a deep graph version (same graph id)")
+    fun createVersion(
+        @PathVariable id: UUID,
+        @RequestBody(required = false) body: CloneBody?,
+    ): ResponseEntity<org.poc.objs.core.domain.BoMGraphVersionSummary> {
+        val created = namedGraphs.createDeepGraphVersion(id, body?.annotations ?: emptyMap())
+        return ResponseEntity.status(HttpStatus.CREATED).body(created)
+    }
+
+    @GetMapping("/{id}/versions")
+    @Operation(summary = "List deep graph versions, newest first")
+    fun listVersions(@PathVariable id: UUID) = namedGraphs.listGraphVersions(id)
+
+    @GetMapping("/{id}/versions/{version}")
+    @Operation(summary = "Reconstruct a deep graph version (read-only)")
+    fun getVersion(
+        @PathVariable id: UUID,
+        @PathVariable version: Long,
+    ): ResponseEntity<GraphResponse> {
+        val resolved = namedGraphs.getGraphVersion(id, version)
+        return ResponseEntity.ok(resolved.toResponse())
+    }
+
     @ExceptionHandler(BoMValidationException::class)
     fun handleValidation(ex: BoMValidationException): ResponseEntity<BoMValidationResult> {
         val notFound = ex.result.issues.any { it.code == "GRAPH_NOT_FOUND" }
@@ -282,7 +306,7 @@ class ObjsGraphsController(
     @ExceptionHandler(BoMGraphException::class)
     fun handleGraphException(ex: BoMGraphException): ResponseEntity<Map<String, String>> {
         val status = when (ex.code) {
-            "GRAPH_NOT_FOUND" -> HttpStatus.NOT_FOUND
+            "GRAPH_NOT_FOUND", "GRAPH_VERSION_NOT_FOUND" -> HttpStatus.NOT_FOUND
             else -> HttpStatus.BAD_REQUEST
         }
         return ResponseEntity.status(status).body(

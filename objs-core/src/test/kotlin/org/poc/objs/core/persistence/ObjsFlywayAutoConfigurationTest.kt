@@ -37,7 +37,16 @@ class ObjsFlywayAutoConfigurationTest {
         val entityCount = jdbc.queryForObject("SELECT COUNT(*) FROM bom_entity", Int::class.java)
         assertThat(entityCount).isZero()
 
-        assertThat(objsFlyway.flyway.info().current()?.version?.toString()).isEqualTo("2")
+        assertThat(objsFlyway.flyway.info().current()?.version?.toString()).isEqualTo("4")
         assertThat(objsFlyway.flyway.configuration.table).isEqualTo("flyway_schema_history_objs")
+        val clocks = jdbc.queryForObject(
+            """
+            SELECT COUNT(*) FROM information_schema.columns
+            WHERE LOWER(table_name) = 'bom_entity'
+              AND LOWER(column_name) IN ('created_at', 'updated_at')
+            """.trimIndent(),
+            Int::class.java,
+        )
+        assertThat(clocks).isEqualTo(2)
     }
 }

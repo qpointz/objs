@@ -1,5 +1,6 @@
 package org.poc.objs.core.persistence
 
+import java.time.Instant
 import java.util.UUID
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -26,6 +27,7 @@ import org.springframework.boot.SpringBootConfiguration
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
 import org.springframework.context.annotation.Import
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.TestPropertySource
 
 @DataJpaTest
@@ -63,6 +65,9 @@ class BoMNamedGraphStoreTest {
 
     @Autowired
     lateinit var membershipRepository: BoMGraphMembershipRepository
+
+    @Autowired
+    lateinit var jdbc: JdbcTemplate
 
     private lateinit var a: UUID
     private lateinit var b: UUID
@@ -619,5 +624,99 @@ class BoMNamedGraphStoreTest {
         assertThat(namedGraphs.listIncidentEdges(a, g1.id).single().target).isEqualTo(b)
         assertThat(namedGraphs.listIncidentEdges(a, g2.id)).isEmpty()
         assertThat(namedGraphs.listEntityIdsInGraph(g1.id)).containsExactlyInAnyOrder(a, b)
+    }
+
+    @Test
+    fun shouldStampClocks_onInsertAndKeepCreatedAtOnUpdate() {
+        val loaded = graphStore.getEntity(a)!!
+        assertThat(loaded.createdAt).isNotNull
+        assertThat(loaded.updatedAt).isNotNull
+        val created = loaded.createdAt!!
+        Thread.sleep(15)
+        loaded.payload["name"] = "A2"
+        loaded.createdAt = Instant.parse("2000-01-01T00:00:00Z")
+        loaded.updatedAt = Instant.parse("2000-01-01T00:00:00Z")
+        assertThat(graphStore.write(BoMGraph(entities = mutableListOf(loaded))).isValid).isTrue()
+        val after = graphStore.getEntity(a)!!
+        assertThat(after.createdAt).isEqualTo(created)
+        assertThat(after.updatedAt).isAfter(created)
+        assertThat(after.createdAt).isNotEqualTo(Instant.parse("2000-01-01T00:00:00Z"))
+    }
+
+    @Test
+    fun shouldPreserveEntityClocks_whenCopyGraph() {
+        val before = graphStore.getEntity(a)!!
+        val source = namedGraphs.create(BoMGraphSpec(entityIds = setOf(a, b)))
+        Thread.sleep(15)
+        val copied = namedGraphs.copyGraph(source.id, mapOf("k" to "v"))
+        val after = graphStore.getEntity(a)!!
+        assertThat(after.createdAt).isEqualTo(before.createdAt)
+        assertThat(after.updatedAt).isEqualTo(before.updatedAt)
+        assertThat(copied.createdAt).isNotNull
+        assertThat(copied.updatedAt).isNotNull
+        assertThat(copied.createdAt).isNotEqualTo(source.createdAt)
+    }
+
+    @Test
+    fun shouldBumpGraphUpdatedAt_whenMembershipChanges() {
+        val graph = namedGraphs.create(BoMGraphSpec(entityIds = setOf(a)))
+        val created = graph.createdAt!!
+        val updated = graph.updatedAt!!
+        Thread.sleep(15)
+        namedGraphs.attach(graph.id, b)
+        val after = namedGraphs.get(graph.id)!!
+        assertThat(after.createdAt).isEqualTo(created)
+        assertThat(after.updatedAt).isAfter(updated)
+    }
+
+    @Test
+    fun shouldNotWriteVersionRows_onOrdinaryPersist() {
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM bom_entity_version", Int::class.java)).isZero()
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM bom_graph_version", Int::class.java)).isZero()
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM bom_graph_edge_version", Int::class.java)).isZero()
+        val loaded = graphStore.getEntity(a)!!
+        assertThat(entityRepository.findById(a).orElseThrow().headVersion).isNull()
+        loaded.payload["name"] = "A3"
+        assertThat(graphStore.write(BoMGraph(entities = mutableListOf(loaded))).isValid).isTrue()
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM bom_entity_version", Int::class.java)).isZero()
+        assertThat(entityRepository.findById(a).orElseThrow().headVersion).isNull()
+
+        val graph = namedGraphs.create(BoMGraphSpec(entityIds = setOf(a, b)))
+        addEdge(graph.id, a, b)
+        namedGraphs.clone(graph.id)
+        namedGraphs.copyGraph(graph.id)
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM bom_entity_version", Int::class.java)).isZero()
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM bom_graph_version", Int::class.java)).isZero()
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM bom_graph_edge_version", Int::class.java)).isZero()
+    }
+
+    @Test
+    fun shouldFreezeDeepGraphVersion_withoutChangingLiveHeadUntilEdit() {
+        val graph = namedGraphs.create(BoMGraphSpec(entityIds = setOf(a, b)))
+        addEdge(graph.id, a, b)
+        val beforeCount = entityRepository.count()
+        val freeze = namedGraphs.createDeepGraphVersion(graph.id, mapOf("label" to "v1"))
+        assertThat(namedGraphs.listGraphVersions(graph.id).map { it.version }).containsExactly(freeze.version)
+        assertThat(entityRepository.count()).isEqualTo(beforeCount)
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM bom_entity_version", Int::class.java)).isEqualTo(2)
+
+        val pin = namedGraphs.getGraphVersion(graph.id, freeze.version)
+        val liveEntity = graphStore.getEntity(a)!!
+        liveEntity.payload["name"] = "A-live"
+        assertThat(graphStore.write(BoMGraph(entities = mutableListOf(liveEntity))).isValid).isTrue()
+        val pinAgain = namedGraphs.getGraphVersion(graph.id, freeze.version)
+        assertThat(pinAgain.contents.entities.single { it.id == a }.payload["name"]).isEqualTo(pin.contents.entities.single { it.id == a }.payload["name"])
+        assertThat(graphStore.getEntity(a)!!.payload["name"]).isEqualTo("A-live")
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM bom_graph_version", Int::class.java)).isEqualTo(1)
+
+        val cloned = namedGraphs.clone(graph.id)
+        assertThat(cloned.contents.entities.map { it.payload["name"] }).contains("A-live")
+        assertThat(namedGraphs.listGraphVersions(cloned.id)).isEmpty()
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM bom_graph_version", Int::class.java)).isEqualTo(1)
+
+        namedGraphs.delete(graph.id)
+        val afterDelete = namedGraphs.getGraphVersion(graph.id, freeze.version)
+        assertThat(afterDelete.contents.entities).hasSize(2)
+        assertThat(afterDelete.contents.edges).hasSize(1)
     }
 }
