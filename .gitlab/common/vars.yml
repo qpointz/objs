@@ -1,0 +1,6 @@
+variables:
+  GIT_STRATEGY: fetch
+  GIT_DEPTH: "1"
+  GIT_CLEAN_FLAGS: none
+  GIT_SUBMODULE_STRATEGY: none
+  GIT_LFS_SKIP_SMUDGE: "1"

@@ -1,0 +1,24 @@
+include:
+  - local: /.gitlab/common/common.yml
+
+workflow:
+  rules:
+    - when: always
+
+stages:
+  - build
+
+components:test:
+  stage: build
+  extends: .gradle-job
+  script:
+    - cd "${CI_PROJECT_DIR}"
+    - ./gradlew --no-daemon ${GRADLE_CONTINUE_PARAM} --console plain test :objs-core:testITClasses
+  artifacts:
+    when: always
+    expire_in: 7 days
+    paths:
+      - "**/build/reports/tests/test/"
+    reports:
+      junit:
+        - "**/build/test-results/test/TEST-*.xml"

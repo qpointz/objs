@@ -32,6 +32,7 @@ objs/
 - **Tests:** JVM Test Suite + JUnit Jupiter from the version catalog; `testIT` on `:objs-core`
 - **Aggregate:** root tasks `test` and `testIT` depend on leaf module tasks
 - **No** `build-logic` / custom convention plugins
+- **CI:** GitLab child pipelines — [`ci-pipeline.md`](ci-pipeline.md). Invokes `test` / `testIT` only; no extra Gradle tasks.
 - **Workbench UI:** `:objs-service-ui` downloads Node via node-gradle, runs `npm ci` /
   `npm run build`, writes Vite output to `build/generated/vite`, then `processResources` copies
   into `build/resources/main/static/workbench/` (so project dependency classpaths see the assets).

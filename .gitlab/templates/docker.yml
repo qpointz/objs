@@ -1,0 +1,29 @@
+# Reserved Docker job templates (qpointz-shaped). Not wired until publish-docker is implemented.
+#
+# Official images: objs-service-app (workbench).
+# Example images: sbom-service, asset-repository-service.
+#
+# Feature branch / MR: GitLab registry, tag ${CI_COMMIT_REF_SLUG} (.docker-build-job).
+# Protected tag: GitLab registry + Docker Hub qpointz/<name>:<version> (.docker-build-job-release).
+
+.docker-base:
+  image:
+    name: docker:27-cli
+    entrypoint: [""]
+  variables:
+    DOCKER_BUILDKIT: "1"
+    DOCKER_DRIVER: overlay2
+  before_script:
+    - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
+
+.docker-build-job:
+  extends: .docker-base
+  script:
+    - echo "Reserved: feature-branch Docker publish is not implemented yet."
+    - exit 1
+
+.docker-build-job-release:
+  extends: .docker-base
+  script:
+    - echo "Reserved: release Docker publish (GitLab registry + Docker Hub) is not implemented yet."
+    - exit 1

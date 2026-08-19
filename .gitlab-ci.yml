@@ -1,0 +1,107 @@
+stages:
+  - build
+  - integration
+  - publish
+  - release
+
+variables:
+  RUN_INTEGRATION:
+    value: "false"
+    description: "Set to true to run integration tests (testIT)"
+    options:
+      - "true"
+      - "false"
+  RUN_FULL_TEST:
+    value: "false"
+    description: "Force the unit-test child: true (force), false (MR/protected/feature branch still run it)"
+    options:
+      - "true"
+      - "false"
+  GRADLE_CONTINUE:
+    value: "false"
+    description: "Set to true to continue Gradle after a failure"
+    options:
+      - "true"
+      - "false"
+  GRADLE_FORCE_CLEAN:
+    value: "false"
+    description: "Set to true to force Gradle clean"
+    options:
+      - "true"
+      - "false"
+
+workflow:
+  rules:
+    - if: '$CI_COMMIT_TAG && $CI_COMMIT_REF_PROTECTED == "true"'
+      when: always
+    - if: '$CI_COMMIT_TAG && $CI_COMMIT_REF_PROTECTED != "true"'
+      when: never
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: always
+    - if: '$CI_COMMIT_REF_PROTECTED == "true"'
+      when: always
+    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS && $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF_PROTECTED != "true"'
+      when: never
+    - if: '$CI_COMMIT_BRANCH'
+      when: always
+    - when: always
+
+include:
+  - local: /.gitlab/common/common.yml
+
+test:downstream:
+  stage: build
+  trigger:
+    include:
+      - local: .gitlab/pipelines/test.yml
+    strategy: depend
+    forward:
+      pipeline_variables: true
+  rules:
+    - if: '$CI_COMMIT_TAG && $CI_COMMIT_REF_PROTECTED == "true"'
+      when: never
+    - if: '$RUN_INTEGRATION == "true" || ($CI_COMMIT_BRANCH && $CI_COMMIT_REF_PROTECTED == "true")'
+      when: always
+    - if: '$RUN_FULL_TEST == "true" || ($CI_PIPELINE_SOURCE == "merge_request_event") || ($CI_COMMIT_REF_PROTECTED == "true" && $CI_COMMIT_BRANCH)'
+      when: always
+    - if: '$CI_COMMIT_BRANCH'
+      when: always
+    - when: never
+
+integration:downstream:
+  stage: integration
+  needs: []
+  trigger:
+    include:
+      - local: .gitlab/pipelines/integration.yml
+    strategy: depend
+    forward:
+      pipeline_variables: true
+  rules:
+    - if: '$CI_COMMIT_TAG && $CI_COMMIT_REF_PROTECTED == "true"'
+      when: never
+    - if: '$RUN_INTEGRATION == "true" || ($CI_COMMIT_BRANCH && $CI_COMMIT_REF_PROTECTED == "true")'
+      when: always
+    - when: never
+
+publish:docker:downstream:
+  stage: publish
+  trigger:
+    include:
+      - local: .gitlab/pipelines/publish-docker.yml
+    strategy: depend
+    forward:
+      pipeline_variables: true
+  rules:
+    - when: never
+
+release:downstream:
+  stage: release
+  trigger:
+    include:
+      - local: .gitlab/pipelines/release.yml
+    strategy: depend
+    forward:
+      pipeline_variables: true
+  rules:
+    - when: never

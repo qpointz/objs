@@ -1,0 +1,60 @@
+.gradle-job:
+  image:
+    name: azul/zulu-openjdk:21-latest
+  variables:
+    GRADLE_USER_HOME: ${CI_PROJECT_DIR}/.gradle-home
+    GRADLE_DO_CLEAN: "false"
+    CACHE_POLICY: "pull"
+    CACHE_PREFIX: "gradle-dev"
+    CACHE_FALLBACK_KEY: "gradle-dev"
+  before_script:
+    - chmod +x ./gradlew
+    - |
+      cat <<EOF
+      BUILD_TAG_INPUTS:
+        CI_COMMIT_REF_SLUG=${CI_COMMIT_REF_SLUG}
+        CI_COMMIT_REF_NAME=${CI_COMMIT_REF_NAME}
+      EOF
+    - |
+      if [ "$GRADLE_CONTINUE" = "true" ]; then
+        echo "Gradle : continue mode"
+        export GRADLE_CONTINUE_PARAM=" --continue "
+      else
+        echo "Gradle : fail on error mode"
+        export GRADLE_CONTINUE_PARAM=" "
+      fi
+    - |
+      if [ "$GRADLE_FORCE_CLEAN" = "true" ]; then
+        echo "Gradle : force cleaning"
+        export GRADLE_DO_CLEAN="true"
+      fi
+      if [ "$GRADLE_DO_CLEAN" = "true" ]; then
+        echo "Gradle : cleaning"
+        ./gradlew --no-daemon --console plain clean
+      fi
+  rules:
+    - if: '$CI_COMMIT_REF_PROTECTED == "true"'
+      variables:
+        GRADLE_DO_CLEAN: "false"
+        CACHE_POLICY: "pull-push"
+        CACHE_PREFIX: "gradle-${CI_COMMIT_REF_NAME}"
+        CACHE_FALLBACK_KEY: "gradle-dev"
+    - when: on_success
+      variables:
+        GRADLE_DO_CLEAN: "false"
+        CACHE_POLICY: "pull"
+        CACHE_PREFIX: "gradle-dev"
+        CACHE_FALLBACK_KEY: "gradle-dev"
+  cache:
+    key:
+      prefix: $CACHE_PREFIX
+      files:
+        - gradle/wrapper/gradle-wrapper.properties
+    fallback_keys:
+      - $CACHE_FALLBACK_KEY
+    policy: $CACHE_POLICY
+    paths:
+      - .gradle-home/wrapper/
+      - .gradle-home/caches/modules-2/
+      - .gradle-home/caches/jars-9/
+      - .gradle-home/caches/build-cache-1/

@@ -1,0 +1,19 @@
+# Reserved child pipeline: protected-tag release (Maven / Docker Hub).
+# Root trigger stays off until this is implemented.
+
+include:
+  - local: /.gitlab/common/common.yml
+
+workflow:
+  rules:
+    - when: always
+
+stages:
+  - release
+
+release:reserved:
+  stage: release
+  script:
+    - echo "Reserved extension: release publish is not implemented."
+  rules:
+    - when: never

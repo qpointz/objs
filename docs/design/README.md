@@ -11,6 +11,7 @@ Organised by logical component (not by story). Story process lives under
 |------|------|----------|
 | Platform overview | [`platform/overview.md`](platform/overview.md) | Product intent, stack, module map, open questions |
 | Build system | [`platform/build-system.md`](platform/build-system.md) | Gradle layout, versioning, conventions |
+| GitLab CI | [`platform/ci-pipeline.md`](platform/ci-pipeline.md) | Orchestrator, unit/IT children, reserved Docker publish |
 | Kotlin | [`platform/kotlin.md`](platform/kotlin.md) | Kotlin toolchain and implementation notes |
 | App | [`platform/app.md`](platform/app.md) | `objs-service-app`: workbench-only runnable |
 | Core | [`core/README.md`](core/README.md) | `objs-core`: entity SDK + validation + JPA |

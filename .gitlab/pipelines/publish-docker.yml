@@ -1,0 +1,25 @@
+# Reserved child pipeline: official + example Docker images (qpointz-shaped).
+# Official: objs-service-app. Examples: sbom-service, asset-repository-service.
+# Root trigger stays off until this is implemented.
+
+include:
+  - local: /.gitlab/common/common.yml
+
+workflow:
+  rules:
+    - when: always
+
+stages:
+  - publish
+
+publish:docker:reserved:
+  stage: publish
+  script:
+    - |
+      echo "Reserved extension: Docker publish is not implemented."
+      echo "Official image: objs-service-app"
+      echo "Example images: sbom-service, asset-repository-service"
+      echo "Feature branch: GitLab registry, tag \${CI_COMMIT_REF_SLUG}"
+      echo "Protected tag: GitLab registry + Docker Hub qpointz/<name>:<version>"
+  rules:
+    - when: never

@@ -1,0 +1,3 @@
+include:
+  - local: /.gitlab/templates/gradle.yml
+  - local: /.gitlab/templates/docker.yml
