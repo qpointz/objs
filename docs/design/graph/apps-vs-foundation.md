@@ -1,6 +1,7 @@
 # Object store: foundation vs example apps
 
 **Status:** design note (2026-08-16), from SBOM inventory + asset repository  
+**Shipped:** [C-17 `live-store-apis`](../../workitems/completed/20260819-live-store-apis/STORY.md). Next: [C-18 versions](../../workitems/planned/versions-and-snapshots/STORY.md) → [C-19 after versions](../../workitems/planned/foundation-after-versions/STORY.md). Text `q`: [C-20 `store-text-search`](../../workitems/planned/store-text-search/STORY.md) (does not block C-18). Sequence: [`SEQUENCE.md`](../../workitems/SEQUENCE.md).  
 **Audience:** objs-core / graph APIs  
 **Not this doc:** product journeys, workbench REST (`objs-service`), Gradle/UI packaging (appendix only)
 
@@ -26,33 +27,49 @@ A third example should be mostly **domain table + routes + seeds**, not another 
 - Global **entity pool** (type + version + JSON payload + annotations).
 - **Named graphs**: header + membership + induced edges; select via matchers.
 - **Catalog:** `(type, version)` schemas; allowed `(sourceType, role, targetType)` (+ cardinality / properties policy).
-- **Writes:** batch persist gate (entities then edges); identity fields projected, not queried.
-- **Reads:** forward select (graphs/entities matching matcher); Gremlin over a selected subgraph.
+- **Writes:** batch persist gate (entities then edges); identity fields projected and queried (`findEntitiesByIdentity` / `findDuplicateGroups`).
+- **Reads:** forward select; reverse membership (`listGraphIdsForEntity` / `listIncidentEdges`); Gremlin over a selected subgraph; paged `selectFromPool` + `countByType`.
+- **Live graph ops:** `copyGraph` (same pool ids), `mergeGraph` (`GraphMergePolicy`, default `FirstSeenGraphMergePolicy`), hard `clone()` (new ids).
+- **Catalog helpers:** `BoMCatalogSupport` — latest entity schema, field hints, `allowedEdgesForType`, `displayLabel`, `filterMapToObjExpr`.
 - **Seeds:** `ObjectSchema`, `AllowedEdgeRule`, `Graph` (and SPI for extra kinds — kinds themselves stay in apps).
 
 ## Missing in objs-* (object / graph)
 
-These showed up in both products (SBOM named `FB-1`–`FB-3`; AR will hit the same if it grows “where used” / duplicates / typed search).
+C-17 shipped catalog helpers, reverse/identity, live `copyGraph`/`mergeGraph`, and paging. Remaining cross-app gaps:
 
 | Need | Why it is store, not product | Today |
 |------|------------------------------|--------|
-| **Reverse: entity → graphs + incident edges** | Shared objects; “who uses this?”; MI-style reports | App scans known `graph_id`s (SBOM drafts/versions) |
-| **Find-by-identity / duplicate groups** | Identity projection exists; query does not | `selectFromPool` by type + group maps in memory |
-| **Searchable-field matcher pushdown** | Schema `searchable` + `obj-expr` should be the fast path | Incomplete operators → slow path |
-| **Paged pool select** | Inventory UIs page a type | Full select then sort/slice in the app |
-| **Per-type counts without a full scan** | Schema portal / type lists | Scan or N queries |
-| **Copy / clone graph membership** | Version snapshot, fingerprint, collection snapshot | Hand-rolled copy in the app (e.g. SBOM version capture) |
-| **Schema catalog helpers** (latest per type, identifier/searchable field hints) | Same DTO both apps need | SBOM `AssetTypeCatalogService` vs AR `SchemaQueryService` |
+| **Searchable-field matcher pushdown** | Schema `searchable` + `obj-expr` should be the fast path | Incomplete operators → slow path (contains/`q` = C-20; rest C-19) |
+| **Text `q` on payload scalars** | Objects page, SBOM assets, AR collection objects all need substring search | Equality `obj-expr` or load-then-filter; graph **header** search is separate |
+| **`createdAt` / `updatedAt` on graph, node, edge** | Every consumer wants last-changed; must not live in payload | Catalog rows already stamped; `bom_entity` / `bom_graph` / `bom_graph_edge` are not |
+| **Versions + snapshots** | Fingerprints must not pollute the live pool or drift when HEAD moves | C-12 `clone()` into the pool. **C-18** [`versions-and-snapshots`](../../workitems/planned/versions-and-snapshots/STORY.md) |
 
-Suggested store APIs (names indicative):
+Shipped store APIs (C-17):
 
-- `listGraphIdsForEntity(entityId)` / `listIncidentEdges(entityId)` — **FB-1**
-- `findEntitiesByIdentity(type, identityMap)` / `findDuplicateGroups(type)` — **FB-2**
-- Extend matcher pushdown on searchable paths — **FB-3**
-- `selectFromPool(type, matcher, page)` with store-side limit/offset
-- `countByType()` (pool, optional graph-scoped)
-- `copyGraph(sourceGraphId) → newGraphId` (header + membership + edges; new graph id)
-- Catalog: list ENTITY types, latest version, identifier vs searchable paths (no “used in apps”)
+- `listGraphIdsForEntity(entityId)` / `listIncidentEdges(entityId, graphId?)` — **shipped** (C-17 WI-003 / FB-1)
+- `findEntitiesByIdentity(type, identityMap)` / `findDuplicateGroups(type)` — **shipped** (C-17 WI-004 / FB-2)
+- Extend matcher pushdown on searchable paths — **FB-3** (`q` / contains = [C-20](../../workitems/planned/store-text-search/STORY.md); other ops C-19)
+- Pool/graph text `q` over identifier + searchable scalars — **C-20** (workbench Objects, SBOM assets, AR objects)
+- `selectFromPool(matcher, page)` + `countByType()` — **shipped** (C-17 WI-006)
+- Catalog helpers (`BoMCatalogSupport`) — **shipped** (C-17 WI-002)
+- `copyGraph(sourceGraphId, annotations) → BoMResolvedGraph` — **shipped** (C-17 WI-005): one live graph, **same** pool entity ids, new edge ids
+- `mergeGraph(sourceGraphIds, annotations, GraphMergePolicy) → BoMResolvedGraph` — **shipped** (C-17 WI-005): persist-union; default first-seen
+- Store-managed `createdAt` / `updatedAt` — **C-19** on version rows, not C-17
+- Entity/edge versions + HEAD; snapshot graphs pin versions — **C-18** [`versions-and-snapshots`](../../workitems/planned/versions-and-snapshots/STORY.md), not C-17 |
+
+## C-17 live graph copy vs merge vs clone
+
+Lock for [`live-store-apis`](../../workitems/completed/20260819-live-store-apis/STORY.md) WI-005. Workbench Composer **`clone()` REST stays**; examples do not call `/api/v1/objs/**`.
+
+| API | Sources | Pool entities | Edges | Policy | Callers |
+|-----|---------|---------------|-------|--------|---------|
+| `copyGraph(sourceId, annotations)` | exactly one | **same ids** (membership only) | copied, **new ids**, new `graphId` | none | SBOM **keep-split** new draft; AR **collection copy** |
+| `mergeGraph(sourceIds, annotations, policy)` | 1..n | same ids; collisions via policy | copied, new ids; collisions via policy | `GraphMergePolicy` (default `FirstSeenGraphMergePolicy`) | SBOM **combine-on-new-draft** |
+| `clone()` | one | **new ids** | new ids, remapped endpoints | n/a | Workbench Composer snapshot (unchanged this story) |
+
+`GraphMergePolicy`: `nodeKey` / `edgeKey` detect overlap; `onDuplicateNode` / `onDuplicateEdge` choose the survivor. Default: node key = entity id; edge key = `(source, role, target)`; keep first in caller order; do not merge property maps. Empty `sourceIds` → `GRAPH_MERGE_EMPTY`; any missing source → `GRAPH_NOT_FOUND` and no new graph.
+
+Do **not** overload `copyGraph` with a collection of ids. Combined SBOM **GET** / multi-select stays ephemeral `BomUnion` (not persist). Fingerprint freeze is **C-18 pins**, not copy or merge.
 
 **Not missing as foundation:** applications, portfolios, collections-as-product, CycloneDX, MI *report definitions*, uniqueness of “app in portfolio”. Those stay domain.
 
@@ -64,7 +81,7 @@ High value — same job in both examples:
 2. Pool create/update with **identifier immutability** (store policy, not SBOM-specific).
 3. Display label from payload (`name` / first identifier).
 4. Filter form → `obj-expr` for searchable paths.
-5. Graph copy (new graph id, same members/edges).
+5. Live graph copy (`copyGraph`) and persist-union (`mergeGraph`).
 
 Keep in apps:
 
@@ -77,10 +94,10 @@ Keep in apps:
 
 | Duplicate in examples | Foundation shape |
 |-----------------------|------------------|
-| Schema catalog + identifier/searchable hints | Helpers on `BoMSchemaCatalog` (or a small catalog service in core) |
-| In-memory “where used” / duplicate grouping / type stats | Reverse lookup, identity query, counts |
-| Identity-immutable payload update | Persist/update rule in core |
-| Graph clone for snapshots | `copyGraph` on `BoMNamedGraphStore` |
+| Schema catalog + identifier/searchable hints | `BoMCatalogSupport` (latest schema, field hints, allow-list for type) |
+| “Where used” / duplicate grouping / type stats | `listGraphIdsForEntity`, `findDuplicateGroups`, `countByType` |
+| Identity-immutable payload update | Persist/update rule in core (`IDENTIFIER_IMMUTABLE`) |
+| Graph clone for snapshots | C-18 pins (not C-17 `copyGraph`). Live share = `copyGraph`; persist-union = `mergeGraph` |
 
 SPA chrome, schema *forms*, Gradle node-gradle packaging are duplicates too; they are **not** store APIs (see appendix).
 

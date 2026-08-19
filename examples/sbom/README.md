@@ -54,4 +54,5 @@ Step-by-step: [`docs/design/sbom/user.md`](../../docs/design/sbom/user.md).
 
 - Product language only in the UI (application, version, BOM, Combined SBOM, fingerprint, asset, relation, portfolio, report).  
 - Workbench / `/api/v1/objs/**` are a **demo sidecar** on the same JVM when foundation jars are on the runtime classpath. Domain UI and domain REST do not call them.  
+- Asset usage, duplicates, paging/counts, keep-split draft copy, and combine-on-new-draft call `objs-core` (`listGraphIdsForEntity`, `findDuplicateGroups`, `selectFromPool`/`countByType`, `copyGraph`/`mergeGraph`). Combined SBOM GET stays ephemeral. Asset text `q` is not this slice.  
 - CycloneDX **export API** remains; the application-detail download link is **hidden**. Not certified.  

@@ -70,6 +70,9 @@ public final class ApiDtos {
     ) {
     }
 
+    public record CopyCollectionRequest(String name) {
+    }
+
     public record PatchCollectionRequest(
             String name,
             String description,

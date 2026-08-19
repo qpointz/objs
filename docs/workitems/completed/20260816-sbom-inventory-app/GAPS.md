@@ -44,8 +44,8 @@ Normative detail and scheduling: **[`FOUNDATION-BACKLOG.md`](FOUNDATION-BACKLOG.
 
 | # | Topic | Status | Notes |
 |---|--------|--------|-------|
-| G-F1 / **FB-1** | Who uses this asset? (reverse lookup) | **parked** | Foundation **to be extended**; example uses stopgap scan — see FOUNDATION-BACKLOG |
-| G-F2 / **FB-2** | Find duplicates by identifier | **parked** | Foundation **to be extended**; in-memory group stopgap — see FOUNDATION-BACKLOG |
+| G-F1 / **FB-1** | Who uses this asset? (reverse lookup) | **done** | C-17 WI-003: `listGraphIdsForEntity` / `listIncidentEdges` — see FOUNDATION-BACKLOG |
+| G-F2 / **FB-2** | Find duplicates by identifier | **done** | C-17 WI-004: `findEntitiesByIdentity` / `findDuplicateGroups` — see FOUNDATION-BACKLOG |
 | G-F3 | Application catalog search | **resolved** | SBOM application table |
 | G-F4 / **FB-3** | Schema-field advanced search | **resolved** | Form = **`searchable` only**; if no pushdown → **slow path** OK; FB-3 tracks better pushdown |
 | G-F5 | Version snapshot semantics | **resolved** | **Fingerprint** copies the version graph (governance snapshot). Promote does not copy. |
@@ -160,7 +160,7 @@ Normative detail and scheduling: **[`FOUNDATION-BACKLOG.md`](FOUNDATION-BACKLOG.
 
 ### G-F1 / FB-1 — “Who uses this asset?” (foundation reverse lookup)
 
-**Status:** **parked** — foundation needs extension; tracked as **[FB-1](FOUNDATION-BACKLOG.md)**.
+**Status:** **done** (C-17 WI-003) — tracked as **[FB-1](FOUNDATION-BACKLOG.md)**. Historical parking notes below.
 
 **In one sentence:** objs can answer “what’s inside application X’s BOM?” easily, but **not** the reverse — “given asset Y, which applications’ BOMs include Y, and with which relations?”
 
@@ -188,7 +188,7 @@ listIncidentEdges(entityId, graphId?): List<BoMEdge>
 
 ### G-F2 / FB-2 — Find duplicates by identifier (foundation)
 
-**Status:** **parked** — foundation needs extension; tracked as **[FB-2](FOUNDATION-BACKLOG.md)**.
+**Status:** **done** (C-17 WI-004) — tracked as **[FB-2](FOUNDATION-BACKLOG.md)**. Historical parking notes below.
 
 **Needed by:** Journey 2 duplicates (find-only, G-P7); **MI-4** risk signals; R12.
 
@@ -414,7 +414,7 @@ Search/list applications via **SBOM application table** (domain), not foundation
 | **Consumers** | Journey 2 inspect; portfolio **MI-2/MI-3**; helps G-P4 shared-object inference |
 | **Works today** | Open known `graph_id` → list members (forward) |
 | **Gap** | No public “graphs containing entity” + incident edges (reverse) |
-| **Status** | **Parked** — see **[FB-1](FOUNDATION-BACKLOG.md)**; stopgap scan of SBOM graph ids |
+| **Status** | **Done** — C-17 WI-003; see **[FB-1](FOUNDATION-BACKLOG.md)** |
 | **When unparked** | Foundation API + tests; then harden WI-008 / MI-3 |
 
 ### G-F2 / FB-2 — Identity / duplicate query
@@ -424,7 +424,7 @@ Search/list applications via **SBOM application table** (domain), not foundation
 | **User need** | Possible duplicate assets by identifier fields (find-only) |
 | **Consumers** | Journey 2; **MI-4** |
 | **Gap** | Projection exists; query/index by identity map does not |
-| **Status** | **Parked** — see **[FB-2](FOUNDATION-BACKLOG.md)**; in-memory group stopgap |
+| **Status** | **Done** — C-17 WI-004; see **[FB-2](FOUNDATION-BACKLOG.md)** |
 | **When unparked** | Foundation find API + tests; harden WI-008 / MI-4 |
 
 ### G-F4 / FB-3 — Advanced search pushdown
@@ -469,6 +469,7 @@ Search/list applications via **SBOM application table** (domain), not foundation
 | 2026-08-13 | G-X1/G-A1: `examples/sbom/{sbom-service,sbom-service-ui}`; objs-app foundation-only |
 | 2026-08-13 | WI-001: durable `docs/design/sbom/example.md` rewritten for inventory product + glossary |
 | 2026-08-13 | WI-003: FB-4 done; FB-5 → WI-014; FB-1/2 parked confirmed |
+| 2026-08-19 | C-17 WI-007: FB-1 / FB-2 done (`listGraphIdsForEntity` / `findDuplicateGroups`) |
 | 2026-08-12 | G-P1 surfaces: UI + domain REST + OpenAPI; no CLI |
 | 2026-08-12 | G-P4 app deps inferred from shared graph objects; no ApplicationRef |
 | 2026-08-12 | G-P5 owner annotation = application name |

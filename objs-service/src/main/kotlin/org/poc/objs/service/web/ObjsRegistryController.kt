@@ -3,6 +3,7 @@ package org.poc.objs.service.web
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.poc.objs.core.domain.CatalogMetadata
+import org.poc.objs.core.domain.BoMCatalogSupport
 import org.poc.objs.core.domain.BoMAllowedEdgeCatalog
 import org.poc.objs.core.domain.BoMAllowedEdgeRule
 import org.poc.objs.core.domain.BoMEdgeCardinality
@@ -45,6 +46,7 @@ import org.springframework.web.multipart.MultipartFile
 class ObjsRegistryController(
     private val schemas: BoMSchemaCatalog,
     private val edgeRules: BoMAllowedEdgeCatalog,
+    private val catalog: BoMCatalogSupport,
     private val seedImporter: SeedImporter,
     private val seedSerializer: CanonicalSeedSerializer,
     private val fullCatalogJsonSchema: FullCatalogJsonSchemaExporter,
@@ -438,13 +440,8 @@ class ObjsRegistryController(
     @GetMapping("/types/{type}/edges")
     @Operation(summary = "List incoming and outgoing edge rules for an entity type, including wildcards")
     fun edgesForType(@PathVariable type: String): TypeEdgesResponse {
-        val incoming = mutableListOf<BoMAllowedEdgeRule>()
-        val outgoing = mutableListOf<BoMAllowedEdgeRule>()
-        for (rule in edgeRules.all()) {
-            if (matchesType(rule.targetType, type)) incoming += rule
-            if (matchesType(rule.sourceType, type)) outgoing += rule
-        }
-        return TypeEdgesResponse(incoming = incoming, outgoing = outgoing)
+        val allowed = catalog.allowedEdgesForType(type)
+        return TypeEdgesResponse(incoming = allowed.incoming, outgoing = allowed.outgoing)
     }
 
     @PutMapping("/edges")

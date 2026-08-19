@@ -1,9 +1,6 @@
 package org.poc.objs.sbom.service
 
 import org.poc.objs.core.domain.BoMEntity
-import org.poc.objs.core.domain.BoMIdentityProjection
-import org.poc.objs.core.domain.BoMSchemaCatalog
-import org.poc.objs.core.domain.BoMSchemaUsage
 import org.poc.objs.core.match.BoMGraphIdsMatcher
 import org.poc.objs.core.persistence.BoMGraphStore
 import org.poc.objs.core.persistence.BoMNamedGraphStore
@@ -36,7 +33,6 @@ class MiReportService(
     private val graphs: PortfolioGraphSelector,
     private val store: BoMGraphStore,
     private val namedGraphs: BoMNamedGraphStore,
-    private val schemas: BoMSchemaCatalog,
     private val engine: BoMGremlinEngine = BoMGremlinEngine(),
 ) {
     fun run(portfolioId: UUID, request: RunMiReportRequest): MiReportResult {
@@ -133,8 +129,7 @@ class MiReportService(
             apps.associate { app ->
                 val entityIds =
                     graphByApp.getValue(app.applicationId)
-                        .flatMap { namedGraphs.get(it)?.contents?.entities.orEmpty() }
-                        .mapNotNull { it.id }
+                        .flatMap { namedGraphs.listEntityIdsInGraph(it) }
                         .toSet()
                 app.applicationId to entityIds
             }
@@ -171,11 +166,11 @@ class MiReportService(
         val entityById = linkedMapOf<UUID, BoMEntity>()
         for (app in apps) {
             for (gId in graphByApp.getValue(app.applicationId)) {
-                val contents = namedGraphs.get(gId)?.contents ?: continue
-                for (entity in contents.entities) {
-                    val id = entity.id ?: continue
+                for (id in namedGraphs.listEntityIdsInGraph(gId)) {
                     owners.getOrPut(id) { linkedSetOf() }.add(app.applicationId)
-                    entityById.putIfAbsent(id, entity)
+                    if (id !in entityById) {
+                        store.getEntity(id)?.let { entityById[id] = it }
+                    }
                 }
             }
         }
@@ -199,32 +194,16 @@ class MiReportService(
             return emptyList<MiDuplicateSignal>() to emptyList()
         }
         val contents = store.select(BoMGraphIdsMatcher(graphIds))
-        val byType = contents.entities.groupBy { it.type }
+        val inScope = contents.entities.mapNotNull { it.id }.toSet()
         val dupes = mutableListOf<MiDuplicateSignal>()
-        for ((type, entities) in byType) {
-            val schema =
-                schemas.listByType(type)
-                    .filter { it.usage == BoMSchemaUsage.ENTITY }
-                    .maxByOrNull { it.version }
-                    ?: continue
-            val groups = linkedMapOf<String, MutableList<BoMEntity>>()
-            val identities = linkedMapOf<String, Map<String, Any?>>()
-            for (entity in entities) {
-                val identity = BoMIdentityProjection.project(schema.contentSchema, entity.payload)
-                if (identity.isEmpty()) continue
-                val key = identity.entries.sortedBy { it.key }.joinToString("|") { "${it.key}=${it.value}" }
-                groups.getOrPut(key) { mutableListOf() }.add(entity)
-                identities.putIfAbsent(key, identity)
-            }
-            for ((key, members) in groups) {
-                if (members.size <= 1) continue
-                // Distinct pool ids only
-                val distinct = members.distinctBy { it.id }
+        for (type in contents.entities.map { it.type }.distinct()) {
+            for (group in store.findDuplicateGroups(type)) {
+                val distinct = group.entities.filter { it.id in inScope }.distinctBy { it.id }
                 if (distinct.size <= 1) continue
                 dupes +=
                     MiDuplicateSignal(
                         type = type,
-                        identity = identities.getValue(key),
+                        identity = group.identity,
                         assetIds = distinct.mapNotNull { it.id },
                         labels = distinct.map { AssetViews.label(it.payload, it.type) },
                     )

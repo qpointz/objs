@@ -12,6 +12,7 @@ import org.poc.objs.assetrepository.spi.EventExtension;
 import org.poc.objs.assetrepository.spi.PreprocessingExtension;
 import org.poc.objs.assetrepository.spi.WriteBatch;
 import org.poc.objs.assetrepository.web.dto.ApiDtos;
+import org.poc.objs.core.domain.BoMCatalogSupport;
 import org.poc.objs.core.domain.BoMEdge;
 import org.poc.objs.core.domain.BoMEntity;
 import org.poc.objs.core.domain.BoMGraphContents;
@@ -38,6 +39,7 @@ public class ObjectWriteService {
     private final BoMNamedGraphStore namedGraphs;
     private final BoMGraphStore graphStore;
     private final BoMSchemaCatalog schemas;
+    private final BoMCatalogSupport catalog;
     private final List<PreprocessingExtension> preprocessors;
     private final List<EventExtension> eventExtensions;
 
@@ -46,6 +48,7 @@ public class ObjectWriteService {
             BoMNamedGraphStore namedGraphs,
             BoMGraphStore graphStore,
             BoMSchemaCatalog schemas,
+            BoMCatalogSupport catalog,
             List<PreprocessingExtension> preprocessors,
             List<EventExtension> eventExtensions
     ) {
@@ -53,6 +56,7 @@ public class ObjectWriteService {
         this.namedGraphs = namedGraphs;
         this.graphStore = graphStore;
         this.schemas = schemas;
+        this.catalog = catalog;
         this.preprocessors = preprocessors;
         this.eventExtensions = eventExtensions;
     }
@@ -60,7 +64,7 @@ public class ObjectWriteService {
     @Transactional(readOnly = true)
     public List<ApiDtos.ObjectDto> listObjects(UUID collectionId) {
         CollectionEntity collection = collections.require(collectionId);
-        return namedGraphs.get(collection.getGraphId()).getContents().getEntities().stream()
+        return namedGraphs.listMembers(collection.getGraphId()).stream()
                 .map(this::toDto)
                 .toList();
     }
@@ -74,25 +78,17 @@ public class ObjectWriteService {
     public List<ApiDtos.ObjectRelationDto> listRelations(UUID collectionId, UUID objectId) {
         CollectionEntity collection = collections.require(collectionId);
         findInCollection(collection, objectId);
-        BoMGraphContents contents = namedGraphs.get(collection.getGraphId()).getContents();
-        Map<UUID, BoMEntity> byId = new HashMap<>();
-        for (BoMEntity entity : contents.getEntities()) {
-            if (entity.getId() != null) {
-                byId.put(entity.getId(), entity);
-            }
-        }
         List<ApiDtos.ObjectRelationDto> out = new ArrayList<>();
-        for (BoMEdge edge : contents.getEdges()) {
-            if (objectId.equals(edge.getSource())) {
-                BoMEntity related = byId.get(edge.getTarget());
-                if (related != null) {
-                    out.add(new ApiDtos.ObjectRelationDto(edge.getId(), edge.getRole(), "OUTGOING", toDto(related)));
-                }
-            } else if (objectId.equals(edge.getTarget())) {
-                BoMEntity related = byId.get(edge.getSource());
-                if (related != null) {
-                    out.add(new ApiDtos.ObjectRelationDto(edge.getId(), edge.getRole(), "INCOMING", toDto(related)));
-                }
+        for (BoMEdge edge : namedGraphs.listIncidentEdges(objectId, collection.getGraphId())) {
+            boolean outgoing = objectId.equals(edge.getSource());
+            UUID relatedId = outgoing ? edge.getTarget() : edge.getSource();
+            BoMEntity related = graphStore.getEntity(relatedId);
+            if (related != null) {
+                out.add(new ApiDtos.ObjectRelationDto(
+                        edge.getId(),
+                        edge.getRole(),
+                        outgoing ? "OUTGOING" : "INCOMING",
+                        toDto(related)));
             }
         }
         return out;
@@ -258,18 +254,19 @@ public class ObjectWriteService {
         if (wanted.isEmpty()) {
             return null;
         }
-        String typeExpr = "type == '" + escape(type) + "'";
-        BoMGraphContents contents = graphStore.selectInGraph(collection.getGraphId(), matcher(typeExpr));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> identity = (Map<String, Object>) wanted;
+        java.util.Set<UUID> members = new java.util.HashSet<>(namedGraphs.listEntityIdsInGraph(collection.getGraphId()));
         UUID match = null;
-        for (BoMEntity entity : contents.getEntities()) {
-            Map<String, ?> existing =
-                    BoMIdentityProjection.INSTANCE.project(schema.getContentSchema(), entity.getPayload());
-            if (existing.equals(wanted)) {
-                if (match != null) {
-                    throw new ConflictException("Multiple objects match identity fields for type " + type);
-                }
-                match = entity.getId();
+        for (BoMEntity entity : graphStore.findEntitiesByIdentity(type, identity)) {
+            UUID id = entity.getId();
+            if (id == null || !members.contains(id)) {
+                continue;
             }
+            if (match != null) {
+                throw new ConflictException("Multiple objects match identity fields for type " + type);
+            }
+            match = id;
         }
         return match;
     }
@@ -358,22 +355,12 @@ public class ObjectWriteService {
         return new BoMMatcherDsl().decode(json, BoMMatcherFormat.JSON);
     }
 
-    private static String buildFilterExpr(Map<String, String> filters) {
+    private String buildFilterExpr(Map<String, String> filters) {
         if (filters == null || filters.isEmpty()) {
             return null;
         }
-        List<String> parts = new ArrayList<>();
-        filters.forEach((k, v) -> {
-            if (k == null || v == null) {
-                return;
-            }
-            if (k.startsWith("p.") || k.startsWith("a.") || k.equals("type") || k.equals("id")) {
-                parts.add(k + " == '" + escape(v) + "'");
-            } else {
-                parts.add("p." + k + " == '" + escape(v) + "'");
-            }
-        });
-        return String.join(" && ", parts);
+        String expr = catalog.filterMapToObjExpr(filters);
+        return expr.isBlank() ? null : expr;
     }
 
     private static UUID resolveKey(Map<String, UUID> keyToId, String key) {

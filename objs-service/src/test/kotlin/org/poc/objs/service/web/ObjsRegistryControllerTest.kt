@@ -61,6 +61,7 @@ class ObjsRegistryControllerTest {
                 ObjsRegistryController(
                     schemas,
                     edgeRules,
+                    org.poc.objs.core.domain.BoMCatalogSupport(schemas, edgeRules),
                     importer,
                     serializer,
                     FullCatalogJsonSchemaExporter(schemas, edgeRules),

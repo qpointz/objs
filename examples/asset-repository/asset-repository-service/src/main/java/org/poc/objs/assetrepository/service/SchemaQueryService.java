@@ -9,6 +9,7 @@ import java.util.NoSuchElementException;
 import java.util.UUID;
 import org.poc.objs.assetrepository.domain.CollectionEntity;
 import org.poc.objs.assetrepository.web.dto.ApiDtos;
+import org.poc.objs.core.domain.BoMCatalogSupport;
 import org.poc.objs.core.domain.BoMAllowedEdgeCatalog;
 import org.poc.objs.core.domain.BoMAllowedEdgeRule;
 import org.poc.objs.core.domain.BoMSchema;
@@ -22,15 +23,18 @@ public class SchemaQueryService {
 
     private final BoMSchemaCatalog schemas;
     private final BoMAllowedEdgeCatalog edges;
+    private final BoMCatalogSupport catalog;
     private final CollectionService collections;
 
     public SchemaQueryService(
             BoMSchemaCatalog schemas,
             BoMAllowedEdgeCatalog edges,
+            BoMCatalogSupport catalog,
             CollectionService collections
     ) {
         this.schemas = schemas;
         this.edges = edges;
+        this.catalog = catalog;
         this.collections = collections;
     }
 
@@ -68,9 +72,10 @@ public class SchemaQueryService {
             if (versions.isEmpty()) {
                 continue;
             }
-            out.add(versions.stream()
-                    .max(Comparator.comparing(BoMSchema::getVersion))
-                    .orElseThrow());
+            BoMSchema latest = catalog.latestSchema(type);
+            if (latest != null) {
+                out.add(latest);
+            }
         }
         return out;
     }
@@ -96,7 +101,10 @@ public class SchemaQueryService {
         List<ApiDtos.SchemaCatalogEntryDto> out = new ArrayList<>();
         for (Map.Entry<String, List<BoMSchema>> e : byType.entrySet()) {
             List<BoMSchema> versions = e.getValue();
-            BoMSchema latest = versions.get(versions.size() - 1);
+            BoMSchema latest = catalog.latestSchema(e.getKey());
+            if (latest == null) {
+                latest = versions.get(versions.size() - 1);
+            }
             var node = latest.getContentSchema();
             out.add(new ApiDtos.SchemaCatalogEntryDto(
                     latest.getType(),
@@ -112,20 +120,7 @@ public class SchemaQueryService {
 
     @Transactional(readOnly = true)
     public ApiDtos.TypeAllowedEdgesDto allowedEdgesForType(String type) {
-        List<BoMAllowedEdgeRule> incoming = new ArrayList<>();
-        List<BoMAllowedEdgeRule> outgoing = new ArrayList<>();
-        for (BoMAllowedEdgeRule rule : edges.all()) {
-            if (matchesType(rule.getTargetType(), type)) {
-                incoming.add(rule);
-            }
-            if (matchesType(rule.getSourceType(), type)) {
-                outgoing.add(rule);
-            }
-        }
-        return new ApiDtos.TypeAllowedEdgesDto(incoming, outgoing);
-    }
-
-    private static boolean matchesType(String pattern, String type) {
-        return BoMAllowedEdgeRule.ANY.equals(pattern) || pattern.equals(type);
+        var allowed = catalog.allowedEdgesForType(type);
+        return new ApiDtos.TypeAllowedEdgesDto(allowed.getIncoming(), allowed.getOutgoing());
     }
 }

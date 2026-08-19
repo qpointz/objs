@@ -62,17 +62,19 @@ Per-collection `object_write_mode`: `UUID` | `IDENTIFIER` | `UUID_OR_IDENTIFIER`
 
 ## Write pipeline
 
-attempt → resolve identity → **PreprocessingExtension** (no-op v1) → persist → **EventExtension** (no-op v1)
+attempt → resolve identity (`findEntitiesByIdentity`, then keep members of this collection) → **PreprocessingExtension** (no-op v1) → persist → **EventExtension** (no-op v1)
 
 ## REST (sketch)
 
 Prefix `/api/v1/asset-repository`:
 
 - Collections CRUD-lite  
+- `POST …/collections/{id}/copy` — live collection copy: clone collection metadata (accepted types, write mode, owner) + store **`copyGraph`** (same object ids, new `graph_id`). Default name `Copy of {name}`. Not a freeze snapshot.  
 - `POST …/collections/{id}/objects`  
 - `POST …/collections/{id}/compositions`  
 - List/get objects; `GET …/objects/{objectId}/relations`; `POST …/collections/{id}/objects/search` (existing matchers, graph-scoped)  
-- Schema reads: `GET …/schema-catalog` (latest ENTITY schema per type + collections that accept it), `GET …/schema-catalog/{type}/allowed-edges` (inbound/outbound allow-list including `*`), `GET …/schemas`, `GET …/schemas/{type}`, `GET …/schemas/{type}/{version}`, `GET …/collections/{id}/schemas`  
+- Schema reads: `GET …/schema-catalog` (latest ENTITY schema per type + collections that accept it — “used in” stays domain), `GET …/schema-catalog/{type}/allowed-edges` (core `allowedEdgesForType`, including `*`), `GET …/schemas`, `GET …/schemas/{type}`, `GET …/schemas/{type}/{version}`, `GET …/collections/{id}/schemas`  
+- Object list uses graph members (not full graph + edges). `objectCount` uses graph-scoped `countByType`. Object relations use `listIncidentEdges`. Object list paging uses `listMembers(graphId, page)`. Object text `q` is C-20. Collection name `LIKE` stays domain.  
 
 OpenAPI group **`asset-repository`** in Swagger UI (`/swagger-ui.html`, `/v3/api-docs/asset-repository`).
 

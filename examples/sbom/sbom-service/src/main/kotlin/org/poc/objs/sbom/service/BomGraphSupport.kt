@@ -22,12 +22,8 @@ class BomGraphSupport(
 
     fun union(graphIds: List<UUID>): BoMGraphContents = BomUnion.of(load(graphIds))
 
-    fun copy(sourceGraphId: UUID, annotations: Map<String, String>): UUID {
-        val source =
-            namedGraphs.get(sourceGraphId)
-                ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Source graph missing")
-        return materialize(source.contents, annotations)
-    }
+    fun copy(sourceGraphId: UUID, annotations: Map<String, String>): UUID =
+        namedGraphs.copyGraph(sourceGraphId, annotations).id
 
     fun materialize(contents: BoMGraphContents, annotations: Map<String, String>): UUID {
         val graph =

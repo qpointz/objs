@@ -13,7 +13,9 @@ import org.poc.objs.core.domain.BoMEntity
 import org.poc.objs.core.domain.BoMGraph
 import org.poc.objs.core.domain.BoMGraphDelete
 import org.poc.objs.core.domain.BoMGraphMutation
+import org.poc.objs.core.domain.BoMGraphSpec
 import org.poc.objs.core.domain.BoMGraphUpsert
+import org.poc.objs.core.domain.BoMPageRequest
 import org.poc.objs.core.domain.BoMPropertiesPolicy
 import org.poc.objs.core.domain.BoMSchema
 import org.poc.objs.core.domain.BoMSchemaCatalog
@@ -701,5 +703,87 @@ class BoMGraphStoreTest {
         )
         assertThat(renameOnV1.isValid).isTrue()
         assertThat(store.getEntity(id)?.payload?.get("name")).isEqualTo("Bob")
+    }
+
+    @Test
+    fun shouldPagePoolSelectAndCountByType() {
+        repeat(5) { i ->
+            store.write(
+                BoMGraph(
+                    entities = mutableListOf(
+                        BoMEntity(
+                            type = "Person",
+                            schemaVersion = "1",
+                            payload = mutableMapOf("name" to "p$i"),
+                        ),
+                    ),
+                ),
+            )
+        }
+        val page1 = store.selectFromPool(BoMObjExprMatcher("type == 'Person'"), BoMPageRequest.of(1, 2))
+        assertThat(page1.total).isEqualTo(5)
+        assertThat(page1.items).hasSize(2)
+        assertThat(page1.page).isEqualTo(1)
+        val page3 = store.selectFromPool(BoMObjExprMatcher("type == 'Person'"), BoMPageRequest.of(3, 2))
+        assertThat(page3.items).hasSize(1)
+        val over = store.selectFromPool(BoMObjExprMatcher("type == 'Person'"), BoMPageRequest.of(9, 20))
+        assertThat(over.items).isEmpty()
+        assertThat(store.countByType()["Person"]).isEqualTo(5L)
+        val graph = namedGraphs.create(BoMGraphSpec(entityIds = setOf(page1.items[0].id!!)))
+        assertThat(store.countByType(graph.id)["Person"]).isEqualTo(1L)
+    }
+
+    @Test
+    fun shouldFindEntitiesByIdentityAndDuplicateGroups() {
+        schemas.register(
+            BoMSchema(
+                "Agent",
+                "1",
+                BoMSchemaDsl.obj(
+                    "Agent",
+                    "Agent payload",
+                    listOf(
+                        BoMSchemaDsl.field(
+                            "name",
+                            BoMSchemaDsl.string("Name", "Agent name"),
+                            identifier = true,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val a1 = UUID.randomUUID()
+        val a2 = UUID.randomUUID()
+        val b1 = UUID.randomUUID()
+        val b2 = UUID.randomUUID()
+        val unique = UUID.randomUUID()
+        val blank = UUID.randomUUID()
+        assertThat(
+            store.write(
+                BoMGraph(
+                    entities = mutableListOf(
+                        BoMEntity(id = a1, type = "Agent", schemaVersion = "1", payload = mutableMapOf("name" to "dup")),
+                        BoMEntity(id = a2, type = "Agent", schemaVersion = "1", payload = mutableMapOf("name" to "dup")),
+                        BoMEntity(id = b1, type = "Agent", schemaVersion = "1", payload = mutableMapOf("name" to "pair")),
+                        BoMEntity(id = b2, type = "Agent", schemaVersion = "1", payload = mutableMapOf("name" to "pair")),
+                        BoMEntity(id = unique, type = "Agent", schemaVersion = "1", payload = mutableMapOf("name" to "solo")),
+                        BoMEntity(id = blank, type = "Agent", schemaVersion = "1", payload = mutableMapOf("name" to "  ")),
+                    ),
+                ),
+            ).isValid,
+        ).isTrue()
+
+        assertThat(store.findEntitiesByIdentity("Agent", emptyMap())).isEmpty()
+        assertThat(store.findEntitiesByIdentity("Agent", mapOf("name" to "  "))).isEmpty()
+        assertThat(store.findEntitiesByIdentity("Agent", mapOf("name" to "missing"))).isEmpty()
+        assertThat(store.findEntitiesByIdentity("Agent", mapOf("name" to "solo")).map { it.id })
+            .containsExactly(unique)
+        val groups = store.findDuplicateGroups("Agent")
+        assertThat(groups).hasSize(2)
+        assertThat(groups.map { it.identity["name"] }).containsExactlyInAnyOrder("dup", "pair")
+        assertThat(groups.single { it.identity["name"] == "dup" }.entities.map { it.id })
+            .containsExactlyInAnyOrder(a1, a2)
+        assertThat(groups.single { it.identity["name"] == "pair" }.entities.map { it.id })
+            .containsExactlyInAnyOrder(b1, b2)
     }
 }

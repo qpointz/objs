@@ -25,6 +25,7 @@ data class TypeAllowedEdges(
 class SchemaBrowseService(
     private val schemas: BoMSchemaCatalog,
     private val edges: BoMAllowedEdgeCatalog,
+    private val catalog: org.poc.objs.core.domain.BoMCatalogSupport,
     private val sbom: SbomService,
     private val applications: SbomApplicationRepository,
     private val versions: SbomApplicationVersionRepository,
@@ -51,13 +52,8 @@ class SchemaBrowseService(
 
     fun allowedEdgesForType(type: String): TypeAllowedEdges {
         sbom.ensureRegistry()
-        val incoming = mutableListOf<BoMAllowedEdgeRule>()
-        val outgoing = mutableListOf<BoMAllowedEdgeRule>()
-        for (rule in edges.all()) {
-            if (matchesType(rule.targetType, type)) incoming += rule
-            if (matchesType(rule.sourceType, type)) outgoing += rule
-        }
-        return TypeAllowedEdges(incoming = incoming, outgoing = outgoing)
+        val edgesForType = catalog.allowedEdgesForType(type)
+        return TypeAllowedEdges(incoming = edgesForType.incoming, outgoing = edgesForType.outgoing)
     }
 
     fun get(type: String, version: String): BoMSchema {
@@ -73,7 +69,7 @@ class SchemaBrowseService(
             .sortedWith(compareBy({ it.type }, { it.version }))
             .forEach { byType.getOrPut(it.type) { mutableListOf() }.add(it) }
         return byType.map { (type, versions) ->
-            val latest = versions.last()
+            val latest = catalog.latestSchema(type) ?: versions.last()
             SchemaCatalogEntry(
                 type = type,
                 latestVersion = latest.version,
@@ -121,6 +117,4 @@ class SchemaBrowseService(
         return byType.mapValues { it.value.values.toList() }
     }
 
-    private fun matchesType(pattern: String, type: String): Boolean =
-        pattern == BoMAllowedEdgeRule.ANY || pattern == type
 }

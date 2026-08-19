@@ -12,6 +12,7 @@ import org.poc.objs.assetrepository.domain.CollectionTypeEntity;
 import org.poc.objs.assetrepository.domain.CollectionTypeSpec;
 import org.poc.objs.assetrepository.domain.ObjectWriteMode;
 import org.poc.objs.core.domain.BoMGraphSpec;
+import org.poc.objs.core.persistence.BoMGraphStore;
 import org.poc.objs.core.persistence.BoMNamedGraphStore;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,10 +26,12 @@ public class CollectionService {
 
     private final CollectionRepository collections;
     private final BoMNamedGraphStore graphs;
+    private final BoMGraphStore graphStore;
 
-    public CollectionService(CollectionRepository collections, BoMNamedGraphStore graphs) {
+    public CollectionService(CollectionRepository collections, BoMNamedGraphStore graphs, BoMGraphStore graphStore) {
         this.collections = collections;
         this.graphs = graphs;
+        this.graphStore = graphStore;
     }
 
     @Transactional
@@ -73,6 +76,41 @@ public class CollectionService {
 
         annotations.put(ANNO_COLLECTION_ID, saved.getId().toString());
         graphs.updateAnnotations(graphId, annotations);
+        return saved;
+    }
+
+    /**
+     * Live collection copy: same pool object ids, new graph id, cloned collection metadata.
+     */
+    @Transactional
+    public CollectionEntity copy(UUID id, String newName) {
+        CollectionEntity source = require(id);
+        String name = (newName == null || newName.isBlank())
+                ? "Copy of " + source.getName()
+                : newName.trim();
+        CollectionEntity entity = new CollectionEntity();
+        entity.setName(name);
+        entity.setDescription(source.getDescription());
+        entity.setOwner(source.getOwner());
+        entity.setOwnerEmail(source.getOwnerEmail());
+        entity.setSupportEmail(source.getSupportEmail());
+        entity.setSla(source.getSla());
+        entity.setObjectWriteMode(source.getObjectWriteMode());
+        List<CollectionTypeSpec> typeSpecs = new ArrayList<>();
+        for (CollectionTypeEntity type : source.getTypes()) {
+            typeSpecs.add(new CollectionTypeSpec(type.getObjectType(), type.getMetadata()));
+        }
+        entity.replaceTypes(toTypeEntities(typeSpecs));
+
+        Map<String, String> annotations = new HashMap<>();
+        annotations.put(ANNO_COLLECTION, entity.getName());
+        annotations.put(ANNO_OWNER, entity.getOwner());
+        var copied = graphs.copyGraph(source.getGraphId(), annotations);
+        entity.setGraphId(copied.getId());
+        CollectionEntity saved = collections.save(entity);
+
+        annotations.put(ANNO_COLLECTION_ID, saved.getId().toString());
+        graphs.updateAnnotations(copied.getId(), annotations);
         return saved;
     }
 
@@ -153,11 +191,9 @@ public class CollectionService {
 
     @Transactional(readOnly = true)
     public int objectCount(CollectionEntity entity) {
-        var graph = graphs.get(entity.getGraphId());
-        if (graph == null || graph.getContents() == null) {
-            return 0;
-        }
-        return graph.getContents().getEntities().size();
+        return graphStore.countByType(entity.getGraphId()).values().stream()
+                .mapToInt(Long::intValue)
+                .sum();
     }
 
     public void assertAcceptedType(CollectionEntity collection, String type) {

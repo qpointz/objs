@@ -10,6 +10,7 @@ docs/workitems/completed/YYYYMMDD-<story-slug>/
 
 ## Index (optional, newest first)
 
+- [`20260819-live-store-apis`](20260819-live-store-apis/STORY.md) — Live store APIs: catalog, reverse, identity, `copyGraph`/`mergeGraph`, paging (C-17)
 - [`20260818-catalog-schema-metadata`](20260818-catalog-schema-metadata/STORY.md) — Catalog metadata: edge verbs, tags/attributes, enum captions (C-16)
 - [`20260817-flyway-module-isolation`](20260817-flyway-module-isolation/STORY.md) — Isolate objs Flyway from derived-app Flyway (P-3)
 - [`20260817-multi-bom-app-versions`](20260817-multi-bom-app-versions/STORY.md) — Multi-BOM versions, Combined SBOM, parallel drafts, fingerprints (D-8)

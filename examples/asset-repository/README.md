@@ -53,6 +53,11 @@ Classpath seeds (no Java seeder):
 # List collections
 curl -s http://localhost:8080/api/v1/asset-repository/collections | jq .
 
+# Copy a collection (shared object ids, new graph)
+curl -s -X POST http://localhost:8080/api/v1/asset-repository/collections/COLLECTION_ID/copy \
+  -H 'Content-Type: application/json' \
+  -d '{}' | jq .
+
 # Filter by accepted type
 curl -s 'http://localhost:8080/api/v1/asset-repository/collections?acceptedType=Database' | jq .
 
@@ -87,4 +92,5 @@ Calls **`/api/v1/asset-repository/**` only** (never foundation `/api/v1/objs/**`
 ## Notes
 
 - Hybrid persistence: `ar_collection` / `ar_collection_type` for metadata; object payloads only in objs.
+- Collection copy uses store `copyGraph` (same object ids, new graph). Object list/count uses `listMembers` / `countByType`. Identifier writes use `findEntitiesByIdentity` then keep members of this collection. Object text `q` is not this slice.
 - `objs-service-app` does **not** depend on this example.

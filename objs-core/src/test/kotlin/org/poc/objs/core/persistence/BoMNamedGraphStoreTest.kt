@@ -18,6 +18,7 @@ import org.poc.objs.core.domain.BoMSchema
 import org.poc.objs.core.domain.BoMSchemaCatalog
 import org.poc.objs.core.domain.BoMSchemaDsl
 import org.poc.objs.core.domain.BoMGraphException
+import org.poc.objs.core.domain.FirstSeenGraphMergePolicy
 import org.poc.objs.core.domain.BoMGraphSpec
 import org.poc.objs.core.match.BoMGraphExprMatcher
 import org.springframework.beans.factory.annotation.Autowired
@@ -241,6 +242,106 @@ class BoMNamedGraphStoreTest {
         assertThat(cloned.contents.entities).hasSize(2)
         assertThat(cloned.contents.edges).hasSize(1)
         assertThat(namedGraphs.get(source.id)!!.contents.entities.map { it.id }.toSet()).isEqualTo(setOf(a, b))
+    }
+
+    @Test
+    fun shouldCopyGraph_sharingPoolIdsAndNewEdgeIds() {
+        val source = namedGraphs.create(
+            BoMGraphSpec(annotations = mapOf("live" to "true"), entityIds = setOf(a, b)),
+        )
+        val edgeId = addEdge(source.id, a, b)
+        val poolBefore = entityRepository.count()
+
+        val copied = namedGraphs.copyGraph(source.id, mapOf("kind" to "copy"))
+
+        assertThat(copied.id).isNotEqualTo(source.id)
+        assertThat(copied.annotations).isEqualTo(mapOf("kind" to "copy"))
+        assertThat(copied.contents.entities.map { it.id }.toSet()).isEqualTo(setOf(a, b))
+        assertThat(copied.contents.edges).hasSize(1)
+        assertThat(copied.contents.edges.single().id).isNotEqualTo(edgeId)
+        assertThat(copied.contents.edges.single().source).isEqualTo(a)
+        assertThat(copied.contents.edges.single().target).isEqualTo(b)
+        assertThat(entityRepository.count()).isEqualTo(poolBefore)
+        val stillLive = namedGraphs.get(source.id)!!
+        assertThat(stillLive.contents.entities.map { it.id }.toSet()).isEqualTo(setOf(a, b))
+        assertThat(stillLive.contents.edges.single().id).isEqualTo(edgeId)
+    }
+
+    @Test
+    fun shouldFailCopyGraph_whenSourceMissing() {
+        val missing = UUID.randomUUID()
+        assertThatThrownBy { namedGraphs.copyGraph(missing) }
+            .isInstanceOf(BoMGraphException::class.java)
+            .extracting("code")
+            .isEqualTo("GRAPH_NOT_FOUND")
+    }
+
+    @Test
+    fun shouldMergeGraphs_firstSeenOnOverlappingMembersAndEdges() {
+        val left = namedGraphs.create(BoMGraphSpec(entityIds = setOf(a, b)))
+        addEdge(left.id, a, b)
+        val right = namedGraphs.create(BoMGraphSpec(entityIds = setOf(a)))
+        addEdge(right.id, a, b)
+        val poolBefore = entityRepository.count()
+
+        val merged = namedGraphs.mergeGraph(listOf(left.id, right.id), mapOf("kind" to "union"))
+
+        assertThat(merged.annotations).containsEntry("kind", "union")
+        assertThat(merged.contents.entities.map { it.id }.toSet()).isEqualTo(setOf(a, b))
+        assertThat(merged.contents.edges).hasSize(1)
+        assertThat(merged.contents.edges.single().source).isEqualTo(a)
+        assertThat(merged.contents.edges.single().target).isEqualTo(b)
+        assertThat(entityRepository.count()).isEqualTo(poolBefore)
+    }
+
+    @Test
+    fun shouldMergeGraphs_withCustomPolicyPreferringIncomingEdge() {
+        val left = namedGraphs.create(BoMGraphSpec(entityIds = setOf(a, b)))
+        addEdge(left.id, a, b)
+        val right = namedGraphs.create(BoMGraphSpec(entityIds = setOf(a, b)))
+        addEdge(right.id, a, b)
+        val incomingWins = object : FirstSeenGraphMergePolicy() {
+            override fun onDuplicateEdge(kept: BoMEdge, incoming: BoMEdge): BoMEdge = incoming
+        }
+
+        val merged = namedGraphs.mergeGraph(listOf(left.id, right.id), emptyMap(), incomingWins)
+
+        assertThat(merged.contents.edges).hasSize(1)
+        assertThat(merged.contents.entities.map { it.id }.toSet()).isEqualTo(setOf(a, b))
+    }
+
+    @Test
+    fun shouldFailMergeGraph_whenSourceListEmpty() {
+        assertThatThrownBy { namedGraphs.mergeGraph(emptyList()) }
+            .isInstanceOf(BoMGraphException::class.java)
+            .extracting("code")
+            .isEqualTo("GRAPH_MERGE_EMPTY")
+    }
+
+    @Test
+    fun shouldFailMergeGraph_whenAnySourceMissing() {
+        val left = namedGraphs.create(BoMGraphSpec(entityIds = setOf(a)))
+        val missing = UUID.randomUUID()
+        val graphsBefore = namedGraphs.list().size
+        assertThatThrownBy { namedGraphs.mergeGraph(listOf(left.id, missing)) }
+            .isInstanceOf(BoMGraphException::class.java)
+            .extracting("code")
+            .isEqualTo("GRAPH_NOT_FOUND")
+        assertThat(namedGraphs.list()).hasSize(graphsBefore)
+    }
+
+    @Test
+    fun shouldMatchCopyMembership_whenMergingOneSource() {
+        val source = namedGraphs.create(BoMGraphSpec(entityIds = setOf(a, b)))
+        addEdge(source.id, a, b)
+
+        val copied = namedGraphs.copyGraph(source.id)
+        val merged = namedGraphs.mergeGraph(listOf(source.id))
+
+        assertThat(merged.contents.entities.map { it.id }.toSet())
+            .isEqualTo(copied.contents.entities.map { it.id }.toSet())
+        assertThat(merged.contents.edges.map { Triple(it.source, it.role, it.target) }.toSet())
+            .isEqualTo(copied.contents.edges.map { Triple(it.source, it.role, it.target) }.toSet())
     }
 
     /** G-G2: the same entity may sit in 0..n graphs — membership is a plain M2M row per graph. */
@@ -496,5 +597,27 @@ class BoMNamedGraphStoreTest {
         val limited = namedGraphs.search(q = "shared", limit = 2)
         assertThat(limited).hasSize(2)
         assertThat(limited.map { it.id }).isSorted
+    }
+
+    @Test
+    fun shouldListGraphIdsAndIncidentEdges_forReverseLookup() {
+        val g1 = namedGraphs.create(BoMGraphSpec(entityIds = setOf(a, b)))
+        val g2 = namedGraphs.create(BoMGraphSpec(entityIds = setOf(a)))
+        addEdge(g1.id, a, b)
+        val orphan = UUID.randomUUID()
+        graphStore.write(
+            BoMGraph(
+                entities = mutableListOf(
+                    BoMEntity(id = orphan, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "O")),
+                ),
+            ),
+        )
+
+        assertThat(namedGraphs.listGraphIdsForEntity(a)).containsExactlyInAnyOrder(g1.id, g2.id)
+        assertThat(namedGraphs.listGraphIdsForEntity(orphan)).isEmpty()
+        assertThat(namedGraphs.listIncidentEdges(a)).hasSize(1)
+        assertThat(namedGraphs.listIncidentEdges(a, g1.id).single().target).isEqualTo(b)
+        assertThat(namedGraphs.listIncidentEdges(a, g2.id)).isEmpty()
+        assertThat(namedGraphs.listEntityIdsInGraph(g1.id)).containsExactlyInAnyOrder(a, b)
     }
 }

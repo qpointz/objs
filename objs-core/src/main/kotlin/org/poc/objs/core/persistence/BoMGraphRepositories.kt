@@ -8,6 +8,8 @@ interface BoMGraphRepository : JpaRepository<BoMGraphRecord, UUID>
 interface BoMGraphMembershipRepository : JpaRepository<BoMGraphMembershipRecord, BoMGraphMembershipId> {
     fun findByGraphId(graphId: UUID): List<BoMGraphMembershipRecord>
 
+    fun findByEntityId(entityId: UUID): List<BoMGraphMembershipRecord>
+
     fun deleteByGraphId(graphId: UUID)
 
     fun deleteByGraphIdAndEntityId(graphId: UUID, entityId: UUID)

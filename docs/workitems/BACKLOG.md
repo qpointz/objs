@@ -31,6 +31,10 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | C-14 | Schema field flags: drop OBJECT `required` list; `identifier` + `searchable`; identity immutability | feature | done | [`completed/20260811-schema-field-identifiers/`](completed/20260811-schema-field-identifiers/STORY.md) |
 | C-15 | Schema migration handover docs (seed reference + JSON Schema → YAML seeds guide) | docs | done | [`completed/20260813-schema-migration-docs/`](completed/20260813-schema-migration-docs/STORY.md) |
 | C-16 | Catalog metadata: allowed-edge description/verbs; free-text STRING format; tags + string attributes; enum captions; example schema browse lists allow-list rules | feature | done | [`completed/20260818-catalog-schema-metadata/`](completed/20260818-catalog-schema-metadata/STORY.md) |
+| C-17 | Live store APIs (before versions): catalog, reverse, identity, `copyGraph` + `mergeGraph`, paging | feature | done | [`completed/20260819-live-store-apis/`](completed/20260819-live-store-apis/STORY.md), [`SEQUENCE.md`](SEQUENCE.md) |
+| C-18 | Entity/edge versions + snapshot graphs (live = HEAD; snapshot = pinned versions) | feature | planned | [`planned/versions-and-snapshots/`](planned/versions-and-snapshots/STORY.md) |
+| C-19 | Foundation after versions: version-row clocks, pin reverse lookup, remaining matcher ops | feature | planned | [`planned/foundation-after-versions/`](planned/foundation-after-versions/STORY.md) |
+| C-20 | Store text search (FB-3 contains/`q`); design first | feature | planned | [`planned/store-text-search/`](planned/store-text-search/STORY.md), [`SEQUENCE.md`](SEQUENCE.md) |
 
 ---
 
@@ -77,6 +81,6 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | Status | Count |
 |--------|------:|
 | backlog | 2 |
-| planned | 0 |
-| in-progress | 1 |
-| done | 27 |
+| planned | 3 |
+| in-progress | 0 |
+| done | 28 |

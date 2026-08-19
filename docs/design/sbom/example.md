@@ -41,7 +41,7 @@ Visual split only (**no auth / roles**). Keep the UI **clean and obvious**: two 
 | **Owning application** | Optional owner of an asset (`owner` annotation = application **name**). |
 | **Depends on (app)** | **Inferred** link: application A depends on B when they share assets in their BOM graphs. Not authored as an app→app relation. |
 | **Shared asset** | An asset that appears in more than one application’s BOM (within the current scope). |
-| **Duplicate** | Possible same asset found via schema **identifier** fields. v1 is **find-only** (list + navigate). |
+| **Duplicate** | Possible same asset found via store `findDuplicateGroups` / `BoMIdentityProjection`. v1 is **find-only** (list + navigate). |
 | **Portfolio** | Taxonomy that groups **applications** (not versions) for management views. Domain-only. |
 | **Subject area** | Folder node in a portfolio tree. |
 | **Portfolio level** | Selected subject-area node **or** the portfolio root. Defines which applications a report covers. |
@@ -106,7 +106,7 @@ Same algorithm for Combined SBOM, left-pane multi-select, fingerprint materializ
 2. Take **relations**. Duplicate edges with the same source, target, and role **collapse** to one.
 3. Return an in-memory subgraph. **Do not** write it onto the version.
 
-Fingerprint / flatten-copy then **copy** that subgraph into a **new** named graph (fingerprint row, or a single combined BOM on a new draft).
+Fingerprint freeze is **C-18 snapshot pins** (not `copyGraph`). Combine-on-new-draft **persists** the union with store **`mergeGraph`** (default first-seen). Combined SBOM **GET** / multi-select stay in-memory **`BomUnion`** — do not persist.
 
 **Latest** for portal content, MI, depends-on, and CDX-of-latest is the highest **RELEASED** version by **SemVer 2.0** (`version_serial`). Drafts are never latest. No RELEASED → no latest.
 
@@ -128,8 +128,8 @@ Tags are domain columns (Postgres `TEXT[]` / H2 `VARCHAR ARRAY`): trim, drop bla
 | **New application** | Required **target version**. One empty BOM named `BOM` (name hidden). Lands on that DRAFT. |
 | **Create BOM** | DRAFT only. Modal: name, description, tags. After create, that BOM is **Open** (edit target). This is the 1→2 entry that turns multi-BOM chrome on. |
 | **Delete BOM** | DRAFT only; not Combined; **not the last**. Confirm. 2→1: multi chrome **off immediately**; remaining BOM is Open. |
-| **New draft from version** | Copy **keep-split** (each BOM graph + metadata) **or**, if source has **>1** BOM, optionally **combine** into one BOM named `BOM` whose graph is a copy of the computed full union. |
-| **New draft from fingerprint** | Always **one** BOM copied from the fingerprint snapshot. **No** combine question. |
+| **New draft from version** | **Keep-split:** each BOM graph via store **`copyGraph`** (same pool entity ids). If source has **>1** BOM, optionally **combine** into one BOM named `BOM` via store **`mergeGraph`**. |
+| **New draft from fingerprint** | Always **one** BOM via **`copyGraph`** from the fingerprint snapshot graph. **No** combine question. Fingerprint freeze itself is C-18. |
 | **Promote** | Modal: **re-type** version to confirm (may override stored target if unique). DRAFT → RELEASED. Graphs stay as they are (still 1..\* BOMs). |
 | **Fingerprint** | Always a snapshot of the **full Combined SBOM** (all BOMs), never a subset. Required **name** + **category** (`approval` \| `history` \| `unknown`). |
 | **Delete DRAFT** | Deletes that draft’s BOMs + its fingerprints. If other drafts are based on it (or its fingerprints), **confirm the list** then **cascade**. Empty 204. |
@@ -276,7 +276,7 @@ Illustrative routes (inventory OpenAPI group on `:sbom-service`):
 | GET | `/assets?type=` | List by type |
 | POST | `/assets/search` | Type + searchable field filters |
 | POST | `/assets` | Create pool asset (optional owner name) |
-| GET | `/assets/{id}` | Detail + usage (draft/version scan stopgap) |
+| GET | `/assets/{id}` | Detail + usage (`listGraphIdsForEntity` + domain join) |
 | PUT | `/assets/{id}/owner` | Set/clear owning application name |
 | GET | `/assets/duplicates?type=` | Find-only identifier groups |
 | CRUD | `/portfolios…` | Tree + place applications (WI-011) |
@@ -312,8 +312,8 @@ Users see **friendly** labels (beautifier of role codes, e.g. `DEPENDS_ON` → �
 | Concern | Lock |
 |---------|------|
 | Asset types / relations | Reuse canonical ontology seed (`seeds/sbom-ontology.yaml`) |
-| Runtime UI / search forms | Read **`BoMSchemaCatalog`** via `GET /api/v1/inventory/asset-types` (`searchable` only) |
-| Schema browse allow-list | `GET /api/v1/inventory/schema-catalog/{type}/allowed-edges` — inbound/outbound rules including `*` wildcards; shown on the schema detail page, not inside JSON/YAML |
+| Runtime UI / search forms | `BoMCatalogSupport` (latest schema, field hints, `displayLabel`, `filterMapToObjExpr`) via `GET /api/v1/inventory/asset-types`. Asset list uses paged `selectFromPool`. Asset “used in” is `listGraphIdsForEntity` + domain join. Duplicates use `findDuplicateGroups`. Text `q` is C-20. Application name `LIKE` stays domain. |
+| Schema browse allow-list | Core `allowedEdgesForType` (inbound/outbound including `*`) via `GET /api/v1/inventory/schema-catalog/{type}/allowed-edges` |
 | Typed Wave* / `SbomRegistry` | Builder parity helpers — **not** SoT |
 | Owning application | Annotation `owner` = application **name** |
 | App→app depends | Inferred shared assets — no ApplicationRef type |

@@ -22,7 +22,11 @@ There is **no global graph**. Two distinct concepts share the store:
 
 - An entity may belong to **zero, one, or many** graphs (M2M membership). Zero graphs = **orphan**; orphans are allowed.
 - An edge belongs to **exactly one** graph (`graph_id` NOT NULL) — edges are never shared across graphs. Both the source and target entity must already be members of that graph.
-- A graph header carries **no** parent/lineage columns. An optional **clone** operation copies a graph's members and edges into a new, independent graph (new ids); any lineage tracking is an **application-level** concern (e.g. annotations), not part of this foundation model.
+- A graph header carries **no** parent/lineage columns. Three copy-like operations:
+  - **`clone()`** — new pool entity ids and new edge ids (hard snapshot; workbench Composer). Lineage is an **application-level** concern (e.g. annotations), not part of this model.
+  - **`copyGraph`** — new graph id, **same** pool entity ids, new edge ids (live membership copy; C-17).
+  - **`mergeGraph`** — new graph id from 1..n sources with `GraphMergePolicy` (live persist-union; C-17).
+  - Freeze snapshots that pin versions are **C-18**, not `clone`/`copyGraph`.
 - See [persistence.md](persistence.md) for tables and [annotations-and-matchers.md](annotations-and-matchers.md) for how graphs and objects are selected.
 
 ### Why “Entity” not “Object”

@@ -4,12 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.poc.objs.assetrepository.domain.CollectionEntity;
 import org.poc.objs.assetrepository.domain.CollectionTypeSpec;
 import org.poc.objs.assetrepository.domain.ObjectWriteMode;
 import org.poc.objs.assetrepository.service.CollectionService;
+import org.poc.objs.assetrepository.service.ObjectWriteService;
+import org.poc.objs.assetrepository.web.dto.ApiDtos;
 import org.poc.objs.core.domain.BoMSchemaCatalog;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -26,6 +29,9 @@ class CollectionServiceTest {
 
     @Autowired
     CollectionService collections;
+
+    @Autowired
+    ObjectWriteService objects;
 
     @Autowired
     BoMSchemaCatalog schemas;
@@ -111,5 +117,40 @@ class CollectionServiceTest {
         assertThat(collections.list("list-un", "ops", null))
                 .extracting(CollectionEntity::getName)
                 .containsExactly("list-unfiltered");
+    }
+
+    @Test
+    void shouldCopyCollection_sharingObjectIdsAndNewGraphId() {
+        CollectionEntity source = collections.create(
+                "copy-source",
+                "src",
+                "ops",
+                null,
+                null,
+                null,
+                ObjectWriteMode.UUID_OR_IDENTIFIER,
+                List.of(CollectionTypeSpec.of("Dataset")));
+        ApiDtos.ObjectDto written = objects.writeObject(
+                source.getId(),
+                new ApiDtos.WriteObjectRequest(
+                        null,
+                        "Dataset",
+                        "1.0.0",
+                        Map.of(
+                                "datasetId", "DS-COPY-SHARED",
+                                "name", "shared-dataset",
+                                "purpose", "Training",
+                                "classification", "Public")));
+
+        CollectionEntity copy = collections.copy(source.getId(), null);
+
+        assertThat(copy.getId()).isNotEqualTo(source.getId());
+        assertThat(copy.getGraphId()).isNotEqualTo(source.getGraphId());
+        assertThat(copy.getName()).isEqualTo("Copy of copy-source");
+        assertThat(copy.getOwner()).isEqualTo("ops");
+        assertThat(copy.acceptedTypes()).containsExactly("Dataset");
+        List<ApiDtos.ObjectDto> copiedObjects = objects.listObjects(copy.getId());
+        assertThat(copiedObjects).extracting(ApiDtos.ObjectDto::id).containsExactly(written.id());
+        assertThat(objects.listObjects(source.getId())).extracting(ApiDtos.ObjectDto::id).containsExactly(written.id());
     }
 }

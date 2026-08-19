@@ -41,6 +41,7 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`multi-bom-app-versions`](completed/20260817-multi-bom-app-versions/STORY.md) — Multi-BOM constituents + Combined SBOM; multi-draft (target + optional combine); tags; fingerprint name/category; inventory UI polish (D-8). WI-000…WI-008.
 - [`flyway-module-isolation`](completed/20260817-flyway-module-isolation/STORY.md) — Two Flyway lines: objs-core vendor SQL + `flyway_schema_history_objs` before Boot Flyway; examples as derived apps (P-3). WI-000…WI-004.
 - [`catalog-schema-metadata`](completed/20260818-catalog-schema-metadata/STORY.md) — Allowed-edge description/verbs; free-text STRING `format`; tags + string attributes; enum `caption`; example schema browse lists allow-list rules (C-16). WI-000…WI-006.
+- [`live-store-apis`](completed/20260819-live-store-apis/STORY.md) — Live store APIs before versions: catalog helpers, reverse lookup, identity query, `copyGraph` + `mergeGraph`, paging (C-17). WI-000…WI-007.
 
 ### In Progress
 
@@ -48,4 +49,6 @@ _(none)_
 
 ### Planned
 
-_(none)_
+- [`versions-and-snapshots`](planned/versions-and-snapshots/STORY.md) — Versions + snapshot pins (C-18). After C-17.
+- [`foundation-after-versions`](planned/foundation-after-versions/STORY.md) — Clocks on versions, pin reverse lookup, leftover matcher ops (C-19). After C-18.
+- [`store-text-search`](planned/store-text-search/STORY.md) — FB-3 contains/`q`; design first (C-20). Does not block C-18.

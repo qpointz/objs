@@ -8,6 +8,13 @@ import org.poc.objs.core.domain.BoMGraphDelete
 import org.poc.objs.core.domain.BoMGraphMutation
 import org.poc.objs.core.domain.BoMGraphUpsert
 import org.poc.objs.core.domain.BoMGraphContents
+import org.poc.objs.core.domain.BoMCatalogSupport
+import org.poc.objs.core.domain.BoMDuplicateGroup
+import org.poc.objs.core.domain.BoMIdentityProjection
+import org.poc.objs.core.domain.BoMPageRequest
+import org.poc.objs.core.domain.BoMSchemaCatalog
+import org.poc.objs.core.domain.BoMSchemaUsage
+import org.poc.objs.core.domain.BoMPagedEntities
 import org.poc.objs.core.match.BoMAllGraphsMatcher
 import org.poc.objs.core.match.BoMChainedMatcher
 import org.poc.objs.core.match.BoMEntityDomainCandidate
@@ -40,6 +47,8 @@ class BoMGraphStore(
     private val entityManager: EntityManager,
     private val namedGraphs: BoMNamedGraphStore,
     private val poolReader: BoMPoolEntityReader,
+    private val schemas: BoMSchemaCatalog,
+    private val catalog: BoMCatalogSupport,
 ) {
     private fun gate(): BoMPersistGate = BoMPersistGate(
         validator = validator,
@@ -265,6 +274,85 @@ class BoMGraphStore(
         }
         val entities = poolReader.selectEntities(matcher).map { it.toDomain() }
         return BoMGraphContents(entities = entities, edges = emptyList())
+    }
+
+    /**
+     * Paged pool select (G-A6). Order is `type`, then `id`. Total is the full match count
+     * (after slow-path filter when the matcher does not fully push down).
+     */
+    @Transactional(readOnly = true)
+    fun selectFromPool(matcher: BoMMatcher, page: BoMPageRequest): BoMPagedEntities {
+        val all = selectFromPool(matcher).entities.sortedWith(compareBy({ it.type }, { it.id.toString() }))
+        val from = page.offset.coerceAtMost(all.size)
+        val to = (from + page.size).coerceAtMost(all.size)
+        return BoMPagedEntities(
+            items = all.subList(from, to),
+            total = all.size.toLong(),
+            page = page.page,
+            size = page.size,
+        )
+    }
+
+    /** Pool-wide `type → count` (G-A7). */
+    @Transactional(readOnly = true)
+    fun countByType(): Map<String, Long> =
+        entityRepository.countGroupedByType().associate { it.getType() to it.getCnt() }
+
+    /** Member counts by type for [graphId] (G-A7). */
+    @Transactional(readOnly = true)
+    fun countByType(graphId: UUID): Map<String, Long> =
+        entityRepository.countGroupedByTypeInGraph(graphId).associate { it.getType() to it.getCnt() }
+
+    /**
+     * Pool entities of [type] whose [BoMIdentityProjection] equals [identityMap].
+     * Empty or all-unset identity → empty (G-A13). Scan-by-type then group (G-A4).
+     */
+    @Transactional(readOnly = true)
+    fun findEntitiesByIdentity(
+        type: String,
+        identityMap: Map<String, @JvmSuppressWildcards Any?>,
+    ): List<BoMEntity> {
+        val wanted = identityMap.filterValues { !BoMIdentityProjection.isUnset(it) }
+        if (wanted.isEmpty()) return emptyList()
+        return entitiesOfType(type).filter { entity ->
+            identityOf(entity) == wanted
+        }
+    }
+
+    /**
+     * Identity clusters of [type] with more than one pool entity. Empty identity omitted (G-A13).
+     */
+    @Transactional(readOnly = true)
+    fun findDuplicateGroups(type: String): List<BoMDuplicateGroup> {
+        val groups = linkedMapOf<String, MutableList<BoMEntity>>()
+        val identities = linkedMapOf<String, Map<String, Any?>>()
+        for (entity in entitiesOfType(type)) {
+            val identity = identityOf(entity) ?: continue
+            if (identity.isEmpty()) continue
+            val key = identity.entries.sortedBy { it.key }.joinToString("|") { "${it.key}=${it.value}" }
+            groups.getOrPut(key) { mutableListOf() }.add(entity)
+            identities.putIfAbsent(key, identity)
+        }
+        return groups.entries
+            .filter { it.value.size > 1 }
+            .map { (key, members) ->
+                BoMDuplicateGroup(type = type, identity = identities.getValue(key), entities = members)
+            }
+    }
+
+    private fun entitiesOfType(type: String): List<BoMEntity> {
+        val trimmed = type.trim()
+        if (trimmed.isEmpty()) return emptyList()
+        val escaped = trimmed.replace("\\", "\\\\").replace("'", "\\'")
+        return selectFromPool(BoMObjExprMatcher("type == '$escaped'")).entities
+    }
+
+    private fun identityOf(entity: BoMEntity): Map<String, Any?>? {
+        val schema =
+            schemas.get(entity.type, entity.schemaVersion)?.takeIf { it.usage == BoMSchemaUsage.ENTITY }
+                ?: catalog.latestEntitySchema(entity.type)
+                ?: return null
+        return BoMIdentityProjection.project(schema.contentSchema, entity.payload)
     }
 
     /**

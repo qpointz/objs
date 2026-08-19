@@ -2,8 +2,8 @@ package org.poc.objs.sbom.service
 
 import org.poc.objs.core.domain.BoMEntity
 import org.poc.objs.core.domain.BoMGraph
-import org.poc.objs.core.domain.BoMIdentityProjection
 import org.poc.objs.core.domain.BoMSchema
+import org.poc.objs.core.domain.BoMCatalogSupport
 import org.poc.objs.core.domain.BoMSchemaCatalog
 import org.poc.objs.core.domain.BoMSchemaUsage
 import org.poc.objs.core.match.BoMObjExprMatcher
@@ -32,7 +32,7 @@ import org.springframework.web.server.ResponseStatusException
 import java.util.UUID
 
 /**
- * Journey 2 assets inventory: pool search, usage (FB-1 stopgap), duplicates (FB-2 stopgap), owner.
+ * Journey 2 assets inventory: pool search, usage (store reverse lookup), duplicates (store identity query), owner.
  */
 @Service
 class AssetInventoryService(
@@ -40,6 +40,7 @@ class AssetInventoryService(
     private val namedGraphs: BoMNamedGraphStore,
     private val schemas: BoMSchemaCatalog,
     private val assetTypes: AssetTypeCatalogService,
+    private val catalog: BoMCatalogSupport,
     private val applications: SbomApplicationRepository,
     private val versions: SbomApplicationVersionRepository,
     private val boms: SbomApplicationSbomRepository,
@@ -47,85 +48,36 @@ class AssetInventoryService(
 ) {
     fun search(request: AssetSearchRequest): List<AssetView> {
         sbom.ensureRegistry()
-        val type = request.type?.trim().orEmpty()
-        val objExpr = request.objExpr?.trim().orEmpty()
-        val knownTypes = assetTypes.listEntityTypes().map { it.type }.distinct()
-        if (knownTypes.isEmpty()) {
-            return emptyList()
+        val knownSet = assetTypes.listEntityTypes().map { it.type }.toSet()
+        if (knownSet.isEmpty()) return emptyList()
+        return try {
+            store.selectFromPool(BoMObjExprMatcher(matcherExpr(request))).entities
+                .filter { it.type in knownSet }
+                .map(AssetViews::asset)
+        } catch (ex: BoMValidationException) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, ex.message)
         }
-        val knownSet = knownTypes.toSet()
-
-        fun query(expr: String): List<AssetView> =
-            try {
-                store.selectFromPool(BoMObjExprMatcher(expr)).entities
-                    .filter { it.type in knownSet }
-                    .map(AssetViews::asset)
-            } catch (ex: BoMValidationException) {
-                throw ResponseStatusException(HttpStatus.BAD_REQUEST, ex.message)
-            }
-
-        if (type.isEmpty()) {
-            if (request.filters.isNotEmpty()) {
-                throw ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Filters require a selected asset type",
-                )
-            }
-            val expr =
-                if (objExpr.isEmpty()) {
-                    knownTypes.joinToString(" || ") { "type == '${escape(it)}'" }
-                } else {
-                    objExpr
-                }
-            return query(expr)
-        }
-
-        val detail =
-            assetTypes.getEntityType(type, request.schemaVersion)
-                ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown asset type: $type")
-        val searchable = detail.searchableFields.map { it.path }.toSet()
-        val unknown = request.filters.keys.filter { it !in searchable }
-        if (unknown.isNotEmpty()) {
-            throw ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "Filters must use searchable fields only; rejected: ${unknown.sorted().joinToString()}",
-            )
-        }
-
-        val clauses = mutableListOf("type == '${escape(type)}'")
-        if (!request.schemaVersion.isNullOrBlank()) {
-            clauses += "schemaVersion == '${escape(request.schemaVersion.trim())}'"
-        }
-        for ((path, raw) in request.filters) {
-            val value = raw.trim()
-            if (value.isEmpty()) continue
-            clauses += "p['${escape(path)}'] == '${escape(value)}'"
-        }
-        if (objExpr.isNotEmpty()) {
-            clauses += "($objExpr)"
-        }
-        return query(clauses.joinToString(" && "))
     }
 
     fun searchPage(request: AssetSearchRequest, page: Int, size: Int): AssetSearchPage {
-        val p = page.coerceAtLeast(1)
-        val s = size.coerceIn(1, 100)
-        val all = search(request).sortedBy { it.label.lowercase() }
-        val from = (p - 1) * s
-        val items =
-            if (from >= all.size) {
-                emptyList()
-            } else {
-                all.subList(from, minOf(from + s, all.size))
+        sbom.ensureRegistry()
+        val expr = matcherExpr(request)
+        val paged =
+            try {
+                store.selectFromPool(BoMObjExprMatcher(expr), org.poc.objs.core.domain.BoMPageRequest.of(page, size))
+            } catch (ex: BoMValidationException) {
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, ex.message)
             }
-        return AssetSearchPage(items = items, total = all.size.toLong(), page = p, size = s)
+        val known = assetTypes.listEntityTypes().map { it.type }.toSet()
+        val items = paged.items.filter { it.type in known }.map(AssetViews::asset)
+        return AssetSearchPage(items = items, total = paged.total, page = paged.page, size = paged.size)
     }
 
     fun statistics(type: String): AssetTypeStatistics {
         val trimmed = type.trim()
         assetTypes.getEntityType(trimmed, null)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Unknown asset type: $trimmed")
-        val objectCount = search(AssetSearchRequest(type = trimmed)).size.toLong()
+        val objectCount = store.countByType()[trimmed] ?: 0L
         return AssetTypeStatistics(type = trimmed, objectCount = objectCount)
     }
 
@@ -175,25 +127,8 @@ class AssetInventoryService(
         val entity =
             store.getEntity(id)
                 ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Asset not found: $id")
-        val schema =
-            resolveSchema(entity.type, entity.schemaVersion)
-                ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown asset type: ${entity.type}")
-        val identifiers = identifierFieldNames(schema.contentSchema)
-        val next = request.payload.toMutableMap()
-        for (name in identifiers) {
-            val current = entity.payload[name]
-            if (next.containsKey(name) && next[name] != current) {
-                throw ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Identifier field '$name' cannot be changed after creation",
-                )
-            }
-            if (entity.payload.containsKey(name)) {
-                next[name] = current
-            }
-        }
         entity.payload.clear()
-        entity.payload.putAll(next)
+        entity.payload.putAll(request.payload)
         val result = store.write(BoMGraph(entities = mutableListOf(entity)))
         if (!result.isValid) {
             throw ResponseStatusException(
@@ -224,7 +159,7 @@ class AssetInventoryService(
     }
 
     /**
-     * Find-only duplicate groups by schema identifier fields (G-P7 / FB-2 stopgap).
+     * Find-only duplicate groups by schema identifier fields (store `findDuplicateGroups`).
      */
     fun findDuplicates(type: String, schemaVersion: String? = null): List<AssetDuplicateGroup> {
         sbom.ensureRegistry()
@@ -234,43 +169,75 @@ class AssetInventoryService(
         }
         val schema = resolveSchema(trimmed, schemaVersion)
             ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown asset type: $trimmed")
-        val clauses = mutableListOf("type == '${escape(trimmed)}'")
-        if (!schemaVersion.isNullOrBlank()) {
-            clauses += "schemaVersion == '${escape(schemaVersion.trim())}'"
-        }
-        val entities = store.selectFromPool(BoMObjExprMatcher(clauses.joinToString(" && "))).entities
-        val groups = linkedMapOf<String, MutableList<BoMEntity>>()
-        val identities = linkedMapOf<String, Map<String, Any?>>()
-        for (entity in entities) {
-            val identity = BoMIdentityProjection.project(schema.contentSchema, entity.payload)
-            if (identity.isEmpty()) continue
-            val key = identity.entries.sortedBy { it.key }.joinToString("|") { "${it.key}=${it.value}" }
-            groups.getOrPut(key) { mutableListOf() }.add(entity)
-            identities.putIfAbsent(key, identity)
-        }
-        return groups.entries
-            .filter { it.value.size > 1 }
-            .map { (key, members) ->
+        val wantedVersion = schemaVersion?.trim()?.takeIf { it.isNotEmpty() }
+        return store.findDuplicateGroups(trimmed)
+            .map { group ->
+                val members =
+                    if (wantedVersion == null) {
+                        group.entities
+                    } else {
+                        group.entities.filter { it.schemaVersion == wantedVersion }
+                    }
+                group to members
+            }
+            .filter { it.second.size > 1 }
+            .map { (group, members) ->
                 AssetDuplicateGroup(
                     type = schema.type,
                     schemaVersion = schema.version,
-                    identity = identities.getValue(key),
+                    identity = group.identity,
                     assets = members.map(AssetViews::asset),
                 )
             }
             .sortedBy { it.identity.toString() }
     }
 
-    /**
-     * FB-1 stopgap: scan known SBOM draft/version graphs only.
-     */
+    private fun matcherExpr(request: AssetSearchRequest): String {
+        val type = request.type?.trim().orEmpty()
+        val objExpr = request.objExpr?.trim().orEmpty()
+        val knownTypes = assetTypes.listEntityTypes().map { it.type }.distinct()
+        if (type.isEmpty()) {
+            if (request.filters.isNotEmpty()) {
+                throw ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Filters require a selected asset type",
+                )
+            }
+            return if (objExpr.isEmpty()) {
+                knownTypes.joinToString(" || ") { "type == '${escape(it)}'" }
+            } else {
+                objExpr
+            }
+        }
+        val detail =
+            assetTypes.getEntityType(type, request.schemaVersion)
+                ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown asset type: $type")
+        val searchable = detail.searchableFields.map { it.path }.toSet()
+        val unknown = request.filters.keys.filter { it !in searchable }
+        if (unknown.isNotEmpty()) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Filters must use searchable fields only; rejected: ${unknown.sorted().joinToString()}",
+            )
+        }
+        val filterExpr = catalog.filterMapToObjExpr(request.filters)
+        val clauses = mutableListOf("type == '${escape(type)}'")
+        if (!request.schemaVersion.isNullOrBlank()) {
+            clauses += "schemaVersion == '${escape(request.schemaVersion.trim())}'"
+        }
+        if (filterExpr.isNotBlank()) clauses += filterExpr
+        if (objExpr.isNotEmpty()) clauses += "($objExpr)"
+        return clauses.joinToString(" && ")
+    }
+
+    /** Store reverse lookup, then domain join graph → application/version/BOM. */
     private fun usageFor(assetId: UUID): List<AssetUsageEntry> {
         val out = mutableListOf<AssetUsageEntry>()
-        for (version in versions.findAll()) {
+        for (graphId in namedGraphs.listGraphIdsForEntity(assetId)) {
+            val bom = boms.findByGraphId(graphId) ?: continue
+            val version = versions.findById(bom.versionId).orElse(null) ?: continue
             val app = applications.findById(version.applicationId).orElse(null) ?: continue
-            val graphId = boms.findByVersionIdOrderBySortOrderAscIdAsc(version.id).firstOrNull()?.graphId ?: continue
-            val graph = namedGraphs.get(graphId) ?: continue
-            if (graph.contents.entities.none { it.id == assetId }) continue
+            val edges = namedGraphs.listIncidentEdges(assetId, graphId)
             out +=
                 AssetUsageEntry(
                     applicationId = app.id,
@@ -278,7 +245,7 @@ class AssetInventoryService(
                     context = version.status,
                     versionId = version.id,
                     versionLabel = version.version.ifBlank { null } ?: version.label,
-                    relations = incidentRelations(graph.contents.edges, assetId),
+                    relations = incidentRelations(edges, assetId),
                 )
         }
         return out.sortedWith(
@@ -309,11 +276,6 @@ class AssetInventoryService(
                 else -> null
             }
         }
-
-    private fun identifierFieldNames(node: org.poc.objs.core.domain.BoMSchemaNode): Set<String> =
-        node.fields.orEmpty().mapNotNull { field ->
-            if (field.identifier == true) field.name else null
-        }.toSet()
 
     private fun resolveSchema(type: String, version: String?): BoMSchema? {
         if (version != null) {

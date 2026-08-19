@@ -10,8 +10,12 @@ import org.poc.objs.core.domain.BoMGraphMutation
 import org.poc.objs.core.domain.BoMResolvedGraph
 import org.poc.objs.core.domain.BoMGraphContents
 import org.poc.objs.core.domain.BoMGraphException
+import org.poc.objs.core.domain.FirstSeenGraphMergePolicy
+import org.poc.objs.core.domain.GraphMergePolicy
 import org.poc.objs.core.domain.BoMGraphListItem
 import org.poc.objs.core.domain.BoMGraphSpec
+import org.poc.objs.core.domain.BoMPageRequest
+import org.poc.objs.core.domain.BoMPagedEntities
 import org.poc.objs.core.match.BoMGraphExprMatcher
 import org.poc.objs.core.match.BoMGraphExprPushdown
 import org.poc.objs.core.validation.BoMEntityTypeLookup
@@ -312,6 +316,171 @@ class BoMNamedGraphStore(
     @Transactional
     fun clone(sourceId: UUID, annotations: Map<String, String> = emptyMap()): BoMResolvedGraph =
         snapshot(sourceId, annotations)
+
+    /** Graphs that contain [entityId] (G-A5). Empty for orphans. */
+    @Transactional(readOnly = true)
+    fun listGraphIdsForEntity(entityId: UUID): List<UUID> =
+        membershipRepository.findByEntityId(entityId).map { it.graphId }.distinct()
+
+    /**
+     * Graph-local edges incident to [entityId] (G-A14). Optional [graphId] restricts to one graph.
+     */
+    @Transactional(readOnly = true)
+    @JvmOverloads
+    fun listIncidentEdges(entityId: UUID, graphId: UUID? = null): List<BoMEdge> {
+        val rows =
+            if (graphId == null) {
+                edgeRepository.findIncident(entityId)
+            } else {
+                edgeRepository.findIncidentInGraph(entityId, graphId)
+            }
+        return rows.map { it.toDomain() }
+    }
+
+    /** Member entity ids of [graphId] (membership table only). */
+    @Transactional(readOnly = true)
+    fun listEntityIdsInGraph(graphId: UUID): List<UUID> =
+        membershipRepository.findByGraphId(graphId).map { it.entityId }
+
+    /** Pool entities that are members of [graphId], ordered by type then id. */
+    @Transactional(readOnly = true)
+    fun listMembers(graphId: UUID): List<BoMEntity> {
+        val ids = listEntityIdsInGraph(graphId)
+        if (ids.isEmpty()) return emptyList()
+        return entityRepository.findAllById(ids).map { it.toDomain() }
+            .sortedWith(compareBy({ it.type }, { it.id.toString() }))
+    }
+
+    @Transactional(readOnly = true)
+    fun listMembers(graphId: UUID, page: BoMPageRequest): BoMPagedEntities {
+        val all = listMembers(graphId)
+        val from = page.offset.coerceAtMost(all.size)
+        val to = (from + page.size).coerceAtMost(all.size)
+        return BoMPagedEntities(
+            items = all.subList(from, to),
+            total = all.size.toLong(),
+            page = page.page,
+            size = page.size,
+        )
+    }
+
+    /**
+     * Live membership copy: new graph id, **same** pool entity ids, graph-local edges copied
+     * with new ids. Does not insert pool entities (unlike [clone]).
+     */
+    @Transactional
+    @JvmOverloads
+    fun copyGraph(sourceId: UUID, annotations: Map<String, String> = emptyMap()): BoMResolvedGraph {
+        val source = get(sourceId)
+            ?: throw BoMGraphException(
+                code = "GRAPH_NOT_FOUND",
+                message = "Subgraph not found: $sourceId",
+            )
+        val entityIds = source.contents.entities.mapNotNull { it.id }
+        val edges = source.contents.edges.map { copyEdgeWithoutId(it) }
+        return persistLiveGraph(annotations, entityIds, edges)
+    }
+
+    /**
+     * Persist-union of [sourceIds] in caller order. Default policy is [FirstSeenGraphMergePolicy].
+     */
+    @Transactional
+    @JvmOverloads
+    fun mergeGraph(
+        sourceIds: Collection<UUID>,
+        annotations: Map<String, String> = emptyMap(),
+        policy: GraphMergePolicy = FirstSeenGraphMergePolicy(),
+    ): BoMResolvedGraph {
+        if (sourceIds.isEmpty()) {
+            throw BoMGraphException(
+                code = "GRAPH_MERGE_EMPTY",
+                message = "mergeGraph requires at least one source graph",
+            )
+        }
+        val sources = sourceIds.map { id ->
+            get(id) ?: throw BoMGraphException(
+                code = "GRAPH_NOT_FOUND",
+                message = "Subgraph not found: $id",
+            )
+        }
+        val nodes = linkedMapOf<Any, BoMEntity>()
+        for (graph in sources) {
+            for (entity in graph.contents.entities) {
+                val key = policy.nodeKey(entity)
+                val existing = nodes[key]
+                nodes[key] = if (existing == null) entity else policy.onDuplicateNode(existing, entity)
+            }
+        }
+        val edges = linkedMapOf<Any, BoMEdge>()
+        for (graph in sources) {
+            for (edge in graph.contents.edges) {
+                val key = policy.edgeKey(edge)
+                val existing = edges[key]
+                edges[key] = if (existing == null) edge else policy.onDuplicateEdge(existing, edge)
+            }
+        }
+        return persistLiveGraph(
+            annotations,
+            nodes.values.mapNotNull { it.id },
+            edges.values.map { copyEdgeWithoutId(it) },
+        )
+    }
+
+    /**
+     * New live graph: membership of existing pool entities + new edge rows. Does not write
+     * pool entities.
+     */
+    private fun persistLiveGraph(
+        annotations: Map<String, String>,
+        entityIds: Collection<UUID>,
+        edges: List<BoMEdge>,
+    ): BoMResolvedGraph {
+        val created = create(
+            BoMGraphSpec(
+                annotations = annotations,
+                entityIds = entityIds.toSet(),
+            ),
+        )
+        if (edges.isEmpty()) {
+            return created
+        }
+        val newGraphId = created.id
+        val newEdges = edges.map { edge ->
+            BoMEdge(
+                id = UUID.randomUUID(),
+                graphId = newGraphId,
+                source = edge.source,
+                target = edge.target,
+                role = edge.role,
+                type = edge.type,
+                schemaVersion = edge.schemaVersion,
+                properties = edge.properties?.let { deepCopyMap(it) },
+            )
+        }
+        val writeResult = graphStore.write(
+            BoMGraph(
+                entities = mutableListOf(),
+                edges = newEdges.toMutableList(),
+            ),
+        )
+        if (!writeResult.isValid) {
+            throw BoMGraphException(
+                code = "GRAPH_COPY_VALIDATE",
+                message = writeResult.issues.joinToString("; ") { it.message ?: it.code },
+            )
+        }
+        return requireNotNull(get(newGraphId))
+    }
+
+    private fun copyEdgeWithoutId(edge: BoMEdge): BoMEdge =
+        BoMEdge(
+            source = edge.source,
+            target = edge.target,
+            role = edge.role,
+            type = edge.type,
+            schemaVersion = edge.schemaVersion,
+            properties = edge.properties?.let { deepCopyMap(it) },
+        )
 
     /**
      * Attach an existing pool entity to [graphId] (membership row only; idempotent).

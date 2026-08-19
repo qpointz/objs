@@ -195,13 +195,11 @@ class ApplicationVersionService(
                 val sourceBoms = boms.findByVersionIdOrderBySortOrderAscIdAsc(sourceVersion.id)
                 val combine = request.combineConstituents == true && sourceBoms.size > 1
                 if (combine) {
-                    val contents =
-                        BomUnion.of(sourceBoms.mapNotNull { namedGraphs.get(it.graphId) })
                     val tagUnion = BomUnion.combinedTags(emptyArray(), emptyArray(), sourceBoms.map { it.tags })
-                    copyBomFromContents(
+                    persistMergedBom(
                         app,
                         row,
-                        contents,
+                        sourceBoms.map { it.graphId },
                         name = "BOM",
                         tags = tagUnion.toTypedArray(),
                         description = null,
@@ -626,13 +624,6 @@ class ApplicationVersionService(
         }
     }
 
-    private fun copyGraph(sourceGraphId: UUID, annotations: Map<String, String>): UUID {
-        val source =
-            namedGraphs.get(sourceGraphId)
-                ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Source graph missing")
-        return materialize(source.contents, annotations)
-    }
-
     private fun materialize(contents: BoMGraphContents, annotations: Map<String, String>): UUID {
         val graph =
             namedGraphs.create(
@@ -758,22 +749,50 @@ class ApplicationVersionService(
         description: String?,
         sortOrder: Int,
     ) {
-        val source =
-            namedGraphs.get(sourceGraphId)
-                ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Source graph missing")
-        copyBomFromContents(app, row, source.contents, name, tags, description, sortOrder)
+        val bomId = UUID.randomUUID()
+        val annotations = bomAnnotations(app, row, bomId)
+        boms.save(
+            SbomApplicationSbomRecord(
+                id = bomId,
+                versionId = row.id,
+                name = name,
+                description = description,
+                tags = tags,
+                graphId = namedGraphs.copyGraph(sourceGraphId, annotations).id,
+                sortOrder = sortOrder,
+            ),
+        )
     }
 
-    private fun copyBomFromContents(
+    private fun persistMergedBom(
         app: SbomApplicationRecord,
         row: SbomApplicationVersionRecord,
-        contents: BoMGraphContents,
+        sourceGraphIds: List<UUID>,
         name: String,
         tags: Array<String>,
         description: String?,
         sortOrder: Int,
     ) {
         val bomId = UUID.randomUUID()
+        val annotations = bomAnnotations(app, row, bomId)
+        boms.save(
+            SbomApplicationSbomRecord(
+                id = bomId,
+                versionId = row.id,
+                name = name,
+                description = description,
+                tags = tags,
+                graphId = namedGraphs.mergeGraph(sourceGraphIds, annotations).id,
+                sortOrder = sortOrder,
+            ),
+        )
+    }
+
+    private fun bomAnnotations(
+        app: SbomApplicationRecord,
+        row: SbomApplicationVersionRecord,
+        bomId: UUID,
+    ): MutableMap<String, String> {
         val annotations =
             linkedMapOf(
                 "kind" to "application-bom",
@@ -784,17 +803,7 @@ class ApplicationVersionService(
                 "bomId" to bomId.toString(),
             )
         row.version.takeIf { it.isNotBlank() }?.let { annotations["version"] = it }
-        boms.save(
-            SbomApplicationSbomRecord(
-                id = bomId,
-                versionId = row.id,
-                name = name,
-                description = description,
-                tags = tags,
-                graphId = materialize(contents, annotations),
-                sortOrder = sortOrder,
-            ),
-        )
+        return annotations
     }
 
     private fun collectDependentIds(versionId: UUID): Set<UUID> {
@@ -842,7 +851,7 @@ class ApplicationVersionService(
             if (sourceGraphId == null) {
                 namedGraphs.create(BoMGraphSpec(annotations = annotations)).id
             } else {
-                copyGraph(sourceGraphId, annotations)
+                namedGraphs.copyGraph(sourceGraphId, annotations).id
             }
         return boms.save(
             SbomApplicationSbomRecord(

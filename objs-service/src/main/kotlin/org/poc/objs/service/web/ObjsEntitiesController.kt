@@ -26,7 +26,9 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import org.poc.objs.core.domain.BoMPageRequest
 import java.nio.charset.StandardCharsets
 import java.util.UUID
 
@@ -81,9 +83,25 @@ class ObjsEntitiesController(
             content = [Content(schema = Schema(implementation = BoMValidationResult::class))],
         ),
     )
-    fun query(request: HttpServletRequest): ResponseEntity<Any> {
+    fun query(
+        request: HttpServletRequest,
+        @RequestParam(required = false) page: Int?,
+        @RequestParam(required = false) size: Int?,
+    ): ResponseEntity<Any> {
         val matcher = matcherDsl.decode(readBody(request), resolveFormat(request))
-        return ResponseEntity.ok(store.selectFromPool(matcher))
+        if (page == null && size == null) {
+            return ResponseEntity.ok(store.selectFromPool(matcher))
+        }
+        val paged = store.selectFromPool(matcher, BoMPageRequest.of(page, size))
+        return ResponseEntity.ok(
+            mapOf(
+                "entities" to paged.items,
+                "edges" to emptyList<Any>(),
+                "total" to paged.total,
+                "page" to paged.page,
+                "size" to paged.size,
+            ),
+        )
     }
 
     @PostMapping

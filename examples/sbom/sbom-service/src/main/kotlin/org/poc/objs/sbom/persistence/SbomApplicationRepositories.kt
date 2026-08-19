@@ -47,4 +47,6 @@ interface SbomApplicationSbomRepository : JpaRepository<SbomApplicationSbomRecor
     fun findByVersionIdAndName(versionId: UUID, name: String): SbomApplicationSbomRecord?
 
     fun countByVersionId(versionId: UUID): Long
+
+    fun findByGraphId(graphId: UUID): SbomApplicationSbomRecord?
 }

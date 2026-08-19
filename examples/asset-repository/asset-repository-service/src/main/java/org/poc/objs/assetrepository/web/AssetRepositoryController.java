@@ -115,6 +115,17 @@ public class AssetRepositoryController {
         return toDto(collections.require(id));
     }
 
+    @PostMapping("/collections/{id}/copy")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Copy collection", description = "Live copy: shared object ids, new graph_id. Optional name, default Copy of {name}.")
+    ApiDtos.CollectionDto copyCollection(
+            @PathVariable("id") UUID id,
+            @RequestBody(required = false) ApiDtos.CopyCollectionRequest request
+    ) {
+        String name = request == null ? null : request.name();
+        return toDto(collections.copy(id, name));
+    }
+
     @GetMapping("/collections/{id}/statistics")
     @Operation(
             summary = "Collection statistics",

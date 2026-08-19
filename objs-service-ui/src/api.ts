@@ -313,7 +313,7 @@ export function isPoolObjExprMatcher(body: unknown): boolean {
 
 /** Matcher DSL over the entity pool (orphans included); edges always empty. */
 export async function queryEntities(matcherBody: unknown): Promise<BoMGraphContents> {
-  const res = await fetch('/api/v1/objs/entities/query', {
+  const res = await fetch('/api/v1/objs/entities/query?page=1&size=100', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(matcherBody),
