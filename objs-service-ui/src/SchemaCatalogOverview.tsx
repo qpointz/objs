@@ -1,7 +1,15 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  forwardRef,
+  memo,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import {
   Alert,
-  Button,
   Group,
   Loader,
   Menu,
@@ -13,7 +21,6 @@ import {
   Table,
   Tabs,
   Text,
-  Title,
 } from '@mantine/core'
 import {
   Background,
@@ -57,12 +64,27 @@ import type { BoMAllowedEdgeRule, BoMSchema, SeedImportResult } from './types'
 
 const FULL_SCHEMA_LAYOUT_KEY = 'objs.ui.fullSchema.layout'
 
-const CATALOG_LAYOUTS: { value: CatalogLayout; label: string }[] = [
+export const SCHEMA_CATALOG_LAYOUTS: { value: CatalogLayout; label: string }[] = [
   { value: 'TB', label: 'Top to bottom' },
   { value: 'LR', label: 'Left to right' },
   { value: 'BT', label: 'Bottom to top' },
   { value: 'RL', label: 'Right to left' },
 ]
+
+export type SchemaCatalogOverviewHandle = {
+  applyLayout: (direction?: CatalogLayout) => void
+  exportCatalog: (format: CatalogExportFormat) => Promise<void>
+  openImport: () => void
+  refresh: () => Promise<void>
+}
+
+export type SchemaCatalogActionState = {
+  canApplyLayout: boolean
+  ioBusy: boolean
+  catalogBusy: boolean
+  layout: CatalogLayout
+  edgeRuleCount: number
+}
 
 type StoredCatalogLayout = {
   direction: CatalogLayout
@@ -184,19 +206,20 @@ function CatalogTypeNodeView({ data, sourcePosition, targetPosition }: NodeProps
 
 const nodeTypes = { catalogType: memo(CatalogTypeNodeView) }
 
-function SchemaCatalogOverviewInner({
-  entityTypes,
-  rules,
-  busy,
-  onRefresh,
-  onImported,
-}: {
-  entityTypes: CatalogTypeNode[]
-  rules: BoMAllowedEdgeRule[]
-  busy?: boolean
-  onRefresh: () => Promise<void>
-  onImported: () => Promise<void>
-}) {
+const SchemaCatalogOverviewInner = forwardRef<
+  SchemaCatalogOverviewHandle,
+  {
+    entityTypes: CatalogTypeNode[]
+    rules: BoMAllowedEdgeRule[]
+    busy?: boolean
+    onRefresh: () => Promise<void>
+    onImported: () => Promise<void>
+    onActionStateChange?: (state: SchemaCatalogActionState) => void
+  }
+>(function SchemaCatalogOverviewInner(
+  { entityTypes, rules, busy, onRefresh, onImported, onActionStateChange },
+  ref,
+) {
   const navigate = useNavigate()
   const { fitView } = useReactFlow()
   const fileRef = useRef<HTMLInputElement>(null)
@@ -305,8 +328,6 @@ function SchemaCatalogOverviewInner({
     }
   }
 
-  const jsonSchemaHint = `${jsonSchemaOptions.includeEdges} · ${jsonSchemaOptions.dialect}`
-
   const jumpTargets = useMemo(() => {
     if (!textBody.trim()) return [] as { value: string; label: string }[]
     if (textFormat === 'json-schema') {
@@ -354,101 +375,43 @@ function SchemaCatalogOverviewInner({
     }
   }
 
+  useImperativeHandle(
+    ref,
+    () => ({
+      applyLayout: (direction?: CatalogLayout) => applyLayout(direction),
+      exportCatalog: onExport,
+      openImport: () => fileRef.current?.click(),
+      refresh: async () => {
+        await onRefresh()
+        setTextEpoch((n) => n + 1)
+      },
+    }),
+    [applyLayout, onExport, onRefresh],
+  )
+
+  useEffect(() => {
+    onActionStateChange?.({
+      canApplyLayout: nodes.length > 0,
+      ioBusy,
+      catalogBusy: Boolean(busy),
+      layout,
+      edgeRuleCount: rules.length,
+    })
+  }, [nodes.length, ioBusy, busy, layout, rules.length, onActionStateChange])
+
   return (
     <Stack gap="sm" style={{ height: '100%', minHeight: 0, flex: 1 }}>
-      <Group justify="space-between" align="flex-start" style={{ flexShrink: 0 }}>
-        <Stack gap={2}>
-          <Title order={3}>Full schema</Title>
-          <Text size="sm" c="dimmed">
-            Catalog overview of object types and allowed edges. Open a type to edit. Import is MERGE
-            only (no deletes).
-          </Text>
-        </Stack>
-        <Group gap="xs">
-          <Group gap={0}>
-            <Button
-              size="sm"
-              variant="light"
-              disabled={nodes.length === 0}
-              onClick={() => applyLayout()}
-              style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
-            >
-              Apply layout
-            </Button>
-            <Menu position="bottom-end" withinPortal>
-              <Menu.Target>
-                <Button
-                  size="sm"
-                  variant="light"
-                  disabled={nodes.length === 0}
-                  aria-label="Choose catalog layout"
-                  px="xs"
-                  style={{
-                    borderTopLeftRadius: 0,
-                    borderBottomLeftRadius: 0,
-                    borderLeft: '1px solid var(--mantine-color-default-border)',
-                  }}
-                >
-                  ▾
-                </Button>
-              </Menu.Target>
-              <Menu.Dropdown>
-                <Menu.Label>Layout direction</Menu.Label>
-                {CATALOG_LAYOUTS.map((option) => (
-                  <Menu.Item
-                    key={option.value}
-                    onClick={() => applyLayout(option.value)}
-                  >
-                    {option.value === layout ? '✓ ' : ''}
-                    {option.label}
-                  </Menu.Item>
-                ))}
-              </Menu.Dropdown>
-            </Menu>
-          </Group>
-          <Button
-            size="sm"
-            variant="light"
-            loading={busy || ioBusy}
-            onClick={() => {
-              void onRefresh().then(() => setTextEpoch((n) => n + 1))
-            }}
-          >
-            Refresh
-          </Button>
-          <Menu position="bottom-end">
-            <Menu.Target>
-              <Button size="sm" variant="light" loading={ioBusy}>
-                Export
-              </Button>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Label>Format</Menu.Label>
-              <Menu.Item onClick={() => void onExport('seeds')}>Seeds (YAML)</Menu.Item>
-              <Menu.Item onClick={() => void onExport('json-schema')}>
-                JSON Schema
-                <Text span size="xs" c="dimmed" ml={8}>
-                  {jsonSchemaHint}
-                </Text>
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
-          <Button size="sm" loading={ioBusy} onClick={() => fileRef.current?.click()}>
-            Import
-          </Button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".yaml,.yml,text/yaml,application/yaml"
-            style={{ display: 'none' }}
-            onChange={(e) => {
-              const file = e.currentTarget.files?.[0]
-              e.currentTarget.value = ''
-              if (file) void onImportFile(file)
-            }}
-          />
-        </Group>
-      </Group>
+      <input
+        ref={fileRef}
+        type="file"
+        accept=".yaml,.yml,text/yaml,application/yaml"
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          const file = e.currentTarget.files?.[0]
+          e.currentTarget.value = ''
+          if (file) void onImportFile(file)
+        }}
+      />
 
       {ioError && (
         <Alert color="red" title="Catalog I/O" style={{ flexShrink: 0 }}>
@@ -763,15 +726,16 @@ function SchemaCatalogOverviewInner({
       </Tabs>
     </Stack>
   )
-}
+})
 
-export function SchemaCatalogOverview({
-  schemas,
-  onCatalogChanged,
-}: {
-  schemas: BoMSchema[]
-  onCatalogChanged: () => Promise<void>
-}) {
+export const SchemaCatalogOverview = forwardRef<
+  SchemaCatalogOverviewHandle,
+  {
+    schemas: BoMSchema[]
+    onCatalogChanged: () => Promise<void>
+    onActionStateChange?: (state: SchemaCatalogActionState) => void
+  }
+>(function SchemaCatalogOverview({ schemas, onCatalogChanged, onActionStateChange }, ref) {
   const [rules, setRules] = useState<BoMAllowedEdgeRule[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -823,9 +787,11 @@ export function SchemaCatalogOverview({
       <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         <ReactFlowProvider>
           <SchemaCatalogOverviewInner
+            ref={ref}
             entityTypes={entityTypes}
             rules={rules ?? []}
             busy={loading}
+            onActionStateChange={onActionStateChange}
             onRefresh={async () => {
               await onCatalogChanged()
               await reloadRules()
@@ -839,4 +805,4 @@ export function SchemaCatalogOverview({
       </div>
     </Stack>
   )
-}
+})

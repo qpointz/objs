@@ -12,6 +12,7 @@ import {
 } from '@tabler/icons-react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import type { ReactNode } from 'react'
+import { GraphContextProvider } from './GraphContextProvider'
 import { useWorkbenchTour, WorkbenchTourProvider } from './WorkbenchTour'
 
 function HeaderNavLink({
@@ -90,6 +91,7 @@ function ColorSchemeToggle() {
 export function AppLayout() {
   return (
     <WorkbenchTourProvider>
+    <GraphContextProvider>
     <AppShell
       header={{ height: 56 }}
       padding="md"
@@ -151,16 +153,16 @@ export function AppLayout() {
                 icon={<IconBox size={16} stroke={1.75} />}
               />
               <HeaderNavLink
-                to="/composer"
-                tour="nav-composer"
-                label="Composer"
-                icon={<IconPencilCode size={16} stroke={1.75} />}
-              />
-              <HeaderNavLink
                 to="/query"
                 tour="nav-query"
                 label="Query"
                 icon={<IconRoute size={16} stroke={1.75} />}
+              />
+              <HeaderNavLink
+                to="/composer"
+                tour="nav-composer"
+                label="Composer"
+                icon={<IconPencilCode size={16} stroke={1.75} />}
               />
               <HeaderNavLink
                 to="/model"
@@ -193,6 +195,7 @@ export function AppLayout() {
         </div>
       </AppShell.Main>
     </AppShell>
+    </GraphContextProvider>
     </WorkbenchTourProvider>
   )
 }

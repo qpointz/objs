@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
+import org.poc.objs.core.domain.BoMGraphException
 import org.poc.objs.core.match.BoMMatcherDsl
 import org.poc.objs.core.persistence.BoMGraphStore
 import org.poc.objs.core.validation.BoMValidationException
@@ -15,6 +16,7 @@ import org.poc.objs.gremlin.core.BoMGremlinEvalException
 import org.poc.objs.gremlin.core.BoMGremlinItem
 import org.poc.objs.gremlin.core.BoMGremlinResult
 import org.poc.objs.gremlin.core.materialize.EnvelopeMaterializationStrategy
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -35,9 +37,10 @@ class ObjsGremlinController(
     @PostMapping("/graph/traverse/gremlin")
     @Operation(
         summary = "Select subgraph by matcher DSL, then evaluate gremlin-lang",
-        description = "Body requires `matcher` (same DSL as POST /graph/query: anno, anno-expr, chained) " +
-            "and `script`. Backend selects the induced subgraph, materializes it, runs the script, " +
-            "and returns a projected BoMGremlinResult.",
+        description = "Body requires `matcher` (same DSL as POST /graphs/query) and `script`. " +
+            "When `graphId` is set, selects that graph via selectInGraph (optional `graphVersion` pin) " +
+            "and uses matcher as an in-graph filter (obj-expr true = all members). " +
+            "Without graphId, matcher must start with all / graph-expr / graphs-in.",
     )
     @ApiResponses(
         ApiResponse(
@@ -55,21 +58,44 @@ class ObjsGremlinController(
         if (body.script.isBlank()) {
             return ResponseEntity.badRequest().body(mapOf("error" to "script must not be blank"))
         }
-        val matcher = try {
-            matcherDsl.decodeNode(body.matcher, "$.matcher")
-        } catch (ex: BoMValidationException) {
-            return ResponseEntity.badRequest().body(ex.result)
-        }
         return try {
-            val result = engine.selectAndEval(
-                store = store,
-                matcher = matcher,
-                script = body.script,
-                bindings = body.bindings,
-                strategy = body.strategy ?: EnvelopeMaterializationStrategy.NAME,
-                options = body.traversalOptions,
-            )
+            val matcher = matcherDsl.decodeNode(body.matcher, "$.matcher")
+            val result =
+                if (body.graphId != null) {
+                    val subgraph =
+                        if (body.graphVersion != null) {
+                            store.selectInGraphVersion(body.graphId, body.graphVersion, matcher)
+                        } else {
+                            store.selectInGraph(body.graphId, matcher)
+                        }
+                    engine.eval(
+                        subgraph = subgraph,
+                        script = body.script,
+                        bindings = body.bindings,
+                        strategy = body.strategy ?: EnvelopeMaterializationStrategy.NAME,
+                        options = body.traversalOptions,
+                    )
+                } else {
+                    engine.selectAndEval(
+                        store = store,
+                        matcher = matcher,
+                        script = body.script,
+                        bindings = body.bindings,
+                        strategy = body.strategy ?: EnvelopeMaterializationStrategy.NAME,
+                        options = body.traversalOptions,
+                    )
+                }
             ResponseEntity.ok(result.toApiMap())
+        } catch (ex: BoMValidationException) {
+            ResponseEntity.badRequest().body(ex.result)
+        } catch (ex: BoMGraphException) {
+            val status =
+                if (ex.code == "GRAPH_VERSION_NOT_FOUND" || ex.code == "GRAPH_NOT_FOUND") {
+                    HttpStatus.NOT_FOUND
+                } else {
+                    HttpStatus.BAD_REQUEST
+                }
+            ResponseEntity.status(status).body(mapOf("error" to (ex.message ?: ex.code), "code" to ex.code))
         } catch (ex: BoMGremlinEvalException) {
             ResponseEntity.badRequest().body(mapOf("error" to (ex.message ?: "evaluation failed")))
         } catch (ex: IllegalArgumentException) {

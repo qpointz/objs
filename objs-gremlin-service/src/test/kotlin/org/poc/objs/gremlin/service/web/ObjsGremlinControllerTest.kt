@@ -148,6 +148,34 @@ class ObjsGremlinControllerTest {
     }
 
     @Test
+    fun shouldTraverseInGraph_whenGraphIdAndMatchAll() {
+        val graphId = UUID.fromString("11111111-1111-1111-1111-111111111111")
+        given(store.selectInGraph(anyObj<UUID>(), anyObj<BoMMatcher>())).willReturn(sampleContents())
+
+        mockMvc.perform(
+            post("/api/v1/objs/graph/traverse/gremlin")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "matcher": { "obj-expr": "true" },
+                      "script": "g.V()",
+                      "graphId": "$graphId"
+                    }
+                    """.trimIndent(),
+                ),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.primary").value("graph"))
+            .andExpect(jsonPath("$.meta.subgraph1Stats.entities").value(2))
+            .andExpect(jsonPath("$.meta.resultCount").value(2))
+            .andExpect(jsonPath("$.contents.entities").isArray)
+            .andExpect(jsonPath("$.items.length()").value(2))
+
+        verify(store).selectInGraph(anyObj<UUID>(), anyObj<BoMMatcher>())
+    }
+
+    @Test
     fun shouldAcceptChainedMatcher() {
         given(store.select(anyObj<BoMMatcher>())).willReturn(sampleContents())
 

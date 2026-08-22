@@ -1,29 +1,26 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import {
   ActionIcon,
   Alert,
   Badge,
+  Box,
   Button,
-  Code,
   Group,
   Loader,
   Menu,
   Paper,
-  Popover,
-  ScrollArea,
   Stack,
   Text,
   Title,
-  Anchor,
   Tooltip,
 } from '@mantine/core'
-import { IconHelp, IconX } from '@tabler/icons-react'
+import { IconX } from '@tabler/icons-react'
 import {
   GraphGoToContextMenu,
   buildGraphNeighborIndex,
   type GraphGoToTarget,
 } from './graphGoToNav'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import {
   GraphCanvas,
   type GraphCanvasHandle,
@@ -31,50 +28,37 @@ import {
   type GraphNodePositions,
 } from './GraphCanvas'
 import {
-  execMatcher,
   getGraph,
   getGraphVersion,
   graphContentsFromGraphView,
-  listGraphVersions,
   listSchemas,
-  schemaDetailPath,
   toGraphData,
 } from './api'
-import { OpenGraphModal } from './OpenGraphModal'
-import {
-  EntityAnnotationsView,
-  EntityPayloadView,
-} from './EntityCardNode'
-import {
-  type MatcherQueryFormHandle,
-} from './MatcherQueryForm'
-import { ExploreScopeBar, type ExploreMode } from './ExploreScopeBar'
+import { GraphContextBar } from './GraphContextBar'
+import { useGraphContext } from './GraphContextProvider'
+import { EXPLORER_NODE_CAP } from './graphContextVersions'
+import { ObjectInspectPane } from './ObjectInspectPane'
 import { payloadFieldKindsByTypeVersion } from './payloadFieldKinds'
-import type { QueryExecStats } from './queryExecStats'
 import type {
+  BoMGraphContents,
   BoMGraphResponse,
-  BoMGraphVersionSummary,
   BoMSchema,
   GraphLink,
   GraphNode,
   GraphSelection,
 } from './types'
 import { applyTypeHighlightDimming, toggleTypeInSet } from './typeHighlightDimming'
-import { loadCurrentGraphId, useCurrentGraphId } from './useCurrentGraph'
+import { clamp, maxSidePaneWidth } from './sidePaneSplit'
 import { newGraphQueryId, useGraphSelectionHistory } from './useGraphSelectionHistory'
+import { VIEW_ACTION_BUTTON_SIZE } from './viewActionButtons'
 
-const GRAPH_MATCHER_STORAGE_KEY = 'objs.ui.graphExplorer.matcher'
 const GRAPH_SESSION_STORAGE_KEY = 'objs.ui.graphExplorer.session'
+const SIDE_PANE_WIDTH_KEY = 'objs.ui.explorer.sidePaneWidth'
+const DEFAULT_SIDE_WIDTH = 340
+const MIN_SIDE_WIDTH = 240
+const SPLITTER_WIDTH = 8
 
-const EXPLORER_HELP = (
-  <>
-    With an opened graph, <Code>obj-expr</Code> queries that graph (
-    <Code>POST .../graphs/{'{id}'}/query</Code>). Without one, bare <Code>obj-expr</Code> queries
-    the entity pool (<Code>POST .../entities/query</Code>, orphans included). <Code>graph-expr</Code>{' '}
-    / <Code>all</Code> / chained with those stages select graph(s) by header. Click type pills to
-    highlight matching objects; the selected object’s type pill opens its schema in a new tab.
-  </>
-)
+type ExploreMode = 'graph' | 'selection'
 
 const GRAPH_LAYOUTS: { value: GraphLayout; label: string }[] = [
   { value: 'TB', label: 'Top to bottom' },
@@ -90,21 +74,22 @@ type StoredGraphSession = {
   queryId?: string
 }
 
-function loadStoredGraphMatcher(): unknown | null {
+function loadSideWidth(): number {
   try {
-    const raw = localStorage.getItem(GRAPH_MATCHER_STORAGE_KEY)
-    if (!raw) return null
-    return JSON.parse(raw) as unknown
+    const raw = localStorage.getItem(SIDE_PANE_WIDTH_KEY)
+    if (!raw) return DEFAULT_SIDE_WIDTH
+    const n = Number(raw)
+    return Number.isFinite(n) && n >= MIN_SIDE_WIDTH ? n : DEFAULT_SIDE_WIDTH
   } catch {
-    return null
+    return DEFAULT_SIDE_WIDTH
   }
 }
 
-function saveStoredGraphMatcher(body: unknown) {
+function saveSideWidth(width: number) {
   try {
-    localStorage.setItem(GRAPH_MATCHER_STORAGE_KEY, JSON.stringify(body))
+    localStorage.setItem(SIDE_PANE_WIDTH_KEY, String(width))
   } catch {
-    // ignore quota / private mode
+    // ignore
   }
 }
 
@@ -159,64 +144,22 @@ function clearStoredGraphSession() {
   }
 }
 
-function parseVersionTime(createdAt: string | undefined, version: number): Date | null {
-  if (createdAt) {
-    const fromStamp = new Date(createdAt)
-    if (!Number.isNaN(fromStamp.getTime())) return fromStamp
-  }
-  if (Number.isFinite(version) && version > 1_000_000_000_000) {
-    const fromVersion = new Date(version)
-    if (!Number.isNaN(fromVersion.getTime())) return fromVersion
-  }
-  return null
-}
-
-function initialExploreMode(session: StoredGraphSession | null): ExploreMode {
-  const gid = loadCurrentGraphId()
-  if (gid) return 'graph'
-  if (session && (session.nodes.length > 0 || session.links.length > 0)) return 'selection'
-  return 'graph'
-}
-
 export function GraphExplorerPage() {
   const navigate = useNavigate()
   const graphRef = useRef<GraphCanvasHandle>(null)
-  const matcherRef = useRef<MatcherQueryFormHandle>(null)
-  const [storedMatcher] = useState(() => loadStoredGraphMatcher())
+  const { context, setCounts, setAnnotations, setGraphVersion, clear } = useGraphContext()
+  const exploreMode: ExploreMode = context.kind === 'matcher' ? 'selection' : 'graph'
+  const currentGraphId = context.kind === 'graph' ? context.graphId : null
+  const viewingVersion = context.kind === 'graph' ? context.graphVersion : null
   const [storedSession] = useState(() => loadStoredGraphSession())
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [formError, setFormError] = useState<string | null>(null)
-  const [execStats, setExecStats] = useState<QueryExecStats | null>(null)
   const [nodes, setNodes] = useState<GraphNode[]>(() => storedSession?.nodes ?? [])
   const [links, setLinks] = useState<GraphLink[]>(() => storedSession?.links ?? [])
   const [layout, setLayout] = useState<GraphLayout>(() => storedSession?.layout ?? 'TB')
-  const [lastMatcher, setLastMatcher] = useState<unknown>(() => storedMatcher)
   const [canvasEpoch, setCanvasEpoch] = useState(0)
-  const [currentGraphId, setCurrentGraphId] = useCurrentGraphId()
-  const [graphAnnotations, setGraphAnnotations] = useState<Record<string, string>>({})
-  const [exploreMode, setExploreMode] = useState<ExploreMode>(() => initialExploreMode(storedSession))
-  const [openGraphOpen, setOpenGraphOpen] = useState(false)
-  const [graphVersions, setGraphVersions] = useState<BoMGraphVersionSummary[]>([])
-  const [viewingVersion, setViewingVersion] = useState<number | null>(null)
-  const viewingRow = useMemo(
-    () =>
-      viewingVersion == null ? null : graphVersions.find((r) => r.version === viewingVersion) ?? null,
-    [graphVersions, viewingVersion],
-  )
-  const viewingCreated = useMemo(
-    () =>
-      viewingVersion == null
-        ? null
-        : parseVersionTime(viewingRow?.createdAt, viewingVersion),
-    [viewingRow, viewingVersion],
-  )
-  const viewingAnnotations = useMemo(() => {
-    const entries = Object.entries(viewingRow?.annotations ?? {}).filter(
-      ([key, value]) => key.trim().length > 0 && value.trim().length > 0,
-    )
-    return Object.fromEntries(entries)
-  }, [viewingRow])
+  const canvasOverCap =
+    context.nodeCount > EXPLORER_NODE_CAP || nodes.length > EXPLORER_NODE_CAP
   const [goToMenu, setGoToMenu] = useState<{ x: number; y: number; target: GraphGoToTarget } | null>(
     null,
   )
@@ -244,6 +187,57 @@ export function GraphExplorerPage() {
 
   const [highlightedTypes, setHighlightedTypes] = useState<Set<string>>(() => new Set())
   const [schemas, setSchemas] = useState<BoMSchema[]>([])
+  const [sideWidth, setSideWidth] = useState(loadSideWidth)
+  const splitHostRef = useRef<HTMLDivElement>(null)
+  const dragRef = useRef<{ startX: number; startWidth: number } | null>(null)
+
+  useEffect(() => {
+    const host = splitHostRef.current
+    if (host == null) return
+    const clampToHost = () => {
+      const max = maxSidePaneWidth(host.clientWidth, MIN_SIDE_WIDTH)
+      setSideWidth((w) => {
+        const next = clamp(w, MIN_SIDE_WIDTH, max)
+        return next === w ? w : next
+      })
+    }
+    clampToHost()
+    const ro = new ResizeObserver(clampToHost)
+    ro.observe(host)
+    return () => ro.disconnect()
+  }, [])
+
+  const onSplitterPointerDown = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      e.currentTarget.setPointerCapture(e.pointerId)
+      dragRef.current = { startX: e.clientX, startWidth: sideWidth }
+    },
+    [sideWidth],
+  )
+
+  const onSplitterPointerMove = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current
+    if (!drag) return
+    const host = splitHostRef.current
+    if (host == null) return
+    const max = maxSidePaneWidth(host.clientWidth, MIN_SIDE_WIDTH)
+    const next = clamp(drag.startWidth - (e.clientX - drag.startX), MIN_SIDE_WIDTH, max)
+    setSideWidth(next)
+  }, [])
+
+  const onSplitterPointerUp = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      const drag = dragRef.current
+      dragRef.current = null
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId)
+      }
+      if (drag != null) {
+        saveSideWidth(sideWidth)
+      }
+    },
+    [sideWidth],
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -260,33 +254,46 @@ export function GraphExplorerPage() {
   }, [])
 
   useEffect(() => {
-    setViewingVersion(null)
-    if (exploreMode !== 'graph' || !currentGraphId) {
-      setGraphVersions([])
-      return
-    }
+    // Keep canvas in sync with shared graph context. Never leave a previous graph
+    // painted when context changed (esp. over-cap graphs / matcher handoff).
     let cancelled = false
-    listGraphVersions(currentGraphId)
-      .then((rows) => {
-        if (!cancelled) setGraphVersions(rows)
-      })
-      .catch(() => {
-        if (!cancelled) setGraphVersions([])
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [currentGraphId, exploreMode])
+    setError(null)
 
-  // Keep Graph-mode canvas in sync with the opened graph. Version switches reuse
-  // node positions (stable ids) instead of remounting the canvas.
-  useEffect(() => {
-    if (exploreMode !== 'graph' || !currentGraphId) return
-    let cancelled = false
+    if (context.nodeCount > EXPLORER_NODE_CAP) {
+      setNodes([])
+      setLinks([])
+      setHighlightedTypes(new Set())
+      clearStoredGraphSession()
+      loadedGraphIdRef.current = exploreMode === 'graph' ? currentGraphId : null
+      setLoading(false)
+      return () => {
+        cancelled = true
+      }
+    }
+
+    if (exploreMode !== 'graph' || !currentGraphId) {
+      // Leaving graph mode: drop prior graph canvas (matcher results may replace it via onApplied).
+      if (loadedGraphIdRef.current != null) {
+        setNodes([])
+        setLinks([])
+        setHighlightedTypes(new Set())
+        clearStoredGraphSession()
+        loadedGraphIdRef.current = null
+      }
+      setLoading(false)
+      return () => {
+        cancelled = true
+      }
+    }
+
     const keepLayout =
       loadedGraphIdRef.current === currentGraphId && nodesRef.current.length > 0
-    if (!keepLayout) setLoading(true)
-    setError(null)
+    if (!keepLayout) {
+      setNodes([])
+      setLinks([])
+      setLoading(true)
+    }
+
     const load =
       viewingVersion == null
         ? getGraph(currentGraphId)
@@ -294,8 +301,21 @@ export function GraphExplorerPage() {
     load
       .then((resolved) => {
         if (cancelled) return
-        setGraphAnnotations(resolved.annotations ?? {})
+        setAnnotations(resolved.annotations ?? {})
         const graph = toGraphData(resolved.graph, schemas)
+        const entityCount = graph.nodes.length
+        setCounts(entityCount, graph.links.length)
+
+        if (entityCount > EXPLORER_NODE_CAP) {
+          setNodes([])
+          setLinks([])
+          setHighlightedTypes(new Set())
+          clearStoredGraphSession()
+          loadedGraphIdRef.current = currentGraphId
+          setCanvasEpoch((n) => n + 1)
+          return
+        }
+
         const prev = nodesRef.current
         const nextNodes = keepLayout
           ? graph.nodes.map((n) => {
@@ -318,12 +338,11 @@ export function GraphExplorerPage() {
       .catch(() => {
         if (cancelled) return
         if (viewingVersion != null) {
-          setViewingVersion(null)
+          setGraphVersion(null)
           return
         }
         loadedGraphIdRef.current = null
-        setCurrentGraphId(null)
-        setGraphAnnotations({})
+        clear()
         setNodes([])
         setLinks([])
         clearStoredGraphSession()
@@ -335,7 +354,16 @@ export function GraphExplorerPage() {
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentGraphId, exploreMode, setCurrentGraphId, viewingVersion])
+  }, [
+    currentGraphId,
+    exploreMode,
+    clear,
+    setAnnotations,
+    setCounts,
+    setGraphVersion,
+    viewingVersion,
+    context.nodeCount,
+  ])
 
   const fieldKindsByTypeVersion = useMemo(
     () => payloadFieldKindsByTypeVersion(schemas),
@@ -363,10 +391,16 @@ export function GraphExplorerPage() {
     () => applyTypeHighlightDimming(nodesWithKinds, links, highlightedTypes),
     [highlightedTypes, links, nodesWithKinds],
   )
+
   const neighborIndex = useMemo(
     () => buildGraphNeighborIndex(displayGraph.nodes, displayGraph.links),
     [displayGraph],
   )
+
+  const typeHighlightNodeIds = useMemo(() => {
+    if (highlightedTypes.size === 0) return undefined
+    return displayGraph.nodes.filter((n) => highlightedTypes.has(n.type)).map((n) => n.id)
+  }, [highlightedTypes, displayGraph.nodes])
 
   const canvasNonEmpty = nodes.length > 0 || links.length > 0
 
@@ -376,10 +410,10 @@ export function GraphExplorerPage() {
 
   const handleSelect = useCallback(
     (next: GraphSelection | null) => {
-      clearTypeHighlight()
+      // Type filter stays until Clear / graph reload — selection must not reset it (Note 4).
       select(next)
     },
-    [clearTypeHighlight, select],
+    [select],
   )
 
   function toggleTypeHighlight(type: string) {
@@ -424,57 +458,36 @@ export function GraphExplorerPage() {
     })
   }
 
-  async function onExec() {
-    setLoading(true)
+  async function onMatcherApplied(raw: { entities: unknown[]; edges: unknown[] }, _body: unknown) {
     setError(null)
-    setFormError(null)
-    // Capture graph scope for this Exec, then clear Graph-mode state (either/or).
-    const scopeGraphId = currentGraphId
+    setLoading(true)
+    loadedGraphIdRef.current = null
     try {
-      const mode = matcherRef.current?.getMode()
-      const body = matcherRef.current?.build()
-      if (body === undefined || mode === undefined) {
-        throw new Error('Matcher form is not ready')
+      const contents: BoMGraphContents = {
+        entities: (raw.entities ?? []) as BoMGraphContents['entities'],
+        edges: (raw.edges ?? []) as BoMGraphContents['edges'],
       }
-      const started = performance.now()
-      const contents = await execMatcher(mode, body, scopeGraphId)
-      const durationMs = performance.now() - started
       const graph = toGraphData(contents, schemas)
+      if (graph.nodes.length > EXPLORER_NODE_CAP) {
+        setNodes([])
+        setLinks([])
+        setHighlightedTypes(new Set())
+        clearStoredGraphSession()
+        setCanvasEpoch((n) => n + 1)
+        return
+      }
       const qid = beginQueryResult()
-      setExecStats({
-        durationMs,
-        nodes: graph.nodes.length,
-        edges: graph.links.length,
-      })
-      setExploreMode('selection')
-      setCurrentGraphId(null)
-      setGraphAnnotations({})
-      // Drop prior canvas coordinates so Exec starts from a fresh layout.
       setNodes(graph.nodes)
       setLinks(graph.links)
       setHighlightedTypes(new Set())
-      setLastMatcher(body)
-      saveStoredGraphMatcher(body)
       clearStoredGraphSession()
       persistSession(graph.nodes, graph.links, layout, qid)
       setCanvasEpoch((n) => n + 1)
     } catch (e) {
       setNodes([])
       setLinks([])
-      setExecStats(null)
       clearStoredGraphSession()
-      const message = e instanceof Error ? e.message : String(e)
-      if (
-        message.includes('current graph') ||
-        message.includes('Chained') ||
-        message.includes('JSON') ||
-        message.includes('Matcher form') ||
-        message.includes('Provide')
-      ) {
-        setFormError(message)
-      } else {
-        setError(message)
-      }
+      setError(e instanceof Error ? e.message : String(e))
     } finally {
       setLoading(false)
     }
@@ -499,31 +512,16 @@ export function GraphExplorerPage() {
     })
   }
 
-  function onOpenGraph(id: string, resolved: BoMGraphResponse) {
-    setExploreMode('graph')
-    setCurrentGraphId(id)
-    setGraphAnnotations(resolved.annotations ?? {})
-    setLastMatcher(null)
+  function onGraphOpened(id: string, resolved: BoMGraphResponse) {
     const graph = toGraphData(resolved.graph, schemas)
     setNodes(graph.nodes)
     setLinks(graph.links)
     setHighlightedTypes(new Set())
-    setExecStats(null)
     clearStoredGraphSession()
     const qid = beginQueryResult()
     persistSession(graph.nodes, graph.links, layout, qid)
     setCanvasEpoch((n) => n + 1)
-  }
-
-  function onOpenInQuery() {
-    if (!canvasNonEmpty) return
-    navigate('/query', {
-      state: {
-        ...(lastMatcher != null ? { matcher: lastMatcher } : {}),
-        graphContents: graphContentsFromGraphView(nodes, links),
-        ...(exploreMode === 'graph' && currentGraphId ? { graphId: currentGraphId } : {}),
-      },
-    })
+    loadedGraphIdRef.current = id
   }
 
   function changeLayout(next: GraphLayout) {
@@ -562,155 +560,51 @@ export function GraphExplorerPage() {
 
   return (
     <Stack gap="sm" style={{ flex: 1, minHeight: 0 }}>
-      <Group justify="space-between" align="flex-start" wrap="wrap" style={{ flexShrink: 0 }}>
-        <Group gap={6} align="center">
-          <Title order={3}>Explorer</Title>
-          <Popover width={360} position="bottom-start" withArrow shadow="md">
-            <Popover.Target>
-              <ActionIcon variant="subtle" color="gray" size="sm" aria-label="Explorer help">
-                <IconHelp size={16} />
-              </ActionIcon>
-            </Popover.Target>
-            <Popover.Dropdown>
-              <Text size="sm" c="dimmed">
-                {EXPLORER_HELP}
-              </Text>
-            </Popover.Dropdown>
-          </Popover>
-        </Group>
+      <Group align="center" wrap="nowrap" gap="md" style={{ flexShrink: 0 }}>
+        <Title order={3} style={{ flexShrink: 0 }}>
+          Explorer
+        </Title>
+        <Box style={{ flex: 1, minWidth: 0 }}>
+          <GraphContextBar onGraphOpened={onGraphOpened} onMatcherApplied={onMatcherApplied} />
+        </Box>
       </Group>
 
-      <ExploreScopeBar
-        mode={exploreMode}
-        onModeChange={setExploreMode}
-        graphId={currentGraphId}
-        graphAnnotations={graphAnnotations}
-        objectCount={nodes.length}
-        edgeCount={links.length}
-        lastMatcher={lastMatcher}
-        onOpenGraph={() => setOpenGraphOpen(true)}
-        matcherRef={matcherRef}
-        storedMatcher={storedMatcher}
-        formError={formError}
-        execStats={execStats}
-        execLoading={loading}
-        onExec={() => void onExec()}
-      />
-
-      <Group gap="xs" wrap="wrap">
-        {exploreMode === 'graph' ? (
-          <Button
-            size="sm"
-            variant="light"
-            disabled={!currentGraphId}
-            onClick={onOpenInComposer}
-          >
-            Open in Composer
-          </Button>
-        ) : (
-          <Button
-            size="sm"
-            variant="light"
-            disabled={!canvasNonEmpty}
-            onClick={onNewGraphFromSelection}
-          >
-            New graph from selection
-          </Button>
-        )}
-        <Button
-          size="sm"
-          variant="light"
-          disabled={!canvasNonEmpty}
-          onClick={onOpenInQuery}
-        >
-          Open in Query
-        </Button>
-        <Group gap={0}>
-          <Button
-            size="sm"
-            variant="light"
-            disabled={nodes.length === 0}
-            onClick={() => graphRef.current?.applyLayout()}
-            style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
-          >
-            Apply layout
-          </Button>
-          <Menu position="bottom-end" withinPortal>
-            <Menu.Target>
-              <Button
-                size="sm"
-                variant="light"
-                disabled={nodes.length === 0}
-                aria-label="Choose graph layout"
-                px="xs"
-                style={{
-                  borderTopLeftRadius: 0,
-                  borderBottomLeftRadius: 0,
-                  borderLeft: '1px solid var(--mantine-color-default-border)',
-                }}
-              >
-                ▾
-              </Button>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Label>Layout direction</Menu.Label>
-              {GRAPH_LAYOUTS.map((option) => (
-                <Menu.Item
-                  key={option.value}
-                  onClick={() => {
-                    if (option.value === layout) {
-                      graphRef.current?.applyLayout()
-                    } else {
-                      changeLayout(option.value)
-                    }
+      <Group
+        align="flex-start"
+        wrap="nowrap"
+        gap="md"
+        style={{ flexShrink: 0 }}
+        data-tour="explorer-type-actions"
+      >
+        <Group gap="xs" wrap="wrap" style={{ flex: 1, minWidth: 0 }}>
+          {!error &&
+            canvasNonEmpty &&
+            types.map(([type, color]) => {
+              const active = highlightedTypes.has(type)
+              return (
+                <Badge
+                  key={type}
+                  variant={active ? 'filled' : 'outline'}
+                  color="gray"
+                  leftSection={
+                    active ? undefined : (
+                      <span style={{ color, lineHeight: 1, fontWeight: 700 }}>+</span>
+                    )
+                  }
+                  onClick={() => toggleTypeHighlight(type)}
+                  style={{
+                    cursor: 'pointer',
+                    background: active ? color : undefined,
+                    borderColor: color,
+                    color: active ? '#fff' : color,
+                    userSelect: 'none',
                   }}
                 >
-                  {option.value === layout ? '✓ ' : ''}
-                  {option.label}
-                </Menu.Item>
-              ))}
-            </Menu.Dropdown>
-          </Menu>
-        </Group>
-      </Group>
-
-      {error && (
-        <Alert color="red" title="Query failed">
-          {error}
-        </Alert>
-      )}
-
-      {!error && canvasNonEmpty && (
-        <Group gap="xs" wrap="wrap">
-          <Text size="sm">
-            {nodes.length} nodes / {links.length} edges
-          </Text>
-          {types.map(([type, color]) => {
-            const active = highlightedTypes.has(type)
-            const filtering = highlightedTypes.size > 0
-            return (
-              <Badge
-                key={type}
-                variant={active ? 'filled' : 'outline'}
-                color="gray"
-                leftSection={
-                  <span style={{ color: active ? '#fff' : color, lineHeight: 1 }}>●</span>
-                }
-                onClick={() => toggleTypeHighlight(type)}
-                style={{
-                  cursor: 'pointer',
-                  background: active ? color : undefined,
-                  borderColor: color,
-                  color: active ? '#fff' : undefined,
-                  opacity: filtering && !active ? 0.45 : 1,
-                  userSelect: 'none',
-                }}
-              >
-                {type}
-              </Badge>
-            )
-          })}
-          {highlightedTypes.size > 0 && (
+                  {type}
+                </Badge>
+              )
+            })}
+          {!error && canvasNonEmpty && highlightedTypes.size > 0 && (
             <Tooltip label="Clear type highlight" withArrow>
               <ActionIcon
                 size="sm"
@@ -724,122 +618,91 @@ export function GraphExplorerPage() {
             </Tooltip>
           )}
         </Group>
+        <Group gap={6} wrap="nowrap" data-tour="explorer-view-actions" style={{ flexShrink: 0 }}>
+          {exploreMode === 'graph' ? (
+            <Button
+              size={VIEW_ACTION_BUTTON_SIZE}
+              variant="light"
+              disabled={!currentGraphId}
+              onClick={onOpenInComposer}
+            >
+              Open in Composer
+            </Button>
+          ) : (
+            <Button
+              size={VIEW_ACTION_BUTTON_SIZE}
+              variant="light"
+              disabled={!canvasNonEmpty}
+              onClick={onNewGraphFromSelection}
+            >
+              New graph from selection
+            </Button>
+          )}
+          <Group gap={0}>
+            <Button
+              size={VIEW_ACTION_BUTTON_SIZE}
+              variant="light"
+              disabled={nodes.length === 0}
+              onClick={() => graphRef.current?.applyLayout()}
+              style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
+            >
+              Apply layout
+            </Button>
+            <Menu position="bottom-end" withinPortal>
+              <Menu.Target>
+                <Button
+                  size={VIEW_ACTION_BUTTON_SIZE}
+                  variant="light"
+                  disabled={nodes.length === 0}
+                  aria-label="Choose graph layout"
+                  px="xs"
+                  style={{
+                    borderTopLeftRadius: 0,
+                    borderBottomLeftRadius: 0,
+                    borderLeft: '1px solid var(--mantine-color-default-border)',
+                  }}
+                >
+                  ▾
+                </Button>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Label>Layout direction</Menu.Label>
+                {GRAPH_LAYOUTS.map((option) => (
+                  <Menu.Item
+                    key={option.value}
+                    onClick={() => {
+                      if (option.value === layout) {
+                        graphRef.current?.applyLayout()
+                      } else {
+                        changeLayout(option.value)
+                      }
+                    }}
+                  >
+                    {option.value === layout ? '✓ ' : ''}
+                    {option.label}
+                  </Menu.Item>
+                ))}
+              </Menu.Dropdown>
+            </Menu>
+          </Group>
+        </Group>
+      </Group>
+
+      {error && (
+        <Alert color="red" title="Query failed">
+          {error}
+        </Alert>
       )}
 
-      <Group align="stretch" wrap="nowrap" preventGrowOverflow={false} style={{ flex: 1, minHeight: 0 }} gap="md">
-        {exploreMode === 'graph' && graphVersions.length > 0 && (
-          <Paper
-            withBorder
-            p="sm"
-            h="100%"
-            data-tour="explorer-versions"
-            style={{ flex: '0 0 300px', width: 300, minWidth: 300, flexShrink: 0 }}
-          >
-            <Stack gap="xs" h="100%">
-              <Group justify="space-between" wrap="nowrap">
-                <Title order={6}>Versions</Title>
-                <Button
-                  size="compact-xs"
-                  variant={viewingVersion == null ? 'filled' : 'light'}
-                  onClick={() => setViewingVersion(null)}
-                >
-                  Latest
-                </Button>
-              </Group>
-              <ScrollArea style={{ flex: 1, minHeight: 0 }} type="auto" offsetScrollbars>
-                <Stack gap={8}>
-                  {graphVersions.map((row) => {
-                    const active = viewingVersion === row.version
-                    const created = parseVersionTime(row.createdAt, row.version)
-                    const annotations = Object.fromEntries(
-                      Object.entries(row.annotations ?? {}).filter(
-                        ([key, value]) => key.trim().length > 0 && value.trim().length > 0,
-                      ),
-                    )
-                    return (
-                      <button
-                        type="button"
-                        key={row.version}
-                        onClick={() => setViewingVersion(row.version)}
-                        style={{
-                          display: 'block',
-                          width: '100%',
-                          boxSizing: 'border-box',
-                          textAlign: 'left',
-                          padding: 10,
-                          borderRadius: 6,
-                          cursor: 'pointer',
-                          whiteSpace: 'normal',
-                          overflow: 'visible',
-                          height: 'auto',
-                          border: active
-                            ? '1px solid var(--mantine-color-blue-filled)'
-                            : '1px solid var(--mantine-color-default-border)',
-                          background: active
-                            ? 'var(--mantine-color-blue-light)'
-                            : 'var(--mantine-color-body)',
-                          color: 'inherit',
-                          font: 'inherit',
-                        }}
-                      >
-                        <Text size="xs" ff="monospace" lh={1.4} style={{ overflowWrap: 'anywhere' }}>
-                          {String(row.version)}
-                        </Text>
-                        {created && (
-                          <Text size="xs" c="dimmed" mt={4} style={{ whiteSpace: 'nowrap' }}>
-                            {created.toLocaleDateString()} {created.toLocaleTimeString()}
-                          </Text>
-                        )}
-                        {Object.keys(annotations).length > 0 && (
-                          <div style={{ marginTop: 6 }}>
-                            <EntityAnnotationsView annotations={annotations} size="card" />
-                          </div>
-                        )}
-                      </button>
-                    )
-                  })}
-                </Stack>
-              </ScrollArea>
-            </Stack>
-          </Paper>
-        )}
-
-        <Paper withBorder style={{ flex: 2, minWidth: 0, minHeight: 280, overflow: 'hidden', position: 'relative' }}>
-          {exploreMode === 'graph' && viewingVersion != null && (
-            <Paper
-              withBorder
-              shadow="sm"
-              p={6}
-              radius="sm"
-              style={{
-                position: 'absolute',
-                top: 8,
-                right: 8,
-                left: 'auto',
-                zIndex: 4,
-                maxWidth: 320,
-                pointerEvents: 'auto',
-              }}
-            >
-              <Text size="xs" lh={1.4} style={{ overflowWrap: 'anywhere' }}>
-                version: {String(viewingVersion)}
-                {viewingCreated ? `, date: ${viewingCreated.toLocaleString()}` : ''}. open{' '}
-                <Anchor
-                  component="button"
-                  type="button"
-                  size="xs"
-                  onClick={() => setViewingVersion(null)}
-                >
-                  latest
-                </Anchor>
-              </Text>
-              {Object.keys(viewingAnnotations).length > 0 && (
-                <div style={{ marginTop: 6 }}>
-                  <EntityAnnotationsView annotations={viewingAnnotations} size="card" />
-                </div>
-              )}
-            </Paper>
-          )}
+      <Group
+        ref={splitHostRef}
+        align="stretch"
+        wrap="nowrap"
+        preventGrowOverflow={false}
+        style={{ flex: 1, minHeight: 0 }}
+        gap={0}
+      >
+        <Paper withBorder style={{ flex: 1, minWidth: 0, minHeight: 280, overflow: 'hidden', position: 'relative' }}>
           {loading && (
             <Stack
               align="center"
@@ -858,11 +721,19 @@ export function GraphExplorerPage() {
               </Text>
             </Stack>
           )}
-          {nodes.length === 0 && !loading ? (
+          {canvasOverCap && !loading ? (
+            <Stack align="center" justify="center" gap="sm" p="md" h="100%">
+              <Alert color="yellow" title="Graph canvas disabled">
+                This context has{' '}
+                {Math.max(context.nodeCount, nodes.length)} nodes (cap {EXPLORER_NODE_CAP}). Narrow
+                the graph context or open a smaller graph to use the canvas.
+              </Alert>
+            </Stack>
+          ) : nodes.length === 0 && !loading ? (
             <Text c="dimmed" p="md">
               Open a graph or press Exec to load a selection.
             </Text>
-          ) : (
+          ) : !canvasOverCap ? (
             <GraphCanvas
               key={canvasEpoch}
               ref={graphRef}
@@ -875,8 +746,9 @@ export function GraphExplorerPage() {
               layout={layout}
               autoLayoutOnDataChange={false}
               onPositionsChange={onPositionsChange}
+              highlightedNodeIds={typeHighlightNodeIds}
             />
-          )}
+          ) : null}
           <GraphGoToContextMenu
             opened={goToMenu != null}
             x={goToMenu?.x ?? 0}
@@ -889,161 +761,70 @@ export function GraphExplorerPage() {
           />
         </Paper>
 
-        <Paper withBorder p="md" style={{ flex: 1, minWidth: 260, maxWidth: 420, overflow: 'hidden' }}>
-          <ScrollArea h="100%">
-            {selection?.kind === 'node' ? (
-              <Stack gap="sm">
-                <Badge color="blue" variant="light" w="fit-content">
-                  node
-                </Badge>
-                <Title order={5}>{selection.node.name}</Title>
-                <Text size="sm">
-                  <Text span fw={600}>
-                    type:{' '}
-                  </Text>
-                  <Anchor
-                    component={Link}
-                    to={schemaDetailPath(selection.node.type, selection.node.schemaVersion)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    size="sm"
-                  >
-                    <Badge variant="light" style={{ color: selection.node.color, cursor: 'pointer' }}>
-                      {selection.node.type}
-                    </Badge>
-                  </Anchor>
-                  <Text span size="sm" c="dimmed" ml="xs">
-                    schema {selection.node.schemaVersion}
-                  </Text>
-                </Text>
-                <Text size="xs" c="dimmed" style={{ wordBreak: 'break-all' }}>
-                  id: {selection.node.id}
-                </Text>
-                <Paper withBorder radius="md" p="sm">
-                  <EntityPayloadView
-                    payload={selection.node.payload ?? {}}
-                    fieldKinds={
-                      selection.node.payloadFieldKinds ??
-                      fieldKindsByTypeVersion.get(
-                        `${selection.node.type}@${selection.node.schemaVersion}`,
-                      )
-                    }
-                    size="panel"
-                    showLabel
-                  />
-                </Paper>
-                <Paper withBorder radius="md" p="sm">
-                  <EntityAnnotationsView
-                    annotations={selection.node.annotations ?? {}}
-                    size="panel"
-                    showLabel
-                  />
-                </Paper>
-              </Stack>
-            ) : selection?.kind === 'edge' ? (
-              <Stack gap="sm">
-                <Badge color="blue" variant="light" w="fit-content">
-                  edge
-                </Badge>
-                <Title order={5}>{selection.edge.role}</Title>
-                <Text size="sm">
-                  <Text span fw={600}>
-                    type:{' '}
-                  </Text>
-                  {selection.edge.type ? (
-                    <Anchor
-                      component={Link}
-                      to={schemaDetailPath(
-                        selection.edge.type,
-                        selection.edge.schemaVersion ?? '1.0.0',
-                      )}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      size="sm"
-                    >
-                      <Badge variant="light" style={{ cursor: 'pointer' }}>
-                        {selection.edge.type}
-                      </Badge>
-                    </Anchor>
-                  ) : (
-                    '—'
-                  )}
-                  {selection.edge.schemaVersion && (
-                    <Text span size="sm" c="dimmed" ml="xs">
-                      schema {selection.edge.schemaVersion}
-                    </Text>
-                  )}
-                </Text>
-                <Text size="xs" c="dimmed" style={{ wordBreak: 'break-all' }}>
-                  id: {selection.edge.id}
-                </Text>
-                <div>
-                  <Text fw={600} size="sm" mb={4}>
-                    endpoints
-                  </Text>
-                  <Stack gap={4}>
-                    <Group gap={6} wrap="nowrap" align="flex-start">
-                      <Text size="sm" fw={600} style={{ flexShrink: 0 }}>
-                        source:
-                      </Text>
-                      <Anchor
-                        component="button"
-                        type="button"
-                        size="sm"
-                        ta="left"
-                        style={{ wordBreak: 'break-all' }}
-                        onClick={() => selectNodeFromCanvas(selection.edge.source)}
-                      >
-                        {endpointLabel(selection.edge.source)}
-                      </Anchor>
-                    </Group>
-                    <Group gap={6} wrap="nowrap" align="flex-start">
-                      <Text size="sm" fw={600} style={{ flexShrink: 0 }}>
-                        target:
-                      </Text>
-                      <Anchor
-                        component="button"
-                        type="button"
-                        size="sm"
-                        ta="left"
-                        style={{ wordBreak: 'break-all' }}
-                        onClick={() => selectNodeFromCanvas(selection.edge.target)}
-                      >
-                        {endpointLabel(selection.edge.target)}
-                      </Anchor>
-                    </Group>
-                  </Stack>
-                </div>
-                <Paper withBorder radius="md" p="sm">
-                  <EntityPayloadView
-                    payload={selection.edge.properties ?? {}}
-                    fieldKinds={
-                      selection.edge.type
-                        ? fieldKindsByTypeVersion.get(
-                            `${selection.edge.type}@${selection.edge.schemaVersion ?? '1.0.0'}`,
-                          )
-                        : undefined
-                    }
-                    size="panel"
-                    showLabel
-                    label="properties"
-                  />
-                </Paper>
-              </Stack>
-            ) : (
-              <Text c="dimmed" size="sm">
-                Select a node or edge to inspect.
-              </Text>
-            )}
-          </ScrollArea>
+        <Box
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize Explorer inspect pane"
+          onPointerDown={onSplitterPointerDown}
+          onPointerMove={onSplitterPointerMove}
+          onPointerUp={onSplitterPointerUp}
+          onPointerCancel={onSplitterPointerUp}
+          style={{
+            width: SPLITTER_WIDTH,
+            flexShrink: 0,
+            cursor: 'col-resize',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            touchAction: 'none',
+            userSelect: 'none',
+          }}
+        >
+          <Box
+            style={{
+              width: 3,
+              height: 48,
+              borderRadius: 2,
+              background: 'var(--mantine-color-default-border)',
+            }}
+          />
+        </Box>
+
+        <Paper
+          withBorder
+          p="md"
+          style={{
+            width: sideWidth,
+            flexShrink: 0,
+            minHeight: 280,
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+          data-tour="object-inspect"
+        >
+          <ObjectInspectPane
+            selection={selection}
+            nodes={nodes}
+            graphContext={
+              exploreMode === 'graph' && currentGraphId
+                ? {
+                    graphId: currentGraphId,
+                    graphVersion: viewingVersion,
+                    annotations:
+                      context.kind === 'graph' ? context.annotations ?? {} : {},
+                    entityCount: nodes.length,
+                    edgeCount: links.length,
+                  }
+                : null
+            }
+            fieldKindsByTypeVersion={fieldKindsByTypeVersion}
+            onSelectNode={selectNodeFromCanvas}
+            onClearSelection={() => handleSelect(null)}
+            endpointLabel={endpointLabel}
+          />
         </Paper>
       </Group>
-
-      <OpenGraphModal
-        opened={openGraphOpen}
-        onClose={() => setOpenGraphOpen(false)}
-        onOpen={onOpenGraph}
-      />
     </Stack>
   )
 }

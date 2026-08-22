@@ -1,8 +1,8 @@
 import { useCallback, useState } from 'react'
 
 /**
- * Workbench current-graph context (WI-005): Explorer / Composer / Query all act against **one**
- * graph at a time. Persisted so navigating between views (or reloading) keeps the same graph.
+ * Composer current-graph id (unbound from Explorer/Objects/Query graph context).
+ * Persisted so navigating away from Composer keeps the draft graph.
  */
 export const CURRENT_GRAPH_STORAGE_KEY = 'objs.ui.currentGraphId'
 

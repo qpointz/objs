@@ -6,6 +6,8 @@ export type BoMEntity = {
   annotations?: Record<string, string>
   createdAt?: string
   updatedAt?: string
+  /** Last deep-capture version; absent/null → LATEST in UI. */
+  headVersion?: number | null
 }
 
 export type BoMEdge = {
@@ -16,6 +18,7 @@ export type BoMEdge = {
   type?: string
   schemaVersion?: string
   properties?: Record<string, unknown>
+  headVersion?: number | null
 }
 
 export type BoMGraphContents = {
@@ -36,6 +39,21 @@ export type BoMGraphVersionSummary = {
   version: number
   createdAt: string
   annotations: Record<string, string>
+}
+
+/** Entity/edge history list row. */
+export type BoMInstanceVersionSummary = {
+  id: string
+  version: number
+  createdAt: string
+  updatedAt: string
+  annotations?: Record<string, string>
+}
+
+/** `GET …/versions/stats` — total + newest recent N. */
+export type BoMInstanceVersionStats = {
+  total: number
+  recent: BoMInstanceVersionSummary[]
 }
 
 /** Header-only row from open-graph search (`GET …/graphs/search`). */
@@ -65,6 +83,8 @@ export type GraphNode = {
   color: string
   payload: Record<string, unknown>
   annotations: Record<string, string>
+  /** Instance deep-capture version; null/undefined → LATEST. */
+  headVersion?: number | null
   /** Top-level payload field kinds from entity schema (for card rendering). */
   payloadFieldKinds?: Record<string, PayloadFieldKind>
   x?: number
@@ -95,6 +115,7 @@ export type GraphLink = {
   type: string | null
   schemaVersion: string | null
   properties: Record<string, unknown>
+  headVersion?: number | null
   draftStatus?: 'new' | 'modified' | 'deleted' | 'unchanged'
   /** Dimmed in Composer “Changes only” mode. */
   dimmed?: boolean

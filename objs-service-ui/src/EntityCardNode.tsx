@@ -3,6 +3,7 @@ import { Handle, Position, type NodeProps } from '@xyflow/react'
 import { IconMinus, IconPencil, IconPlus } from '@tabler/icons-react'
 import { colorForType } from './color'
 import type { GraphNode, PayloadFieldKind } from './types'
+import { OBJECT_VIEWER_KV_COLUMNS, OBJECT_VIEWER_KV_GAP } from './objectViewerLayout'
 import './validationHighlight.css'
 
 export type EntityCardData = {
@@ -11,7 +12,7 @@ export type EntityCardData = {
 }
 
 /** Visual density for card vs inspector panel. */
-export type EntityPayloadViewSize = 'card' | 'panel'
+export type EntityPayloadViewSize = 'card' | 'bar' | 'panel'
 
 const STATUS_PILL: Record<
   Exclude<NonNullable<GraphNode['draftStatus']>, 'unchanged'>,
@@ -49,6 +50,26 @@ const VIEW_SIZE = {
     emptyFont: 8,
     keyCol: 'minmax(48px, 38%)',
     sectionLabelFont: 7,
+  },
+  /** One step larger than card — graph-context chrome. */
+  bar: {
+    pillFont: 9,
+    pillKeyMax: 72,
+    pillValMax: 96,
+    fieldFont: 10,
+    valueFont: 10,
+    listChipFont: 9,
+    listChipMax: 96,
+    valueMax: 40,
+    listItemMax: 24,
+    maxAnnotations: 8,
+    maxPayloadRows: 8,
+    maxListItems: 8,
+    gap: 3,
+    rowGap: 3,
+    emptyFont: 9,
+    keyCol: 'minmax(56px, 38%)',
+    sectionLabelFont: 9,
   },
   panel: {
     pillFont: 11,
@@ -141,8 +162,8 @@ export function AnnotationSplitPill({
 }) {
   const color = colorForType(k)
   const t = VIEW_SIZE[size]
-  const padY = size === 'panel' ? 3 : 1
-  const padX = size === 'panel' ? 8 : 4
+  const padY = size === 'panel' ? 3 : size === 'bar' ? 2 : 1
+  const padX = size === 'panel' ? 8 : size === 'bar' ? 6 : 4
   return (
     <span
       title={`${k}=${v}`}
@@ -406,14 +427,18 @@ export function EntityPayloadView({
   size = 'card',
   showLabel = false,
   label = 'payload',
+  denseKeys = false,
 }: {
   payload: Record<string, unknown>
   fieldKinds?: Record<string, PayloadFieldKind>
   size?: EntityPayloadViewSize
   showLabel?: boolean
   label?: string
+  /** Smaller key column (object viewer). */
+  denseKeys?: boolean
 }) {
   const t = VIEW_SIZE[size]
+  const keyFont = denseKeys ? Math.min(t.fieldFont, 10) : t.fieldFont
   const rows = flattenPayloadRows(payload, fieldKinds, t.maxPayloadRows)
   return (
     <div>
@@ -424,8 +449,8 @@ export function EntityPayloadView({
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: `${t.keyCol} 1fr`,
-            columnGap: size === 'panel' ? 10 : 4,
+            gridTemplateColumns: denseKeys ? OBJECT_VIEWER_KV_COLUMNS : `${t.keyCol} 1fr`,
+            columnGap: denseKeys ? OBJECT_VIEWER_KV_GAP : size === 'panel' ? 10 : 4,
             rowGap: t.rowGap,
             alignItems: 'center',
           }}
@@ -434,7 +459,7 @@ export function EntityPayloadView({
             <div key={row.key} style={{ display: 'contents' }}>
               <div
                 style={{
-                  fontSize: t.fieldFont,
+                  fontSize: keyFont,
                   fontWeight: 700,
                   color: '#868e96',
                   fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',

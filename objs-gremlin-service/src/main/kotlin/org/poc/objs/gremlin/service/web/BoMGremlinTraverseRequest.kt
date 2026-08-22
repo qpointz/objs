@@ -21,4 +21,7 @@ data class BoMGremlinTraverseRequest(
     val bindings: Map<String, Any?>? = null,
     val strategy: String? = null,
     val traversalOptions: BoMGremlinTraversalOptions? = null,
+    /** When set, select that graph (HEAD or [graphVersion] pin) via selectInGraph*, then eval. */
+    val graphId: java.util.UUID? = null,
+    val graphVersion: Long? = null,
 )

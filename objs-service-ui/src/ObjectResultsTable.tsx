@@ -1,8 +1,13 @@
-import { Button, Checkbox, Group, Pagination, Table, Text } from '@mantine/core'
-import { useMemo, useState } from 'react'
+import { Button, Checkbox, Group, Text } from '@mantine/core'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  IdLink,
+  QUERY_STRUCT_ID_COL_WIDTH,
+  QUERY_STRUCT_TYPE_COL_WIDTH,
+} from './QueryStructColumns'
+import { QUERY_STRUCT_PAGE_SIZE, QueryResultGrid } from './QueryResultGrid'
 import type { BoMEntity } from './types'
 
-const PAGE_SIZE = 20
 const MAX_PAYLOAD_COLS = 6
 
 function isScalar(value: unknown): boolean {
@@ -41,7 +46,7 @@ export type ObjectResultsTableProps = {
   results: BoMEntity[]
   /** Ids currently in the target collection (draft or shelf). */
   memberIds: ReadonlySet<string>
-  /** Summary line left of bulk actions (e.g. result count + stats). */
+  /** Optional summary left of bulk actions (e.g. Composer Add Objects panel). */
   summary?: string
   statusColumnLabel: string
   memberButtonLabel: string
@@ -51,6 +56,13 @@ export type ObjectResultsTableProps = {
   onToggleMember: (entity: BoMEntity) => void
   onAddSelected: (entities: BoMEntity[]) => void
   onRemoveSelected: (ids: string[]) => void
+  /** When set, Id column is a link that opens the object viewer (Objects view). */
+  onOpenId?: (entity: BoMEntity) => void
+  /** Controlled row selection (checkbox column). */
+  selectedIds?: ReadonlySet<string>
+  onSelectedIdsChange?: (ids: Set<string>) => void
+  /** Hide inline bulk-action row (actions live in view chrome instead). */
+  hideBulkActions?: boolean
 }
 
 export function ObjectResultsTable({
@@ -65,24 +77,54 @@ export function ObjectResultsTable({
   onToggleMember,
   onAddSelected,
   onRemoveSelected,
+  onOpenId,
+  selectedIds: selectedIdsProp,
+  onSelectedIdsChange,
+  hideBulkActions = false,
 }: ObjectResultsTableProps) {
-  const [page, setPage] = useState(1)
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
+  const [selectedIdsInternal, setSelectedIdsInternal] = useState<Set<string>>(() => new Set())
+  const selectedIds = selectedIdsProp ?? selectedIdsInternal
 
+  const applySelectedIds = useCallback(
+    (update: Set<string> | ((prev: Set<string>) => Set<string>)) => {
+      const prev = new Set(selectedIds)
+      const next = typeof update === 'function' ? update(prev) : update
+      if (
+        next.size === selectedIds.size &&
+        [...next].every((id) => selectedIds.has(id))
+      ) {
+        return
+      }
+      if (onSelectedIdsChange) onSelectedIdsChange(next)
+      else setSelectedIdsInternal(next)
+    },
+    [onSelectedIdsChange, selectedIds],
+  )
+  const [pageRows, setPageRows] = useState<BoMEntity[]>([])
   const payloadCols = useMemo(() => scalarPayloadColumns(results), [results])
-  const pageCount = Math.max(1, Math.ceil(results.length / PAGE_SIZE))
-  const safePage = Math.min(page, pageCount)
-  const pageRows = useMemo(() => {
-    const start = (safePage - 1) * PAGE_SIZE
-    return results.slice(start, start + PAGE_SIZE)
-  }, [results, safePage])
+
+  useEffect(() => {
+    applySelectedIds((prev) => {
+      const valid = new Set(results.map((e) => e.id))
+      const next = new Set([...prev].filter((id) => valid.has(id)))
+      return next.size === prev.size ? prev : next
+    })
+  }, [results, applySelectedIds])
+
+  const onPageRowsChange = useCallback((rows: BoMEntity[]) => {
+    setPageRows(rows)
+  }, [])
+
+  if (results.length === 0) {
+    return null
+  }
 
   const allPageSelected =
     pageRows.length > 0 && pageRows.every((e) => selectedIds.has(e.id))
   const somePageSelected = pageRows.some((e) => selectedIds.has(e.id))
 
   function toggleRowSelected(id: string, checked: boolean) {
-    setSelectedIds((prev) => {
+    applySelectedIds((prev) => {
       const next = new Set(prev)
       if (checked) next.add(id)
       else next.delete(id)
@@ -90,128 +132,145 @@ export function ObjectResultsTable({
     })
   }
 
-  if (results.length === 0) {
-    return null
-  }
-
   return (
-    <>
-      <Group justify="space-between" wrap="wrap" gap={4}>
-        <Text size="xs" c="dimmed">
-          {summary ?? `${results.length} result${results.length === 1 ? '' : 's'}`}
-        </Text>
-        <Group gap={4}>
-          <Button
-            size="compact-xs"
-            variant="light"
-            disabled={[...selectedIds].every((id) => memberIds.has(id))}
-            onClick={() => {
-              const entities = results.filter((e) => selectedIds.has(e.id) && !memberIds.has(e.id))
-              if (entities.length > 0) onAddSelected(entities)
-            }}
-          >
-            {addSelectedLabel}
-          </Button>
-          <Button
-            size="compact-xs"
-            variant="default"
-            disabled={[...selectedIds].every((id) => !memberIds.has(id))}
-            onClick={() => {
-              const ids = [...selectedIds].filter((id) => memberIds.has(id))
-              if (ids.length > 0) onRemoveSelected(ids)
-            }}
-          >
-            {removeSelectedLabel}
-          </Button>
+    <Group
+      gap="xs"
+      align="stretch"
+      wrap="nowrap"
+      style={{ flex: 1, minWidth: 0, minHeight: 0, flexDirection: 'column' }}
+    >
+      {!hideBulkActions && (
+        <Group justify={summary != null ? 'space-between' : 'flex-end'} wrap="wrap" gap={4}>
+          {summary != null && (
+            <Text size="xs" c="dimmed">
+              {summary}
+            </Text>
+          )}
+          <Group gap={4}>
+            <Button
+              size="compact-xs"
+              variant="light"
+              disabled={
+                selectedIds.size === 0 || [...selectedIds].every((id) => memberIds.has(id))
+              }
+              onClick={() => {
+                const entities = results.filter(
+                  (e) => selectedIds.has(e.id) && !memberIds.has(e.id),
+                )
+                if (entities.length > 0) onAddSelected(entities)
+              }}
+            >
+              {addSelectedLabel}
+            </Button>
+            <Button
+              size="compact-xs"
+              variant="default"
+              disabled={
+                selectedIds.size === 0 || [...selectedIds].every((id) => !memberIds.has(id))
+              }
+              onClick={() => {
+                const ids = [...selectedIds].filter((id) => memberIds.has(id))
+                if (ids.length > 0) onRemoveSelected(ids)
+              }}
+            >
+              {removeSelectedLabel}
+            </Button>
+          </Group>
         </Group>
-      </Group>
-
-      <Table.ScrollContainer minWidth={280}>
-        <Table
-          striped
-          highlightOnHover
-          withTableBorder
-          withColumnBorders
-          horizontalSpacing={6}
-          verticalSpacing={3}
-          style={{ fontSize: 'var(--mantine-font-size-xs)' }}
-        >
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th w={32}>
-                <Checkbox
-                  size="xs"
-                  aria-label="Select page"
-                  checked={allPageSelected}
-                  indeterminate={!allPageSelected && somePageSelected}
-                  onChange={(e) => {
-                    const checked = e.currentTarget.checked
-                    setSelectedIds((prev) => {
-                      const next = new Set(prev)
-                      for (const row of pageRows) {
-                        if (checked) next.add(row.id)
-                        else next.delete(row.id)
-                      }
-                      return next
-                    })
-                  }}
-                />
-              </Table.Th>
-              <Table.Th>Id</Table.Th>
-              <Table.Th>Type</Table.Th>
-              {payloadCols.map((col) => (
-                <Table.Th key={col}>{col}</Table.Th>
-              ))}
-              <Table.Th w={88}>{statusColumnLabel}</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {pageRows.map((entity) => {
-              const inMember = memberIds.has(entity.id)
-              const payload = entity.payload ?? {}
-              return (
-                <Table.Tr key={entity.id}>
-                  <Table.Td>
-                    <Checkbox
-                      size="xs"
-                      aria-label={`Select ${entity.id}`}
-                      checked={selectedIds.has(entity.id)}
-                      onChange={(e) => toggleRowSelected(entity.id, e.currentTarget.checked)}
-                    />
-                  </Table.Td>
-                  <Table.Td title={entity.id} style={{ wordBreak: 'break-all', maxWidth: 96 }}>
-                    {entity.id.length > 12 ? `${entity.id.slice(0, 8)}…` : entity.id}
-                  </Table.Td>
-                  <Table.Td>{entity.type}</Table.Td>
-                  {payloadCols.map((col) => (
-                    <Table.Td key={col}>
-                      {formatObjectCell(
-                        payload && typeof payload === 'object'
-                          ? (payload as Record<string, unknown>)[col]
-                          : undefined,
-                      )}
-                    </Table.Td>
-                  ))}
-                  <Table.Td>
-                    <Button
-                      size="compact-xs"
-                      variant={inMember ? 'filled' : 'light'}
-                      color={inMember ? 'teal' : 'blue'}
-                      onClick={() => onToggleMember(entity)}
-                    >
-                      {inMember ? memberButtonLabel : nonMemberButtonLabel}
-                    </Button>
-                  </Table.Td>
-                </Table.Tr>
-              )
-            })}
-          </Table.Tbody>
-        </Table>
-      </Table.ScrollContainer>
-
-      {pageCount > 1 && (
-        <Pagination size="sm" value={safePage} onChange={setPage} total={pageCount} />
       )}
-    </>
+
+      <QueryResultGrid
+        rows={results}
+        pageSize={QUERY_STRUCT_PAGE_SIZE}
+        rowKey={(entity) => entity.id}
+        onPageRowsChange={onPageRowsChange}
+        columns={[
+          {
+            key: 'select',
+            header: (
+              <Checkbox
+                size="xs"
+                aria-label="Select page"
+                checked={allPageSelected}
+                indeterminate={!allPageSelected && somePageSelected}
+                onChange={(e) => {
+                  const checked = e.currentTarget.checked
+                  applySelectedIds((prev) => {
+                    const next = new Set(prev)
+                    for (const row of pageRows) {
+                      if (checked) next.add(row.id)
+                      else next.delete(row.id)
+                    }
+                    return next
+                  })
+                }}
+              />
+            ),
+            width: 32,
+            render: (entity) => (
+              <Checkbox
+                size="xs"
+                aria-label={`Select ${entity.id}`}
+                checked={selectedIds.has(entity.id)}
+                onChange={(e) => toggleRowSelected(entity.id, e.currentTarget.checked)}
+                onClick={(e) => e.stopPropagation()}
+              />
+            ),
+          },
+          {
+            key: 'id',
+            header: 'Id',
+            width: QUERY_STRUCT_ID_COL_WIDTH,
+            render: (entity) =>
+              onOpenId != null ? (
+                <IdLink id={entity.id} onOpen={() => onOpenId(entity)} />
+              ) : (
+                <Text size="xs" ff="monospace" title={entity.id} truncate>
+                  {entity.id.length > 12 ? `${entity.id.slice(0, 8)}…` : entity.id}
+                </Text>
+              ),
+          },
+          {
+            key: 'type',
+            header: 'Type',
+            width: QUERY_STRUCT_TYPE_COL_WIDTH,
+            render: (entity) => entity.type,
+          },
+          ...payloadCols.map((col) => ({
+            key: col,
+            header: col,
+            render: (entity: BoMEntity) => {
+              const payload = entity.payload ?? {}
+              return formatObjectCell(
+                payload && typeof payload === 'object'
+                  ? (payload as Record<string, unknown>)[col]
+                  : undefined,
+              )
+            },
+          })),
+          {
+            key: 'shelf',
+            header: statusColumnLabel,
+            width: 88,
+            render: (entity) => {
+              const inMember = memberIds.has(entity.id)
+              return (
+                <Button
+                  size="compact-xs"
+                  variant={inMember ? 'filled' : 'light'}
+                  color={inMember ? 'teal' : 'blue'}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onToggleMember(entity)
+                  }}
+                >
+                  {inMember ? memberButtonLabel : nonMemberButtonLabel}
+                </Button>
+              )
+            },
+          },
+        ]}
+      />
+    </Group>
   )
 }

@@ -3,31 +3,50 @@
 The Objs workbench is a browser UI for exploring stored graphs, inspecting registered schemas,
 and authoring object-schema DSL definitions.
 
-## Current graph
+## Shared graph context
 
 There is **no global graph** and **no pack chrome**. Graphs are durable `bom_graph` headers with
 member entities and graph-local edges (see [`graph/model.md`](graph/model.md)).
 
+**Explorer · Objects · Query** share one **graph context** (`GraphContextProvider`). Changing context
+in any of those three updates all three. **Composer** and **Schema** do **not** bind to it.
+
+| Context kind | Meaning |
+|--------------|---------|
+| **Graph** | One opened graph id (+ optional version pin) |
+| **Matcher** | Matcher expression materialized to entities/edges |
+| **All** | `{ all: true }` — union across every graph |
+
 | Surface | Behaviour |
 |---------|-----------|
-| **Explorer** | **Read-only.** Two exclusive modes: **Graph** (one opened graph) or **Selection** (matcher result set). Never mutates the store. |
-| **Objects** | **Read-only.** Pool/cross-graph object search; client **shelf**; **New graph from shelf** → Composer (replace draft). |
-| **Composer** | Draft workspace; **Save** / **Create version** (freeze) / **Clone** (new-id deep copy); owns all writes (including first Save that creates a graph from a Selection / shelf handoff). |
-| Matchers | **`all`** / **`graph-expr`** / **`obj-expr`** / **chained** only |
-| Schema catalog | Unchanged (global, not graph-scoped) |
+| **Explorer** | Read-only canvas + object viewer for the shared context |
+| **Objects** | Entity list from context; shelf + Matcher side pane; **New graph from shelf** → Composer |
+| **Query** | Gremlin script against context subgraph; Visual / Data / Raw results |
+| **Composer** | Draft workspace (separate graph id); **Save** / **Create version** / **Clone** |
+| **Schema** | Global catalog; not graph-scoped |
 
-**Must have:** visible graph / explore-scope context; Open graph search (incremental, ≤15 hits — not a full catalog list); no whole-store Exec/Save. Snapshot *hierarchy* UI is **not** part of the objs workbench — that is an application concern (e.g. SBOM). Composer **Create version** freezes the **same** graph (`createDeepGraphVersion`). Composer **Clone** is a new-id deep copy (`POST …/clone`). Explorer Graph mode lists versions of the opened graph (newest first) + **Latest**.
+**Node cap (~300):** Explorer and Query **Visual** disable the graph canvas when the context or
+result exceeds **300** nodes. Use Data / Raw or narrow the context.
 
-### Chrome levels (Explorer / Composer / Query)
+Composer **Create version** freezes the **same** graph id. **Clone** is a new-id deep copy.
+Explorer no longer has a left **Versions** pane — version pin lives on the shared context bar.
+
+### Chrome layout (all product views)
+
+| Row | Explorer / Objects / Query | Composer / Schema |
+|-----|---------------------------|-------------------|
+| **1** | `Title order={3}` + shared or local context bar (Paper) | Same pattern |
+| **2** | View actions at **`sm`** (`VIEW_ACTION_BUTTON_SIZE`) | Same |
+| **3** | Workspace (canvas, grid, script, catalog, …) | Same |
+
+In-tab / canvas toolbars use **`xs`** (Schema Format/Lint, Query script area, Composer Visual toolbar).
 
 | Level | Role |
 |-------|------|
-| **L0** | App view nav (`AppLayout`) — unchanged |
-| **L1** | Short title (`Title order={3}`) + help-icon **popover** (or Schema subtitle) \| primary actions **`size="sm"`** on the right \| Explorer Explore-scope / Composer·Query graph strip |
-| **L2** | Tabs alone (Visual/Text/…) when present; workspace handoffs / canvas toolbars use **`size="xs"`** (Schema Format/Lint pattern). Schema catalog puts Apply layout / Import on L1 at `sm`. |
-| **L3** | Canvas / draft / script / results |
+| **L0** | App view nav (`AppLayout`) |
+| **L1–L3** | As above |
 
-**Size baseline (Schema):** page-header actions `sm`; in-panel / canvas toolbars `xs`; avoid `compact-sm` / `compact-xs` for shared chrome.
+**Size baseline:** view-level actions `sm`; in-panel / canvas toolbars `xs`.
 
 ## Start and open
 
@@ -55,147 +74,105 @@ dark/light toggle on the right:
 | **Explorer** | `/workbench/explorer` | Read-only explore: Graph mode or Selection mode; hand off to Composer / Query |
 | **Objects** | `/workbench/objects` | Pool object search + shelf; **New graph from shelf** → Composer |
 | **Composer** | `/workbench/composer` | Draft workspace: Visual/Text edit, Validate / Save / Create version / Clone |
-| **Query** | `/workbench/query` | Tabs Query (script) / Matcher / Options; Exec → traverse API; Structured / Raw results |
+| **Query** | `/workbench/query` | Gremlin script + Visual / Data / Raw results (shared context) |
 | **Schema** | `/workbench/model` | Browse and edit object/edge schemas |
 
-L0 header order: **Explorer · Objects · Composer · Query · Schema**.
+L0 header order: **Explorer · Objects · Query · Composer · Schema**.
 
-A **product tour** starts on first visit (stored in `localStorage` as `objs.ui.workbench.tour.v1`). Replay it from the header help icon (left of the color-scheme toggle). Missing targets (e.g. Versions when the opened graph has none) are skipped.
+A **product tour** starts on first visit (`localStorage`: `objs.ui.workbench.tour.v2`). Replay from
+the header help icon. Steps follow nav order: shared graph context → each view’s chrome → Schema.
+Targets missing on the current page (e.g. graph version pin in matcher mode, schema version on
+catalog overview) are **skipped** automatically.
 
 ## Objects
 
-Objects (`/workbench/objects`) is **read-only** pool exploration:
+Objects (`/workbench/objects`) lists entities from the **shared graph context** (read-only).
 
-1. **Search** — shared `MatcherQueryForm` (default `obj-expr`); bare `obj-expr` uses
-   `POST /entities/query` (orphans included). Result grid matches Composer **Add objects**.
-2. **Shelf** — client cart of entities (unique by id); add/remove from the grid; persisted in
-   `localStorage` (`objs.ui.objects.shelf`).
-3. **New graph from shelf** — navigates to Composer with `graphId: null`, `replaceDraft: true`,
-   and `graphContents: { entities: shelf, edges: [] }`. First **Save** in Composer creates the graph.
+**Layout**
 
-Chrome: L1 title + help + primary actions (`sm`); main = matcher + table; right pane = shelf list
-(`xs` in-pane actions).
+1. Row 1 — **Objects** title + `GraphContextBar`
+2. Row 2 — exec stats (left); **Add selected to shelf**, **Remove selected from shelf**, **Clear
+   shelf**, **New graph from shelf** (right, `sm`)
+3. Row 3 — results grid (Query Data-style chrome, page size **25**, virtualize **>200** rows) +
+   vertical splitter + right pane
+
+**Right pane**
+
+- **Object inspect** when an Id link is clicked (same sectioned viewer as Explorer)
+- Otherwise **Shelf | Matcher** tabs — Search stays in Matcher only; shelf shows type, name, truncated
+  id, remove icon
+
+**Shelf** — client cart (`localStorage`: `objs.ui.objects.shelf`). **New graph from shelf** → Composer
+with `replaceDraft: true` and shelf entities.
+
+Side pane width: `objs.ui.objects.sidePaneWidth` (splitter, max 50% of host).
 
 ## Graph explorer
 
-Explorer is **read-only**: it may open graphs, run matchers, and display results. It does **not**
-call create / mutate / delete graph APIs. All writes happen in **Composer**.
+Explorer is **read-only** for the shared graph context.
 
-### Modes (either/or)
+**Layout**
 
-| Mode | Entered by | Canvas | Clears |
-|------|------------|--------|--------|
-| **Graph** | **Open graph…** | Members of one `bom_graph`. If that graph has versions: **left** pane list (newest first; hidden when none); click reconstructs read-only; **Latest** returns to HEAD. Freeze view: tiny overlay on the canvas (top-right). Switching versions keeps node positions for matching ids | Selection canvas / matcher result |
-| **Selection** | Matcher **Exec** | Matcher hit set (may span graphs) | Opened graph id / Graph-mode header |
+1. Row 1 — **Explorer** title + `GraphContextBar` (Open ▾ Graph | Matcher | All; version pin in graph
+   mode)
+2. Row 2 — type **pills** (click to dim non-matching nodes; × clears); **Open in Composer** (graph
+   context) or **New graph from selection** (matcher/all); **Apply layout ▾**
+3. Row 3 — canvas (disabled above ~300 nodes) + splitter + **object inspect** pane
 
-Switching mode **resets** the previous mode’s view.
+**Type pills** — filter highlight on canvas; non-selected types render dimmed (pills stay full
+opacity).
 
-### Explore-scope fragment
+**Inspect** — node, edge, or empty canvas (graph header in graph mode). Sectioned **Object viewer**
+(Node / Payload / Annotations / Versions). Schema links open in a **new tab**. Node color from
+`attributes.color` on the type schema.
 
-Pill switcher **Graph | Selection** (same optical pattern as Open graph Search | Expression).
-Each mode shows **only** its active content:
-
-- **Graph:** **Open graph…** + opened-graph readout (id + annotation pills), or empty prompt
-- **Selection:** Matcher + **Exec**, then N objects / M edges + matcher one-liner
-
-Open graph / Exec still flip the active mode (and canvas). The switcher can also change mode
-directly; either/or canvas rules below still apply.
-
-Title row: short **Graph explorer** + help-icon popover (former subtitle copy; no docs links).
-
-Matchers use shared `MatcherQueryForm` (**`all`** / **`graph-expr`** / **`obj-expr`** / **chained**):
-
-- **`all`** — union of stored members/edges across every graph (distinct by id); orphans excluded.
-- **`graph-expr`** — JEXL over graph header `id` and `a.*`; matching graphs contribute stored members/edges.
-- **`obj-expr`** — JEXL over entity fields. With an opened graph: scoped to that graph. With **no**
-  opened graph: `POST /entities/query` over the **pool** (orphans included; equality/`&&` SQL
-  pushdown). `all` / `graph-expr` still use `/graphs/query`.
-- **chained** — Visual builder or JSON array of stages.
-
-```json
-[
-  { "graph-expr": "a.env == 'prod'" },
-  { "obj-expr": "type == 'Component' && p.kind == 'library'" }
-]
-```
-
-1. Configure the matcher (or Open graph…).
-2. **Exec** / Open graph loads the canvas (mode switch as above).
-3. Select a node or edge to inspect. Schema type links open in a **new browser tab**.
-   Node header color comes from the type schema’s `attributes.color` (`#rrggbb` or `nocolor`
-   for theme gray); if unset, the type name is hashed into the built-in palette.
-4. **L2:** **Apply layout ▾**; mode exits below.
-
-### L2 handoffs (entire canvas)
+**Handoffs**
 
 | Action | When | Behaviour |
 |--------|------|-----------|
-| **Open in Composer** | Graph mode | Navigate with `graphId`; Composer loads members from API |
-| **New graph from selection** | Selection mode | Navigate with `graphId = null`, draft = **entire** canvas; **always replaces** Composer draft. First **Save** in Composer creates the graph (membership of same entity ids + edge upserts). |
-| **Open in Query** | Canvas non-empty | Pass entire canvas (+ matcher context) as traverse input |
+| **Open in Composer** | Graph context | Navigate with `graphId`; Composer loads members |
+| **New graph from selection** | Matcher / All | Replace Composer draft with context entities |
 
-Empty canvas: **Open in Query** disabled.
+Matchers (`all` / `graph-expr` / `obj-expr` / chained) are entered via **Open ▾ Matcher**, not a
+dedicated Explorer matcher row.
 
-The last successful matcher may be kept in `localStorage` (`objs.ui.graphExplorer.matcher`). Session
-restore for the Selection canvas may use `objs.ui.graphExplorer.session`.
-
-After **Exec**, the matcher row shows wall-clock query time plus node/edge counts.
-
-### Selection history
-
-Node and edge selection is stored in the URL (`?qid=<uuid>&node=<id>` or `&edge=<id>`). Each
-successful **Exec** mints a new `qid` (also persisted in the session). Browser **Back** / **Forward**
-restores selection only when the URL `qid` matches the current result set; otherwise the inspector
-clears.
-
-### Inspect a node
-
-Selecting a node shows:
-
-- entity name, type, schema version, and ID;
-- annotations used for graph selection;
-- JSON payload.
-
-Type / schema links open the schema detail in a **new browser tab**.
-
-### Inspect an edge
-
-Selecting an edge shows:
-
-- role, type, schema version, and ID;
-- source and target IDs;
-- edge properties.
-
-Schema links open in a **new browser tab**.
-
-When the edge has a property schema, select **Open edge property schema** to inspect it.
+Inspect pane width: `objs.ui.explorer.sidePaneWidth`.
 
 ## Query
 
-Query runs a **gremlin-lang** script against the subgraph selected by a matcher
+Query runs a **gremlin-lang** script against the **shared graph context**
 (`POST /api/v1/objs/graph/traverse/gremlin`). See [`graph/gremlin.md`](graph/gremlin.md).
 
-1. Open `/workbench/query` (or **Open in Query** from Explorer with a non-empty canvas).
-2. Top tabs (**L2** hosts **Exec** + stats beside the tab strip):
-   - **Query** — script editor only (Groovy highlighting; wire language remains `gremlin-lang`).
-   - **Matcher** — shared `MatcherQueryForm` (same modes as Explorer / Composer).
-   - **Options** — eval timeout (`traversalOptions.timeoutSeconds`, default 60).
-3. Drag the horizontal splitter to enlarge the top pane when the script is long.
-4. **Exec** — runs matcher → materialize → script; shows duration / subgraph stats.
-5. Result tabs:
-   - **Structured** — tactical view: graph canvas when `subgraph` is present, else table / scalar /
-     short fallback. Demo-grade; not a final result UX.
-   - **Raw** — pretty-printed full `BoMGremlinResult` JSON.
+**Layout**
 
-Script and matcher (and top-pane height) persist in `localStorage` under `objs.ui.query.*`.
+1. Row 1 — **Query** title + `GraphContextBar`
+2. Row 2 — last **Exec** stats (left); **Open in Composer**, **Exec**, **Options** cog (right)
+3. Row 3 — script editor (Ctrl/Cmd+Enter) + horizontal splitter + result tabs
+
+**Results** — **Visual** (graph canvas + in-tab object viewer; disabled above ~300 nodes), **Data**
+(Structured vertices/edges grids, page **25**), **Raw** (full JSON).
+
+**Options** popover — eval timeout only (`traversalOptions.timeoutSeconds`). No Matcher tab and no
+right Options pane (removed in Note 6).
+
+**Open in Composer** — when the last result includes graph contents under the node cap, seeds a new
+draft via `replaceDraft`.
+
+Script height: `objs.ui.query.topPaneHeight`. Default script: `objs.ui.query.script`.
 
 ## Schemas
 
-Schemas is a single workbench for browsing and editing catalog types.
+Schemas is a single workbench for browsing and editing catalog types. Page chrome matches other views
+(Note 9): **Schema** title + context bar, then view actions at **`sm`**, then the type list and main
+workspace. Schema does **not** bind to shared graph context.
 
 ### Full schema (overview)
 
-Opening **Schemas** without a type selected shows the **Full schema** overview:
+Opening **Schemas** without a type selected shows the catalog overview in the main pane:
+
+- context bar: **Schema catalog** with type / edge-rule counts;
+- view actions: **Apply layout** (with direction menu: TB / LR / BT / RL), **Export** (Seeds YAML or
+  JSON Schema), **Import**, and **Create ▾**;
 
 - ontology graph of all **ENTITY** object types and allow-list edges (wildcard `*` as one node);
 - **Visual** / **Text** tabs: Visual shows the ontology graph; Text is a read-only catalog export with
@@ -216,25 +193,24 @@ Opening **Schemas** without a type selected shows the **Full schema** overview:
   (`…?format=json-schema` plus the current overview options; menu hint shows e.g. `outbound · 2020-12`);
 - **Import** MERGEs a catalog YAML (`POST /api/v1/objs/registry/import?format=seeds`). Files that
   contain `Graph` documents are rejected. Import never deletes catalog entries.
-- **Refresh** reloads schemas and edges.
 
 Edge-property schemas appear in the type list (**E**) but are not nodes on the overview graph.
 
 ### Type list
 
-- Flat list of all types with an **O** (object / `ENTITY`) or **E** (edge / `EDGE_PROPERTIES`) pill.
+- Left sidebar: **S Schema** returns to the catalog overview; search + flat list of all types with
+  an **O** (object / `ENTITY`) or **E** (edge / `EDGE_PROPERTIES`) pill. Drag the splitter between
+  list and main pane (`objs.ui.schema.sidePaneWidth`).
 - Click a type to open its **latest** version.
-- **Create** menu: Create New Object / Create New Edge.
 
 ### Type detail
 
-From a type, **Full schema** returns to the overview. The detail toolbar includes:
+Context bar shows type name, **Version:** dropdown (same chrome as graph-context version pin),
+kind pill, and catalog tags/attributes. View actions include **Create version**, **Save**,
+**Delete ▾**, and **Create ▾**.
 
-- Version selector, **Create version** (dialog: base version + new version), and **Delete**
-  split button (**Delete version** / **Delete schema**).
-- **Save** for the opened version.
-- New drafts use **Create schema**.
 - **Lint** lives on the Schema tab (Editor, YAML, and JSON sub-views).
+- New drafts: type / version / usage fields on the **General** tab; **Create schema** on the actions row.
 
 ### Editors
 
@@ -480,26 +456,26 @@ On an existing schema detail:
 
 ## Composer
 
-Composer (route `/workbench/composer`; title **Composer**, not “Object linter”) is the **draft
-workspace** for editing graph membership and payloads. There is **no Browse schemas** on this page
-(use L0 Schema). Selected object/edge schema links open in a **new browser tab**.
+Composer (`/workbench/composer`) is the **draft write surface**. It does **not** use shared graph
+context — `ComposerGraphBar` matches the visual chrome only.
+
+**Layout**
+
+1. Row 1 — **Composer** title + `ComposerGraphBar` (**New ▾** Blank | Matcher, **Open**, stats)
+2. Row 2 — **Reset**, **Clear**, **Validate**, **Save**, **Create version**, **Clone** (`sm`)
+3. Row 3 — Visual / Text tabs + resizable side pane (`objs.ui.composer.sidePaneWidth`)
 
 | Action | Behaviour |
 |--------|-----------|
-| **Open graph…** | Shared search dialog (`GET …/graphs/search`); loads members; sets current graph |
-| **New graph** | Clears draft and clears graph id (empty edit session) — does **not** create a server graph |
-| **Add objects…** | Visual canvas toolbar; side pane search (same matcher as Explorer) |
-| **Validate** | Dry-run mutation |
-| **Save** | Enabled when dirty or `graphId == null` (or never-saved). With **no** graph id: **creates** graph (`entityIds` membership + edge upserts). With id: `PUT …/graphs/{id}` mutation |
-| **Create version** | Enabled only when saved + clean; dialog next to Save → `createDeepGraphVersion` on the **same** graph id; Explorer version list grows |
-| **Clone** | Enabled only when saved + clean; deep-copy dialog → `POST …/clone`; switches Composer to the **new** graph id (no versions until that graph is Snapshotted) |
+| **New ▾ Blank** | Empty draft, clear graph id |
+| **New ▾ Matcher** | Modal → new draft merged from matcher hits |
+| **Open** | Existing graph → draft only (does not change shared context) |
+| **Save** | Create or mutate graph |
+| **Create version** | Freeze same graph id (saved + clean draft) |
+| **Clone** | Deep copy to new graph id |
 
-L1: title + help popover; **Reset** / **Clear** / **Validate** / **Save** / **Create version** / **Clone** (`size="sm"`, same row).  
-Tabs: Visual / Text only. Visual L2 toolbar: **New** ▾ / **Link** / **Add objects…** + draft actions + **N on canvas** / last-search badges (`size="xs"`).
-
-Empty selection: side pane may edit **graph-level annotations**.
-
-Edit form: no duplicate Payload/Annotations section titles; per-field **delete** omits payload keys (shows **deleted**); **Schema ▾** migrates to another **version of the same type** only (key→key; confirm on zero/partial).
+Schema links from the edit form open in a **new tab**. **Add objects…** uses the side-pane matcher
+(same modes as elsewhere).
 
 | API | |
 |-----|--|

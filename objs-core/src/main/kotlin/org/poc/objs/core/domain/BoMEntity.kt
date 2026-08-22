@@ -17,6 +17,8 @@ data class BoMEntity @JvmOverloads constructor(
     var annotations: MutableMap<String, String> = mutableMapOf(),
     var createdAt: Instant? = null,
     var updatedAt: Instant? = null,
+    /** Last deep-capture version for this entity; null until first Snapshot/capture → UI LATEST. */
+    var headVersion: Long? = null,
 )
 
 /**
@@ -36,6 +38,8 @@ data class BoMEdge @JvmOverloads constructor(
     var properties: MutableMap<String, Any?>? = null,
     var createdAt: Instant? = null,
     var updatedAt: Instant? = null,
+    /** Last deep-capture version for this edge; null until first Snapshot/capture → UI LATEST. */
+    var headVersion: Long? = null,
 )
 
 /** In-memory bag of entities and edges (SDK / write payload). */

@@ -59,6 +59,7 @@ import {
   migratePayloadByKey,
 } from './SchemaInstanceForm'
 import { projectIdentityPaths } from './identityProjection'
+import { clamp, maxSidePaneWidth } from './sidePaneSplit'
 import { applyTypeHighlightDimming, toggleTypeInSet } from './typeHighlightDimming'
 import type {
   BoMAllowedEdgeRule,
@@ -81,12 +82,7 @@ const SIDE_PANE_WIDTH_KEY = 'objs.ui.composer.sidePaneWidth'
 const DEFAULT_SIDE_PANE_WIDTH = 360
 const ADD_OBJECTS_SIDE_PANE_FLOOR = 420
 const MIN_SIDE_PANE_WIDTH = 280
-const MIN_CANVAS_WIDTH = 240
 const SPLITTER_WIDTH = 8
-
-function clamp(n: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, n))
-}
 
 function readSidePaneWidth(): number {
   try {
@@ -94,7 +90,7 @@ function readSidePaneWidth(): number {
     if (raw == null) return DEFAULT_SIDE_PANE_WIDTH
     const n = Number(raw)
     if (!Number.isFinite(n)) return DEFAULT_SIDE_PANE_WIDTH
-    return clamp(n, MIN_SIDE_PANE_WIDTH, 720)
+    return n >= MIN_SIDE_PANE_WIDTH ? n : DEFAULT_SIDE_PANE_WIDTH
   } catch {
     return DEFAULT_SIDE_PANE_WIDTH
   }
@@ -303,13 +299,9 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
     if (drag == null) return
     const host = splitHostRef.current
     if (host == null) return
-    const hostWidth = host.clientWidth
-    const maxWidth = Math.max(
-      MIN_SIDE_PANE_WIDTH,
-      hostWidth - MIN_CANVAS_WIDTH - SPLITTER_WIDTH,
-    )
+    const max = maxSidePaneWidth(host.clientWidth, MIN_SIDE_PANE_WIDTH)
     // Dragging the splitter left increases pane width.
-    const next = clamp(drag.startWidth - (e.clientX - drag.startX), MIN_SIDE_PANE_WIDTH, maxWidth)
+    const next = clamp(drag.startWidth - (e.clientX - drag.startX), MIN_SIDE_PANE_WIDTH, max)
     setSidePaneWidth(next)
   }, [])
 
@@ -318,6 +310,22 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
     if (e.currentTarget.hasPointerCapture(e.pointerId)) {
       e.currentTarget.releasePointerCapture(e.pointerId)
     }
+  }, [])
+
+  useEffect(() => {
+    const host = splitHostRef.current
+    if (host == null) return
+    const clampToHost = () => {
+      const max = maxSidePaneWidth(host.clientWidth, MIN_SIDE_PANE_WIDTH)
+      setSidePaneWidth((w) => {
+        const next = clamp(w, MIN_SIDE_PANE_WIDTH, max)
+        return next === w ? w : next
+      })
+    }
+    clampToHost()
+    const ro = new ResizeObserver(clampToHost)
+    ro.observe(host)
+    return () => ro.disconnect()
   }, [])
 
   const [layout, setLayout] = useState<GraphLayout>('TB')

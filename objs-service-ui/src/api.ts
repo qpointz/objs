@@ -35,6 +35,7 @@ export function toGraphData(
     color: colorByType.get(e.type) ?? colorForType(e.type),
     payload: e.payload ?? {},
     annotations: e.annotations ?? {},
+    headVersion: e.headVersion ?? null,
   }))
 
   const idSet = new Set(nodes.map((n) => n.id))
@@ -48,6 +49,7 @@ export function toGraphData(
       type: edge.type ?? null,
       schemaVersion: edge.schemaVersion ?? null,
       properties: edge.properties ?? {},
+      headVersion: edge.headVersion ?? null,
     }))
 
   return { nodes, links }
@@ -148,6 +150,9 @@ export type TraverseGremlinRequest = {
     timeoutSeconds?: number
     language?: string
   }
+  /** When set with graphVersion, traverse a reconstructed pin. */
+  graphId?: string
+  graphVersion?: number
 }
 
 export async function traverseGremlin(body: TraverseGremlinRequest): Promise<BoMGremlinResult> {
@@ -277,6 +282,73 @@ export async function getGraphVersion(
   return parseResponse<BoMGraphResponse>(res)
 }
 
+/** Matcher DSL scoped to a reconstructed deep graph version. */
+export async function queryInGraphVersion(
+  id: string,
+  version: number,
+  matcherBody: unknown,
+): Promise<BoMGraphContents> {
+  const res = await fetch(
+    `/api/v1/objs/graphs/${encodeURIComponent(id)}/versions/${encodeURIComponent(String(version))}/query`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(matcherBody),
+    },
+  )
+  return parseResponse<BoMGraphContents>(res)
+}
+
+export async function listEntityVersions(id: string): Promise<import('./types').BoMInstanceVersionSummary[]> {
+  const res = await fetch(`/api/v1/objs/entities/${encodeURIComponent(id)}/versions`)
+  return parseResponse(res)
+}
+
+export async function entityVersionStats(
+  id: string,
+  recent = 5,
+): Promise<import('./types').BoMInstanceVersionStats> {
+  const res = await fetch(
+    `/api/v1/objs/entities/${encodeURIComponent(id)}/versions/stats?recent=${encodeURIComponent(String(recent))}`,
+  )
+  return parseResponse(res)
+}
+
+export async function getEntityVersion(
+  id: string,
+  version: number,
+): Promise<import('./types').BoMEntity> {
+  const res = await fetch(
+    `/api/v1/objs/entities/${encodeURIComponent(id)}/versions/${encodeURIComponent(String(version))}`,
+  )
+  return parseResponse(res)
+}
+
+export async function listEdgeVersions(id: string): Promise<import('./types').BoMInstanceVersionSummary[]> {
+  const res = await fetch(`/api/v1/objs/edges/${encodeURIComponent(id)}/versions`)
+  return parseResponse(res)
+}
+
+export async function edgeVersionStats(
+  id: string,
+  recent = 5,
+): Promise<import('./types').BoMInstanceVersionStats> {
+  const res = await fetch(
+    `/api/v1/objs/edges/${encodeURIComponent(id)}/versions/stats?recent=${encodeURIComponent(String(recent))}`,
+  )
+  return parseResponse(res)
+}
+
+export async function getEdgeVersion(
+  id: string,
+  version: number,
+): Promise<import('./types').BoMEdge> {
+  const res = await fetch(
+    `/api/v1/objs/edges/${encodeURIComponent(id)}/versions/${encodeURIComponent(String(version))}`,
+  )
+  return parseResponse(res)
+}
+
 /** Matcher DSL (`obj-expr` / chained) scoped to this graph's stored members. */
 export async function queryInGraph(id: string, matcherBody: unknown): Promise<BoMGraphContents> {
   const res = await fetch(`/api/v1/objs/graphs/${encodeURIComponent(id)}/query`, {
@@ -355,9 +427,13 @@ export async function queryEntities(matcherBody: unknown): Promise<BoMGraphConte
 export async function queryAddObjects(
   body: unknown,
   graphId: string | null,
+  graphVersion: number | null = null,
 ): Promise<BoMGraphContents> {
   const scoped = scopeAddObjectsMatcher(body, graphId)
   if (scoped.kind === 'in-graph') {
+    if (graphVersion != null) {
+      return queryInGraphVersion(scoped.graphId!, graphVersion, scoped.body)
+    }
     return queryInGraph(scoped.graphId!, scoped.body)
   }
   if (scoped.kind === 'pool') {

@@ -37,6 +37,16 @@ describe('applyTypeHighlightDimming', () => {
     expect(result.nodes.find((n) => n.id === 'b')?.dimmed).toBe(true)
     expect(result.nodes.find((n) => n.id === 'c')?.dimmed).toBe(false)
     expect(result.links.find((l) => l.id === 'e1')?.dimmed).toBe(false)
+    // either-end (default): a is selected → edge stays visible
+    expect(result.links.find((l) => l.id === 'e2')?.dimmed).toBe(false)
+  })
+
+  it('shouldDimEdgeUnlessBothEndsWhenBothEndsMode', () => {
+    const nodes = [node('a', 'Pkg'), node('b', 'Comp')]
+    const links = [link('e2', 'a', 'b')]
+    const result = applyTypeHighlightDimming(nodes, links, new Set(['Pkg']), {
+      edgeKeepIf: 'both-ends',
+    })
     expect(result.links.find((l) => l.id === 'e2')?.dimmed).toBe(true)
   })
 

@@ -296,6 +296,25 @@ class ObjsGraphsController(
         return ResponseEntity.ok(resolved.toResponse())
     }
 
+    @PostMapping(
+        "/{id}/versions/{version}/query",
+        consumes = [
+            MediaType.APPLICATION_JSON_VALUE,
+            "application/yaml",
+            "text/yaml",
+            "application/x-yaml",
+        ],
+    )
+    @Operation(summary = "Matcher DSL scoped to a reconstructed deep graph version")
+    fun queryInGraphVersion(
+        @PathVariable id: UUID,
+        @PathVariable version: Long,
+        request: HttpServletRequest,
+    ): ResponseEntity<Any> {
+        val matcher = matcherDsl.decode(readBody(request), resolveFormat(request))
+        return ResponseEntity.ok(graphStore.selectInGraphVersion(id, version, matcher))
+    }
+
     @ExceptionHandler(BoMValidationException::class)
     fun handleValidation(ex: BoMValidationException): ResponseEntity<BoMValidationResult> {
         val notFound = ex.result.issues.any { it.code == "GRAPH_NOT_FOUND" }
@@ -306,7 +325,9 @@ class ObjsGraphsController(
     @ExceptionHandler(BoMGraphException::class)
     fun handleGraphException(ex: BoMGraphException): ResponseEntity<Map<String, String>> {
         val status = when (ex.code) {
-            "GRAPH_NOT_FOUND", "GRAPH_VERSION_NOT_FOUND" -> HttpStatus.NOT_FOUND
+            "GRAPH_NOT_FOUND", "GRAPH_VERSION_NOT_FOUND",
+            "ENTITY_VERSION_NOT_FOUND", "EDGE_VERSION_NOT_FOUND",
+            -> HttpStatus.NOT_FOUND
             else -> HttpStatus.BAD_REQUEST
         }
         return ResponseEntity.status(status).body(

@@ -7,7 +7,7 @@ import { StreamLanguage } from '@codemirror/language'
 import { groovy } from '@codemirror/legacy-modes/mode/groovy'
 import { linter, lintGutter } from '@codemirror/lint'
 import { search, searchKeymap, openSearchPanel } from '@codemirror/search'
-import { EditorSelection } from '@codemirror/state'
+import { EditorSelection, Prec } from '@codemirror/state'
 import { EditorView, keymap } from '@codemirror/view'
 
 export interface SyntaxCodeEditorProps {
@@ -17,6 +17,8 @@ export interface SyntaxCodeEditorProps {
   minHeight?: number
   fillHeight?: boolean
   readOnly?: boolean
+  /** Ctrl/Cmd+Enter (e.g. Query Exec). */
+  onModEnter?: () => void
 }
 
 export type SyntaxCodeEditorHandle = {
@@ -27,6 +29,8 @@ export type SyntaxCodeEditorHandle = {
    * Returns false if not found.
    */
   revealText: (query: string) => boolean
+  /** Current document text (editor is source of truth for Exec). */
+  getValue: () => string
 }
 
 const basicSetup = {
@@ -51,6 +55,7 @@ export const SyntaxCodeEditor = forwardRef<SyntaxCodeEditorHandle, SyntaxCodeEdi
       minHeight = 360,
       fillHeight = false,
       readOnly = false,
+      onModEnter,
     },
     ref,
   ) {
@@ -77,6 +82,7 @@ export const SyntaxCodeEditor = forwardRef<SyntaxCodeEditorHandle, SyntaxCodeEdi
         view.focus()
         return true
       },
+      getValue: () => cmRef.current?.view?.state.doc.toString() ?? value,
     }))
 
     const extensions = useMemo(() => {
@@ -87,11 +93,28 @@ export const SyntaxCodeEditor = forwardRef<SyntaxCodeEditorHandle, SyntaxCodeEdi
             ? yaml()
             : StreamLanguage.define(groovy)
       const base = [lang, search({ top: true }), keymap.of(searchKeymap)]
+      const withModEnter =
+        onModEnter != null && !readOnly
+          ? [
+              ...base,
+              Prec.highest(
+                keymap.of([
+                  {
+                    key: 'Mod-Enter',
+                    run: () => {
+                      onModEnter()
+                      return true
+                    },
+                  },
+                ]),
+              ),
+            ]
+          : base
       if (readOnly || language !== 'json') {
-        return base
+        return withModEnter
       }
-      return [...base, linter(jsonParseLinter()), lintGutter()]
-    }, [language, readOnly])
+      return [...withModEnter, linter(jsonParseLinter()), lintGutter()]
+    }, [language, readOnly, onModEnter])
 
     const minH = `${minHeight}px`
     const editorHeight = fillHeight ? '100%' : minH

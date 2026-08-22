@@ -157,6 +157,7 @@ export function buildMatcherBody(
   chainStages: ChainStage[],
   chainedJson: string,
   chainView: 'visual' | 'json',
+  allowEmptyObjExpr = false,
 ): unknown {
   if (mode === 'all') {
     return { all: true }
@@ -168,7 +169,10 @@ export function buildMatcherBody(
   }
   if (mode === 'obj-expr') {
     const expression = objExprText.trim()
-    if (!expression) throw new Error('Provide a non-blank obj-expr expression')
+    if (!expression) {
+      if (allowEmptyObjExpr) return { 'obj-expr': 'true' }
+      throw new Error('Provide a non-blank obj-expr expression')
+    }
     return { 'obj-expr': expression }
   }
   if (chainView === 'json') {
@@ -269,6 +273,12 @@ type MatcherQueryFormProps = {
   defaultCollapsed?: boolean
   /** Persist collapsed preference in localStorage. */
   collapseStorageKey?: string
+  /**
+   * Lock matcher to a single mode (hides mode select). Used by Objects (obj-expr only).
+   */
+  fixedMode?: MatcherMode
+  /** When true, blank obj-expr builds `{ "obj-expr": "true" }` (Objects list-all). */
+  allowEmptyObjExpr?: boolean
 }
 
 function readCollapsed(key: string | undefined, fallback: boolean): boolean {
@@ -327,10 +337,12 @@ export const MatcherQueryForm = forwardRef<MatcherQueryFormHandle, MatcherQueryF
       collapsible = false,
       defaultCollapsed = false,
       collapseStorageKey,
+      fixedMode,
+      allowEmptyObjExpr = false,
     },
     ref,
   ) {
-    const [mode, setMode] = useState<MatcherMode>(defaultMode)
+    const [mode, setMode] = useState<MatcherMode>(fixedMode ?? defaultMode)
     const [graphExprText, setGraphExprText] = useState(() =>
       emptyDefaults ? EMPTY_EXPR : SAMPLE_GRAPH_EXPR,
     )
@@ -361,10 +373,19 @@ export const MatcherQueryForm = forwardRef<MatcherQueryFormHandle, MatcherQueryF
     useImperativeHandle(
       ref,
       () => ({
-        build: () => buildMatcherBody(mode, graphExprText, objExprText, chainStages, chainedJson, chainView),
+        build: () =>
+          buildMatcherBody(
+            mode,
+            graphExprText,
+            objExprText,
+            chainStages,
+            chainedJson,
+            chainView,
+            allowEmptyObjExpr,
+          ),
         getMode: () => mode,
       }),
-      [mode, graphExprText, objExprText, chainStages, chainedJson, chainView],
+      [mode, graphExprText, objExprText, chainStages, chainedJson, chainView, allowEmptyObjExpr],
     )
 
     function setCollapsedPersist(next: boolean) {
@@ -618,15 +639,21 @@ export const MatcherQueryForm = forwardRef<MatcherQueryFormHandle, MatcherQueryF
           <Text size="sm" fw={500} style={{ flexShrink: 0 }}>
             Matcher
           </Text>
-          <Select
-            size="xs"
-            w={130}
-            allowDeselect={false}
-            aria-label="Matcher mode"
-            data={MODE_OPTIONS}
-            value={mode}
-            onChange={(v) => setMode((v as MatcherMode) ?? defaultMode)}
-          />
+          {fixedMode == null ? (
+            <Select
+              size="xs"
+              w={130}
+              allowDeselect={false}
+              aria-label="Matcher mode"
+              data={MODE_OPTIONS}
+              value={mode}
+              onChange={(v) => setMode((v as MatcherMode) ?? defaultMode)}
+            />
+          ) : (
+            <Text size="xs" c="dimmed" ff="monospace">
+              {fixedMode}
+            </Text>
+          )}
           {action}
           {stats != null && (
             <Text size="xs" c="dimmed" style={{ flexShrink: 0 }}>

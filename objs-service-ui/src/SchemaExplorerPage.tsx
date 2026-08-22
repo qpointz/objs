@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import {
   Alert,
   Badge,
-  Breadcrumbs,
+  Box,
   Button,
   Code,
   Group,
@@ -20,10 +20,8 @@ import {
   TextInput,
   Textarea,
   Title,
-  Tooltip,
   UnstyledButton,
 } from '@mantine/core'
-import { IconSchema } from '@tabler/icons-react'
 import { useBlocker, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   deleteEdge,
@@ -47,7 +45,8 @@ import {
 } from './KeyValueRowsEditor'
 import { JsonYamlEditor, type JsonYamlEditorHandle } from './JsonYamlEditor'
 import { ObjectEdgesEditor } from './ObjectEdgesEditor'
-import { SchemaCatalogOverview } from './SchemaCatalogOverview'
+import { SchemaCatalogOverview, SCHEMA_CATALOG_LAYOUTS, type SchemaCatalogActionState, type SchemaCatalogOverviewHandle } from './SchemaCatalogOverview'
+import { SchemaContextBar } from './SchemaContextBar'
 import { parseSchemaExpertDocument, type SchemaExpertDocument } from './SchemaLinterPage'
 import {
   allowedEdgeKey,
@@ -62,6 +61,8 @@ import { SchemaVisualBuilder } from './SchemaVisualBuilder'
 import { emptyObjectSchema, type EditorFormat } from './schemaDsl'
 import { SyntaxCodeEditor } from './SyntaxCodeEditor'
 import { NewUuidButton } from './NewUuidButton'
+import { VIEW_ACTION_BUTTON_SIZE } from './viewActionButtons'
+import { clamp, maxSidePaneWidth } from './sidePaneSplit'
 import type {
   BoMAllowedEdgeRule,
   BoMSchema,
@@ -70,6 +71,30 @@ import type {
   SchemaLintResponse,
   TypeEdgesResponse,
 } from './types'
+
+const SIDE_PANE_WIDTH_KEY = 'objs.ui.schema.sidePaneWidth'
+const DEFAULT_SIDE_WIDTH = 240
+const MIN_SIDE_WIDTH = 240
+const SPLITTER_WIDTH = 8
+
+function loadSideWidth(): number {
+  try {
+    const raw = localStorage.getItem(SIDE_PANE_WIDTH_KEY)
+    if (!raw) return DEFAULT_SIDE_WIDTH
+    const n = Number(raw)
+    return Number.isFinite(n) && n >= MIN_SIDE_WIDTH ? n : DEFAULT_SIDE_WIDTH
+  } catch {
+    return DEFAULT_SIDE_WIDTH
+  }
+}
+
+function saveSideWidth(width: number) {
+  try {
+    localStorage.setItem(SIDE_PANE_WIDTH_KEY, String(Math.round(width)))
+  } catch {
+    // ignore
+  }
+}
 
 function latestVersion(versions: string[]): string {
   return [...versions].sort().at(-1) ?? '1.0.0'
@@ -105,71 +130,17 @@ function primaryKind(usage: BoMSchemaUsage): 'object' | 'edge' {
   return usage === 'ENTITY' ? 'object' : 'edge'
 }
 
-function KindPill({ kind }: { kind: 'object' | 'edge' }) {
+function KindPill({ kind }: { kind: 'object' | 'edge' | 'schema' }) {
   return (
-    <Badge size="xs" variant="light" color={kind === 'object' ? 'blue' : 'grape'} w={28} px={0}>
-      {kind === 'object' ? 'O' : 'E'}
+    <Badge
+      size="xs"
+      variant="light"
+      color={kind === 'object' ? 'blue' : kind === 'edge' ? 'grape' : 'gray'}
+      w={28}
+      px={0}
+    >
+      {kind === 'object' ? 'O' : kind === 'edge' ? 'E' : 'S'}
     </Badge>
-  )
-}
-
-function AttributePill({ name, value }: { name: string; value: string }) {
-  return (
-    <Group gap={0} wrap="nowrap" title={`${name}: ${value}`}>
-      <Badge
-        size="sm"
-        variant="filled"
-        color="gray"
-        radius="xl"
-        tt="none"
-        style={{
-          borderTopRightRadius: 0,
-          borderBottomRightRadius: 0,
-          paddingLeft: 8,
-          paddingRight: 8,
-        }}
-      >
-        {name}
-      </Badge>
-      <Badge
-        size="sm"
-        variant="light"
-        color="gray"
-        radius="xl"
-        tt="none"
-        style={{
-          borderTopLeftRadius: 0,
-          borderBottomLeftRadius: 0,
-          paddingLeft: 8,
-          paddingRight: 8,
-        }}
-      >
-        {value || '—'}
-      </Badge>
-    </Group>
-  )
-}
-
-function CatalogMetaPills({
-  tags,
-  attributes,
-}: {
-  tags: string[]
-  attributes: { key: string; value: string }[]
-}) {
-  const filledAttributes = attributes.filter((row) => row.key.trim().length > 0)
-  if (tags.length === 0 && filledAttributes.length === 0) return null
-  return (
-    <Group gap={6} wrap="wrap">
-      {tags.map((tag) => (
-        <Badge key={tag} size="sm" variant="light" radius="xl" tt="none">
-          {tag}
-        </Badge>
-      ))}
-      {filledAttributes.map((row) => (
-        <AttributePill key={row.key} name={row.key.trim()} value={row.value} />
-      ))}
-    </Group>
   )
 }
 
@@ -213,6 +184,20 @@ export function SchemaExplorerPage() {
   const draftNewVersionParam = searchParams.get('newVersion')
 
   const editorRef = useRef<JsonYamlEditorHandle>(null)
+  const catalogOverviewRef = useRef<SchemaCatalogOverviewHandle>(null)
+  const [catalogActionState, setCatalogActionState] = useState<SchemaCatalogActionState>({
+    canApplyLayout: false,
+    ioBusy: false,
+    catalogBusy: false,
+    layout: 'LR',
+    edgeRuleCount: 0,
+  })
+  const onCatalogActionStateChange = useCallback((state: SchemaCatalogActionState) => {
+    setCatalogActionState(state)
+  }, [])
+  const [sideWidth, setSideWidth] = useState(loadSideWidth)
+  const splitHostRef = useRef<HTMLDivElement>(null)
+  const dragRef = useRef<{ startX: number; startWidth: number } | null>(null)
   const [search, setSearch] = useState('')
   const [schemas, setSchemas] = useState<BoMSchema[]>([])
   const [selected, setSelected] = useState<BoMSchema | null>(null)
@@ -805,24 +790,329 @@ export function SchemaExplorerPage() {
     }
   }
 
+  const schemaContextMode = isNewDraft ? 'new-draft' : selectedType ? 'detail' : 'catalog'
+  const detailKind = primaryKind(usage)
+  const catalogIoBusy = catalogActionState.ioBusy || catalogActionState.catalogBusy
+  const latestTypeVersion = typeVersions.length > 0 ? latestVersion(typeVersions) : version
+
+  const onSplitterPointerDown = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      e.preventDefault()
+      dragRef.current = { startX: e.clientX, startWidth: sideWidth }
+      e.currentTarget.setPointerCapture(e.pointerId)
+    },
+    [sideWidth],
+  )
+
+  const onSplitterPointerMove = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current
+    if (drag == null) return
+    const host = splitHostRef.current
+    if (host == null) return
+    const max = maxSidePaneWidth(host.clientWidth, MIN_SIDE_WIDTH)
+    const next = clamp(drag.startWidth + (e.clientX - drag.startX), MIN_SIDE_WIDTH, max)
+    setSideWidth(next)
+  }, [])
+
+  const onSplitterPointerUp = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current
+    dragRef.current = null
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    }
+    if (drag != null) {
+      saveSideWidth(sideWidth)
+    }
+  }, [sideWidth])
+
+  useEffect(() => {
+    const host = splitHostRef.current
+    if (host == null) return
+    const clampToHost = () => {
+      const max = maxSidePaneWidth(host.clientWidth, MIN_SIDE_WIDTH)
+      setSideWidth((w) => {
+        const next = clamp(w, MIN_SIDE_WIDTH, max)
+        return next === w ? w : next
+      })
+    }
+    clampToHost()
+    const ro = new ResizeObserver(clampToHost)
+    ro.observe(host)
+    return () => ro.disconnect()
+  }, [])
+
+  function onSchemaVersionChange(nextVersion: string) {
+    if (!selectedType) return
+    if (createVersionMode && nextVersion === version) return
+    requestNavigate(schemaDetailPath(selectedType, nextVersion))
+  }
+
   return (
-    <div
-      style={{
-        flex: 1,
-        minHeight: 0,
-        height: '100%',
-        display: 'flex',
-        gap: 'var(--mantine-spacing-sm)',
-        overflow: 'hidden',
-      }}
-    >
+    <Stack gap="sm" style={{ flex: 1, minHeight: 0, height: '100%' }}>
+      <Group align="center" wrap="nowrap" gap="md" style={{ flexShrink: 0 }}>
+        <Title order={3} style={{ flexShrink: 0 }}>
+          Schema
+        </Title>
+        <Box style={{ flex: 1, minWidth: 0 }}>
+          <SchemaContextBar
+            mode={schemaContextMode}
+            typeName={typeName}
+            version={version}
+            kind={detailKind}
+            tags={schemaTags}
+            attributes={schemaAttributeRows}
+            typeCount={grouped.length}
+            edgeRuleCount={catalogActionState.edgeRuleCount}
+            unsaved={hasUnsavedChanges}
+            createVersionDraft={createVersionMode}
+            typeVersions={typeVersions}
+            latestTypeVersion={latestTypeVersion}
+            onVersionChange={
+              selectedType && !isNewDraft ? onSchemaVersionChange : undefined
+            }
+          />
+        </Box>
+      </Group>
+
+      <Group
+        justify="flex-end"
+        align="center"
+        wrap="wrap"
+        gap="xs"
+        style={{ flexShrink: 0 }}
+        data-tour="schema-view-actions"
+      >
+        {!selectedType && !isNewDraft && (
+          <>
+            <Group gap={0}>
+              <Button
+                size={VIEW_ACTION_BUTTON_SIZE}
+                variant="light"
+                disabled={!catalogActionState.canApplyLayout}
+                onClick={() => catalogOverviewRef.current?.applyLayout()}
+                style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
+              >
+                Apply layout
+              </Button>
+              <Menu position="bottom-end" withinPortal>
+                <Menu.Target>
+                  <Button
+                    size={VIEW_ACTION_BUTTON_SIZE}
+                    variant="light"
+                    disabled={!catalogActionState.canApplyLayout}
+                    aria-label="Choose catalog layout"
+                    px="xs"
+                    style={{
+                      borderTopLeftRadius: 0,
+                      borderBottomLeftRadius: 0,
+                      borderLeft: '1px solid var(--mantine-color-default-border)',
+                    }}
+                  >
+                    ▾
+                  </Button>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Label>Layout direction</Menu.Label>
+                  {SCHEMA_CATALOG_LAYOUTS.map((option) => (
+                    <Menu.Item
+                      key={option.value}
+                      onClick={() => catalogOverviewRef.current?.applyLayout(option.value)}
+                    >
+                      {option.value === catalogActionState.layout ? '✓ ' : ''}
+                      {option.label}
+                    </Menu.Item>
+                  ))}
+                </Menu.Dropdown>
+              </Menu>
+            </Group>
+            <Menu position="bottom-end">
+              <Menu.Target>
+                <Button size={VIEW_ACTION_BUTTON_SIZE} variant="light" loading={catalogIoBusy}>
+                  Export
+                </Button>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Label>Format</Menu.Label>
+                <Menu.Item onClick={() => void catalogOverviewRef.current?.exportCatalog('seeds')}>
+                  Seeds (YAML)
+                </Menu.Item>
+                <Menu.Item
+                  onClick={() => void catalogOverviewRef.current?.exportCatalog('json-schema')}
+                >
+                  JSON Schema
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+            <Button
+              size={VIEW_ACTION_BUTTON_SIZE}
+              loading={catalogIoBusy}
+              onClick={() => catalogOverviewRef.current?.openImport()}
+            >
+              Import
+            </Button>
+          </>
+        )}
+
+        {selectedType && !isNewDraft && (
+          <>
+            {!createVersionMode && (
+              <Button size={VIEW_ACTION_BUTTON_SIZE} variant="light" onClick={onStartCreateVersion}>
+                Create version
+              </Button>
+            )}
+            <Button
+              size={VIEW_ACTION_BUTTON_SIZE}
+              loading={busy}
+              disabled={!hasUnsavedChanges}
+              onClick={() => void onSaveUpdate()}
+            >
+              Save
+            </Button>
+            {!createVersionMode && (
+              <Menu position="bottom-end" withinPortal>
+                <Menu.Target>
+                  <UnstyledButton
+                    aria-label="Delete version or schema"
+                    disabled={busy || deleteBusy}
+                    style={{
+                      display: 'inline-flex',
+                      borderRadius: 'var(--mantine-radius-default)',
+                      opacity: busy || deleteBusy ? 0.6 : 1,
+                    }}
+                  >
+                    <Group gap={0}>
+                      <Button
+                        size={VIEW_ACTION_BUTTON_SIZE}
+                        variant="light"
+                        color="red"
+                        component="span"
+                        style={{
+                          borderTopRightRadius: 0,
+                          borderBottomRightRadius: 0,
+                          pointerEvents: 'none',
+                        }}
+                      >
+                        Delete
+                      </Button>
+                      <Button
+                        size={VIEW_ACTION_BUTTON_SIZE}
+                        variant="light"
+                        color="red"
+                        component="span"
+                        px="xs"
+                        style={{
+                          borderTopLeftRadius: 0,
+                          borderBottomLeftRadius: 0,
+                          borderLeft: '1px solid var(--mantine-color-default-border)',
+                          pointerEvents: 'none',
+                        }}
+                      >
+                        ▾
+                      </Button>
+                    </Group>
+                  </UnstyledButton>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Item
+                    color="red"
+                    onClick={() => {
+                      setDeleteConfirmText('')
+                      setDeleteVersionOpen(true)
+                    }}
+                  >
+                    Version
+                  </Menu.Item>
+                  <Menu.Item
+                    color="red"
+                    onClick={() => {
+                      setDeleteConfirmText('')
+                      setDeleteSchemaOpen(true)
+                    }}
+                  >
+                    Schema
+                  </Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
+            )}
+            {hasUnsavedChanges && (
+              <>
+                <Badge color="yellow" variant="filled">
+                  Unsaved changes
+                </Badge>
+                <Button size={VIEW_ACTION_BUTTON_SIZE} variant="subtle" onClick={rollbackUnsaved}>
+                  Rollback
+                </Button>
+              </>
+            )}
+          </>
+        )}
+
+        {isNewDraft && (
+          <Button
+            size={VIEW_ACTION_BUTTON_SIZE}
+            loading={busy}
+            onClick={() => void onCreateSchema()}
+          >
+            Create schema
+          </Button>
+        )}
+
+        <Menu position="bottom-end" withinPortal>
+          <Menu.Target>
+            <UnstyledButton
+              aria-label="Create object or edge"
+              style={{ display: 'inline-flex', borderRadius: 'var(--mantine-radius-default)' }}
+            >
+              <Group gap={0}>
+                <Button
+                  size={VIEW_ACTION_BUTTON_SIZE}
+                  component="span"
+                  style={{
+                    borderTopRightRadius: 0,
+                    borderBottomRightRadius: 0,
+                    pointerEvents: 'none',
+                  }}
+                >
+                  Create
+                </Button>
+                <Button
+                  size={VIEW_ACTION_BUTTON_SIZE}
+                  component="span"
+                  px="xs"
+                  style={{
+                    borderTopLeftRadius: 0,
+                    borderBottomLeftRadius: 0,
+                    borderLeft: '1px solid var(--mantine-color-default-border)',
+                    pointerEvents: 'none',
+                  }}
+                >
+                  ▾
+                </Button>
+              </Group>
+            </UnstyledButton>
+          </Menu.Target>
+          <Menu.Dropdown>
+            <Menu.Item onClick={() => requestNavigate(schemaCreatePath('object'))}>
+              Object
+            </Menu.Item>
+            <Menu.Item onClick={() => requestNavigate(schemaCreatePath('edge'))}>Edge</Menu.Item>
+          </Menu.Dropdown>
+        </Menu>
+      </Group>
+
+      <Group
+        ref={splitHostRef}
+        gap={0}
+        align="stretch"
+        wrap="nowrap"
+        style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}
+      >
       <Paper
         withBorder
         p="sm"
         style={{
-          flex: '0 0 240px',
-          width: 240,
-          maxWidth: 260,
+          width: sideWidth,
+          flexShrink: 0,
           minHeight: 0,
           height: '100%',
           overflow: 'hidden',
@@ -830,48 +1120,6 @@ export function SchemaExplorerPage() {
           flexDirection: 'column',
         }}
       >
-        <Group justify="space-between" wrap="nowrap" style={{ flexShrink: 0 }} mb="xs">
-          <Title order={5}>Schemas</Title>
-          <Menu position="bottom-end" withinPortal>
-            <Menu.Target>
-              <UnstyledButton
-                aria-label="Create object or edge"
-                style={{ display: 'inline-flex', borderRadius: 'var(--mantine-radius-default)' }}
-              >
-                <Group gap={0}>
-                  <Button
-                    size="compact-xs"
-                    component="span"
-                    style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0, pointerEvents: 'none' }}
-                  >
-                    Create
-                  </Button>
-                  <Button
-                    size="compact-xs"
-                    component="span"
-                    px={6}
-                    style={{
-                      borderTopLeftRadius: 0,
-                      borderBottomLeftRadius: 0,
-                      borderLeft: '1px solid var(--mantine-color-default-border)',
-                      pointerEvents: 'none',
-                    }}
-                  >
-                    ▾
-                  </Button>
-                </Group>
-              </UnstyledButton>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Item onClick={() => requestNavigate(schemaCreatePath('object'))}>
-                Object
-              </Menu.Item>
-              <Menu.Item onClick={() => requestNavigate(schemaCreatePath('edge'))}>
-                Edge
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
-        </Group>
         <TextInput
           size="xs"
           placeholder="Search types"
@@ -890,6 +1138,22 @@ export function SchemaExplorerPage() {
               style={{ position: 'absolute', inset: 0 }}
             >
               <Stack gap={2}>
+                <UnstyledButton
+                  onClick={() => requestNavigate('/model')}
+                  px={6}
+                  py={4}
+                  style={{
+                    borderRadius: 4,
+                    background: !selectedType ? 'var(--mantine-color-blue-light)' : undefined,
+                  }}
+                >
+                  <Group gap={6} wrap="nowrap">
+                    <KindPill kind="schema" />
+                    <Text size="xs" fw={!selectedType ? 700 : 500} truncate style={{ flex: 1 }}>
+                      Schema
+                    </Text>
+                  </Group>
+                </UnstyledButton>
                 {grouped.map((entry) => {
                   const active = selectedType === entry.type
                   return (
@@ -923,6 +1187,35 @@ export function SchemaExplorerPage() {
         )}
       </Paper>
 
+      <Box
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize Schema type list"
+        onPointerDown={onSplitterPointerDown}
+        onPointerMove={onSplitterPointerMove}
+        onPointerUp={onSplitterPointerUp}
+        onPointerCancel={onSplitterPointerUp}
+        style={{
+          width: SPLITTER_WIDTH,
+          flexShrink: 0,
+          cursor: 'col-resize',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          touchAction: 'none',
+          userSelect: 'none',
+        }}
+      >
+        <Box
+          style={{
+            width: 3,
+            height: 48,
+            borderRadius: 2,
+            background: 'var(--mantine-color-default-border)',
+          }}
+        />
+      </Box>
+
       <Paper
         withBorder
         p="md"
@@ -955,7 +1248,9 @@ export function SchemaExplorerPage() {
               }}
             >
               <SchemaCatalogOverview
+                ref={catalogOverviewRef}
                 schemas={schemas}
+                onActionStateChange={onCatalogActionStateChange}
                 onCatalogChanged={async () => {
                   await reloadSchemas()
                 }}
@@ -971,220 +1266,9 @@ export function SchemaExplorerPage() {
               minHeight: 0,
               display: 'flex',
               flexDirection: 'column',
-              gap: 'var(--mantine-spacing-md)',
               overflow: 'hidden',
             }}
           >
-            <Group justify="space-between" align="flex-start" style={{ flexShrink: 0 }}>
-              <Stack gap={6} style={{ flex: 1, minWidth: 0 }}>
-                {isNewDraft ? (
-                  <Group align="flex-end">
-                    <TextInput
-                      label="Type"
-                      value={typeName}
-                      onChange={(e) => {
-                        setTypeName(e.currentTarget.value)
-                        setDirty(true)
-                      }}
-                      style={{ flex: 1 }}
-                    />
-                    <TextInput
-                      label="Version"
-                      value={version}
-                      onChange={(e) => {
-                        setVersion(e.currentTarget.value)
-                        setDirty(true)
-                      }}
-                      w={120}
-                    />
-                    <SegmentedControl
-                      size="xs"
-                      value={usage}
-                      data={[
-                        { label: 'Entity', value: 'ENTITY' },
-                        { label: 'Edge props', value: 'EDGE_PROPERTIES' },
-                      ]}
-                      onChange={(v) => {
-                        const next = v as BoMSchemaUsage
-                        setUsage(next)
-                        setDirty(true)
-                      }}
-                    />
-                    {hasUnsavedChanges && (
-                      <Button size="compact-xs" variant="subtle" onClick={rollbackUnsaved}>
-                        Rollback
-                      </Button>
-                    )}
-                  </Group>
-                ) : (
-                  <Group gap="sm" wrap="wrap">
-                    <Breadcrumbs
-                      separator="/"
-                      separatorMargin="xs"
-                      styles={{
-                        root: { alignItems: 'center', flexWrap: 'wrap' },
-                        breadcrumb: { lineHeight: 1.2 },
-                      }}
-                    >
-                      <Tooltip label="Full schema">
-                        <UnstyledButton
-                          onClick={() => requestNavigate('/model')}
-                          aria-label="Full schema"
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            color: 'var(--mantine-color-dimmed)',
-                          }}
-                        >
-                          <IconSchema size={22} stroke={1.75} />
-                        </UnstyledButton>
-                      </Tooltip>
-                      <Group gap={8} wrap="nowrap" align="center">
-                        <Title order={3} style={{ lineHeight: 1.2 }}>
-                          {typeName}
-                        </Title>
-                        <Badge size="xs" variant="filled" color="gray">
-                          {version}
-                        </Badge>
-                        {createVersionMode && (
-                          <Badge size="xs" variant="filled" color="violet">
-                            draft
-                          </Badge>
-                        )}
-                        {!createVersionMode &&
-                          typeVersions.includes(version) &&
-                          version === latestVersion(typeVersions) && (
-                            <Badge size="xs" variant="filled" color="teal">
-                              latest
-                            </Badge>
-                          )}
-                      </Group>
-                    </Breadcrumbs>
-                    {hasUnsavedChanges && (
-                      <>
-                        <Badge color="yellow" variant="filled">
-                          Unsaved changes
-                        </Badge>
-                        <Button size="compact-xs" variant="subtle" onClick={rollbackUnsaved}>
-                          Rollback
-                        </Button>
-                      </>
-                    )}
-                  </Group>
-                )}
-                <CatalogMetaPills tags={schemaTags} attributes={schemaAttributeRows} />
-              </Stack>
-
-              <Group>
-                {!isNewDraft && (
-                  <>
-                    <Select
-                      size="sm"
-                      w={150}
-                      allowDeselect={false}
-                      data={[
-                        ...typeVersions.map((v) => ({ value: v, label: v })),
-                        ...(createVersionMode && !typeVersions.includes(version)
-                          ? [{ value: version, label: `${version} (draft)` }]
-                          : []),
-                      ]}
-                      value={version}
-                      onChange={(v) => {
-                        if (!v || !selectedType) return
-                        if (createVersionMode && v === version) return
-                        requestNavigate(schemaDetailPath(selectedType, v))
-                      }}
-                    />
-                    {!createVersionMode && (
-                      <Button size="sm" variant="light" onClick={onStartCreateVersion}>
-                        Create version
-                      </Button>
-                    )}
-                  </>
-                )}
-                {!isNewDraft && (
-                  <Button
-                    loading={busy}
-                    disabled={!hasUnsavedChanges}
-                    onClick={() => void onSaveUpdate()}
-                  >
-                    Save
-                  </Button>
-                )}
-                {!isNewDraft && !createVersionMode && (
-                  <Menu position="bottom-end" withinPortal>
-                    <Menu.Target>
-                      <UnstyledButton
-                        aria-label="Delete version or schema"
-                        disabled={busy || deleteBusy}
-                        style={{
-                          display: 'inline-flex',
-                          borderRadius: 'var(--mantine-radius-default)',
-                          opacity: busy || deleteBusy ? 0.6 : 1,
-                        }}
-                      >
-                        <Group gap={0}>
-                          <Button
-                            size="sm"
-                            variant="light"
-                            color="red"
-                            component="span"
-                            style={{
-                              borderTopRightRadius: 0,
-                              borderBottomRightRadius: 0,
-                              pointerEvents: 'none',
-                            }}
-                          >
-                            Delete
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="light"
-                            color="red"
-                            component="span"
-                            px="xs"
-                            style={{
-                              borderTopLeftRadius: 0,
-                              borderBottomLeftRadius: 0,
-                              borderLeft: '1px solid var(--mantine-color-default-border)',
-                              pointerEvents: 'none',
-                            }}
-                          >
-                            ▾
-                          </Button>
-                        </Group>
-                      </UnstyledButton>
-                    </Menu.Target>
-                    <Menu.Dropdown>
-                      <Menu.Item
-                        color="red"
-                        onClick={() => {
-                          setDeleteConfirmText('')
-                          setDeleteVersionOpen(true)
-                        }}
-                      >
-                        Version
-                      </Menu.Item>
-                      <Menu.Item
-                        color="red"
-                        onClick={() => {
-                          setDeleteConfirmText('')
-                          setDeleteSchemaOpen(true)
-                        }}
-                      >
-                        Schema
-                      </Menu.Item>
-                    </Menu.Dropdown>
-                  </Menu>
-                )}
-                {isNewDraft && (
-                  <Button loading={busy} onClick={() => void onCreateSchema()}>
-                    Create schema
-                  </Button>
-                )}
-              </Group>
-            </Group>
-
             <Tabs
               value={editorMode}
               style={{
@@ -1251,6 +1335,41 @@ export function SchemaExplorerPage() {
                 )}
                 <Tabs.Panel value="general" style={schemaTabPanelStyle}>
                   <Stack gap="sm" maw={720} style={{ flex: 1, minHeight: 0, height: '100%', overflow: 'auto' }}>
+                    {isNewDraft && (
+                      <Group align="flex-end" wrap="wrap">
+                        <TextInput
+                          label="Type"
+                          value={typeName}
+                          onChange={(e) => {
+                            setTypeName(e.currentTarget.value)
+                            setDirty(true)
+                          }}
+                          style={{ flex: 1, minWidth: 160 }}
+                        />
+                        <TextInput
+                          label="Version"
+                          value={version}
+                          onChange={(e) => {
+                            setVersion(e.currentTarget.value)
+                            setDirty(true)
+                          }}
+                          w={120}
+                        />
+                        <SegmentedControl
+                          size="xs"
+                          value={usage}
+                          data={[
+                            { label: 'Entity', value: 'ENTITY' },
+                            { label: 'Edge props', value: 'EDGE_PROPERTIES' },
+                          ]}
+                          onChange={(v) => {
+                            const next = v as BoMSchemaUsage
+                            setUsage(next)
+                            setDirty(true)
+                          }}
+                        />
+                      </Group>
+                    )}
                     <Textarea
                       label="Description"
                       placeholder="Schema description"
@@ -1467,6 +1586,7 @@ export function SchemaExplorerPage() {
           </div>
         )}
       </Paper>
+      </Group>
 
       <Modal
         opened={blocker.state === 'blocked'}
@@ -1616,6 +1736,6 @@ export function SchemaExplorerPage() {
           </Group>
         </Stack>
       </Modal>
-    </div>
+    </Stack>
   )
 }

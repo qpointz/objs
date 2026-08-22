@@ -339,6 +339,24 @@ class BoMNamedGraphStore(
     @Transactional(readOnly = true)
     fun getGraphVersion(graphId: UUID, version: Long) = deepVersions.getGraphVersion(graphId, version)
 
+    @Transactional(readOnly = true)
+    fun listEntityVersions(entityId: UUID) = deepVersions.listEntityVersions(entityId)
+
+    @Transactional(readOnly = true)
+    fun entityVersionStats(entityId: UUID, recent: Int = 5) = deepVersions.entityVersionStats(entityId, recent)
+
+    @Transactional(readOnly = true)
+    fun getEntityVersion(entityId: UUID, version: Long) = deepVersions.getEntityVersion(entityId, version)
+
+    @Transactional(readOnly = true)
+    fun listEdgeVersions(edgeId: UUID) = deepVersions.listEdgeVersions(edgeId)
+
+    @Transactional(readOnly = true)
+    fun edgeVersionStats(edgeId: UUID, recent: Int = 5) = deepVersions.edgeVersionStats(edgeId, recent)
+
+    @Transactional(readOnly = true)
+    fun getEdgeVersion(edgeId: UUID, version: Long) = deepVersions.getEdgeVersion(edgeId, version)
+
     /** Graphs that contain [entityId] (G-A5). Empty for orphans. */
     @Transactional(readOnly = true)
     fun listGraphIdsForEntity(entityId: UUID): List<UUID> =

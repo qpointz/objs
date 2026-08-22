@@ -471,6 +471,48 @@ class BoMGraphStore(
     }
 
     /**
+     * Same as [selectInGraph] but against a reconstructed deep graph version (Note 2 pin).
+     */
+    @Transactional(readOnly = true)
+    fun selectInGraphVersion(graphId: UUID, version: Long, matcher: BoMMatcher): BoMGraphContents {
+        entityManager.flush()
+        val resolved = namedGraphs.getGraphVersion(graphId, version)
+        val stages = flattenStages(matcher)
+        var entities = resolved.contents.entities
+        if (stages.isNotEmpty()) {
+            entities = entities.filter { entity ->
+                val candidate = BoMEntityDomainCandidate(entity)
+                stages.all { it.matches(candidate) }
+            }
+        }
+        val selectedIds = entities.mapNotNullTo(linkedSetOf()) { it.id }
+        val edges = resolved.contents.edges.filter { it.source in selectedIds && it.target in selectedIds }
+        return BoMGraphContents(entities = entities, edges = edges)
+    }
+
+    /** Reconstruct a deep graph version (contents only). */
+    @Transactional(readOnly = true)
+    fun loadGraphVersion(graphId: UUID, version: Long) = namedGraphs.getGraphVersion(graphId, version)
+
+    @Transactional(readOnly = true)
+    fun listEntityVersions(entityId: UUID) = namedGraphs.listEntityVersions(entityId)
+
+    @Transactional(readOnly = true)
+    fun entityVersionStats(entityId: UUID, recent: Int = 5) = namedGraphs.entityVersionStats(entityId, recent)
+
+    @Transactional(readOnly = true)
+    fun getEntityVersion(entityId: UUID, version: Long) = namedGraphs.getEntityVersion(entityId, version)
+
+    @Transactional(readOnly = true)
+    fun listEdgeVersions(edgeId: UUID) = namedGraphs.listEdgeVersions(edgeId)
+
+    @Transactional(readOnly = true)
+    fun edgeVersionStats(edgeId: UUID, recent: Int = 5) = namedGraphs.edgeVersionStats(edgeId, recent)
+
+    @Transactional(readOnly = true)
+    fun getEdgeVersion(edgeId: UUID, version: Long) = namedGraphs.getEdgeVersion(edgeId, version)
+
+    /**
      * Union of stored members/edges of every graph selected by stage-0 `all`, `graph-expr`,
      * or `graphs-in`, then optional later-stage entity filters. Distinct by entity/edge id.
      */
@@ -525,6 +567,7 @@ fun BoMEntityRecord.toDomain() = BoMEntity(
     annotations = annotations.toMutableMap(),
     createdAt = createdAt,
     updatedAt = updatedAt,
+    headVersion = headVersion,
 )
 
 fun BoMEdgeRecord.toDomain() = BoMEdge(
@@ -538,4 +581,5 @@ fun BoMEdgeRecord.toDomain() = BoMEdge(
     properties = properties?.toMutableMap(),
     createdAt = createdAt,
     updatedAt = updatedAt,
+    headVersion = headVersion,
 )

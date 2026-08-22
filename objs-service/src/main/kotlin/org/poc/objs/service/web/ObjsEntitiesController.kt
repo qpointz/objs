@@ -134,6 +134,31 @@ class ObjsEntitiesController(
         return ResponseEntity.ok(entity)
     }
 
+    @GetMapping("/{id}/versions/stats")
+    @Operation(summary = "Entity version stats: total count + newest recent N")
+    fun versionStats(
+        @PathVariable id: UUID,
+        @RequestParam(defaultValue = "5") recent: Int,
+    ) = store.entityVersionStats(id, recent)
+
+    @GetMapping("/{id}/versions")
+    @Operation(summary = "List entity deep-capture versions, newest first")
+    fun listVersions(@PathVariable id: UUID) = store.listEntityVersions(id)
+
+    @GetMapping("/{id}/versions/{version}")
+    @Operation(summary = "Fetch one entity deep-capture version")
+    fun getVersion(
+        @PathVariable id: UUID,
+        @PathVariable version: Long,
+    ): ResponseEntity<Any> =
+        try {
+            ResponseEntity.ok(store.getEntityVersion(id, version))
+        } catch (ex: org.poc.objs.core.domain.BoMGraphException) {
+            ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                mapOf("error" to (ex.message ?: ex.code), "code" to ex.code),
+            )
+        }
+
     @PutMapping("/{id}")
     @Operation(summary = "Update payload/annotations/type/schemaVersion of an existing pool entity")
     @ApiResponses(

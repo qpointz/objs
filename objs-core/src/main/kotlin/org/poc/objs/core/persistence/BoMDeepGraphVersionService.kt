@@ -5,7 +5,10 @@ import org.poc.objs.core.domain.BoMEntity
 import org.poc.objs.core.domain.BoMGraphContents
 import org.poc.objs.core.domain.BoMGraphException
 import org.poc.objs.core.domain.BoMGraphVersionSummary
+import org.poc.objs.core.domain.BoMInstanceVersionStats
+import org.poc.objs.core.domain.BoMInstanceVersionSummary
 import org.poc.objs.core.domain.BoMResolvedGraph
+import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
@@ -124,6 +127,7 @@ class BoMDeepGraphVersionService(
                 annotations = row.annotations.toMutableMap(),
                 createdAt = row.createdAt,
                 updatedAt = row.updatedAt,
+                headVersion = pin.entityVersion,
             )
         }
         val edges = versionEdges.findByGraphIdAndGraphVersion(graphId, version).map { pin ->
@@ -143,6 +147,7 @@ class BoMDeepGraphVersionService(
                 properties = row.properties?.toMutableMap(),
                 createdAt = row.createdAt,
                 updatedAt = row.updatedAt,
+                headVersion = pin.edgeVersion,
             )
         }
         return BoMResolvedGraph(
@@ -154,11 +159,92 @@ class BoMDeepGraphVersionService(
         )
     }
 
+    @Transactional(readOnly = true)
+    fun listEntityVersions(entityId: UUID): List<BoMInstanceVersionSummary> =
+        entityVersions.findByEntityIdOrderByVersionDesc(entityId).map { it.toEntitySummary() }
+
+    @Transactional(readOnly = true)
+    fun entityVersionStats(entityId: UUID, recent: Int = 5): BoMInstanceVersionStats {
+        val n = recent.coerceIn(1, 50)
+        val total = entityVersions.countByEntityId(entityId)
+        val rows = entityVersions.findByEntityIdOrderByVersionDesc(entityId, PageRequest.of(0, n))
+        return BoMInstanceVersionStats(total = total, recent = rows.map { it.toEntitySummary() })
+    }
+
+    @Transactional(readOnly = true)
+    fun getEntityVersion(entityId: UUID, version: Long): BoMEntity {
+        val row = entityVersions.findByEntityIdAndVersion(entityId, version)
+            ?: throw BoMGraphException(
+                code = "ENTITY_VERSION_NOT_FOUND",
+                message = "Entity version not found: $entityId@$version",
+            )
+        return BoMEntity(
+            id = row.entityId,
+            type = row.type,
+            schemaVersion = row.schemaVersion,
+            payload = row.payload.toMutableMap(),
+            annotations = row.annotations.toMutableMap(),
+            createdAt = row.createdAt,
+            updatedAt = row.updatedAt,
+            headVersion = row.version,
+        )
+    }
+
+    @Transactional(readOnly = true)
+    fun listEdgeVersions(edgeId: UUID): List<BoMInstanceVersionSummary> =
+        edgeVersions.findByEdgeIdOrderByVersionDesc(edgeId).map { it.toEdgeSummary() }
+
+    @Transactional(readOnly = true)
+    fun edgeVersionStats(edgeId: UUID, recent: Int = 5): BoMInstanceVersionStats {
+        val n = recent.coerceIn(1, 50)
+        val total = edgeVersions.countByEdgeId(edgeId)
+        val rows = edgeVersions.findByEdgeIdOrderByVersionDesc(edgeId, PageRequest.of(0, n))
+        return BoMInstanceVersionStats(total = total, recent = rows.map { it.toEdgeSummary() })
+    }
+
+    @Transactional(readOnly = true)
+    fun getEdgeVersion(edgeId: UUID, version: Long): BoMEdge {
+        val row = edgeVersions.findByEdgeIdAndVersion(edgeId, version)
+            ?: throw BoMGraphException(
+                code = "EDGE_VERSION_NOT_FOUND",
+                message = "Edge version not found: $edgeId@$version",
+            )
+        return BoMEdge(
+            id = row.edgeId,
+            graphId = row.graphId,
+            source = row.sourceId,
+            target = row.targetId,
+            role = row.role,
+            type = row.type,
+            schemaVersion = row.schemaVersion,
+            properties = row.properties?.toMutableMap(),
+            createdAt = row.createdAt,
+            updatedAt = row.updatedAt,
+            headVersion = row.version,
+        )
+    }
+
     companion object {
         fun nextVersion(previous: Long?): Long {
             val millis = Instant.now().toEpochMilli()
             return max(millis, (previous ?: 0L) + 1L)
         }
+
+        private fun BoMEntityVersionRecord.toEntitySummary() = BoMInstanceVersionSummary(
+            id = entityId,
+            version = version,
+            createdAt = createdAt,
+            updatedAt = updatedAt,
+            annotations = annotations.toMap(),
+        )
+
+        private fun BoMEdgeVersionRecord.toEdgeSummary() = BoMInstanceVersionSummary(
+            id = edgeId,
+            version = version,
+            createdAt = createdAt,
+            updatedAt = updatedAt,
+            annotations = emptyMap(),
+        )
 
         private fun copyEntityVersion(
             row: BoMEntityRecord,

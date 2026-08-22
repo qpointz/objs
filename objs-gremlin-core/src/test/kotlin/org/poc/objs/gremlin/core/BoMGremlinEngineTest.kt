@@ -96,6 +96,27 @@ class BoMGremlinEngineTest {
     }
 
     @Test
+    fun shouldReturnGraph_whenGV() {
+        val result = engine.eval(sampleSubgraph(), "g.V()")
+        assertThat(result.primary).isEqualTo("graph")
+        assertThat(result.items).hasSize(2)
+        assertThat(result.contents!!.entities).hasSize(2)
+        assertThat(result.meta.subgraph1Stats.entities).isEqualTo(2)
+        assertThat(result.meta.resultCount).isEqualTo(2)
+    }
+
+    @Test
+    fun shouldNotReuseClosedGraph_whenSameScriptRepeated() {
+        val first = engine.eval(sampleSubgraph(), "g.V()")
+        assertThat(first.items).hasSize(2)
+        val empty = engine.eval(BoMGraphContents(entities = emptyList(), edges = emptyList()), "g.V()")
+        assertThat(empty.items).isEmpty()
+        val again = engine.eval(sampleSubgraph(), "g.V()")
+        assertThat(again.items).hasSize(2)
+        assertThat(again.contents!!.entities).hasSize(2)
+    }
+
+    @Test
     fun shouldInduceEdges_whenVertexOnlyHits() {
         val result = engine.eval(sampleSubgraph(), "g.V().hasLabel('Component')")
         assertThat(result.contents!!.edges.map { it.id }).containsExactly(e)

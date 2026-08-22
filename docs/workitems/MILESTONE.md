@@ -43,10 +43,7 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`catalog-schema-metadata`](completed/20260818-catalog-schema-metadata/STORY.md) — Allowed-edge description/verbs; free-text STRING `format`; tags + string attributes; enum `caption`; example schema browse lists allow-list rules (C-16). WI-000…WI-006.
 - [`live-store-apis`](completed/20260819-live-store-apis/STORY.md) — Live store APIs before versions: catalog helpers, reverse lookup, identity query, `copyGraph` + `mergeGraph`, paging (C-17). WI-000…WI-007.
 - [`versions-and-snapshots`](completed/20260819-versions-and-snapshots/STORY.md) — HEAD+history, clocks, `createDeepGraphVersion` freeze (same graph); `clone()` kept as new-id copy; workbench versions + product tour; SBOM fingerprint freeze (C-18). WI-000…WI-007.
-
-### In Progress
-
-_(none)_
+- [`workbench-ux`](completed/20260822-workbench-ux/STORY.md) — Shared graph context (Explorer/Objects/Query); graph version pin; Notes 3–9 view chrome; object viewer; Query/Objects/Composer/Schema polish; product tour v2 + `ui.md` (U-7). WI-000…WI-012, WI-005.
 
 ### Planned
 

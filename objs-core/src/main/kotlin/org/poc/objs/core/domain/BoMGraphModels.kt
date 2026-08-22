@@ -37,6 +37,21 @@ data class BoMGraphVersionSummary(
     val annotations: Map<String, String>,
 )
 
+/** Entity or edge history row (newest-first list). */
+data class BoMInstanceVersionSummary(
+    val id: UUID,
+    val version: Long,
+    val createdAt: Instant,
+    val updatedAt: Instant,
+    val annotations: Map<String, String> = emptyMap(),
+)
+
+/** Total + newest-first recent versions for object-viewer Versions section. */
+data class BoMInstanceVersionStats(
+    val total: Long,
+    val recent: List<BoMInstanceVersionSummary>,
+)
+
 /** Header + resolved live [BoMGraphContents] (member ids unchanged). */
 data class BoMResolvedGraph @JvmOverloads constructor(
     val id: UUID,

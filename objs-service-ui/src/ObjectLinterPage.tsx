@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ActionIcon,
   Alert,
   Badge,
   Box,
@@ -8,7 +7,6 @@ import {
   Code,
   Group,
   Paper,
-  Popover,
   Stack,
   Table,
   Tabs,
@@ -16,7 +14,6 @@ import {
   Title,
   Tooltip,
 } from '@mantine/core'
-import { IconHelp } from '@tabler/icons-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { mutationShapeError, normalizeGraphMutation } from './graphDraft'
 import {
@@ -27,7 +24,7 @@ import {
   validateGraphMutation,
   toGraphData,
 } from './api'
-import { CurrentGraphBar } from './CurrentGraphBar'
+import { ComposerGraphBar } from './ComposerGraphBar'
 import { JsonYamlEditor, type JsonYamlEditorHandle } from './JsonYamlEditor'
 import { NewGraphModal } from './NewGraphModal'
 import { NewUuidButton } from './NewUuidButton'
@@ -36,8 +33,16 @@ import {
   type ObjectLinterVisualPanelHandle,
 } from './ObjectLinterVisualPanel'
 import { OpenGraphModal } from './OpenGraphModal'
+import { OpenMatcherModal } from './OpenMatcherModal'
 import type { QueryExecStats } from './queryExecStats'
-import type { BoMGraphResponse, BoMGraphContents, BoMValidationIssue, GraphValidationResult } from './types'
+import type {
+  BoMEdge,
+  BoMEntity,
+  BoMGraphResponse,
+  BoMGraphContents,
+  BoMValidationIssue,
+  GraphValidationResult,
+} from './types'
 import { useCurrentGraphId } from './useCurrentGraph'
 import { useGraphDraft } from './useGraphDraft'
 import { useGraphSelectionHistory } from './useGraphSelectionHistory'
@@ -46,11 +51,9 @@ import {
   entityIdsFromValidationIssues,
   validationTargetFromIssue,
 } from './validationIssueTargets'
+import { VIEW_ACTION_BUTTON_SIZE } from './viewActionButtons'
 
 export { graphShapeError, mutationShapeError } from './graphDraft'
-
-const COMPOSER_HELP =
-  'Add objects into the draft, edit visually or as YAML/JSON, then Validate or Save (transactional upsert + delete) into the current graph. First Save creates a graph when none is selected.'
 
 function annotationsEqual(a: Record<string, string>, b: Record<string, string>): boolean {
   const aKeys = Object.keys(a)
@@ -128,6 +131,7 @@ export function ObjectLinterPage() {
   const [result, setResult] = useState<GraphValidationResult | null>(null)
   const [addObjectsOpen, setAddObjectsOpen] = useState(false)
   const [openGraphOpen, setOpenGraphOpen] = useState(false)
+  const [openMatcherForNew, setOpenMatcherForNew] = useState(false)
   const [snapshotOpen, setSnapshotOpen] = useState(false)
   const [cloneOpen, setCloneOpen] = useState(false)
   const [handoffMatcher, setHandoffMatcher] = useState<unknown | null>(null)
@@ -202,6 +206,18 @@ export function ObjectLinterPage() {
     setResult(null)
     setError(null)
   }, [clearDraft, clearQuery, setCurrentGraphId])
+
+  const onComposerMatcherApplied = useCallback(
+    (contents: { entities: unknown[]; edges: unknown[] }) => {
+      onNewGraphChrome()
+      const entities = contents.entities as BoMEntity[]
+      const edges = contents.edges as BoMEdge[]
+      if (entities.length > 0) mergeEntities(entities)
+      if (edges.length > 0) mergeEdges(edges)
+      setTab('visual')
+    },
+    [mergeEdges, mergeEntities, onNewGraphChrome],
+  )
 
   // Keep opened-graph chrome and Visual draft in sync: remount / shared currentGraphId
   // previously restored annotations only, leaving an empty canvas.
@@ -521,123 +537,129 @@ export function ObjectLinterPage() {
 
   return (
     <Stack gap="sm" style={{ flex: 1, minHeight: 0, height: '100%' }}>
-      <Group justify="space-between" align="flex-start" wrap="wrap" style={{ flexShrink: 0 }}>
-        <Group gap={6} align="center">
-          <Title order={3}>Composer</Title>
-          <Popover width={380} position="bottom-start" withArrow shadow="md">
-            <Popover.Target>
-              <ActionIcon variant="subtle" color="gray" size="sm" aria-label="Composer help">
-                <IconHelp size={16} />
-              </ActionIcon>
-            </Popover.Target>
-            <Popover.Dropdown>
-              <Text size="sm" c="dimmed">
-                {COMPOSER_HELP}
-              </Text>
-            </Popover.Dropdown>
-          </Popover>
-        </Group>
-        <Group gap="xs" wrap="wrap">
-          <Button size="sm" variant="default" onClick={resetToRollback}>
-            Reset
-          </Button>
-          <Button
-            size="sm"
-            variant="default"
-            color="red"
-            onClick={() => {
-              clearDraft()
-              clearQuery()
-              setResult(null)
-            }}
-          >
-            Clear
-          </Button>
-          <Button size="sm" loading={busy} variant="light" onClick={() => void validate()}>
-            Validate
-          </Button>
-          <Tooltip
-            label={
-              saveEnabled
-                ? undefined
-                : 'Nothing to save — draft is clean and the graph is already saved'
-            }
-            disabled={saveEnabled}
-            withArrow
-          >
-            <span style={{ display: 'inline-flex' }}>
-              <Button
-                size="sm"
-                loading={busy}
-                disabled={!saveEnabled}
-                onClick={() => void saveGraph()}
-              >
-                Save
-              </Button>
-            </span>
-          </Tooltip>
-          <Tooltip
-            label={
-              snapshotEnabled
-                ? undefined
-                : 'Create version requires a saved, clean graph (not dirty / not unsaved)'
-            }
-            disabled={snapshotEnabled}
-            withArrow
-          >
-            <span style={{ display: 'inline-flex' }} data-tour="composer-version">
-              <Button
-                size="sm"
-                variant="light"
-                disabled={!snapshotEnabled}
-                onClick={() => setSnapshotOpen(true)}
-              >
-                Create version
-              </Button>
-            </span>
-          </Tooltip>
-          <Tooltip
-            label={
-              snapshotEnabled
-                ? undefined
-                : 'Clone requires a saved, clean graph (not dirty / not unsaved)'
-            }
-            disabled={snapshotEnabled}
-            withArrow
-          >
-            <span style={{ display: 'inline-flex' }}>
-              <Button
-                size="sm"
-                variant="light"
-                disabled={!snapshotEnabled}
-                onClick={() => setCloneOpen(true)}
-              >
-                Clone
-              </Button>
-            </span>
-          </Tooltip>
-          {mutationBody.upsert.entities.length + mutationBody.upsert.edges.length > 0 && (
-            <Badge color="blue" variant="light" size="sm">
-              {mutationBody.upsert.entities.length + mutationBody.upsert.edges.length} upsert
-              {mutationBody.upsert.entities.length + mutationBody.upsert.edges.length === 1
-                ? ''
-                : 's'}
-            </Badge>
-          )}
-          {pendingDeleteCount > 0 && (
-            <Badge color="orange" variant="filled" size="sm">
-              {pendingDeleteCount} pending delete{pendingDeleteCount === 1 ? '' : 's'}
-            </Badge>
-          )}
-        </Group>
+      <Group align="center" wrap="nowrap" gap="md" style={{ flexShrink: 0 }}>
+        <Title order={3} style={{ flexShrink: 0 }}>
+          Composer
+        </Title>
+        <Box style={{ flex: 1, minWidth: 0 }}>
+          <ComposerGraphBar
+            graphId={currentGraphId}
+            annotations={graphAnnotations}
+            versionLabel={currentGraphId != null ? 'Latest' : null}
+            nodeCount={graphView.nodes.length}
+            edgeCount={graphView.links.length}
+            onBlank={onNewGraphChrome}
+            onOpenMatcher={() => setOpenMatcherForNew(true)}
+            onOpenGraph={() => setOpenGraphOpen(true)}
+          />
+        </Box>
       </Group>
 
-      <CurrentGraphBar
-        graphId={currentGraphId}
-        annotations={currentGraphId != null ? graphAnnotations : null}
-        onOpenGraph={() => setOpenGraphOpen(true)}
-        onNewGraph={onNewGraphChrome}
-      />
+      <Group
+        justify="flex-end"
+        align="center"
+        wrap="wrap"
+        style={{ flexShrink: 0 }}
+        gap="xs"
+        data-tour="composer-view-actions"
+      >
+        <Button size={VIEW_ACTION_BUTTON_SIZE} variant="default" onClick={resetToRollback}>
+          Reset
+        </Button>
+        <Button
+          size={VIEW_ACTION_BUTTON_SIZE}
+          variant="default"
+          color="red"
+          onClick={() => {
+            clearDraft()
+            clearQuery()
+            setResult(null)
+          }}
+        >
+          Clear
+        </Button>
+        <Button
+          size={VIEW_ACTION_BUTTON_SIZE}
+          loading={busy}
+          variant="light"
+          onClick={() => void validate()}
+        >
+          Validate
+        </Button>
+        <Tooltip
+          label={
+            saveEnabled
+              ? undefined
+              : 'Nothing to save — draft is clean and the graph is already saved'
+          }
+          disabled={saveEnabled}
+          withArrow
+        >
+          <span style={{ display: 'inline-flex' }}>
+            <Button
+              size={VIEW_ACTION_BUTTON_SIZE}
+              loading={busy}
+              disabled={!saveEnabled}
+              onClick={() => void saveGraph()}
+            >
+              Save
+            </Button>
+          </span>
+        </Tooltip>
+        <Tooltip
+          label={
+            snapshotEnabled
+              ? undefined
+              : 'Create version requires a saved, clean graph (not dirty / not unsaved)'
+          }
+          disabled={snapshotEnabled}
+          withArrow
+        >
+          <span style={{ display: 'inline-flex' }} data-tour="composer-version">
+            <Button
+              size={VIEW_ACTION_BUTTON_SIZE}
+              variant="light"
+              disabled={!snapshotEnabled}
+              onClick={() => setSnapshotOpen(true)}
+            >
+              Create version
+            </Button>
+          </span>
+        </Tooltip>
+        <Tooltip
+          label={
+            snapshotEnabled
+              ? undefined
+              : 'Clone requires a saved, clean graph (not dirty / not unsaved)'
+          }
+          disabled={snapshotEnabled}
+          withArrow
+        >
+          <span style={{ display: 'inline-flex' }}>
+            <Button
+              size={VIEW_ACTION_BUTTON_SIZE}
+              variant="light"
+              disabled={!snapshotEnabled}
+              onClick={() => setCloneOpen(true)}
+            >
+              Clone
+            </Button>
+          </span>
+        </Tooltip>
+        {mutationBody.upsert.entities.length + mutationBody.upsert.edges.length > 0 && (
+          <Badge color="blue" variant="light" size="sm">
+            {mutationBody.upsert.entities.length + mutationBody.upsert.edges.length} upsert
+            {mutationBody.upsert.entities.length + mutationBody.upsert.edges.length === 1
+              ? ''
+              : 's'}
+          </Badge>
+        )}
+        {pendingDeleteCount > 0 && (
+          <Badge color="orange" variant="filled" size="sm">
+            {pendingDeleteCount} pending delete{pendingDeleteCount === 1 ? '' : 's'}
+          </Badge>
+        )}
+      </Group>
 
       <Tabs
         value={tab}
@@ -868,6 +890,14 @@ export function ObjectLinterPage() {
         opened={openGraphOpen}
         onClose={() => setOpenGraphOpen(false)}
         onOpen={onOpenGraph}
+      />
+      <OpenMatcherModal
+        opened={openMatcherForNew}
+        onClose={() => setOpenMatcherForNew(false)}
+        bindSharedContext={false}
+        title="New graph from matcher"
+        description="Run a matcher and seed a new Composer draft with the returned entities and edges. This does not change the shared graph context on Explorer, Objects, or Query."
+        onApplied={(contents) => onComposerMatcherApplied(contents)}
       />
       <NewGraphModal
         opened={snapshotOpen}

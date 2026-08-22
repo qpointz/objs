@@ -48,6 +48,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | U-4 | Workbench chrome: Explorer Graph vs non-graph + Explore-scope fragment | improvement | done | [`completed/20260811-workbench-chrome-regroup/`](completed/20260811-workbench-chrome-regroup/STORY.md) |
 | U-5 | Objects top-level view + shelf → New graph in Composer | feature | done | [`completed/20260813-objects-shelf/`](completed/20260813-objects-shelf/STORY.md) |
 | U-6 | Workbench UI Gradle build via node-gradle plugin (`:objs-service-ui`) | improvement | done | [`completed/20260813-ui-gradle-node/`](completed/20260813-ui-gradle-node/STORY.md) |
+| U-7 | Workbench UX: shared graph context (Explorer/Objects/Query) + chrome | improvement | done | [`completed/20260822-workbench-ux/`](completed/20260822-workbench-ux/STORY.md) |
 
 ---
 
@@ -81,6 +82,6 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | Status | Count |
 |--------|------:|
 | backlog | 2 |
-| planned | 3 |
+| planned | 2 |
 | in-progress | 0 |
-| done | 28 |
+| done | 29 |
