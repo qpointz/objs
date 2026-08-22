@@ -215,6 +215,19 @@ class ApplicationVersionServiceTest {
     }
 
     @Test
+    fun shouldReverseLookupPinnedGraphAfterLiveDetach() {
+        val app = inventory.create(CreateApplicationRequest(name = "PinUsage"))
+        val assetId = addComponent(app.id, "pinned-lib")
+        val draftId = versions.draft(app.id)!!.id
+        val before = namedGraphs.listGraphIdsForEntity(assetId).toSet()
+        versions.fingerprint(app.id, draftId, CreateFingerprintRequest(note = "gate"))
+        val fpGraphId = (namedGraphs.listGraphIdsForEntity(assetId).toSet() - before).single()
+        namedGraphs.detach(fpGraphId, assetId)
+
+        assertThat(namedGraphs.listGraphIdsForEntity(assetId)).contains(fpGraphId)
+    }
+
+    @Test
     fun shouldInferVersionDepsViaSharedPoolAssets() {
         val a = inventory.create(CreateApplicationRequest(name = "A"))
         val b = inventory.create(CreateApplicationRequest(name = "B"))

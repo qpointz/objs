@@ -45,6 +45,7 @@ class BoMNamedGraphStore(
     private val dataSource: DataSource,
     @Lazy private val graphStore: BoMGraphStore,
     private val deepVersions: BoMDeepGraphVersionService,
+    private val versionMemberRepository: BoMGraphVersionMemberRepository,
 ) {
     private val jdbc = JdbcTemplate(dataSource)
     private val objectMapper = ObjectMapper()
@@ -357,10 +358,13 @@ class BoMNamedGraphStore(
     @Transactional(readOnly = true)
     fun getEdgeVersion(edgeId: UUID, version: Long) = deepVersions.getEdgeVersion(edgeId, version)
 
-    /** Graphs that contain [entityId] (G-A5). Empty for orphans. */
+    /** Graphs with live membership or a deep-version pin for [entityId] (G-A5 + C-19). Empty for orphans. */
     @Transactional(readOnly = true)
-    fun listGraphIdsForEntity(entityId: UUID): List<UUID> =
-        membershipRepository.findByEntityId(entityId).map { it.graphId }.distinct()
+    fun listGraphIdsForEntity(entityId: UUID): List<UUID> {
+        val live = membershipRepository.findByEntityId(entityId).map { it.graphId }
+        val pinned = versionMemberRepository.findDistinctGraphIdsByEntityId(entityId)
+        return (live + pinned).distinct().sortedBy { it.toString() }
+    }
 
     /**
      * Graph-local edges incident to [entityId] (G-A14). Optional [graphId] restricts to one graph.

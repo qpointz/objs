@@ -8,7 +8,7 @@
 **Base:** `origin/dev`  
 **Design:** [`docs/design/ui.md`](../../../design/ui.md)  
 **Gaps:** [`GAPS.md`](GAPS.md)  
-**UX notes:** [`UX-NOTES/Note 1.md`](UX-NOTES/Note1/Note%201.md), [`UX-NOTES/Note2.md`](UX-NOTES/Note2/Note2.md), [`UX-NOTES/Note 3.md`](UX-NOTES/Note3/Note%203.md), [`UX-NOTES/Note4.md`](UX-NOTES/Note4/Note4.md), [`UX-NOTES/Note5`](UX-NOTES/Note5/Object%20details%20view.md), [`UX-NOTES/Note6`](UX-NOTES/Note6/Note%206.md), [`UX-NOTES/Note7`](UX-NOTES/Note7/Note7.md), [`UX-NOTES/Note8`](UX-NOTES/Note8/Note%208.md), [`UX-NOTES/Note9`](UX-NOTES/Note9/Note%209.md)  
+**UX notes:** removed intentionally — intent retained in [`GAPS.md`](GAPS.md) and [`docs/design/ui.md`](../../../design/ui.md).
 **Process:** [`docs/workitems/RULES.md`](../../RULES.md)
 
 ## Goal

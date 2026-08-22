@@ -177,9 +177,34 @@ class BoMPoolEntityReader(
                 params += PayloadMapper.mapper.writeValueAsString(group.payloadEquals)
             }
             for ((key, value) in group.payloadNotEquals) {
-                where += "(payload ->> ?) IS DISTINCT FROM ?"
+                where += "${payloadTextExpr()} IS DISTINCT FROM ?"
                 params += key
                 params += value
+            }
+            for ((key, value) in group.payloadGt) {
+                where += "${payloadTextExpr()} > ?"
+                params += key
+                params += value
+            }
+            for ((key, value) in group.payloadGe) {
+                where += "${payloadTextExpr()} >= ?"
+                params += key
+                params += value
+            }
+            for ((key, value) in group.payloadLt) {
+                where += "${payloadTextExpr()} < ?"
+                params += key
+                params += value
+            }
+            for ((key, value) in group.payloadLe) {
+                where += "${payloadTextExpr()} <= ?"
+                params += key
+                params += value
+            }
+            for ((key, prefix) in group.payloadPrefix) {
+                where += "${payloadTextExpr()} LIKE ?"
+                params += key
+                params += sqlLikePrefix(prefix)
             }
             require(where.isNotEmpty()) { "obj-expr AND-group WHERE must not be empty" }
             groupSql += "(${where.joinToString(" AND ")})"
@@ -212,6 +237,8 @@ class BoMPoolEntityReader(
             DataSourceUtils.releaseConnection(connection, dataSource)
         }
     }
+
+    private fun payloadTextExpr(): String = "(payload ->> ?)"
 
     private fun entitySelectSql(projection: BoMEntityColumnProjection, postgresCast: Boolean): String {
         val cast = if (postgresCast) "::text" else ""
@@ -297,8 +324,8 @@ class BoMPoolEntityReader(
         }
 
         override fun objExprPushdownSource(plan: BoMObjExprPushdown): BoMCandidateSource? {
-            // Scalar / ->> predicates work on H2 + Postgres; JSONB @> requires Postgres.
-            if (plan.needsJsonbContainment && !isPostgres) {
+            // JSONB @> requires Postgres; scalar payload compares / prefix pushdown is Postgres-first.
+            if (!isPostgres && (plan.needsJsonbContainment || plan.needsPayloadScalarPredicates)) {
                 return null
             }
             return BoMCandidateSource { checkBudget ->
@@ -313,6 +340,12 @@ class BoMPoolEntityReader(
         const val IN_CHUNK_SIZE = 500
         const val SELECTION_BUDGET_MINUTES = 3L
         val SELECTION_BUDGET_NANOS: Long = TimeUnit.MINUTES.toNanos(SELECTION_BUDGET_MINUTES)
+
+        internal fun sqlLikePrefix(prefix: String): String =
+            prefix
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_") + "%"
     }
 }
 

@@ -33,7 +33,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | C-16 | Catalog metadata: allowed-edge description/verbs; free-text STRING format; tags + string attributes; enum captions; example schema browse lists allow-list rules | feature | done | [`completed/20260818-catalog-schema-metadata/`](completed/20260818-catalog-schema-metadata/STORY.md) |
 | C-17 | Live store APIs (before versions): catalog, reverse, identity, `copyGraph` + `mergeGraph`, paging | feature | done | [`completed/20260819-live-store-apis/`](completed/20260819-live-store-apis/STORY.md), [`SEQUENCE.md`](SEQUENCE.md) |
 | C-18 | HEAD+history, clocks, `createDeepGraphVersion` (Snapshot freeze); `clone()` kept as new-id deep copy | feature | done | [`completed/20260819-versions-and-snapshots/`](completed/20260819-versions-and-snapshots/STORY.md) |
-| C-19 | Foundation after versions: pin reverse lookup, remaining matcher ops (clocks are C-18) | feature | planned | [`planned/foundation-after-versions/`](planned/foundation-after-versions/STORY.md) |
+| C-19 | Foundation after versions: pin reverse lookup, remaining matcher ops (clocks are C-18) | feature | done | [`completed/20260822-foundation-after-versions/`](completed/20260822-foundation-after-versions/STORY.md) |
 | C-20 | Store text search (FB-3 contains/`q`); design first | feature | planned | [`planned/store-text-search/`](planned/store-text-search/STORY.md), [`SEQUENCE.md`](SEQUENCE.md) |
 
 ---

@@ -123,6 +123,41 @@ class AssetInventoryServiceTest {
     }
 
     @Test
+    fun shouldSearchByPrefixFilter() {
+        assets.create(
+            CreatePoolAssetRequest(
+                type = "Component",
+                payload =
+                    mapOf(
+                        "name" to "jackson-core",
+                        "version" to "2.17.0",
+                        "ecosystem" to "maven",
+                        "kind" to "library",
+                    ),
+            ),
+        )
+        assets.create(
+            CreatePoolAssetRequest(
+                type = "Component",
+                payload =
+                    mapOf(
+                        "name" to "guava",
+                        "version" to "33.0",
+                        "ecosystem" to "maven",
+                        "kind" to "library",
+                    ),
+            ),
+        )
+
+        val hit =
+            assets.search(
+                AssetSearchRequest(type = "Component", filters = mapOf("name" to "jackson*")),
+            )
+        assertThat(hit).hasSize(1)
+        assertThat(hit[0].label).isEqualTo("jackson-core@2.17.0")
+    }
+
+    @Test
     fun shouldPageSearchResults() {
         repeat(3) { i ->
             assets.create(

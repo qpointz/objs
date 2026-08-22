@@ -97,5 +97,9 @@ class BoMCatalogSupportTest {
         assertThat(catalog.displayLabel(mapOf("name" to "  "), "Component", schema)).isEqualTo("Component")
         assertThat(catalog.filterMapToObjExpr(mapOf("type" to "Component", "name" to "Log4j")))
             .isEqualTo("type == 'Component' && p['name'] == 'Log4j'")
+        assertThat(catalog.filterMapToObjExpr(mapOf("name" to "Log4*")))
+            .isEqualTo("p['name'] =~ '^Log4'")
+        assertThat(catalog.filterMapToObjExpr(mapOf("version" to ">2.0")))
+            .isEqualTo("p['version'] > '2.0'")
     }
 }

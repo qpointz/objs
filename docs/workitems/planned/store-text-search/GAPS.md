@@ -36,6 +36,6 @@ Status: `open` | `resolved` | `deferred` | `cancelled` | `accepted-risk`.
 | # | Topic | Status | Notes |
 |---|--------|--------|-------|
 | G-X1 | `tsvector` / ranking / stemming | **deferred** | Later FTS story |
-| G-X2 | FB-3 operators other than contains/`q` | **deferred** | **C-19** [`foundation-after-versions`](../foundation-after-versions/STORY.md) |
+| G-X2 | FB-3 operators other than contains/`q` | **resolved** | **C-19** [`foundation-after-versions`](../../completed/20260822-foundation-after-versions/STORY.md) (`>`, prefix) |
 | G-X3 | Schema-explorer client `includes` | **cancelled** | Small catalog; leave client-side |
 | G-X4 | C-17 paging / catalog / copy / merge | **deferred** | [`live-store-apis`](../../completed/20260819-live-store-apis/STORY.md) |

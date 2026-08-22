@@ -479,7 +479,7 @@ Schema links from the edit form open in a **new tab**. **Add objects…** uses t
 
 | API | |
 |-----|--|
-| Add objects / Search | With current graph: `POST /api/v1/objs/graphs/{id}/query`. With **no** graph + `obj-expr`: `POST /api/v1/objs/entities/query` (pool, orphans included). `all` / `graph-expr`: `POST /api/v1/objs/graphs/query` |
+| Add objects / Search | Always pool / cross-graph (not limited to current graph): `obj-expr` → `POST /api/v1/objs/entities/query` (pool, orphans included); `all` / `graph-expr` → `POST /api/v1/objs/graphs/query`. Objects page in graph context still uses `POST …/graphs/{id}/query`. |
 | Validate | `BoMGraphMutation` dry-run |
 | Save (existing graph) | `PUT /api/v1/objs/graphs/{id}` |
 | Save (no graph id) | `POST /api/v1/objs/graphs` with `entityIds` + edge upserts |

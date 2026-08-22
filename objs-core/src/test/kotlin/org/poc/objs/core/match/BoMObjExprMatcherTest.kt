@@ -79,6 +79,59 @@ class BoMObjExprMatcherTest {
     }
 
     @Test
+    fun shouldLowerPayloadCompareAndPrefix() {
+        val compare = BoMObjExprMatcher("type == 'Component' && p.version > '2.0'")
+        assertThat(compare.localEvalOnly).isFalse()
+        assertThat(compare.pushdown!!.dnf.single().payloadGt).isEqualTo(mapOf("version" to "2.0"))
+
+        val prefix = BoMObjExprMatcher("type == 'Component' && p.name =~ '^Apache'")
+        assertThat(prefix.localEvalOnly).isFalse()
+        assertThat(prefix.pushdown!!.dnf.single().payloadPrefix).isEqualTo(mapOf("name" to "Apache"))
+    }
+
+    @Test
+    fun shouldNotLowerUnanchoredRegexForPushdown() {
+        val matcher = BoMObjExprMatcher("p.name =~ \"Apache\"")
+        assertThat(matcher.localEvalOnly).isTrue()
+        assertThat(matcher.pushdown).isNull()
+    }
+
+    @Test
+    fun shouldMatchCombinedTypeAndAnchoredPrefix() {
+        val matcher = BoMObjExprMatcher("type == 'Component' && p.name =~ '^Apache'")
+        val hit = BoMEntityDomainCandidate(
+            BoMEntity(
+                type = "Component",
+                schemaVersion = "1.0.0",
+                payload = mutableMapOf("name" to "Apache Kafka"),
+            ),
+        )
+        assertThat(matcher.matches(hit)).isTrue()
+        assertThat(matcher.localEvalOnly).isFalse()
+    }
+
+    @Test
+    fun shouldMatchAnchoredPrefixRegex() {
+        val matcher = BoMObjExprMatcher("p.name =~ '^Apache'")
+        val hit = BoMEntityDomainCandidate(
+            BoMEntity(
+                type = "Component",
+                schemaVersion = "1.0.0",
+                payload = mutableMapOf("name" to "Apache Kafka"),
+            ),
+        )
+        val miss = BoMEntityDomainCandidate(
+            BoMEntity(
+                type = "Component",
+                schemaVersion = "1.0.0",
+                payload = mutableMapOf("name" to "Log4j"),
+            ),
+        )
+        assertThat(matcher.matches(hit)).isTrue()
+        assertThat(matcher.matches(miss)).isFalse()
+    }
+
+    @Test
     fun shouldMatchRegexAsSubstring() {
         val matcher = BoMObjExprMatcher("p.name =~ \"Apache\"")
         val hit = BoMEntityDomainCandidate(

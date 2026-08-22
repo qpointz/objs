@@ -86,7 +86,8 @@ class BoMCatalogSupport(
     }
 
     /**
-     * Equality-only `obj-expr`, `&&` joined. Keys are payload paths, or `type` / `id` / `schemaVersion`.
+     * Equality and simple operator `obj-expr`, `&&` joined. Keys are payload paths, or `type` / `id` /
+     * `schemaVersion`. Filter values may use trailing `*` (prefix), or leading `>`, `>=`, `<`, `<=`.
      */
     fun filterMapToObjExpr(filters: Map<String, String>): String {
         val parts = mutableListOf<String>()
@@ -102,7 +103,20 @@ class BoMCatalogSupport(
                         "p['${escape(path)}']"
                     }
                 }
-            parts += "$lhs == '${escape(value)}'"
+            parts +=
+                when {
+                    key !in setOf("type", "id", "schemaVersion") && value.endsWith("*") && value.length > 1 ->
+                        "$lhs =~ '^${escape(value.dropLast(1))}'"
+                    value.startsWith(">=") ->
+                        "$lhs >= '${escape(value.removePrefix(">="))}'"
+                    value.startsWith("<=") ->
+                        "$lhs <= '${escape(value.removePrefix("<="))}'"
+                    value.startsWith(">") ->
+                        "$lhs > '${escape(value.removePrefix(">"))}'"
+                    value.startsWith("<") ->
+                        "$lhs < '${escape(value.removePrefix("<"))}'"
+                    else -> "$lhs == '${escape(value)}'"
+                }
         }
         return parts.joinToString(" && ")
     }

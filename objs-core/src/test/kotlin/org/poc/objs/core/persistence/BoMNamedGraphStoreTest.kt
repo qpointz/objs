@@ -22,6 +22,7 @@ import org.poc.objs.core.domain.BoMGraphException
 import org.poc.objs.core.domain.FirstSeenGraphMergePolicy
 import org.poc.objs.core.domain.BoMGraphSpec
 import org.poc.objs.core.match.BoMGraphExprMatcher
+import org.poc.objs.core.match.BoMObjExprMatcher
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.SpringBootConfiguration
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration
@@ -68,6 +69,9 @@ class BoMNamedGraphStoreTest {
 
     @Autowired
     lateinit var jdbc: JdbcTemplate
+
+    @Autowired
+    lateinit var poolReader: BoMPoolEntityReader
 
     private lateinit var a: UUID
     private lateinit var b: UUID
@@ -624,6 +628,52 @@ class BoMNamedGraphStoreTest {
         assertThat(namedGraphs.listIncidentEdges(a, g1.id).single().target).isEqualTo(b)
         assertThat(namedGraphs.listIncidentEdges(a, g2.id)).isEmpty()
         assertThat(namedGraphs.listEntityIdsInGraph(g1.id)).containsExactlyInAnyOrder(a, b)
+    }
+
+    @Test
+    fun shouldListGraphIdsForEntity_includingPinAfterLiveDetach() {
+        val graph = namedGraphs.create(BoMGraphSpec(entityIds = setOf(a, b)))
+        namedGraphs.createDeepGraphVersion(graph.id, mapOf("label" to "snap"))
+        namedGraphs.detach(graph.id, a)
+
+        assertThat(membershipRepository.findByEntityId(a)).isEmpty()
+        assertThat(namedGraphs.listGraphIdsForEntity(a)).containsExactly(graph.id)
+        assertThat(namedGraphs.listGraphIdsForEntity(b)).containsExactly(graph.id)
+    }
+
+    @Test
+    fun shouldSelectFromPool_withCompareAndPrefixPushdown() {
+        assertThat(poolReader.isPostgres).isFalse()
+        graphStore.write(
+            BoMGraph(
+                entities =
+                    mutableListOf(
+                        BoMEntity(
+                            id = UUID.randomUUID(),
+                            type = "Person",
+                            schemaVersion = "1",
+                            payload = mutableMapOf("name" to "Amy"),
+                        ),
+                        BoMEntity(
+                            id = UUID.randomUUID(),
+                            type = "Person",
+                            schemaVersion = "1",
+                            payload = mutableMapOf("name" to "Bob"),
+                        ),
+                    ),
+            ),
+        )
+        val prefix =
+            graphStore.selectFromPool(
+                BoMObjExprMatcher("type == 'Person' && p.name =~ '^Bo'"),
+            )
+        assertThat(prefix.entities.map { it.payload["name"] }).containsExactly("Bob")
+
+        val compare =
+            graphStore.selectFromPool(
+                BoMObjExprMatcher("type == 'Person' && p.name > 'B'"),
+            )
+        assertThat(compare.entities.map { it.payload["name"] }).containsExactly("Bob")
     }
 
     @Test

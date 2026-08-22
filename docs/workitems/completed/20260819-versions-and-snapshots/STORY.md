@@ -5,7 +5,7 @@
 **Status:** closed  
 **Folder:** [`docs/workitems/completed/20260819-versions-and-snapshots/`](.)  
 **Backlog:** [C-18](../../BACKLOG.md) (done)  
-**Depends on:** **C-17 complete** (live `copyGraph` + `mergeGraph`); C-12 `clone()` **kept** (deep copy, new ids). This story adds Snapshot = `createDeepGraphVersion`. **Next:** [C-19](../../planned/foundation-after-versions/STORY.md)  
+**Depends on:** **C-17 complete** (live `copyGraph` + `mergeGraph`); C-12 `clone()` **kept** (deep copy, new ids). This story adds Snapshot = `createDeepGraphVersion`. **Next:** [C-19](../20260822-foundation-after-versions/STORY.md) (done)  
 **Design:** [`docs/design/graph/apps-vs-foundation.md`](../../../design/graph/apps-vs-foundation.md)  
 **Target ER:** [`ER.md`](ER.md)  
 **Gaps:** [`GAPS.md`](GAPS.md)  

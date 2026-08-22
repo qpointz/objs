@@ -1,6 +1,6 @@
 # Gaps — workbench-ux (U-7)
 
-Source of truth for UX intent: [`UX-NOTES/Note 1.md`](UX-NOTES/Note1/Note%201.md), [`UX-NOTES/Note2.md`](UX-NOTES/Note2/Note2.md), [`UX-NOTES/Note 3.md`](UX-NOTES/Note3/Note%203.md), [`UX-NOTES/Note4.md`](UX-NOTES/Note4/Note4.md), [`UX-NOTES/Note5`](UX-NOTES/Note5/Object%20details%20view.md), [`UX-NOTES/Note6`](UX-NOTES/Note6/Note%206.md), [`UX-NOTES/Note7`](UX-NOTES/Note7/Note7.md), [`UX-NOTES/Note8`](UX-NOTES/Note8/Note%208.md) (drafts).  
+Source of truth for UX intent: this file and [`docs/design/ui.md`](../../../design/ui.md). (`UX-NOTES/` drafts removed intentionally.)
 Summary table first; resolve or defer before the WI that needs the answer. Agent flips **resolved** when locked.
 
 | ID           | Topic                              | Status         | Notes                                                                                                                                                                 |

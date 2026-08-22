@@ -2,6 +2,7 @@ package org.poc.objs.core.persistence
 
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Query
 import java.util.UUID
 
 interface BoMEntityVersionRepository : JpaRepository<BoMEntityVersionRecord, BoMEntityVersionId> {
@@ -32,6 +33,14 @@ interface BoMEdgeVersionRepository : JpaRepository<BoMEdgeVersionRecord, BoMEdge
 
 interface BoMGraphVersionMemberRepository : JpaRepository<BoMGraphVersionMemberRecord, BoMGraphVersionMemberId> {
     fun findByGraphIdAndGraphVersion(graphId: UUID, graphVersion: Long): List<BoMGraphVersionMemberRecord>
+
+    @Query(
+        """
+        SELECT DISTINCT m.graphId FROM BoMGraphVersionMemberRecord m
+        WHERE m.entityId = :entityId
+        """,
+    )
+    fun findDistinctGraphIdsByEntityId(entityId: UUID): List<UUID>
 }
 
 interface BoMGraphVersionEdgeRepository : JpaRepository<BoMGraphVersionEdgeRecord, BoMGraphVersionEdgeId> {

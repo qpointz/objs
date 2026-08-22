@@ -193,7 +193,7 @@ No portfolios or MI here. CycloneDX download is hidden on application detail (ex
 Under **Applications** chrome.
 
 1. Search assets by type  
-2. Advanced search: dynamic form from schema — **`searchable` fields only**  
+2. Advanced search: dynamic form from schema — **`searchable` fields only**; equality, trailing `*` prefix, and leading `>`, `>=`, `<`, `<=` via `filterMapToObjExpr` (C-19); substring `q` is C-20  
 3. Inspect asset: which applications use it, and how  
 4. Find possible **duplicates** (find-only)  
 5. Optional **owning application**
@@ -312,7 +312,7 @@ Users see **friendly** labels (beautifier of role codes, e.g. `DEPENDS_ON` → �
 | Concern | Lock |
 |---------|------|
 | Asset types / relations | Reuse canonical ontology seed (`seeds/sbom-ontology.yaml`) |
-| Runtime UI / search forms | `BoMCatalogSupport` (latest schema, field hints, `displayLabel`, `filterMapToObjExpr`) via `GET /api/v1/inventory/asset-types`. Asset list uses paged `selectFromPool`. Asset “used in” is `listGraphIdsForEntity` + domain join. Duplicates use `findDuplicateGroups`. Text `q` is C-20. Application name `LIKE` stays domain. |
+| Runtime UI / search forms | `BoMCatalogSupport` (latest schema, field hints, `displayLabel`, `filterMapToObjExpr`) via `GET /api/v1/inventory/asset-types`. Asset list uses paged `selectFromPool`. Filters: equality, `name*` prefix, `>value` compares (C-19). Asset “used in” is `listGraphIdsForEntity` (live + pin graphs) + domain join. Duplicates use `findDuplicateGroups`. Text `q` is C-20. Application name `LIKE` stays domain. |
 | Schema browse allow-list | Core `allowedEdgesForType` (inbound/outbound including `*`) via `GET /api/v1/inventory/schema-catalog/{type}/allowed-edges` |
 | Typed Wave* / `SbomRegistry` | Builder parity helpers — **not** SoT |
 | Owning application | Annotation `owner` = application **name** |

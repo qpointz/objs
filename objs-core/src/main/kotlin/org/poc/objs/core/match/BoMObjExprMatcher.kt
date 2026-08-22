@@ -41,8 +41,8 @@ object BoMObjExprCompile {
  * Object expression matcher (DSL `obj-expr`).
  *
  * JEXL bindings: `id`, `type`, `schemaVersion`, `a` (annotations map), `p` (payload map).
- * Pushdown when the expression lowers to equality/inequality (`==`/`!=`) with `&&`/`||`
- * over those fields (see [BoMObjExprLowerer]).
+ * Pushdown when the expression lowers to supported predicates (`==`/`!=`, ordered compares,
+ * anchored prefix `=~ '^…'`) with `&&`/`||` over those fields (see [BoMObjExprLowerer]).
  */
 class BoMObjExprMatcher(
     val expression: String,
@@ -92,7 +92,7 @@ class BoMObjExprMatcher(
     }
 }
 
-/** DNF pushdown plan for [BoMObjExprMatcher] (`==`/`!=` with `&&`/`||` over supported fields). */
+/** DNF pushdown plan for [BoMObjExprMatcher] (equality, compares, prefix on supported fields). */
 data class BoMObjExprPushdown(
     val dnf: List<BoMObjExprAndGroup>,
 ) {
@@ -105,6 +105,17 @@ data class BoMObjExprPushdown(
 
     val needsJsonbContainment: Boolean
         get() = dnf.any { it.annotationEquals.isNotEmpty() || it.payloadEquals.isNotEmpty() }
+
+    val needsPayloadScalarPredicates: Boolean
+        get() =
+            dnf.any { group ->
+                group.payloadNotEquals.isNotEmpty() ||
+                    group.payloadGt.isNotEmpty() ||
+                    group.payloadGe.isNotEmpty() ||
+                    group.payloadLt.isNotEmpty() ||
+                    group.payloadLe.isNotEmpty() ||
+                    group.payloadPrefix.isNotEmpty()
+            }
 
     val isUnsatisfiable: Boolean get() = dnf.isEmpty()
 }
@@ -121,6 +132,11 @@ data class BoMObjExprAndGroup(
     val annotationNotEquals: Map<String, String> = emptyMap(),
     val payloadEquals: Map<String, String> = emptyMap(),
     val payloadNotEquals: Map<String, String> = emptyMap(),
+    val payloadGt: Map<String, String> = emptyMap(),
+    val payloadGe: Map<String, String> = emptyMap(),
+    val payloadLt: Map<String, String> = emptyMap(),
+    val payloadLe: Map<String, String> = emptyMap(),
+    val payloadPrefix: Map<String, String> = emptyMap(),
 ) {
     val hasConstraint: Boolean
         get() =
@@ -133,7 +149,12 @@ data class BoMObjExprAndGroup(
                 annotationEquals.isNotEmpty() ||
                 annotationNotEquals.isNotEmpty() ||
                 payloadEquals.isNotEmpty() ||
-                payloadNotEquals.isNotEmpty()
+                payloadNotEquals.isNotEmpty() ||
+                payloadGt.isNotEmpty() ||
+                payloadGe.isNotEmpty() ||
+                payloadLt.isNotEmpty() ||
+                payloadLe.isNotEmpty() ||
+                payloadPrefix.isNotEmpty()
 }
 
 private class ObjExprVariableContext(

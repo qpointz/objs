@@ -11,7 +11,7 @@ Product/domain work continues with stopgaps where noted; **do not** use `objs-se
 |----|----------------------|----------------|------------------------|-----------|--------|-------|
 | FB-1 | Who uses this asset, and how? | No reverse: entity → graphs + incident edges | `listGraphIdsForEntity` / `listIncidentEdges` | J2 usage, **MI-2/MI-3**, G-P4 inference | **done** | C-17 WI-003. SBOM usage + MI-2/3 join graph ids to applications |
 | FB-2 | Find duplicate assets by identifier | Identity projection exists; no find-by-identity query | `findEntitiesByIdentity` / `findDuplicateGroups` | J2 duplicates, **MI-4** | **done** | C-17 WI-004. Grouping in the store |
-| FB-3 | Advanced asset search from schema form | Pushdown may not cover all operators on **searchable** fields | Extend matcher pushdown | J2 advanced search | **open** | Contains/`q` → C-20; remaining operators → C-19. Slow path accepted |
+| FB-3 | Advanced asset search from schema form | Pushdown may not cover all operators on **searchable** fields | Extend matcher pushdown | J2 advanced search | **partial** | contains/`q` → C-20; `>`, prefix **done** (C-19); other ops backlog |
 | FB-4 | Portfolio MI via Gremlin over selection | Need programmatic traverse (not REST) | `BoMGremlinEngine.selectAndEval` already exists | **MI-1…MI-4** | **done** | Wire from `:sbom-service`; no new foundation WI |
 | FB-5 | Select graphs for portfolio level | No matcher for explicit graph-id set | `graphs-in` / `BoMGraphIdsMatcher` | **All MI** (R21→R22) | **done** | WI-014 |
 
@@ -21,7 +21,7 @@ Product/domain work continues with stopgaps where noted; **do not** use `objs-se
 |------------|----------------|----------|
 | R1–R6, R9, R13–R16, R21–R22 | Domain + existing store APIs | **OK** — example only |
 | R7–R8, R11, R18–R19 (reverse / shared) | `listGraphIdsForEntity` / `listIncidentEdges` | **done FB-1** (C-17 WI-003); domain still maps graph → application |
-| R10 searchable search | Partial pushdown | **open FB-3** + slow path (`q` = C-20) |
+| R10 searchable search | Partial pushdown | **partial FB-3** — `>`, prefix done (C-19); `q` = C-20 |
 | R12, R20 duplicates | `findDuplicateGroups` / `findEntitiesByIdentity` | **done FB-2** (C-17 WI-004) |
 | R17–R20 MI selection | No graph-id-set matcher | **done FB-5 / WI-014** (`graphs-in`) |
 | R17–R20 MI traverse | `BoMGremlinEngine.selectAndEval` | **done FB-4** |

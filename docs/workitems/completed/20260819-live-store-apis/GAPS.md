@@ -54,4 +54,4 @@ _(none — remaining work is implementation)_
 | G-X7 | Identity unique index / merge | **cancelled** | Find-only duplicates (G-P7) |
 | G-X8 | `created_by` / audit log / membership-row clocks | **cancelled** | |
 | G-X9 | Versions + snapshot pins | **deferred** | **C-18** [`versions-and-snapshots`](../../completed/20260819-versions-and-snapshots/STORY.md) |
-| G-X10 | Entity/edge/graph store clocks; pin reverse lookup; FB-3 remainder | **deferred** | **C-19** [`foundation-after-versions`](../../planned/foundation-after-versions/STORY.md) |
+| G-X10 | Entity/edge/graph store clocks; pin reverse lookup; FB-3 remainder | **resolved** | Clocks → C-18; pin reverse + `>` / prefix → **C-19** [`foundation-after-versions`](../../completed/20260822-foundation-after-versions/STORY.md) |

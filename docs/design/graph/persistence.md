@@ -26,7 +26,7 @@ No global graph: an entity **pool** (`bom_entity`) shared by many **graphs** (`b
 | `bom_entity.created_at` / `updated_at` (and every other `bom_*`) | Store-owned clocks — **C-18** Flyway V3. Client JSON ignored. |
 | `head_version` on `bom_entity` / `bom_graph` / `bom_graph_edge` | Nullable last **capture**. NULL until first Snapshot. Composite FK to `*_version` when set. |
 | `bom_entity_version` / `bom_graph_version` / `bom_graph_edge_version` | Immutable history. PK `(parent_id, version BIGINT)`. No FK back to HEAD. |
-| `bom_graph_version_member` / `bom_graph_version_edge` | Deep-freeze pins for `createDeepGraphVersion`. |
+| `bom_graph_version_member` / `bom_graph_version_edge` | Deep-freeze pins for `createDeepGraphVersion`. Index on `bom_graph_version_member(entity_id)` for pin reverse lookup (C-19 Flyway V5). |
 
 Live GET **never** joins `*_version`. Default persist is in-place HEAD (no version row). Capture is explicit `createDeepGraphVersion` (C-18 default `ExplicitOnlyVersioningStrategy`). DIY edits to `*_version` are **unsupported — at your own risk** (H2 demo). As-built schema: [`database-model.md`](database-model.md). Historical lock: [`ER.md`](../../workitems/completed/20260819-versions-and-snapshots/ER.md).
 
@@ -135,6 +135,7 @@ erDiagram
 - In an ordered matcher chain, only the first matcher may provide a source. Later matchers filter retained candidates in memory.
 - When the entity source is annotation containment, edges load via SQL joins on the same `@>` predicate bounded to the active graph scope, then retain edges among survivors. `graph-expr` sources instead project the graph's **stored** edges directly (no re-induction). Local-eval falls back to id-bounded `IN` induced-edge queries.
 - Filter-only matchers and non-PostgreSQL backends scan raw rows in memory using the same lazy maps.
+- **C-19:** `obj-expr` also pushdown scalar payload `>`, `>=`, `<`, `<=` and prefix (`p.field =~ '^prefix'`) on Postgres/H2 — see [`matcher-pushdown-remainder.md`](matcher-pushdown-remainder.md). Substring / `q` is **C-20**.
 
 **API response shape** (pagination, result caps, sparse projection) is **out of scope** for this execution-plan work; track as a compensating follow-up if backend gains are insufficient.
 

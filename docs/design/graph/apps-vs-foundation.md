@@ -1,7 +1,7 @@
 # Object store: foundation vs example apps
 
 **Status:** design note (2026-08-16), from SBOM inventory + asset repository  
-**Shipped:** [C-17 `live-store-apis`](../../workitems/completed/20260819-live-store-apis/STORY.md), [C-18 versions](../../workitems/completed/20260819-versions-and-snapshots/STORY.md) (clocks + HEAD/history + Snapshot freeze; `clone()` kept). Next: [C-19 after versions](../../workitems/planned/foundation-after-versions/STORY.md). Text `q`: [C-20 `store-text-search`](../../workitems/planned/store-text-search/STORY.md) (does not block C-18). Sequence: [`SEQUENCE.md`](../../workitems/SEQUENCE.md).  
+**Shipped:** [C-17 `live-store-apis`](../../workitems/completed/20260819-live-store-apis/STORY.md), [C-18 versions](../../workitems/completed/20260819-versions-and-snapshots/STORY.md) (clocks + HEAD/history + Snapshot freeze; `clone()` kept), [C-19 after versions](../../workitems/completed/20260822-foundation-after-versions/STORY.md) (pin reverse + `>` / prefix pushdown). Text `q`: [C-20 `store-text-search`](../../workitems/planned/store-text-search/STORY.md). Sequence: [`SEQUENCE.md`](../../workitems/SEQUENCE.md).  
 **Audience:** objs-core / graph APIs  
 **Not this doc:** product journeys, workbench REST (`objs-service`), Gradle/UI packaging (appendix only)
 
@@ -39,16 +39,16 @@ C-17 shipped catalog helpers, reverse/identity, live `copyGraph`/`mergeGraph`, a
 
 | Need | Why it is store, not product | Today |
 |------|------------------------------|--------|
-| **Searchable-field matcher pushdown** | Schema `searchable` + `obj-expr` should be the fast path | Incomplete operators → slow path (contains/`q` = C-20; rest C-19) |
+| **Searchable-field matcher pushdown** | Schema `searchable` + `obj-expr` should be the fast path | **C-19 shipped** — `>`, prefix; contains/`q` = **C-20** |
 | **Text `q` on payload scalars** | Objects page, SBOM assets, AR collection objects all need substring search | Equality `obj-expr` or load-then-filter; graph **header** search is separate |
 | **`createdAt` / `updatedAt` on graph, node, edge** | Every consumer wants last-changed; must not live in payload | Catalog already stamped. HEAD clocks are **C-18 WI-002** (not C-19) |
 | **Versions + snapshots** | Fingerprints must not pollute the live pool or drift when HEAD moves | Freeze = **`createDeepGraphVersion`** (same `graph_id`, pins). **`clone()` stays** a new-id deep copy with an empty history line. **C-18** [`versions-and-snapshots`](../../workitems/completed/20260819-versions-and-snapshots/STORY.md) |
 
 Shipped store APIs (C-17):
 
-- `listGraphIdsForEntity(entityId)` / `listIncidentEdges(entityId, graphId?)` — **shipped** (C-17 WI-003 / FB-1)
+- `listGraphIdsForEntity(entityId)` / `listIncidentEdges(entityId, graphId?)` — **shipped** (C-17 WI-003 / FB-1); **C-19** pin union — [`pin-reverse-lookup.md`](pin-reverse-lookup.md)
 - `findEntitiesByIdentity(type, identityMap)` / `findDuplicateGroups(type)` — **shipped** (C-17 WI-004 / FB-2)
-- Extend matcher pushdown on searchable paths — **FB-3** (`q` / contains = [C-20](../../workitems/planned/store-text-search/STORY.md); other ops C-19)
+- Extend matcher pushdown on searchable paths — **C-19** [`matcher-pushdown-remainder.md`](matcher-pushdown-remainder.md) (`>`, prefix); contains/`q` = [C-20](../../workitems/planned/store-text-search/STORY.md)
 - Pool/graph text `q` over identifier + searchable scalars — **C-20** (workbench Objects, SBOM assets, AR objects)
 - `selectFromPool(matcher, page)` + `countByType()` — **shipped** (C-17 WI-006)
 - Catalog helpers (`BoMCatalogSupport`) — **shipped** (C-17 WI-002)

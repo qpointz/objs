@@ -380,10 +380,11 @@ export function isBareObjExprMatcher(body: unknown): boolean {
 }
 
 /**
- * Composer Add objects Search routing.
- * With [graphId]: `POST …/graphs/{id}/query`. Without: bare `obj-expr` (or obj-expr-only chain)
- * hits `POST …/entities/query` (whole pool, orphans included, SQL pushdown). `all` / `graph-expr`
- * still use `POST …/graphs/query`.
+ * Add-objects / Objects-page Search routing when [graphId] is supplied.
+ * With [graphId]: `POST …/graphs/{id}/query` (Objects page in graph context). Without: bare
+ * `obj-expr` (or obj-expr-only chain) hits `POST …/entities/query` (whole pool). `all` /
+ * `graph-expr` use `POST …/graphs/query`. Composer Add objects passes null [graphId] so Search
+ * always uses pool / cross-graph endpoints.
  */
 export function scopeAddObjectsMatcher(body: unknown, graphId: string | null): {
   kind: 'in-graph' | 'graphs' | 'pool'
@@ -423,7 +424,7 @@ export async function queryEntities(matcherBody: unknown): Promise<BoMGraphConte
   return parseResponse<BoMGraphContents>(res)
 }
 
-/** Run Add objects Search against the current graph, the pool, or across graphs. */
+/** Run Add objects / Objects Search — pool, in-graph, or cross-graph per [graphId] and matcher. */
 export async function queryAddObjects(
   body: unknown,
   graphId: string | null,

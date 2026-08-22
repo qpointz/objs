@@ -19,7 +19,7 @@ function objExprForIds(ids: string[]): string {
 export type AddObjectsPanelProps = {
   /** When false, panel unmount effects reset auto-search state. */
   active: boolean
-  /** Current graph: Search scopes to its members; when null, obj-expr Search uses the pool. */
+  /** Current graph: used for induced-edge refresh on Done; Search always uses pool / cross-graph. */
   graphId: string | null
   onClose: () => void
   /** Hydrate matcher form (Explorer handoff). */
@@ -122,7 +122,7 @@ export function AddObjectsPanel({
       }
       setSearchBusy(true)
       const started = performance.now()
-      const subgraph = await queryAddObjects(body, graphId)
+      const subgraph = await queryAddObjects(body, null)
       const durationMs = performance.now() - started
       const entities = subgraph.entities ?? []
       const edges = subgraph.edges ?? []
@@ -192,12 +192,10 @@ export function AddObjectsPanel({
 
       <ScrollArea style={{ flex: 1, minHeight: 0 }} offsetScrollbars type="auto">
         <Stack gap="xs" pb="xs">
-          {!graphId && (
-            <Alert color="gray" p="xs" title="No current graph">
-              obj-expr Search runs over the entity pool (includes orphans). Open or save a graph
-              to scope Search to one graph; all / graph-expr still select across graphs.
-            </Alert>
-          )}
+          <Alert color="gray" p="xs" title="Search scope">
+            obj-expr runs over the entity pool (all objects, orphans included). all / graph-expr
+            search across graphs.
+          </Alert>
           <MatcherQueryForm
             ref={formRef}
             matcher={matcher}
