@@ -36,10 +36,14 @@ class ObjsFlywayAutoConfiguration {
     ): ObjsFlyway {
         val jdbcUrl = dataSource.connection.use { it.metaData.url }
         val location = ObjsFlywayVendor.resolveLocations(jdbcUrl, properties.locations)
+        // Existing app DBs are already non-empty (app tables at e.g. V8). Without baseline,
+        // Flyway refuses migrate when flyway_schema_history_objs is missing.
         val flyway = Flyway.configure()
             .dataSource(dataSource)
             .locations(location)
             .table(properties.table)
+            .baselineOnMigrate(true)
+            .baselineVersion("0")
             .load()
         flyway.migrate()
         return ObjsFlyway(flyway)
@@ -47,7 +51,8 @@ class ObjsFlywayAutoConfiguration {
 
     /**
      * Objs already created `bom_*`, so Boot Flyway sees a non-empty schema without
-     * `flyway_schema_history`. Baseline at `0` so the app line can still apply its own `V1`.
+     * `flyway_schema_history`. Baseline at `0` so a greenfield app line can still apply `V1`.
+     * Apps that already have Boot history (e.g. at V8) are unaffected.
      */
     @Bean
     fun objsFlywayBaselineAppHistory(): FlywayConfigurationCustomizer =
