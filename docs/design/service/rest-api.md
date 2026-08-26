@@ -68,6 +68,7 @@ graph's id). Same id in delete and upsert: upsert wins.
 | `DELETE` | `/registry/edges?sourceType&role&targetType` | Remove exact triple |
 | `GET`/`PUT` | `/registry/schemas/{type}/{version}/edges` | List / replace relations for an edge-property schema (includes `cardinality`) |
 | `POST` | `/registry/import?format=seeds` | Multipart catalog seed YAML (MERGE); Graph kinds rejected |
+| `POST` | `/registry/refresh` | Rehydrate schema + allowed-edge catalogs from the store (bypass TTL) |
 | `GET` | `/registry/export?format=seeds` | Catalog-only seed YAML |
 | `GET` | `/registry/export?format=json-schema` | Full-catalog JSON Schema for codegen; optional `dialect` / `includeEdges` / `includeEdgePropertySchemas` |
 

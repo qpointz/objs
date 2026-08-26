@@ -498,6 +498,15 @@ class ObjsRegistryControllerTest {
     }
 
     @Test
+    fun shouldRefreshCatalogs() {
+        schemas.register(BoMSchema("Person", "1", BoMSchemaDsl.obj("Person", "Person payload")))
+        mockMvc.perform(post("/api/v1/objs/registry/refresh"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.schemas").value(1))
+            .andExpect(jsonPath("$.edgeRules").value(0))
+    }
+
+    @Test
     fun shouldRejectUnknownExportFormat() {
         mockMvc.perform(get("/api/v1/objs/registry/export").param("format", "protobuf"))
             .andExpect(status().isBadRequest)

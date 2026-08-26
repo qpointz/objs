@@ -180,8 +180,13 @@ Persistence is the **enforcement** point for payload schema and allowed edges �
   (`UNSPECIFIED` / `1:1` / `1:*`, column default `UNSPECIFIED`), plus optional `description`,
   `source_verb`, `target_verb`, `tags`, and `attributes`. One property schema may be shared by
   many source–role–target rules. Identity remains `(source_type, role, target_type)`.
-- PostgreSQL is authoritative; application memory is a hydrated read cache.
-- Registry writes persist first and then update the cache.
+- PostgreSQL is authoritative; application memory holds a **write-through snapshot** with
+  **Caffeine TTL** revalidation (`objs.catalogs.cache-ttl`, default `30s`; `0` disables TTL expiry).
+- Registry writes persist first, then update the snapshot and reset the TTL clock.
+- When the TTL expires and no transaction is active, the next read reloads from PostgreSQL
+  (out-of-band truncates become visible without restart). Mid-TX reads skip TTL reload so seed
+  import keeps write-through visibility. Rollback still rehydrates the snapshot.
+- Ops can force an immediate reload with `POST /api/v1/objs/registry/refresh`.
 - Schema/edge-rule catalogs are **not** graphs — they are global allow-lists, unaffected by the pool/graph split.
 
 ## Testing

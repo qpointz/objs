@@ -23,29 +23,33 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories
  * Autoconfiguration for objs-core persistence and validation beans.
  *
  * Creates PostgreSQL-authoritative [JpaBoMSchemaCatalog] / [JpaBoMAllowedEdgeCatalog]
- * implementations with in-memory read caches. Tests or embedding applications that need
- * pure in-memory catalogs can provide their own [BoMSchemaCatalog] / [BoMAllowedEdgeCatalog]
- * beans.
+ * implementations with write-through + Caffeine TTL read snapshots. Tests or embedding
+ * applications that need pure in-memory catalogs can provide their own [BoMSchemaCatalog] /
+ * [BoMAllowedEdgeCatalog] beans.
  */
 @AutoConfiguration
 @Import(ObjsFlywayAutoConfiguration::class)
 @ComponentScan(basePackages = ["org.poc.objs.core"])
 @EntityScan(basePackages = ["org.poc.objs.core.persistence"])
 @EnableJpaRepositories(basePackages = ["org.poc.objs.core.persistence"])
-@EnableConfigurationProperties(BoMSeedProperties::class)
+@EnableConfigurationProperties(BoMSeedProperties::class, ObjsCatalogProperties::class)
 class ObjsCoreAutoConfiguration {
 
     // ── JPA-backed catalogs ──
 
     @Bean
     @ConditionalOnMissingBean(BoMSchemaCatalog::class)
-    fun bomSchemaCatalog(repo: BoMSchemaCatalogRepository): JpaBoMSchemaCatalog =
-        JpaBoMSchemaCatalog(repo)
+    fun bomSchemaCatalog(
+        repo: BoMSchemaCatalogRepository,
+        catalogProperties: ObjsCatalogProperties,
+    ): JpaBoMSchemaCatalog = JpaBoMSchemaCatalog(repo, catalogProperties)
 
     @Bean
     @ConditionalOnMissingBean(BoMAllowedEdgeCatalog::class)
-    fun bomAllowedEdgeCatalog(repo: BoMAllowedEdgeRuleRepository): JpaBoMAllowedEdgeCatalog =
-        JpaBoMAllowedEdgeCatalog(repo)
+    fun bomAllowedEdgeCatalog(
+        repo: BoMAllowedEdgeRuleRepository,
+        catalogProperties: ObjsCatalogProperties,
+    ): JpaBoMAllowedEdgeCatalog = JpaBoMAllowedEdgeCatalog(repo, catalogProperties)
 
     // ── Startup hydration (runs before other ApplicationRunners like SBOM registration) ──
 

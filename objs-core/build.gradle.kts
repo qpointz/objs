@@ -18,6 +18,7 @@ dependencies {
     api(libs.kotlin.reflect)
     implementation(libs.json.schema.validator)
     implementation(libs.commons.jexl)
+    implementation(libs.caffeine)
 }
 
 kotlin {

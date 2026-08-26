@@ -40,6 +40,7 @@ jackson-module-kotlin = { module = "tools.jackson.module:jackson-module-kotlin",
 
 json-schema-validator = { module = "com.networknt:json-schema-validator", version.ref = "jsonSchemaValidator" }
 commons-jexl = { module = "org.apache.commons:commons-jexl3", version.ref = "commonsJexl" }
+caffeine = { module = "com.github.ben-manes.caffeine:caffeine" }
 
 springdoc-openapi-starter-webmvc-ui = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springDoc" }
 

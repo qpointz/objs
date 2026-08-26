@@ -51,6 +51,22 @@ class ObjsRegistryController(
     private val seedSerializer: CanonicalSeedSerializer,
     private val fullCatalogJsonSchema: FullCatalogJsonSchemaExporter,
 ) {
+    @PostMapping("/refresh")
+    @Operation(
+        summary = "Rehydrate schema and allowed-edge catalogs from the durable store",
+        description = "Forces both catalogs to reload from PostgreSQL, discarding the in-memory " +
+            "snapshot. Use after out-of-band catalog changes (e.g. truncate) when waiting for " +
+            "`objs.catalogs.cache-ttl` is not acceptable. No-op for pure in-memory catalogs.",
+    )
+    fun refreshCatalogs(): Map<String, Any> {
+        schemas.refreshFromStore()
+        edgeRules.refreshFromStore()
+        return mapOf(
+            "schemas" to schemas.all().size,
+            "edgeRules" to edgeRules.all().size,
+        )
+    }
+
     @PostMapping(
         "/import",
         consumes = [MediaType.MULTIPART_FORM_DATA_VALUE],

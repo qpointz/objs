@@ -47,6 +47,12 @@ interface BoMSchemaCatalog {
     /** @return true if an entry was removed */
     fun remove(type: String, version: String): Boolean
     fun clear()
+
+    /**
+     * Reload this catalog from its durable store when applicable.
+     * No-op for pure in-memory catalogs.
+     */
+    fun refreshFromStore() {}
 }
 
 /** How edge properties behave for an allow-list rule (G-7). */
@@ -139,6 +145,12 @@ interface BoMAllowedEdgeCatalog {
     /** @return true if a rule with that exact triple key was removed */
     fun remove(sourceType: String, role: String, targetType: String): Boolean
     fun clear()
+
+    /**
+     * Reload this catalog from its durable store when applicable.
+     * No-op for pure in-memory catalogs.
+     */
+    fun refreshFromStore() {}
 }
 
 // ── Shared matching helpers (used by any implementation) ──
