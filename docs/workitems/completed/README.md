@@ -10,6 +10,7 @@ docs/workitems/completed/YYYYMMDD-<story-slug>/
 
 ## Index (optional, newest first)
 
+- [`20260826-catalog-cache-ttl`](20260826-catalog-cache-ttl/STORY.md) — Catalog cache TTL (Caffeine) + registry refresh (C-21)
 - [`20260822-foundation-after-versions`](20260822-foundation-after-versions/STORY.md) — Pin reverse lookup; leftover matcher pushdown `>` / prefix (C-19)
 - [`20260822-workbench-ux`](20260822-workbench-ux/STORY.md) — Shared graph context; version pin; view chrome; object viewer; tour v2 (U-7)
 - [`20260819-versions-and-snapshots`](20260819-versions-and-snapshots/STORY.md) — HEAD+history, clocks, deep graph freeze, workbench versions + tour, SBOM fingerprint freeze (C-18)

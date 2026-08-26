@@ -45,6 +45,7 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`versions-and-snapshots`](completed/20260819-versions-and-snapshots/STORY.md) — HEAD+history, clocks, `createDeepGraphVersion` freeze (same graph); `clone()` kept as new-id copy; workbench versions + product tour; SBOM fingerprint freeze (C-18). WI-000…WI-007.
 - [`workbench-ux`](completed/20260822-workbench-ux/STORY.md) — Shared graph context (Explorer/Objects/Query); graph version pin; Notes 3–9 view chrome; object viewer; Query/Objects/Composer/Schema polish; product tour v2 + `ui.md` (U-7). WI-000…WI-012, WI-005.
 - [`foundation-after-versions`](completed/20260822-foundation-after-versions/STORY.md) — Pin reverse lookup (live ∪ version pins); leftover matcher pushdown `>` / prefix (C-19). WI-000…WI-005 (WI-002 cancelled → C-18).
+- [`catalog-cache-ttl`](completed/20260826-catalog-cache-ttl/STORY.md) — Write-through + Caffeine TTL catalog snapshots; `POST /registry/refresh`; `objs.catalogs.cache-ttl` (C-21). WI-001…WI-003.
 
 ### Planned
 
