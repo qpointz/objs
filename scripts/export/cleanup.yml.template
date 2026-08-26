@@ -2,5 +2,11 @@
 # Copy this file to scripts/export/cleanup.yml and edit after your first dry-run.
 #
 # delete_dirs / delete_files are relative to OUT_DIR (not bom-poc source).
-delete_dirs: []
-delete_files: []
+delete_dirs:
+  - .gitlab
+  - deploy
+  - docs/workitems
+delete_files:
+  - .gitlab-ci.yml
+  - AGENTS.md
+  - VERSION
