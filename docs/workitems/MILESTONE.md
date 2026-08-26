@@ -48,6 +48,10 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`catalog-cache-ttl`](completed/20260826-catalog-cache-ttl/STORY.md) — Write-through + Caffeine TTL catalog snapshots; `POST /registry/refresh`; `objs.catalogs.cache-ttl` (C-21). WI-001…WI-003.
 - [`graph-mutate-replace`](completed/20260826-graph-mutate-replace/STORY.md) — Kind-first mutate body (`set`/`unset`); named-graph MERGE (`PATCH`) vs REPLACE (`PUT`); `bomMutation` builder; Composer Save/Overwrite; SBOM `replaceBom` (C-22). WI-000…WI-008.
 
+### In Progress
+
+- [`source-export`](in-progress/source-export/STORY.md) — Makefile `export TARGET_PACKAGE=…` → clean renamed copy outside bom-poc (dumper; SPI `.imports`; selected docs) (P-4).
+
 ### Planned
 
 - [`store-text-search`](planned/store-text-search/STORY.md) — FB-3 contains/`q`; design first (C-20). Does not block C-18.
