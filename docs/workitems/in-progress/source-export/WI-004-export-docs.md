@@ -9,7 +9,8 @@ Document the export workflow; automate or script post-export doc fixes in the **
 
 ## Tasks
 
-- [ ] [`scripts/export/README.md`](../../../scripts/export/README.md) — variables, derived names, excludes, verify checklist, tool deps
+- [ ] [`scripts/export/README.md`](../../../scripts/export/README.md) — variables, derived names, excludes, verify checklist, tool deps, **`cleanup.yml` format**
+- [ ] Document: copy `cleanup.yml.template` → `cleanup.yml` and add destination-specific dirs/files to strip from export copy
 - [ ] Post-export step or generate-config hook: strip/replace `docs/workitems/` links in exported `AGENTS.md` and design docs
 - [ ] Brief pointer in root [`README.md`](../../../README.md) (source repo only)
 

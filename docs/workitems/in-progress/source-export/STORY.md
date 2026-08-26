@@ -38,6 +38,7 @@ The copy includes **all Gradle modules** (foundation, gremlin, workbench runner,
 | Seed apiVersion | **`objs.poc.org/v1` → derived from `TARGET_PACKAGE`** on **existing seed YAML** (in-place during clean), **`SEED_API_VERSION_V1`**, and **export output** |
 | Class names | **`Objs*` / `BoM*` types unchanged** in v1 (package move only) |
 | Export tooling | Lives in **`scripts/export/`**; excluded from rsync copy |
+| Post-transform cleanup | Optional **[`scripts/export/cleanup.yml`](../../../scripts/export/cleanup.yml)** — user-maintained dirs/files to **`delete_dir` / `delete_file`** in `OUT_DIR` only (template shipped; list filled after first dry-run) |
 
 ## Stages
 

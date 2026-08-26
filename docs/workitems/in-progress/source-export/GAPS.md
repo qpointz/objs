@@ -19,6 +19,7 @@ Track export-plan gaps here. Promote to WIs when scheduling work; defer with exp
 | G-15 | Module inventory vs `settings.gradle.kts` | **open** | Current tree: `:objs-core`, `:objs-service`, `:objs-service-ui`, `:objs-gremlin-*`, `:objs-service-app`, `:sbom-service`, `:sbom-service-ui`, `:asset-repository-service`, `:asset-repository-service-ui` + `projectDir` under `examples/` — `generate-config` must list all `move_dir` + `:project` refs |
 | G-16 | `examples/` directory layout | **open** | Package move under `examples/sbom/...` and `examples/asset-repository/...` in addition to top-level modules; Gradle `projectDir` remapping must stay consistent after renames |
 | G-17 | `tools/` directory | **open** | Include in rsync; transform `objs_seed.py` + `objs_seed_example.py`; not excluded like `scripts/export/` |
+| G-18 | User cleanup manifest | **open** | [`scripts/export/cleanup.yml`](../../../scripts/export/cleanup.yml) (from template): optional dirs/files to remove from **export copy only** after rename/replace; user populates after implementation / first dry-run |
 
 ## Deferred / out of scope v1
 
