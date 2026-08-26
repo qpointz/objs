@@ -33,6 +33,15 @@ Story: [`docs/workitems/completed/20260816-sbom-inventory-app/`](docs/workitems/
 
 Version comes from the root `VERSION` file (override with `-PprojectVersion=`).
 
+## Source export
+
+Periodic rename export for destination packaging (outside this repo): [`scripts/export/README.md`](scripts/export/README.md).
+
+```bash
+make export TARGET_PACKAGE=com.acme.platform
+make export-verify OUT_DIR=../bom-export-com-acme-platform MODULE_PREFIX=platform
+```
+
 ## Agent workflow
 
 See [`AGENTS.md`](AGENTS.md) and [`docs/workitems/RULES.md`](docs/workitems/RULES.md).

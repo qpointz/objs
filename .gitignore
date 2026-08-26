@@ -36,3 +36,6 @@ target/
 **/__pycache__/
 *.py[cod]
 
+# Export cleanup manifest (copy from scripts/export/cleanup.yml.template)
+scripts/export/cleanup.yml
+

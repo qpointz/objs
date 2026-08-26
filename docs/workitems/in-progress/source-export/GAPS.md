@@ -8,18 +8,18 @@ Track export-plan gaps here. Promote to WIs when scheduling work; defer with exp
 |----|-------|--------|-------|
 | G-1 | Non-package `objs` identifiers | **open** | v1 unchanged: REST `/api/v1/objs/**`, domain APIs (`/api/v1/inventory/**`, asset-repository paths), SPA mounts (`/workbench`, `/sbom`, `/ar`), config prefixes (`objs.seeds`, `objs.flyway`, `objs.catalogs`), JDBC/env `OBJS_*` — add Makefile overrides if destination requires |
 | G-2 | `Objs*` class simple names | **open** | Package rename only; FQCN changes, short names stay |
-| G-3 | UI modules + build | **open** | Three SPAs: `:objs-service-ui`, `:sbom-service-ui`, `:asset-repository-service-ui` (not `objs-service/ui`); rsync excludes `dist/` + `node_modules/` — `export-verify` must npm-build **each** UI module |
-| G-5 | Naive string replace | **open** | Longest-first in `generate-config.py`; never bare `objs` replace; watch `objs.poc.org/v0` negative-test in `SeedImporterTest` (must stay rejected version, not partially rewritten) |
-| G-6 | qpointz `move_package` fragility | **open** | Prefer copy/rename once; test on fixture tree (WI-001) |
-| G-7 | Doc link cleanup | **open** | AGENTS.md → `docs/workitems/RULES.md`; design docs may link completed workitems (WI-004) |
-| G-8 | Tool deps (rsync, python+pyyaml, npm) | **open** | Document in `scripts/export/README.md`; optional `check-tools` |
+| G-3 | UI modules + build | **resolved** | `export-verify` npm-builds `:objs-service-ui`, `:sbom-service-ui`, `:asset-repository-service-ui` (renamed with prefix) |
+| G-5 | Naive string replace | **resolved** | Longest-first in `generate-config.py`; bare example module names omitted to avoid double-prefix; slash-form classpath paths |
+| G-6 | qpointz `move_package` fragility | **resolved** | Copy-then-delete deepest-first; fixture self-check in `test_fixture.py` |
+| G-7 | Doc link cleanup | **resolved** | generate-config strips AGENTS workitems links; `../../workitems/` removed from design docs |
+| G-8 | Tool deps (rsync, python+pyyaml, npm) | **resolved** | Documented in `scripts/export/README.md`; `check-export-tools` + `test-export-fixture` |
 | G-9 | No git in export output | **open** | Destination `git init` manual; out of scope v1 |
-| G-11 | Spring Boot SPI `.imports` | **open** | **Four** files: `objs-core`, `objs-service`, `objs-gremlin-service`, **`examples/sbom/sbom-service`** — verify in WI-003 |
-| G-13 | Seed `apiVersion` replace + export round-trip | **open** | **Existing** classpath seed YAML rewritten during clean; `SEED_API_VERSION_V1` + `tools/objs_seed.py` + `tools/objs_seed_example.py`; export via handlers/REST must emit same `{API_VERSION}` |
-| G-15 | Module inventory vs `settings.gradle.kts` | **open** | Current tree: `:objs-core`, `:objs-service`, `:objs-service-ui`, `:objs-gremlin-*`, `:objs-service-app`, `:sbom-service`, `:sbom-service-ui`, `:asset-repository-service`, `:asset-repository-service-ui` + `projectDir` under `examples/` — `generate-config` must list all `move_dir` + `:project` refs |
-| G-16 | `examples/` directory layout | **open** | Package move under `examples/sbom/...` and `examples/asset-repository/...` in addition to top-level modules; Gradle `projectDir` remapping must stay consistent after renames |
-| G-17 | `tools/` directory | **open** | Include in rsync; transform `objs_seed.py` + `objs_seed_example.py`; not excluded like `scripts/export/` |
-| G-18 | User cleanup manifest | **open** | [`scripts/export/cleanup.yml`](../../../scripts/export/cleanup.yml) (from template): optional dirs/files to remove from **export copy only** after rename/replace; user populates after implementation / first dry-run |
+| G-11 | Spring Boot SPI `.imports` | **resolved** | Verified in WI-003 dry-run (four files, renamed FQCNs) |
+| G-13 | Seed `apiVersion` replace + export round-trip | **resolved** | In-place YAML + `SEED_API_VERSION_V1` + SeedImporter tests in export tree |
+| G-15 | Module inventory vs `settings.gradle.kts` | **resolved** | All 10 modules in `generate-config.py` |
+| G-16 | `examples/` directory layout | **resolved** | Example `move_dir` + Gradle `:project` refs; no bare example module string replace |
+| G-17 | `tools/` directory | **resolved** | Included in rsync; `objs_seed.py` transformed |
+| G-18 | User cleanup manifest | **resolved** | Template shipped; merge when `cleanup.yml` exists |
 
 ## Deferred / out of scope v1
 

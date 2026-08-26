@@ -9,11 +9,11 @@ Add [`scripts/export/dumper.py`](../../../scripts/export/dumper.py) adapted from
 
 ## Tasks
 
-- [ ] Copy action runner: `move_package`, `move_dir`, `replace_in_files`, `delete_dir`, `delete_empty_folder`
-- [ ] UTF-8 read/write in `replace_in_files`
-- [ ] Skip `build/`, `node_modules/`, `.git/`, `.gradle/` during walks
-- [ ] CLI `--root` overrides yaml `root_dir`; refuse `--root` inside bom-poc source tree
-- [ ] Small fixture tree + unit test or script self-check for package move + replace
+- [x] Copy action runner: `move_package`, `move_dir`, `replace_in_files`, `delete_dir`, `delete_empty_folder`
+- [x] UTF-8 read/write in `replace_in_files`
+- [x] Skip `build/`, `node_modules/`, `.git/`, `.gradle/` during walks
+- [x] CLI `--root` overrides yaml `root_dir`; refuse `--root` inside bom-poc source tree
+- [x] Small fixture tree + unit test or script self-check for package move + replace
 
 ## Acceptance
 

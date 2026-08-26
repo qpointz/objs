@@ -51,10 +51,10 @@ The copy includes **all Gradle modules** (foundation, gremlin, workbench runner,
 ## Work Items
 
 - [x] WI-000 — Story scaffold (`WI-000-story-scaffold.md`)
-- [ ] WI-001 — Dumper script (`WI-001-dumper-script.md`)
-- [ ] WI-002 — Makefile + generate-config (`WI-002-makefile-export.md`)
-- [ ] WI-003 — export-verify + dry-run (`WI-003-export-verify.md`)
-- [ ] WI-004 — Export docs + AGENTS cleanup (`WI-004-export-docs.md`)
+- [x] WI-001 — Dumper script (`WI-001-dumper-script.md`)
+- [x] WI-002 — Makefile + generate-config (`WI-002-makefile-export.md`)
+- [x] WI-003 — export-verify + dry-run (`WI-003-export-verify.md`)
+- [x] WI-004 — Export docs + AGENTS cleanup (`WI-004-export-docs.md`)
 
 ## Out of scope (this story)
 
