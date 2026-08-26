@@ -7,6 +7,7 @@ import org.poc.objs.core.domain.BoMEntity
 import org.poc.objs.core.domain.BoMGraph
 import org.poc.objs.core.domain.BoMGraphHeader
 import org.poc.objs.core.domain.BoMGraphMutation
+import org.poc.objs.core.domain.BoMMutateMode
 import org.poc.objs.core.domain.BoMResolvedGraph
 import org.poc.objs.core.domain.BoMGraphContents
 import org.poc.objs.core.domain.BoMGraphException
@@ -554,12 +555,12 @@ class BoMNamedGraphStore(
     }
 
     /**
-     * Transactional graph-scoped mutation (WI-004): validate, then explicit edge deletes
-     * (only this graph's edges), entity **detach** (membership + incident edges; pool entities
-     * kept), then upserts — entity upsert lands in the pool + this graph's membership; edge
-     * upsert is stamped with [graphId] and requires both endpoints to be projected members.
+     * Transactional graph-scoped mutation: validate, then apply [BoMMutateMode.MERGE] or
+     * [BoMMutateMode.REPLACE].
      *
-     * Same id in delete and upsert: upsert wins (mirrors [BoMGraphStore.mutate]).
+     * MERGE: explicit edge unsets, entity detach, then sets (same id in unset and set: set wins).
+     * REPLACE: [entities.set]/[edges.set] are the full desired membership + edges; prune extras;
+     * non-empty unset → [REPLACE_UNSET_NOT_ALLOWED].
      */
     @Transactional
     fun mutate(graphId: UUID, mutation: BoMGraphMutation): BoMValidationResult {
@@ -567,41 +568,53 @@ class BoMNamedGraphStore(
         if (!result.isValid) {
             return result
         }
-        applyGraphDeletes(graphId, mutation)
-        if (mutation.upsert.entities.isNotEmpty()) {
-            graphStore.upsertEntities(mutation.upsert.entities)
-            mutation.upsert.entities.forEach { entity ->
-                membershipRepository.save(
-                    BoMGraphMembershipRecord(graphId = graphId, entityId = requireNotNull(entity.id)),
-                )
+        when (mutation.mode) {
+            BoMMutateMode.MERGE -> {
+                applyGraphDeletes(graphId, mutation)
+                applyGraphSets(graphId, mutation)
+            }
+            BoMMutateMode.REPLACE -> {
+                applyGraphReplace(graphId, mutation)
             }
         }
-        applyGraphEdgeUpserts(graphId, mutation.upsert.edges)
         touch(graphId)
         return BoMValidationResult.ok()
     }
 
     /**
-     * Dry-run validation for [mutate]: same checks, no persistence. May assign ids to upsert
-     * entities/edges (via [BoMPersistGate.prepareIds]) and stamps [graphId] onto upsert edges.
+     * Dry-run validation for [mutate]: same checks, no persistence. May assign ids to set
+     * entities/edges (via [BoMPersistGate.prepareIds]) and stamps [graphId] onto set edges.
      */
     @Transactional(readOnly = true)
     fun validateMutate(graphId: UUID, mutation: BoMGraphMutation): BoMValidationResult {
         requireGraphExists(graphId)
-        mutation.upsert.edges.forEach { it.graphId = graphId }
+        mutation.edges.set.forEach { it.graphId = graphId }
+
+        if (mutation.mode == BoMMutateMode.REPLACE && mutation.hasUnsets()) {
+            return BoMValidationResult.of(
+                BoMValidationIssue(
+                    code = "REPLACE_UNSET_NOT_ALLOWED",
+                    message = "REPLACE mutate rejects non-empty entities.unset / edges.unset; send the desired set only",
+                ),
+            )
+        }
 
         val g = gate()
         val issues = mutableListOf<BoMValidationIssue>()
-        for (id in mutation.delete.edges.distinct()) {
-            issues.addAll(g.validateDeleteEdge(id).issues)
+        if (mutation.mode == BoMMutateMode.MERGE) {
+            for (id in mutation.edges.unset.distinct()) {
+                issues.addAll(g.validateDeleteEdge(id).issues)
+            }
+            for (id in mutation.entities.unset.distinct()) {
+                issues.addAll(g.validateDeleteEntity(id).issues)
+            }
+            if (issues.isNotEmpty()) {
+                return BoMValidationResult.of(issues)
+            }
         }
-        for (id in mutation.delete.entities.distinct()) {
-            issues.addAll(g.validateDeleteEntity(id).issues)
-        }
-        if (issues.isNotEmpty()) {
-            return BoMValidationResult.of(issues)
-        }
-        if (!mutation.hasUpserts()) {
+
+        if (!mutation.hasSets()) {
+            // MERGE no-op or REPLACE clear — both valid once unset/reject checks passed
             return BoMValidationResult.ok()
         }
 
@@ -612,28 +625,33 @@ class BoMNamedGraphStore(
         }
         g.prepareIds(graph)
 
-        val deletedEntityIds = mutation.delete.entities.toSet()
+        val unsetEntityIds =
+            if (mutation.mode == BoMMutateMode.MERGE) mutation.entities.unset.toSet() else emptySet()
         val projectedStore = BoMEntityTypeLookup { id ->
-            if (id in deletedEntityIds) null else entityRepository.findById(id).map { it.type }.orElse(null)
+            if (id in unsetEntityIds) null else entityRepository.findById(id).map { it.type }.orElse(null)
         }
         val lookup = validator.combinedLookup(graph.entities, projectedStore)
         val edgeIssues = validator.validateEdges(graph.edges, lookup).issues.toMutableList()
 
         val currentMembers = membershipRepository.findByGraphId(graphId).mapTo(hashSetOf()) { it.entityId }
-        val projectedMembers = (currentMembers - deletedEntityIds) + graph.entities.mapNotNull { it.id }
+        val projectedMembers =
+            when (mutation.mode) {
+                BoMMutateMode.MERGE -> (currentMembers - unsetEntityIds) + graph.entities.mapNotNull { it.id }
+                BoMMutateMode.REPLACE -> graph.entities.mapNotNull { it.id }.toSet()
+            }
         graph.edges.forEachIndexed { index, edge ->
             if (edge.source !in projectedMembers) {
                 edgeIssues += BoMValidationIssue(
                     code = "EDGE_ENDPOINT_NOT_MEMBER",
                     message = "Edge source ${edge.source} is not a member of graph $graphId",
-                    path = "edges[$index].source",
+                    path = "edges.set[$index].source",
                 )
             }
             if (edge.target !in projectedMembers) {
                 edgeIssues += BoMValidationIssue(
                     code = "EDGE_ENDPOINT_NOT_MEMBER",
                     message = "Edge target ${edge.target} is not a member of graph $graphId",
-                    path = "edges[$index].target",
+                    path = "edges.set[$index].target",
                 )
             }
         }
@@ -643,12 +661,12 @@ class BoMNamedGraphStore(
         val identityIssues = mutableListOf<BoMValidationIssue>()
         graph.entities.forEachIndexed { index, entity ->
             val id = entity.id ?: return@forEachIndexed
-            if (id in deletedEntityIds) return@forEachIndexed
+            if (id in unsetEntityIds) return@forEachIndexed
             val stored = entityRepository.findById(id).orElse(null)?.toDomain() ?: return@forEachIndexed
             identityIssues += validator.validateEntityIdentifierImmutability(
                 stored,
                 entity,
-                path = "entities[$index]",
+                path = "entities.set[$index]",
             )
         }
         graph.edges.forEachIndexed { index, edge ->
@@ -657,20 +675,53 @@ class BoMNamedGraphStore(
             identityIssues += validator.validateEdgeIdentifierImmutability(
                 stored,
                 edge,
-                path = "edges[$index]",
+                path = "edges.set[$index]",
             )
         }
         return BoMValidationResult(identityIssues)
     }
 
+    private fun applyGraphSets(graphId: UUID, mutation: BoMGraphMutation) {
+        if (mutation.entities.set.isNotEmpty()) {
+            graphStore.upsertEntities(mutation.entities.set)
+            mutation.entities.set.forEach { entity ->
+                membershipRepository.save(
+                    BoMGraphMembershipRecord(graphId = graphId, entityId = requireNotNull(entity.id)),
+                )
+            }
+        }
+        applyGraphEdgeUpserts(graphId, mutation.edges.set)
+    }
+
+    private fun applyGraphReplace(graphId: UUID, mutation: BoMGraphMutation) {
+        val desiredEntityIds = mutation.entities.set.mapNotNull { it.id }.toSet()
+        val desiredEdgeIds = mutation.edges.set.mapNotNull { it.id }.toSet()
+
+        val currentEdgeIds = edgeRepository.findByGraphId(graphId).mapNotNull { it.id }
+        for (id in currentEdgeIds) {
+            if (id !in desiredEdgeIds) {
+                edgeRepository.deleteById(id)
+            }
+        }
+
+        val currentMembers = membershipRepository.findByGraphId(graphId).map { it.entityId }
+        for (entityId in currentMembers) {
+            if (entityId !in desiredEntityIds) {
+                membershipRepository.deleteByGraphIdAndEntityId(graphId, entityId)
+            }
+        }
+
+        applyGraphSets(graphId, mutation)
+    }
+
     private fun applyGraphDeletes(graphId: UUID, mutation: BoMGraphMutation) {
         val graphEdgeIds = edgeRepository.findByGraphId(graphId).mapNotNullTo(hashSetOf()) { it.id }
-        for (id in mutation.delete.edges.distinct()) {
+        for (id in mutation.edges.unset.distinct()) {
             if (id in graphEdgeIds) {
                 edgeRepository.deleteById(id)
             }
         }
-        val entityIds = mutation.delete.entities.distinct()
+        val entityIds = mutation.entities.unset.distinct()
         if (entityIds.isEmpty()) {
             return
         }

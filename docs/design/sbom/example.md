@@ -283,9 +283,7 @@ Illustrative routes (inventory OpenAPI group on `:sbom-service`):
 | POST | `/portfolios/{id}/reports` | Body: `{ "level": "root"\|nodeId, "report": "MI-1"… }` |
 | GET | `/applications/{id}/versions/{versionId}/export/cyclonedx` | Weak demo of Combined SBOM (hidden in UI) |
 
-OpenAPI is published for these domain endpoints on `:sbom-service`.
-
-**Transitional:** until later WIs replace it, the legacy façade `/api/v1/example/sbom/**` may still exist for demos/scripts — not the product vocabulary target.
+OpenAPI is published for these domain endpoints on `:sbom-service` (group **`inventory`** only).
 
 ---
 

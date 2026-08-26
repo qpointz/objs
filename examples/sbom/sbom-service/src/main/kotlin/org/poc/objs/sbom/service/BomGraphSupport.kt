@@ -2,10 +2,9 @@ package org.poc.objs.sbom.service
 
 import org.poc.objs.core.domain.BoMEdge
 import org.poc.objs.core.domain.BoMGraphContents
-import org.poc.objs.core.domain.BoMGraphMutation
 import org.poc.objs.core.domain.BoMGraphSpec
-import org.poc.objs.core.domain.BoMGraphUpsert
 import org.poc.objs.core.domain.BoMResolvedGraph
+import org.poc.objs.core.domain.bomMutation
 import org.poc.objs.core.persistence.BoMNamedGraphStore
 import org.poc.objs.sbom.domain.BomUnion
 import org.springframework.http.HttpStatus
@@ -49,7 +48,7 @@ class BomGraphSupport(
             val result =
                 namedGraphs.mutate(
                     graph.id,
-                    BoMGraphMutation(upsert = BoMGraphUpsert(edges = edgeCopies)),
+                    bomMutation { edges { set(edgeCopies) } },
                 )
             if (!result.isValid) {
                 throw ResponseStatusException(

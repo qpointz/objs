@@ -40,7 +40,7 @@ class SbomSpaRoutingFilterTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = ["/api/v1/example/sbom/applications", "/workbench/explorer"])
+    @ValueSource(strings = ["/api/v1/inventory/applications", "/workbench/explorer"])
     fun shouldPassThroughNonUi(url: String) {
         `when`(request.requestURI).thenReturn(url)
         `when`(request.method).thenReturn("GET")

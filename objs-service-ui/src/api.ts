@@ -498,21 +498,61 @@ export async function validateGraphDraft(graph: unknown): Promise<GraphValidatio
 }
 
 export type GraphMutationBody = {
-  upsert: {
-    entities: unknown
-    edges: unknown
+  entities: {
+    set: unknown
+    unset: string[]
   }
-  delete: {
-    entities: string[]
-    edges: string[]
+  edges: {
+    set: unknown
+    unset: string[]
   }
 }
 
-export async function validateGraphMutation(mutation: GraphMutationBody): Promise<GraphValidationResult> {
+export type GraphMutateMode = 'merge' | 'replace'
+
+/** Pool-scoped dry-run (MERGE). Prefer graph-scoped validate when a graph id is known. */
+export async function validateGraphMutation(
+  mutation: GraphMutationBody,
+  options?: { graphId?: string; mode?: GraphMutateMode },
+): Promise<GraphValidationResult> {
+  if (options?.graphId) {
+    const mode = options.mode ?? 'merge'
+    const method = mode === 'replace' ? 'PUT' : 'PATCH'
+    const res = await fetch(
+      `/api/v1/objs/graphs/${encodeURIComponent(options.graphId)}/validate`,
+      {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(mutation),
+      },
+    )
+    const body = await res.json().catch(() => null)
+    if (!res.ok) {
+      const issues = body?.issues
+      if (Array.isArray(issues) && issues.length > 0) {
+        return body as GraphValidationResult
+      }
+      throw new Error(typeof body === 'string' ? body : `HTTP ${res.status}`)
+    }
+    return body as GraphValidationResult
+  }
   return validateGraphDraft(mutation)
 }
 
-/** Mutate [graphId] in one transaction: upsert lands in the pool + this graph's membership. */
+/** MERGE mutate: set + unset; omission keeps. */
+export async function patchGraphMutation(
+  graphId: string,
+  mutation: GraphMutationBody,
+): Promise<BoMGraphResponse> {
+  const res = await fetch(`/api/v1/objs/graphs/${encodeURIComponent(graphId)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(mutation),
+  })
+  return parseResponse<BoMGraphResponse>(res)
+}
+
+/** REPLACE mutate: set is full desired membership + edges. */
 export async function putGraphMutation(
   graphId: string,
   mutation: GraphMutationBody,

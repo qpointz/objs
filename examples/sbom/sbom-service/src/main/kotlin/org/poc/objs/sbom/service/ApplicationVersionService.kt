@@ -2,12 +2,13 @@ package org.poc.objs.sbom.service
 
 import org.poc.objs.core.domain.BoMEdge
 import org.poc.objs.core.domain.BoMEntity
+import org.poc.objs.core.domain.BoMGraph
 import org.poc.objs.core.domain.BoMGraphContents
-import org.poc.objs.core.domain.BoMGraphDelete
 import org.poc.objs.core.domain.BoMGraphException
-import org.poc.objs.core.domain.BoMGraphMutation
 import org.poc.objs.core.domain.BoMGraphSpec
-import org.poc.objs.core.domain.BoMGraphUpsert
+import org.poc.objs.core.domain.BoMMutateMode
+import org.poc.objs.core.domain.bomMutation
+import org.poc.objs.core.persistence.BoMGraphStore
 import org.poc.objs.core.persistence.BoMNamedGraphStore
 import org.poc.objs.sbom.annotations.SbomAnnotationKeys
 import org.poc.objs.sbom.domain.ApplicationFingerprintSummary
@@ -53,6 +54,7 @@ class ApplicationVersionService(
     private val fingerprints: SbomApplicationFingerprintRepository,
     private val boms: SbomApplicationSbomRepository,
     private val namedGraphs: BoMNamedGraphStore,
+    private val graphStore: BoMGraphStore,
     private val sbom: SbomService,
     private val assetTypes: AssetTypeCatalogService,
 ) {
@@ -341,34 +343,45 @@ class ApplicationVersionService(
         val row = requireWritable(applicationId, versionId)
         val graphId = if (bomId == null) bomGraphId(row) else requireBom(row.id, bomId).graphId
         forbidFingerprintGraph(graphId)
-        val resolved =
-            namedGraphs.get(graphId)
-                ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Version graph missing")
-        val currentIds = resolved.contents.entities.mapNotNull { it.id }.toSet()
-        val desired = request.assetIds.toSet()
-        for (id in desired - currentIds) {
-            try {
-                namedGraphs.attach(graphId, id)
-            } catch (ex: BoMGraphException) {
-                throw ResponseStatusException(HttpStatus.BAD_REQUEST, ex.message)
-            }
+        if (namedGraphs.get(graphId) == null) {
+            throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Version graph missing")
         }
-        for (id in currentIds - desired) {
-            try {
-                namedGraphs.detach(graphId, id)
-            } catch (ex: BoMGraphException) {
-                throw ResponseStatusException(HttpStatus.BAD_REQUEST, ex.message)
-            }
-        }
-        val after =
-            namedGraphs.get(graphId)
-                ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Version graph missing")
-        val existingEdgeIds = after.contents.edges.mapNotNull { it.id }
-        if (existingEdgeIds.isNotEmpty()) {
-            applyDeleteEdges(graphId, existingEdgeIds)
-        }
-        for (rel in request.relations) {
-            applyRelation(graphId, rel)
+        val entities =
+            request.assetIds
+                .distinct()
+                .map { id ->
+                    graphStore.getEntity(id)
+                        ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Asset not found: $id")
+                }.toMutableList()
+        val edges =
+            request.relations
+                .map { rel ->
+                    val role = rel.role.trim()
+                    if (role.isEmpty()) {
+                        throw ResponseStatusException(HttpStatus.BAD_REQUEST, "role is required")
+                    }
+                    BoMEdge(
+                        source = rel.fromAssetId,
+                        target = rel.toAssetId,
+                        role = role,
+                        type = CanonicalEdgeType.meta.type,
+                        schemaVersion = CanonicalEdgeType.meta.schemaVersion,
+                        properties = mutableMapOf(),
+                    )
+                }.toMutableList()
+        val result =
+            namedGraphs.mutate(
+                graphId,
+                bomMutation {
+                    mode(BoMMutateMode.REPLACE)
+                    setAll(BoMGraph(entities = entities, edges = edges))
+                },
+            )
+        if (!result.isValid) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                result.issues.joinToString("; ") { it.message },
+            )
         }
         return toBomView(app, row, graphId)
     }
@@ -570,7 +583,7 @@ class ApplicationVersionService(
                 val result =
                     namedGraphs.mutate(
                         graphId,
-                        BoMGraphMutation(upsert = BoMGraphUpsert(entities = mutableListOf(entity))),
+                        bomMutation { entities { set(entity) } },
                     )
                 if (!result.isValid) {
                     throw ResponseStatusException(
@@ -605,7 +618,7 @@ class ApplicationVersionService(
         val result =
             namedGraphs.mutate(
                 graphId,
-                BoMGraphMutation(upsert = BoMGraphUpsert(edges = mutableListOf(edge))),
+                bomMutation { edges { set(edge) } },
             )
         if (!result.isValid) {
             throw ResponseStatusException(
@@ -620,7 +633,7 @@ class ApplicationVersionService(
         val result =
             namedGraphs.mutate(
                 graphId,
-                BoMGraphMutation(delete = BoMGraphDelete(edges = ids.toMutableList())),
+                bomMutation { edges { unset(ids) } },
             )
         if (!result.isValid) {
             throw ResponseStatusException(
@@ -654,7 +667,7 @@ class ApplicationVersionService(
             val result =
                 namedGraphs.mutate(
                     graph.id,
-                    BoMGraphMutation(upsert = BoMGraphUpsert(edges = edgeCopies)),
+                    bomMutation { edges { set(edgeCopies) } },
                 )
             if (!result.isValid) {
                 throw ResponseStatusException(

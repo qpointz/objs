@@ -22,7 +22,10 @@ graph-local edges, resolve, query, clone, and graph versions. See [`../graph/mod
 | `GET` | `/graphs` | List graph headers (`id`, `annotations`, member/edge counts) | `:objs-service` |
 | `POST` | `/graphs` | Create graph header (`annotations`); optional `entityIds` to seed membership → `201` | `:objs-service` |
 | `GET` | `/graphs/{id}` | Header + resolved members + graph-local edges; `404` if missing | `:objs-service` |
-| `PUT` | `/graphs/{id}` | Mutate this graph in one TX: `upsert.entities` (pool upsert + auto-membership), `upsert.edges` (`graph_id = id`; both ends must be members), `delete.entities`/`delete.edges` (membership/edge rows) | `:objs-service` |
+| `PUT` | `/graphs/{id}/annotations` | Replace graph header annotations (membership unchanged) | `:objs-service` |
+| `PATCH` | `/graphs/{id}` | **MERGE** mutate: `entities`/`edges` × `set`/`unset`; omission keeps | `:objs-service` |
+| `PUT` | `/graphs/{id}` | **REPLACE** mutate: `*.set` is full desired membership + edges; `unset` rejected | `:objs-service` |
+| `PATCH`/`PUT` | `/graphs/{id}/validate` | Dry-run MERGE / REPLACE (no persist); `POST …/validate` = MERGE alias | `:objs-service` |
 | `DELETE` | `/graphs/{id}` | Drop header + membership + edges (CASCADE); pool entities kept; `204` | `:objs-service` |
 | `POST`/`DELETE` | `/graphs/{id}/members/{entityId}` | Attach / detach an existing pool entity id (membership row only; pool entity kept on detach) | `:objs-service` |
 | `POST` | `/graphs/{id}/query` | Matcher DSL (`obj-expr` / chained) scoped to this graph's members; edges induced within scope | `:objs-service` |
@@ -42,18 +45,30 @@ Retired keys `anno` / `anno-expr` / `ids` / `subgraph` / `subg-expr` are rejecte
 Matcher DSL root is one matcher object (`all` / `graph-expr` / `obj-expr`) or an ordered array of matcher
 objects (chained).
 
-`PUT /graphs/{id}` mutation body mirrors today's `BoMGraphMutation` shape, scoped to the path graph:
+`PATCH /graphs/{id}` = **MERGE**; `PUT /graphs/{id}` = **REPLACE**. Body is kind-first `BoMGraphMutation`:
 
 ```json
 {
-  "upsert": { "entities": [], "edges": [] },
-  "delete": { "entities": [], "edges": [] }
+  "entities": { "set": [], "unset": [] },
+  "edges": { "set": [], "unset": [] }
 }
 ```
 
-Persist order: validate projected state → explicit edge deletes → entity/membership deletes → upserts
-(entity upsert lands in the pool and this graph's membership; edge upsert is stamped with this
-graph's id). Same id in delete and upsert: upsert wins.
+MERGE persist order: validate → edge unsets → entity/membership unsets → sets (set wins on same id).
+REPLACE: `*.set` is the desired membership + edges; prune extras; non-empty `unset` → `REPLACE_UNSET_NOT_ALLOWED`.
+Empty both `set` under REPLACE clears contents (stable `graphId`).
+
+### Mutate glossary
+
+| Name | What it is | Not |
+|------|------------|-----|
+| **MERGE** + `PATCH /graphs/{id}` | Patch one graph: `set` + `unset`; omission keeps | Combining several graphs into a new one |
+| **REPLACE** + `PUT /graphs/{id}` | Overwrite one graph’s membership + edges from `*.set` | Id-only membership swap; multi-graph union |
+| **`replace(id, BoMGraphSpec)`** | Set membership/`edgeIds` by existing ids only | Payload REPLACE mutate |
+| **`mergeGraph(sourceIds, …)`** | Create a **new** graph = union of sources | In-place MERGE mutate |
+| Seed **MERGE** | Catalog/graph seed import; omission never deletes | Mutate mode or `mergeGraph` |
+
+Composer: **Save** → MERGE; **Overwrite…** → REPLACE.
 
 ## Registry
 

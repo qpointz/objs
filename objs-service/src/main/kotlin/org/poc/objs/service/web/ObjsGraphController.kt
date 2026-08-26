@@ -46,8 +46,8 @@ class ObjsGraphController(
     @PostMapping("/graph/validate")
     @Operation(
         summary = "Dry-run validate a graph mutation (no persist)",
-        description = "Accepts the same BoMGraphMutation body as the retired PUT /graph (upserts and " +
-            "optional deletes) but never persists; use POST /graphs/{id}/validate for a graph-scoped dry-run.",
+        description = "Accepts the same BoMGraphMutation body as graph mutate (entities/edges set and " +
+            "optional unset) but never persists; use POST /graphs/{id}/validate for a graph-scoped dry-run.",
     )
     @ApiResponse(responseCode = "200", description = "Validation result (may be invalid)")
     fun validateGraph(@RequestBody mutation: BoMGraphMutation): BoMValidationResult =

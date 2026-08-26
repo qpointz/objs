@@ -3,7 +3,6 @@ package org.poc.objs.sbom.service
 import org.poc.objs.core.domain.BoMAllowedEdgeCatalog
 import org.poc.objs.core.domain.BoMGraph
 import org.poc.objs.core.domain.BoMGraphMutation
-import org.poc.objs.core.domain.BoMGraphUpsert
 import org.poc.objs.core.domain.BoMSchemaCatalog
 import org.poc.objs.core.domain.BoMGraphContents
 import org.poc.objs.core.domain.BoMGraphSpec
@@ -78,7 +77,7 @@ class SbomService(
         val graphId = ensureGraph(context)
         return graphs.mutate(
             graphId,
-            BoMGraphMutation(upsert = BoMGraphUpsert(entities = graph.entities, edges = graph.edges)),
+            BoMGraphMutation.of(graph),
         )
     }
 

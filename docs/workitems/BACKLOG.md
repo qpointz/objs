@@ -36,6 +36,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | C-19 | Foundation after versions: pin reverse lookup, remaining matcher ops (clocks are C-18) | feature | done | [`completed/20260822-foundation-after-versions/`](completed/20260822-foundation-after-versions/STORY.md) |
 | C-20 | Store text search (FB-3 contains/`q`); design first | feature | planned | [`planned/store-text-search/`](planned/store-text-search/STORY.md), [`SEQUENCE.md`](SEQUENCE.md) |
 | C-21 | Catalog cache TTL (Caffeine) + registry refresh without restart | improvement | done | [`completed/20260826-catalog-cache-ttl/`](completed/20260826-catalog-cache-ttl/STORY.md) |
+| C-22 | Graph mutate MERGE vs REPLACE (stable id rebuild + history) | feature | done | [`completed/20260826-graph-mutate-replace/`](completed/20260826-graph-mutate-replace/STORY.md) |
 
 ---
 

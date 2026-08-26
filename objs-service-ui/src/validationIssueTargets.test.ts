@@ -19,14 +19,24 @@ describe('validationIssueTargets', () => {
     ).toEqual({ kind: 'entity', id: 'e1', index: 1 })
   })
 
-  it('shouldResolveEntityFromUpsertPath', () => {
+  it('shouldResolveEntityFromEntitiesSetPath', () => {
     expect(
       validationTargetFromIssue(
-        { code: 'SCHEMA_NOT_FOUND', message: 'missing', path: 'upsert.entities[0]' },
+        { code: 'SCHEMA_NOT_FOUND', message: 'missing', path: 'entities.set[0]' },
         entities,
         edges,
       ),
     ).toEqual({ kind: 'entity', id: 'e0', index: 0 })
+  })
+
+  it('shouldResolveEdgeFromEdgesSetPath', () => {
+    expect(
+      validationTargetFromIssue(
+        { code: 'EDGE_NOT_ALLOWED', message: 'no', path: 'edges.set[1].role' },
+        entities,
+        edges,
+      ),
+    ).toEqual({ kind: 'edge', id: 'edge1', index: 1 })
   })
 
   it('shouldResolveEdgeFromEdgesIndexPath', () => {

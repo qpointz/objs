@@ -28,7 +28,7 @@ SBOM inventory (separate process, **port 8080** — does not call this runner):
 ```bash
 ./gradlew :sbom-service:run
 # UI: http://localhost:8080/sbom/
-# Domain API: /api/v1/example/sbom/** — see [`../sbom/example.md`](../sbom/example.md)
+# Domain API: /api/v1/inventory/** — see [`../sbom/example.md`](../sbom/example.md)
 ```
 
 | Surface | Path |

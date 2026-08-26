@@ -59,7 +59,7 @@ class ObjsGraphControllerTest {
         mockMvc.perform(
             post("/api/v1/objs/graph/validate")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"upsert":{"entities":[],"edges":[]},"delete":{"entities":[],"edges":[]}}"""),
+                .content("""{"entities":{"set":[],"unset":[]},"edges":{"set":[],"unset":[]}}"""),
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.issues[0].code").value("SCHEMA_VIOLATION"))

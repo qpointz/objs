@@ -480,9 +480,10 @@ Schema links from the edit form open in a **new tab**. **Add objects…** uses t
 | API | |
 |-----|--|
 | Add objects / Search | Always pool / cross-graph (not limited to current graph): `obj-expr` → `POST /api/v1/objs/entities/query` (pool, orphans included); `all` / `graph-expr` → `POST /api/v1/objs/graphs/query`. Objects page in graph context still uses `POST …/graphs/{id}/query`. |
-| Validate | `BoMGraphMutation` dry-run |
-| Save (existing graph) | `PUT /api/v1/objs/graphs/{id}` |
-| Save (no graph id) | `POST /api/v1/objs/graphs` with `entityIds` + edge upserts |
+| Validate | `BoMGraphMutation` dry-run — `PATCH …/graphs/{id}/validate` when graph known (MERGE); pool `POST /graph/validate` otherwise |
+| Save / Merge (existing graph) | `PATCH /api/v1/objs/graphs/{id}` (MERGE: set + unset) |
+| Overwrite… (existing graph) | Confirm, then `PUT /api/v1/objs/graphs/{id}` (REPLACE: set-only full draft; clears unset) |
+| Save (no graph id) | `POST /api/v1/objs/graphs` with `entityIds` + MERGE mutate |
 | Create version | Freeze (`POST …/graphs/{id}/versions`) |
 | Clone | Deep copy (`POST …/graphs/{id}/clone`) |
 | Open graph… | `GET /api/v1/objs/graphs/search` then `GET …/graphs/{id}` |
@@ -496,7 +497,7 @@ Returning to Composer / Explorer with a persisted current graph id **reloads** t
 | Tab | Role |
 |-----|------|
 | **Visual** | React Flow canvas with resizable right side pane (edit form or Add objects); canvas toolbar create/draft actions + layout |
-| **Text** | YAML/JSON of the **mutation only** (`upsert` + `delete`). Unchanged baseline objects stay on Visual but are omitted from Text until edited, created, or deleted. |
+| **Text** | YAML/JSON of the **mutation only** (kind-first `entities`/`edges` × `set`/`unset`). Unchanged baseline objects stay on Visual but are omitted from Text until edited, created, or deleted. |
 
 Invalid Text blocks switching to Visual; the last good draft is preserved.
 
@@ -523,15 +524,15 @@ Invalid Text blocks switching to Visual; the last good draft is preserved.
 Save clears pending deletes and refreshes the baseline on success.
 
 ```yaml
-upsert:
-  entities: []   # creates / updates only
-  edges: []
-delete:
-  entities: []   # loaded entity ids
-  edges: []      # loaded edge ids
+entities:
+  set: []     # creates / updates only (MERGE) or full desired members (REPLACE)
+  unset: []   # loaded entity ids (MERGE only)
+edges:
+  set: []
+  unset: []   # loaded edge ids (MERGE only)
 ```
 
-Loaded baseline objects appear in Text only after they are modified, newly created, or listed under `delete`. Validate/Save send this same `BoMGraphMutation` envelope.
+Loaded baseline objects appear in Text only after they are modified, newly created, or listed under `unset`. Validate/Save send this same kind-first `BoMGraphMutation` envelope. **Save** is MERGE (`PATCH`); **Overwrite…** is REPLACE (`PUT`) with confirm.
 
 Entities that are referenced by mutation edges need explicit UUIDs. Edge source/target types, role,
 property-schema reference, and properties are validated against the current registry.

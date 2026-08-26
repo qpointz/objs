@@ -50,42 +50,62 @@ data class BoMGraph(
     fun entityById(id: UUID): BoMEntity? = entities.find { it.id == id }
 }
 
+/** Named-graph mutate semantic (pool mutate stays MERGE-only). */
+enum class BoMMutateMode {
+    /** Patch: set + unset; omission keeps. */
+    MERGE,
+
+    /** Overwrite membership + graph-local edges from set; unset not allowed. */
+    REPLACE,
+}
+
 /**
- * Upsert half of a [BoMGraphMutation].
+ * Entity half of a [BoMGraphMutation]: [set] payloads and [unset] ids.
  */
-data class BoMGraphUpsert(
-    val entities: MutableList<BoMEntity> = mutableListOf(),
-    val edges: MutableList<BoMEdge> = mutableListOf(),
+data class BoMEntityMutation @JvmOverloads constructor(
+    val set: MutableList<BoMEntity> = mutableListOf(),
+    val unset: MutableList<UUID> = mutableListOf(),
 )
 
 /**
- * Delete half of a [BoMGraphMutation] — entity/edge **ids** only.
+ * Edge half of a [BoMGraphMutation]: [set] payloads and [unset] ids.
  */
-data class BoMGraphDelete(
-    val entities: MutableList<UUID> = mutableListOf(),
-    val edges: MutableList<UUID> = mutableListOf(),
+data class BoMEdgeMutation @JvmOverloads constructor(
+    val set: MutableList<BoMEdge> = mutableListOf(),
+    val unset: MutableList<UUID> = mutableListOf(),
 )
 
 /**
- * Transactional graph mutation: [upsert] entities/edges and/or [delete] by id.
+ * Transactional graph mutation — kind-first: [entities] / [edges], each with set/unset.
  *
- * Distinct from [BoMGraph] so seeds and upsert-only callers stay MERGE-shaped
- * (omission never deletes). Empty [delete] lists = upsert-only.
+ * Distinct from [BoMGraph] so MERGE callers can omit unchanged members (omission never deletes).
+ * Empty [unset] = set-only. Prefer [bomMutation] for construction.
  *
  * JSON shape:
  * ```
- * { "upsert": { "entities": [], "edges": [] }, "delete": { "entities": [], "edges": [] } }
+ * { "entities": { "set": [], "unset": [] }, "edges": { "set": [], "unset": [] } }
  * ```
  */
-data class BoMGraphMutation(
-    val upsert: BoMGraphUpsert = BoMGraphUpsert(),
-    val delete: BoMGraphDelete = BoMGraphDelete(),
+data class BoMGraphMutation @JvmOverloads constructor(
+    val entities: BoMEntityMutation = BoMEntityMutation(),
+    val edges: BoMEdgeMutation = BoMEdgeMutation(),
+    val mode: BoMMutateMode = BoMMutateMode.MERGE,
 ) {
-    fun graph(): BoMGraph = BoMGraph(upsert.entities, upsert.edges)
+    fun graph(): BoMGraph = BoMGraph(entities.set, edges.set)
 
-    fun hasDeletes(): Boolean = delete.entities.isNotEmpty() || delete.edges.isNotEmpty()
+    fun hasUnsets(): Boolean = entities.unset.isNotEmpty() || edges.unset.isNotEmpty()
 
-    fun hasUpserts(): Boolean = upsert.entities.isNotEmpty() || upsert.edges.isNotEmpty()
+    fun hasSets(): Boolean = entities.set.isNotEmpty() || edges.set.isNotEmpty()
+
+    companion object {
+        /** Set-only mutation from a bag (seeds / REPLACE helpers). */
+        fun of(graph: BoMGraph, mode: BoMMutateMode = BoMMutateMode.MERGE): BoMGraphMutation =
+            BoMGraphMutation(
+                entities = BoMEntityMutation(set = graph.entities),
+                edges = BoMEdgeMutation(set = graph.edges),
+                mode = mode,
+            )
+    }
 }
 
 /** Result of annotation-based subgraph selection (induced edges). */

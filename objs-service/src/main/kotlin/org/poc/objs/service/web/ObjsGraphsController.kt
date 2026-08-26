@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.servlet.http.HttpServletRequest
 import org.poc.objs.core.domain.BoMGraphMutation
+import org.poc.objs.core.domain.BoMMutateMode
 import org.poc.objs.core.domain.BoMResolvedGraph
 import org.poc.objs.core.domain.BoMGraphContents
 import org.poc.objs.core.domain.BoMGraphException
@@ -19,6 +20,7 @@ import org.poc.objs.core.match.BoMMatcherFormat
 import org.poc.objs.core.persistence.BoMGraphStore
 import org.poc.objs.core.persistence.BoMNamedGraphStore
 import org.poc.objs.core.validation.BoMValidationException
+import org.poc.objs.core.validation.BoMValidationIssue
 import org.poc.objs.core.validation.BoMValidationResult
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -26,6 +28,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
@@ -121,13 +124,12 @@ class ObjsGraphsController(
         return ResponseEntity.ok(updated.toResponse())
     }
 
-    @PutMapping("/{id}")
+    @PatchMapping("/{id}")
     @Operation(
-        summary = "Mutate this graph in one transaction",
-        description = "Body is BoMGraphMutation scoped to this graph: `upsert.entities` lands in the pool " +
-            "and this graph's membership; `upsert.edges` is stamped with this graph's id (both endpoints " +
-            "must be members); `delete.entities` detaches membership only (pool entity kept); `delete.edges` " +
-            "removes this graph's edge rows.",
+        summary = "MERGE-mutate this graph (patch)",
+        description = "MERGE: `entities.set` / `edges.set` upsert; `entities.unset` detaches membership " +
+            "(pool kept); `edges.unset` drops this graph's edges. Omission never deletes. " +
+            "Verb sets mode (omit `mode` on wire or it must be MERGE).",
     )
     @ApiResponses(
         ApiResponse(responseCode = "200", description = "Resolved graph after mutation"),
@@ -138,23 +140,95 @@ class ObjsGraphsController(
         ),
         ApiResponse(responseCode = "404", description = "Graph not found"),
     )
-    fun mutate(
+    fun mutateMerge(
         @PathVariable id: UUID,
         @RequestBody mutation: BoMGraphMutation,
+    ): ResponseEntity<Any> = mutateWithMode(id, mutation, BoMMutateMode.MERGE)
+
+    @PutMapping("/{id}")
+    @Operation(
+        summary = "REPLACE-mutate this graph (overwrite contents)",
+        description = "REPLACE: `entities.set` + `edges.set` are the full desired membership and " +
+            "graph-local edges; unlisted members detach / edges drop. Non-empty `unset` is rejected. " +
+            "Verb sets mode (omit `mode` on wire or it must be REPLACE).",
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "Resolved graph after mutation"),
+        ApiResponse(
+            responseCode = "400",
+            description = "Validation failed",
+            content = [Content(schema = Schema(implementation = BoMValidationResult::class))],
+        ),
+        ApiResponse(responseCode = "404", description = "Graph not found"),
+    )
+    fun mutateReplace(
+        @PathVariable id: UUID,
+        @RequestBody mutation: BoMGraphMutation,
+    ): ResponseEntity<Any> = mutateWithMode(id, mutation, BoMMutateMode.REPLACE)
+
+    @PatchMapping("/{id}/validate")
+    @Operation(summary = "Dry-run MERGE validate (no persist)")
+    fun validateMerge(
+        @PathVariable id: UUID,
+        @RequestBody mutation: BoMGraphMutation,
+    ): ResponseEntity<Any> = validateWithMode(id, mutation, BoMMutateMode.MERGE)
+
+    @PutMapping("/{id}/validate")
+    @Operation(summary = "Dry-run REPLACE validate (no persist)")
+    fun validateReplace(
+        @PathVariable id: UUID,
+        @RequestBody mutation: BoMGraphMutation,
+    ): ResponseEntity<Any> = validateWithMode(id, mutation, BoMMutateMode.REPLACE)
+
+    @PostMapping("/{id}/validate")
+    @Operation(
+        summary = "Dry-run MERGE validate (no persist)",
+        description = "Alias of PATCH /graphs/{id}/validate (MERGE). Prefer PATCH.",
+    )
+    fun validatePost(
+        @PathVariable id: UUID,
+        @RequestBody mutation: BoMGraphMutation,
+    ): ResponseEntity<Any> = validateWithMode(id, mutation, BoMMutateMode.MERGE)
+
+    private fun mutateWithMode(
+        id: UUID,
+        mutation: BoMGraphMutation,
+        mode: BoMMutateMode,
     ): ResponseEntity<Any> {
-        val result = namedGraphs.mutate(id, mutation)
+        val resolved = resolveVerbMode(mutation, mode) ?: return modeMismatch(mode)
+        val result = namedGraphs.mutate(id, resolved)
         if (!result.isValid) {
             return ResponseEntity.badRequest().body(result)
         }
         return ResponseEntity.ok(requireNotNull(namedGraphs.get(id)).toResponse())
     }
 
-    @PostMapping("/{id}/validate")
-    @Operation(summary = "Dry-run validate a graph-scoped mutation (no persist)")
-    fun validate(
-        @PathVariable id: UUID,
-        @RequestBody mutation: BoMGraphMutation,
-    ): BoMValidationResult = namedGraphs.validateMutate(id, mutation)
+    private fun validateWithMode(
+        id: UUID,
+        mutation: BoMGraphMutation,
+        mode: BoMMutateMode,
+    ): ResponseEntity<Any> {
+        val resolved = resolveVerbMode(mutation, mode) ?: return modeMismatch(mode)
+        return ResponseEntity.ok(namedGraphs.validateMutate(id, resolved))
+    }
+
+    /** Verb wins; body `mode` may be omitted (defaults MERGE) or must match the verb. */
+    private fun resolveVerbMode(mutation: BoMGraphMutation, verbMode: BoMMutateMode): BoMGraphMutation? {
+        if (mutation.mode != BoMMutateMode.MERGE && mutation.mode != verbMode) {
+            return null
+        }
+        return mutation.copy(mode = verbMode)
+    }
+
+    private fun modeMismatch(verbMode: BoMMutateMode): ResponseEntity<Any> =
+        ResponseEntity.badRequest().body(
+            BoMValidationResult.of(
+                BoMValidationIssue(
+                    code = "MUTATE_MODE_MISMATCH",
+                    message = "Body mode disagrees with HTTP verb (expected $verbMode)",
+                ),
+            ),
+        )
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete graph header + membership + edges (CASCADE); pool entities kept")

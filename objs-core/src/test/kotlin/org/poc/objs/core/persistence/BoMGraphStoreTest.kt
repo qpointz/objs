@@ -11,10 +11,9 @@ import org.poc.objs.core.domain.BoMAllowedEdgeRule
 import org.poc.objs.core.domain.BoMEdge
 import org.poc.objs.core.domain.BoMEntity
 import org.poc.objs.core.domain.BoMGraph
-import org.poc.objs.core.domain.BoMGraphDelete
 import org.poc.objs.core.domain.BoMGraphMutation
 import org.poc.objs.core.domain.BoMGraphSpec
-import org.poc.objs.core.domain.BoMGraphUpsert
+import org.poc.objs.core.domain.bomMutation
 import org.poc.objs.core.domain.BoMPageRequest
 import org.poc.objs.core.domain.BoMPropertiesPolicy
 import org.poc.objs.core.domain.BoMSchema
@@ -289,20 +288,16 @@ class BoMGraphStoreTest {
         ).isTrue()
         val oldEdgeId = store.loadAll().edges.single().id!!
 
-        val mutation = BoMGraphMutation(
-            upsert = BoMGraphUpsert(
-                entities = mutableListOf(
-                    BoMEntity(id = neu, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "New")),
-                ),
-                edges = mutableListOf(
-                    BoMEdge(graphId = graphId, source = keep, target = neu, role = "knows"),
-                ),
-            ),
-            delete = BoMGraphDelete(
-                entities = mutableListOf(remove),
-                edges = mutableListOf(oldEdgeId),
-            ),
-        )
+        val mutation = bomMutation {
+            entities {
+                set(BoMEntity(id = neu, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "New")))
+                unset(remove)
+            }
+            edges {
+                set(BoMEdge(graphId = graphId, source = keep, target = neu, role = "knows"))
+                unset(oldEdgeId)
+            }
+        }
         assertThat(store.mutate(mutation).isValid).isTrue()
 
         val loaded = store.loadAll()
@@ -328,12 +323,10 @@ class BoMGraphStoreTest {
         ).isTrue()
 
         val result = store.validateMutation(
-            BoMGraphMutation(
-                upsert = BoMGraphUpsert(
-                    edges = mutableListOf(BoMEdge(graphId = graphId, source = a, target = b, role = "knows")),
-                ),
-                delete = BoMGraphDelete(entities = mutableListOf(b)),
-            ),
+            bomMutation {
+                entities { unset(b) }
+                edges { set(BoMEdge(graphId = graphId, source = a, target = b, role = "knows")) }
+            },
         )
         assertThat(result.isValid).isFalse()
         assertThat(store.loadAll().entities).hasSize(2)
@@ -356,15 +349,13 @@ class BoMGraphStoreTest {
         ).isTrue()
 
         val result = store.validateMutation(
-            BoMGraphMutation(
-                upsert = BoMGraphUpsert(
-                    entities = mutableListOf(
-                        BoMEntity(id = b, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "B2")),
-                    ),
-                    edges = mutableListOf(BoMEdge(graphId = graphId, source = a, target = b, role = "knows")),
-                ),
-                delete = BoMGraphDelete(entities = mutableListOf(b)),
-            ),
+            bomMutation {
+                entities {
+                    set(BoMEntity(id = b, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "B2")))
+                    unset(b)
+                }
+                edges { set(BoMEdge(graphId = graphId, source = a, target = b, role = "knows")) }
+            },
         )
         assertThat(result.isValid).isTrue()
     }

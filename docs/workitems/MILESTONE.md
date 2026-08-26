@@ -46,6 +46,7 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`workbench-ux`](completed/20260822-workbench-ux/STORY.md) — Shared graph context (Explorer/Objects/Query); graph version pin; Notes 3–9 view chrome; object viewer; Query/Objects/Composer/Schema polish; product tour v2 + `ui.md` (U-7). WI-000…WI-012, WI-005.
 - [`foundation-after-versions`](completed/20260822-foundation-after-versions/STORY.md) — Pin reverse lookup (live ∪ version pins); leftover matcher pushdown `>` / prefix (C-19). WI-000…WI-005 (WI-002 cancelled → C-18).
 - [`catalog-cache-ttl`](completed/20260826-catalog-cache-ttl/STORY.md) — Write-through + Caffeine TTL catalog snapshots; `POST /registry/refresh`; `objs.catalogs.cache-ttl` (C-21). WI-001…WI-003.
+- [`graph-mutate-replace`](completed/20260826-graph-mutate-replace/STORY.md) — Kind-first mutate body (`set`/`unset`); named-graph MERGE (`PATCH`) vs REPLACE (`PUT`); `bomMutation` builder; Composer Save/Overwrite; SBOM `replaceBom` (C-22). WI-000…WI-008.
 
 ### Planned
 

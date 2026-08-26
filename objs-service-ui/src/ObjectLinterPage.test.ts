@@ -34,11 +34,11 @@ describe('Object linter graph shape', () => {
     expect(graphShapeError([])).toBe('Graph document must be an object')
   })
 
-  it('accepts optional delete id arrays on mutations', () => {
+  it('accepts set/unset id arrays on mutations', () => {
     expect(
       mutationShapeError({
-        upsert: { entities: [], edges: [] },
-        delete: { entities: ['a'], edges: [] },
+        entities: { set: [], unset: ['a'] },
+        edges: { set: [], unset: [] },
       }),
     ).toBeNull()
   })
@@ -162,8 +162,8 @@ describe('graphDraft helpers', () => {
       edges: [{ id: 'e1', source: 'a', target: 'b', role: 'R' }],
     })
     expect(buildMutationDocument(loaded)).toEqual({
-      upsert: { entities: [], edges: [] },
-      delete: { entities: [], edges: [] },
+      entities: { set: [], unset: [] },
+      edges: { set: [], unset: [] },
     })
   })
 
@@ -185,10 +185,10 @@ describe('graphDraft helpers', () => {
     })
     s = deleteEntityFromDraft(s, 'b')
     const mutation = buildMutationDocument(s)
-    expect(mutation.upsert.entities.map((e) => e.id).sort()).toEqual(['a', 'c'])
-    expect(mutation.upsert.edges).toEqual([])
-    expect(mutation.delete.entities).toEqual(['b'])
-    expect(mutation.delete.edges).toEqual(['e1'])
+    expect(mutation.entities.set.map((e) => e.id).sort()).toEqual(['a', 'c'])
+    expect(mutation.edges.set).toEqual([])
+    expect(mutation.entities.unset).toEqual(['b'])
+    expect(mutation.edges.unset).toEqual(['e1'])
   })
 
   it('applies a mutation onto baseline without wiping unchanged loaded items', () => {
@@ -200,18 +200,18 @@ describe('graphDraft helpers', () => {
       edges: [{ id: 'e1', source: 'a', target: 'b', role: 'R' }],
     })
     const mutation = normalizeGraphMutation({
-      upsert: {
-        entities: [{ id: 'a', type: 'A', annotations: {}, payload: { name: 'changed' } }],
-        edges: [],
+      entities: {
+        set: [{ id: 'a', type: 'A', annotations: {}, payload: { name: 'changed' } }],
+        unset: [],
       },
-      delete: { entities: [], edges: [] },
+      edges: { set: [], unset: [] },
     })!
     const next = applyMutationDocument(loaded, mutation)
     expect(next.document.entities.map((e) => e.id).sort()).toEqual(['a', 'b'])
     expect(next.document.entities.find((e) => e.id === 'a')?.payload).toEqual({ name: 'changed' })
     expect(entityStatus(next, 'a')).toBe('modified')
     expect(entityStatus(next, 'b')).toBe('unchanged')
-    expect(buildMutationDocument(next).upsert.entities.map((e) => e.id)).toEqual(['a'])
+    expect(buildMutationDocument(next).entities.set.map((e) => e.id)).toEqual(['a'])
   })
 
   it('merges entities without overwriting and excludes without pending deletes', () => {

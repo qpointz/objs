@@ -30,6 +30,22 @@ No global graph: an entity **pool** (`bom_entity`) shared by many **graphs** (`b
 
 Live GET **never** joins `*_version`. Default persist is in-place HEAD (no version row). Capture is explicit `createDeepGraphVersion` (C-18 default `ExplicitOnlyVersioningStrategy`). DIY edits to `*_version` are **unsupported — at your own risk** (H2 demo). As-built schema: [`database-model.md`](database-model.md). Historical lock: [`ER.md`](../../workitems/completed/20260819-versions-and-snapshots/ER.md).
 
+## Named-graph mutate (MERGE / REPLACE)
+
+`BoMNamedGraphStore.mutate(graphId, BoMGraphMutation)` — kind-first body
+`entities` / `edges` × `set` / `unset`. Kotlin: `bomMutation { … }`. REST: **PATCH** = MERGE,
+**PUT** = REPLACE (see [rest-api.md](../service/rest-api.md)).
+
+| Mode | Behaviour |
+|------|-----------|
+| **MERGE** (default) | `set` upserts; `unset` detaches members / drops graph-local edges; omission keeps |
+| **REPLACE** | `*.set` = full desired membership + edges; prune extras; reject non-empty `unset`; empty both `set` clears contents; **stable `graphId`** |
+
+REPLACE updates **HEAD** only. Pin history with explicit `createDeepGraphVersion` after rebuild
+(analytics “uber graph” pattern). Pool `BoMGraphStore.mutate` stays MERGE-only (hard-delete on
+entity unset). Do not confuse with `replace(BoMGraphSpec)` (id-set membership) or `mergeGraph`
+(new union graph) — glossary in [rest-api.md](../service/rest-api.md#mutate-glossary).
+
 **Flyway (objs line):** objs-core ships vendor SQL `V1__bom_schema.sql` under
 `classpath:org/poc/objs/core/db/migration/{vendor}` (`postgresql`, `h2` — Spring Boot
 `DatabaseDriver` id from the JDBC URL, not JDBC `databaseProductName`). Autoconfig

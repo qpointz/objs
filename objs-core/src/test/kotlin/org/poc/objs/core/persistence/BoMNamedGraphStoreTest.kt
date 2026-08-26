@@ -11,9 +11,9 @@ import org.poc.objs.core.domain.BoMAllowedEdgeRule
 import org.poc.objs.core.domain.BoMEdge
 import org.poc.objs.core.domain.BoMEntity
 import org.poc.objs.core.domain.BoMGraph
-import org.poc.objs.core.domain.BoMGraphDelete
 import org.poc.objs.core.domain.BoMGraphMutation
-import org.poc.objs.core.domain.BoMGraphUpsert
+import org.poc.objs.core.domain.BoMMutateMode
+import org.poc.objs.core.domain.bomMutation
 import org.poc.objs.core.domain.BoMPropertiesPolicy
 import org.poc.objs.core.domain.BoMSchema
 import org.poc.objs.core.domain.BoMSchemaCatalog
@@ -418,13 +418,11 @@ class BoMNamedGraphStoreTest {
 
         val result = namedGraphs.mutate(
             graph.id,
-            BoMGraphMutation(
-                upsert = BoMGraphUpsert(
-                    entities = mutableListOf(
-                        BoMEntity(id = neu, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "New")),
-                    ),
-                ),
-            ),
+            bomMutation {
+                entities {
+                    set(BoMEntity(id = neu, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "New")))
+                }
+            },
         )
 
         assertThat(result.isValid).isTrue()
@@ -439,11 +437,9 @@ class BoMNamedGraphStoreTest {
 
         val result = namedGraphs.mutate(
             graph.id,
-            BoMGraphMutation(
-                upsert = BoMGraphUpsert(
-                    edges = mutableListOf(BoMEdge(source = a, target = b, role = "knows")),
-                ),
-            ),
+            bomMutation {
+                edges { set(BoMEdge(source = a, target = b, role = "knows")) }
+            },
         )
 
         assertThat(result.isValid).isTrue()
@@ -458,11 +454,9 @@ class BoMNamedGraphStoreTest {
 
         val result = namedGraphs.mutate(
             graph.id,
-            BoMGraphMutation(
-                upsert = BoMGraphUpsert(
-                    edges = mutableListOf(BoMEdge(source = a, target = b, role = "knows")),
-                ),
-            ),
+            bomMutation {
+                edges { set(BoMEdge(source = a, target = b, role = "knows")) }
+            },
         )
 
         assertThat(result.isValid).isFalse()
@@ -479,14 +473,12 @@ class BoMNamedGraphStoreTest {
 
         val result = namedGraphs.mutate(
             graph.id,
-            BoMGraphMutation(
-                upsert = BoMGraphUpsert(
-                    entities = mutableListOf(
-                        BoMEntity(id = neu, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "New")),
-                    ),
-                    edges = mutableListOf(BoMEdge(source = a, target = neu, role = "knows")),
-                ),
-            ),
+            bomMutation {
+                entities {
+                    set(BoMEntity(id = neu, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "New")))
+                }
+                edges { set(BoMEdge(source = a, target = neu, role = "knows")) }
+            },
         )
 
         assertThat(result.isValid).isTrue()
@@ -500,7 +492,7 @@ class BoMNamedGraphStoreTest {
 
         val result = namedGraphs.mutate(
             graph.id,
-            BoMGraphMutation(delete = BoMGraphDelete(entities = mutableListOf(a))),
+            bomMutation { entities { unset(a) } },
         )
 
         assertThat(result.isValid).isTrue()
@@ -519,7 +511,7 @@ class BoMNamedGraphStoreTest {
 
         val result = namedGraphs.mutate(
             g1.id,
-            BoMGraphMutation(delete = BoMGraphDelete(edges = mutableListOf(edgeInG2))),
+            bomMutation { edges { unset(edgeInG2) } },
         )
 
         assertThat(result.isValid).isTrue()
@@ -535,6 +527,103 @@ class BoMNamedGraphStoreTest {
         }.isInstanceOf(BoMGraphException::class.java)
             .extracting("code")
             .isEqualTo("GRAPH_NOT_FOUND")
+    }
+
+    @Test
+    fun shouldReplace_matchingSetExactly_pruningExtras() {
+        val graph = namedGraphs.create(BoMGraphSpec(entityIds = setOf(a, b)))
+        addEdge(graph.id, a, b)
+        val keep = UUID.randomUUID()
+        graphStore.write(
+            BoMGraph(
+                entities = mutableListOf(
+                    BoMEntity(id = keep, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "Keep")),
+                ),
+            ),
+        )
+
+        val result = namedGraphs.mutate(
+            graph.id,
+            bomMutation {
+                mode(BoMMutateMode.REPLACE)
+                entities {
+                    set(
+                        BoMEntity(id = a, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "A")),
+                        BoMEntity(id = keep, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "Keep")),
+                    )
+                }
+                edges { set(BoMEdge(source = a, target = keep, role = "knows")) }
+            },
+        )
+
+        assertThat(result.isValid).isTrue()
+        val resolved = namedGraphs.get(graph.id)!!
+        assertThat(resolved.contents.entities.map { it.id }).containsExactlyInAnyOrder(a, keep)
+        assertThat(resolved.contents.edges).hasSize(1)
+        assertThat(resolved.contents.edges.single().target).isEqualTo(keep)
+        assertThat(entityRepository.existsById(b)).isTrue()
+    }
+
+    @Test
+    fun shouldReplace_emptySet_clearingContents_keepingGraphId() {
+        val graph = namedGraphs.create(BoMGraphSpec(entityIds = setOf(a, b)))
+        addEdge(graph.id, a, b)
+
+        val result = namedGraphs.mutate(
+            graph.id,
+            bomMutation { mode(BoMMutateMode.REPLACE) },
+        )
+
+        assertThat(result.isValid).isTrue()
+        val resolved = namedGraphs.get(graph.id)!!
+        assertThat(resolved.id).isEqualTo(graph.id)
+        assertThat(resolved.contents.entities).isEmpty()
+        assertThat(resolved.contents.edges).isEmpty()
+        assertThat(entityRepository.existsById(a)).isTrue()
+        assertThat(entityRepository.existsById(b)).isTrue()
+    }
+
+    @Test
+    fun shouldRejectReplace_whenUnsetNonEmpty() {
+        val graph = namedGraphs.create(BoMGraphSpec(entityIds = setOf(a)))
+
+        val result = namedGraphs.mutate(
+            graph.id,
+            bomMutation {
+                mode(BoMMutateMode.REPLACE)
+                entities { unset(a) }
+            },
+        )
+
+        assertThat(result.isValid).isFalse()
+        assertThat(result.issues).anySatisfy { issue ->
+            assertThat(issue.code).isEqualTo("REPLACE_UNSET_NOT_ALLOWED")
+        }
+        assertThat(namedGraphs.get(graph.id)!!.contents.entities.map { it.id }).containsExactly(a)
+    }
+
+    @Test
+    fun shouldReplace_thenCreateDeepGraphVersion() {
+        val graph = namedGraphs.create(BoMGraphSpec(entityIds = setOf(a)))
+        assertThat(
+            namedGraphs.mutate(
+                graph.id,
+                bomMutation {
+                    mode(BoMMutateMode.REPLACE)
+                    entities {
+                        set(
+                            BoMEntity(id = a, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "A")),
+                            BoMEntity(id = b, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "B")),
+                        )
+                    }
+                },
+            ).isValid,
+        ).isTrue()
+
+        val freeze = namedGraphs.createDeepGraphVersion(graph.id, mapOf("label" to "after-replace"))
+        assertThat(freeze.version).isGreaterThan(0)
+        val pinned = namedGraphs.getGraphVersion(graph.id, freeze.version)
+        assertThat(pinned.contents.entities.map { it.id }).containsExactlyInAnyOrder(a, b)
     }
 
     @Test

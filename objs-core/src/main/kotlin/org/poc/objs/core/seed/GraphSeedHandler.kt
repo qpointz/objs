@@ -4,7 +4,6 @@ import org.poc.objs.core.domain.BoMEdge
 import org.poc.objs.core.domain.BoMEntity
 import org.poc.objs.core.domain.BoMGraph
 import org.poc.objs.core.domain.BoMGraphMutation
-import org.poc.objs.core.domain.BoMGraphUpsert
 import org.poc.objs.core.domain.BoMGraphSpec
 import org.poc.objs.core.persistence.BoMNamedGraphStore
 import org.springframework.stereotype.Component
@@ -124,12 +123,7 @@ class GraphSeedHandler(
         }
         val result = namedGraphs.mutate(
             payload.graphId,
-            BoMGraphMutation(
-                upsert = BoMGraphUpsert(
-                    entities = payload.graph.entities,
-                    edges = payload.graph.edges,
-                ),
-            ),
+            BoMGraphMutation.of(payload.graph),
         )
         if (!result.isValid) {
             throw SeedDocumentValidationException(

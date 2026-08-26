@@ -4,10 +4,9 @@ import jakarta.persistence.EntityManager
 import org.poc.objs.core.domain.BoMEdge
 import org.poc.objs.core.domain.BoMEntity
 import org.poc.objs.core.domain.BoMGraph
-import org.poc.objs.core.domain.BoMGraphDelete
 import org.poc.objs.core.domain.BoMGraphMutation
-import org.poc.objs.core.domain.BoMGraphUpsert
 import org.poc.objs.core.domain.BoMGraphContents
+import org.poc.objs.core.domain.bomMutation
 import org.poc.objs.core.domain.BoMCatalogSupport
 import org.poc.objs.core.domain.BoMDuplicateGroup
 import org.poc.objs.core.domain.BoMIdentityProjection
@@ -67,18 +66,18 @@ class BoMGraphStore(
      */
     @Transactional
     fun write(graph: BoMGraph): BoMValidationResult =
-        mutate(BoMGraphMutation(upsert = BoMGraphUpsert(entities = graph.entities, edges = graph.edges)))
+        mutate(BoMGraphMutation.of(graph))
 
     /** Dry-run write validation (may assign temporary ids on [graph] via the persist gate). */
     @Transactional(readOnly = true)
     fun validate(graph: BoMGraph): BoMValidationResult =
-        validateMutation(BoMGraphMutation(upsert = BoMGraphUpsert(entities = graph.entities, edges = graph.edges)))
+        validateMutation(BoMGraphMutation.of(graph))
 
     /**
-     * Transactional mutate: validate projected state, then explicit edge deletes,
-     * entity deletes (cascade incident edges), then upserts.
+     * Transactional mutate: validate projected state, then explicit edge unsets,
+     * entity unsets (cascade incident edges), then sets.
      *
-     * Same id in delete and upsert: upsert wins in the final store state.
+     * Same id in unset and set: set wins in the final store state.
      */
     @Transactional
     fun mutate(mutation: BoMGraphMutation): BoMValidationResult {
@@ -92,23 +91,23 @@ class BoMGraphStore(
     }
 
     /**
-     * Dry-run mutation validation (may assign temporary ids on upsert entities/edges).
-     * Edge endpoint lookup ignores entities scheduled for delete unless also upserted.
+     * Dry-run mutation validation (may assign temporary ids on set entities/edges).
+     * Edge endpoint lookup ignores entities scheduled for unset unless also set.
      */
     @Transactional(readOnly = true)
     fun validateMutation(mutation: BoMGraphMutation): BoMValidationResult {
         val g = gate()
         val issues = mutableListOf<BoMValidationIssue>()
-        for (id in mutation.delete.edges.distinct()) {
+        for (id in mutation.edges.unset.distinct()) {
             issues.addAll(g.validateDeleteEdge(id).issues)
         }
-        for (id in mutation.delete.entities.distinct()) {
+        for (id in mutation.entities.unset.distinct()) {
             issues.addAll(g.validateDeleteEntity(id).issues)
         }
         if (issues.isNotEmpty()) {
             return BoMValidationResult.of(issues)
         }
-        if (!mutation.hasUpserts()) {
+        if (!mutation.hasSets()) {
             return BoMValidationResult.ok()
         }
         val graph = mutation.graph()
@@ -117,9 +116,9 @@ class BoMGraphStore(
             return stage1
         }
         g.prepareIds(graph)
-        val deleted = mutation.delete.entities.toSet()
+        val unsetEntities = mutation.entities.unset.toSet()
         val projectedStore = BoMEntityTypeLookup { id ->
-            if (id in deleted) {
+            if (id in unsetEntities) {
                 null
             } else {
                 entityRepository.findById(id).map { it.type }.orElse(null)
@@ -133,12 +132,12 @@ class BoMGraphStore(
         val identityIssues = mutableListOf<BoMValidationIssue>()
         graph.entities.forEachIndexed { index, entity ->
             val id = entity.id ?: return@forEachIndexed
-            if (id in deleted) return@forEachIndexed
+            if (id in unsetEntities) return@forEachIndexed
             val stored = entityRepository.findById(id).orElse(null)?.toDomain() ?: return@forEachIndexed
             identityIssues += validator.validateEntityIdentifierImmutability(
                 stored,
                 entity,
-                path = "entities[$index]",
+                path = "entities.set[$index]",
             )
         }
         graph.edges.forEachIndexed { index, edge ->
@@ -147,7 +146,7 @@ class BoMGraphStore(
             identityIssues += validator.validateEdgeIdentifierImmutability(
                 stored,
                 edge,
-                path = "edges[$index]",
+                path = "edges.set[$index]",
             )
         }
         return if (identityIssues.isEmpty()) {
@@ -159,11 +158,11 @@ class BoMGraphStore(
 
     @Transactional
     fun deleteEntity(id: UUID): BoMValidationResult =
-        mutate(BoMGraphMutation(delete = BoMGraphDelete(entities = mutableListOf(id))))
+        mutate(bomMutation { entities { unset(id) } })
 
     @Transactional
     fun deleteEdge(id: UUID): BoMValidationResult =
-        mutate(BoMGraphMutation(delete = BoMGraphDelete(edges = mutableListOf(id))))
+        mutate(bomMutation { edges { unset(id) } })
 
     /**
      * All-or-nothing batch delete (G-R3/G-R4). Thin shim over [mutate].
@@ -182,23 +181,21 @@ class BoMGraphStore(
             )
         }
         return mutate(
-            BoMGraphMutation(
-                delete = BoMGraphDelete(
-                    entities = entityIds.toMutableList(),
-                    edges = edgeIds.toMutableList(),
-                ),
-            ),
+            bomMutation {
+                if (entityIds.isNotEmpty()) entities { unset(entityIds) }
+                if (edgeIds.isNotEmpty()) edges { unset(edgeIds) }
+            },
         )
     }
 
     private fun applyDeletes(mutation: BoMGraphMutation) {
         val touchedGraphs = linkedSetOf<UUID>()
-        for (id in mutation.delete.edges.distinct()) {
+        for (id in mutation.edges.unset.distinct()) {
             val edge = edgeRepository.findById(id).orElse(null) ?: continue
             touchedGraphs += edge.graphId
             edgeRepository.delete(edge)
         }
-        val entityIds = mutation.delete.entities.distinct().filter { entityRepository.existsById(it) }
+        val entityIds = mutation.entities.unset.distinct().filter { entityRepository.existsById(it) }
         if (entityIds.isNotEmpty()) {
             edgeRepository.findBySourceIdInOrTargetIdIn(entityIds, entityIds)
                 .forEach { edge ->
@@ -378,7 +375,7 @@ class BoMGraphStore(
 
     /**
      * Entity-only pool upsert (no edges, no membership). Shared by [applyUpserts] and
-     * [BoMNamedGraphStore.mutate]'s graph-scoped `upsert.entities` step.
+     * [BoMNamedGraphStore.mutate]'s graph-scoped `entities.set` step.
      */
     @Transactional
     fun upsertEntities(entities: Collection<BoMEntity>) {

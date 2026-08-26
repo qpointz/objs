@@ -19,9 +19,10 @@ Same policy applies for the **entity SDK** save path. REST (later stories) uses 
 |------|------|
 | Entity/edge **without id** | **Create** — generate **`UUID.randomUUID()`** at persist |
 | Entity/edge **with id** | **Update** if id exists, else **create** with client-supplied id (batch-friendly) |
-| **Delete** | Explicit ids on `BoMGraphMutation.delete.entities` / `delete.edges` or deprecated `DELETE /graph`; never inferred from omission |
+| **Unset** | Explicit ids on `BoMGraphMutation.entities.unset` / `edges.unset`; never inferred from omission under MERGE |
 
-Batch subgraph payloads may **mix** creates, updates, and deletes in one `BoMGraphMutation`.
+Batch subgraph payloads may **mix** creates, updates, and unsets in one `BoMGraphMutation` (MERGE).
+REPLACE uses set-only desired membership + edges (see [rest-api.md](../service/rest-api.md)).
 
 ## What is validated
 
@@ -59,7 +60,8 @@ shared by entities and edges; see [object-schema-dsl.md](object-schema-dsl.md).
 - **Delete**: must still pass the gate — e.g. edge delete allowed only if the `(sourceType, role, targetType)` rule exists (allow-list); entity delete as defined by the same persist-boundary API (reject if gate fails). Exact delete checks beyond “same gate applies” follow allow-list / referential integrity chosen in WI-005.
 - Does **not** run on pure in-memory SDK construction.
 - Prefer **transactional all-or-nothing** for a batch subgraph write / mutation.
-- **`BoMGraphMutation`:** validate deletes + upserts against **projected** store state (deleted entity ids are invisible to edge lookup unless also present in the upsert payload); then apply explicit edge deletes, entity deletes (cascade incident edges), then upserts.
+- **`BoMGraphMutation` (MERGE):** validate unsets + sets against **projected** store state (unset entity ids are invisible to edge lookup unless also present in `set`); then apply explicit edge unsets, entity unsets (named-graph: detach; pool: hard-delete + cascade incident edges), then sets.
+- **`BoMGraphMutation` (REPLACE, named graph only):** reject non-empty `unset`; `*.set` is the full desired membership + graph-local edges; prune extras; empty both `set` clears contents (stable `graphId`).
 
 ### 2. Basic / audit validation (non-blocking)
 

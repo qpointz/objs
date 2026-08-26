@@ -1,13 +1,13 @@
 import type { BoMEdge, BoMEntity, BoMValidationIssue } from './types'
 
-const ENTITY_PATH = /(?:^|\.)(?:upsert\.)?entities\[(\d+)\]/
-const EDGE_PATH = /(?:^|\.)(?:upsert\.)?edges\[(\d+)\]/
+const ENTITY_PATH = /(?:^|\.)(?:entities\.set|entities)\[(\d+)\]/
+const EDGE_PATH = /(?:^|\.)(?:edges\.set|edges)\[(\d+)\]/
 
 export type ValidationTarget =
   | { kind: 'entity'; id: string; index: number }
   | { kind: 'edge'; id: string; index: number }
 
-/** Map a validation issue path to an upsert entity/edge id using mutation order. */
+/** Map a validation issue path to a set entity/edge id using mutation order. */
 export function validationTargetFromIssue(
   issue: BoMValidationIssue,
   entities: Pick<BoMEntity, 'id'>[],

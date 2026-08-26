@@ -2,6 +2,7 @@ package org.poc.objs.service.web
 
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.mockito.ArgumentMatchers.isNull
 import org.mockito.BDDMockito.given
 import org.mockito.BDDMockito.willThrow
 import org.mockito.Mockito.mock
@@ -23,6 +24,7 @@ import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
@@ -30,7 +32,6 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import tools.jackson.databind.json.JsonMapper
 import java.util.UUID
-import org.mockito.ArgumentMatchers.isNull
 
 class ObjsGraphsControllerTest {
 
@@ -188,7 +189,26 @@ class ObjsGraphsControllerTest {
     }
 
     @Test
-    fun shouldMutateGraph_returningResolvedGraph() {
+    fun shouldMutateGraph_withPatch_mergeMode() {
+        val id = UUID.randomUUID()
+        given(namedGraphs.mutate(anyObj(), anyObj())).willReturn(BoMValidationResult.ok())
+        given(namedGraphs.get(id)).willReturn(
+            BoMResolvedGraph(id, mapOf("env" to "prod"), BoMGraphContents(emptyList(), emptyList())),
+        )
+
+        mockMvc.perform(
+            patch("/api/v1/objs/graphs/$id")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """{"entities":{"set":[],"unset":[]},"edges":{"set":[],"unset":[]}}""",
+                ),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.annotations.env").value("prod"))
+    }
+
+    @Test
+    fun shouldMutateGraph_withPut_replaceMode() {
         val id = UUID.randomUUID()
         given(namedGraphs.mutate(anyObj(), anyObj())).willReturn(BoMValidationResult.ok())
         given(namedGraphs.get(id)).willReturn(
@@ -199,11 +219,10 @@ class ObjsGraphsControllerTest {
             put("/api/v1/objs/graphs/$id")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
-                    """{"upsert":{"entities":[],"edges":[]},"delete":{"entities":[],"edges":[]}}""",
+                    """{"entities":{"set":[],"unset":[]},"edges":{"set":[],"unset":[]}}""",
                 ),
         )
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.annotations.env").value("prod"))
     }
 
     @Test
@@ -214,9 +233,9 @@ class ObjsGraphsControllerTest {
         )
 
         mockMvc.perform(
-            put("/api/v1/objs/graphs/$id")
+            patch("/api/v1/objs/graphs/$id")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"upsert":{"entities":[],"edges":[]},"delete":{"entities":[],"edges":[]}}"""),
+                .content("""{"entities":{"set":[],"unset":[]},"edges":{"set":[],"unset":[]}}"""),
         )
             .andExpect(status().isBadRequest)
             .andExpect(jsonPath("$.issues[0].code").value("EDGE_ENDPOINT_NOT_MEMBER"))
@@ -229,9 +248,9 @@ class ObjsGraphsControllerTest {
             .given(namedGraphs).mutate(anyObj(), anyObj())
 
         mockMvc.perform(
-            put("/api/v1/objs/graphs/$id")
+            patch("/api/v1/objs/graphs/$id")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"upsert":{"entities":[],"edges":[]},"delete":{"entities":[],"edges":[]}}"""),
+                .content("""{"entities":{"set":[],"unset":[]},"edges":{"set":[],"unset":[]}}"""),
         )
             .andExpect(status().isNotFound)
             .andExpect(jsonPath("$.code").value("GRAPH_NOT_FOUND"))
@@ -245,9 +264,9 @@ class ObjsGraphsControllerTest {
         )
 
         mockMvc.perform(
-            post("/api/v1/objs/graphs/$id/validate")
+            patch("/api/v1/objs/graphs/$id/validate")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"upsert":{"entities":[],"edges":[]},"delete":{"entities":[],"edges":[]}}"""),
+                .content("""{"entities":{"set":[],"unset":[]},"edges":{"set":[],"unset":[]}}"""),
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.issues[0].code").value("EDGE_ENDPOINT_NOT_MEMBER"))

@@ -16,9 +16,9 @@ import org.poc.objs.core.domain.BoMCatalogSupport;
 import org.poc.objs.core.domain.BoMEdge;
 import org.poc.objs.core.domain.BoMEntity;
 import org.poc.objs.core.domain.BoMGraphContents;
-import org.poc.objs.core.domain.BoMGraphDelete;
+import org.poc.objs.core.domain.BoMEdgeMutation;
+import org.poc.objs.core.domain.BoMEntityMutation;
 import org.poc.objs.core.domain.BoMGraphMutation;
-import org.poc.objs.core.domain.BoMGraphUpsert;
 import org.poc.objs.core.domain.BoMIdentityProjection;
 import org.poc.objs.core.domain.BoMSchema;
 import org.poc.objs.core.domain.BoMSchemaCatalog;
@@ -272,17 +272,17 @@ public class ObjectWriteService {
     }
 
     private void persist(CollectionEntity collection, WriteBatch batch) {
-        BoMGraphUpsert upsert = new BoMGraphUpsert();
+        BoMEntityMutation entities = new BoMEntityMutation();
         for (WriteBatch.PendingObject pending : batch.getObjects()) {
             if (pending.op() != EventExtension.ObjectChange.Op.DELETE) {
-                upsert.getEntities().add(pending.entity());
+                entities.getSet().add(pending.entity());
             }
         }
-        upsert.getEdges().addAll(batch.getEdges());
-        BoMGraphDelete delete = new BoMGraphDelete();
-        delete.getEntities().addAll(batch.getDeleteEntityIds());
-        delete.getEdges().addAll(batch.getDeleteEdgeIds());
-        var result = namedGraphs.mutate(collection.getGraphId(), new BoMGraphMutation(upsert, delete));
+        BoMEdgeMutation edges = new BoMEdgeMutation();
+        edges.getSet().addAll(batch.getEdges());
+        entities.getUnset().addAll(batch.getDeleteEntityIds());
+        edges.getUnset().addAll(batch.getDeleteEdgeIds());
+        var result = namedGraphs.mutate(collection.getGraphId(), new BoMGraphMutation(entities, edges));
         if (!result.isValid()) {
             throw new BoMValidationException("write", result);
         }

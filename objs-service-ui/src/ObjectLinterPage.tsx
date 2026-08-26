@@ -6,6 +6,8 @@ import {
   Button,
   Code,
   Group,
+  Menu,
+  Modal,
   Paper,
   Stack,
   Table,
@@ -19,10 +21,12 @@ import { mutationShapeError, normalizeGraphMutation } from './graphDraft'
 import {
   createGraph,
   getGraph,
+  patchGraphMutation,
   putGraphMutation,
   putGraphAnnotations,
   validateGraphMutation,
   toGraphData,
+  type GraphMutationBody,
 } from './api'
 import { ComposerGraphBar } from './ComposerGraphBar'
 import { JsonYamlEditor, type JsonYamlEditorHandle } from './JsonYamlEditor'
@@ -63,14 +67,14 @@ function annotationsEqual(a: Record<string, string>, b: Record<string, string>):
 }
 
 function isMutationDirty(body: {
-  upsert: { entities: unknown[]; edges: unknown[] }
-  delete: { entities: unknown[]; edges: unknown[] }
+  entities: { set: unknown[]; unset: unknown[] }
+  edges: { set: unknown[]; unset: unknown[] }
 }): boolean {
   return (
-    body.upsert.entities.length +
-      body.upsert.edges.length +
-      body.delete.entities.length +
-      body.delete.edges.length >
+    body.entities.set.length +
+      body.edges.set.length +
+      body.entities.unset.length +
+      body.edges.unset.length >
     0
   )
 }
@@ -134,6 +138,7 @@ export function ObjectLinterPage() {
   const [openMatcherForNew, setOpenMatcherForNew] = useState(false)
   const [snapshotOpen, setSnapshotOpen] = useState(false)
   const [cloneOpen, setCloneOpen] = useState(false)
+  const [overwriteOpen, setOverwriteOpen] = useState(false)
   const [handoffMatcher, setHandoffMatcher] = useState<unknown | null>(null)
   const [autoSearch, setAutoSearch] = useState(false)
   const [autoAddAllResults, setAutoAddAllResults] = useState(false)
@@ -262,26 +267,26 @@ export function ObjectLinterPage() {
     if (!result || result.issues.length === 0) return new Set<string>()
     return entityIdsFromValidationIssues(
       result.issues,
-      mutationBody.upsert.entities,
-      mutationBody.upsert.edges,
+      mutationBody.entities.set,
+      mutationBody.edges.set,
     )
-  }, [mutationBody.upsert.edges, mutationBody.upsert.entities, result])
+  }, [mutationBody.edges.set, mutationBody.entities.set, result])
 
   const invalidEdgeIds = useMemo(() => {
     if (!result || result.issues.length === 0) return new Set<string>()
     return edgeIdsFromValidationIssues(
       result.issues,
-      mutationBody.upsert.entities,
-      mutationBody.upsert.edges,
+      mutationBody.entities.set,
+      mutationBody.edges.set,
     )
-  }, [mutationBody.upsert.edges, mutationBody.upsert.entities, result])
+  }, [mutationBody.edges.set, mutationBody.entities.set, result])
 
   const focusValidationIssue = useCallback(
     (issue: BoMValidationIssue) => {
       const target = validationTargetFromIssue(
         issue,
-        mutationBody.upsert.entities,
-        mutationBody.upsert.edges,
+        mutationBody.entities.set,
+        mutationBody.edges.set,
       )
       if (!target) return
       setTab('visual')
@@ -298,7 +303,7 @@ export function ObjectLinterPage() {
       select({ kind: 'edge', edge })
       requestAnimationFrame(() => visualRef.current?.focusNode(edge.source))
     },
-    [graphView.links, graphView.nodes, mutationBody.upsert.edges, mutationBody.upsert.entities, select],
+    [graphView.links, graphView.nodes, mutationBody.edges.set, mutationBody.entities.set, select],
   )
 
   const onDraftParsed = useCallback(
@@ -370,7 +375,12 @@ export function ObjectLinterPage() {
     setError(null)
     setResult(null)
     try {
-      setResult(await validateGraphMutation(synced.body))
+      setResult(
+        await validateGraphMutation(synced.body, {
+          graphId: currentGraphId ?? undefined,
+          mode: 'merge',
+        }),
+      )
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -378,7 +388,20 @@ export function ObjectLinterPage() {
     }
   }
 
-  async function saveGraph() {
+  function overwriteMutationBody(): GraphMutationBody {
+    return {
+      entities: {
+        set: document.entities.filter((e) => !state.pendingDeleteEntityIds.has(e.id)),
+        unset: [],
+      },
+      edges: {
+        set: document.edges.filter((e) => e.id == null || !state.pendingDeleteEdgeIds.has(e.id)),
+        unset: [],
+      },
+    }
+  }
+
+  async function saveGraph(mode: 'merge' | 'overwrite' = 'merge') {
     const synced = await syncTextIntoDraft()
     if (!synced) return
     setBusy(true)
@@ -386,9 +409,15 @@ export function ObjectLinterPage() {
     setResult(null)
     try {
       const annDirty = !annotationsEqual(graphAnnotations, savedGraphAnnotations)
-      const mutDirty = isMutationDirty(synced.body)
+      const body = mode === 'overwrite' ? overwriteMutationBody() : synced.body
+      const mutDirty = mode === 'overwrite' || isMutationDirty(synced.body)
+      const validateMode = mode === 'overwrite' ? 'replace' : 'merge'
 
       if (currentGraphId == null) {
+        if (mode === 'overwrite') {
+          setError('Overwrite requires an existing graph — Save (merge) first')
+          return
+        }
         if (mutDirty) {
           const validation = await validateGraphMutation(synced.body)
           setResult(validation)
@@ -398,7 +427,7 @@ export function ObjectLinterPage() {
           }
         }
 
-        // First Save: create header with membership for pool-backed ids, then upsert
+        // First Save: create header with membership for pool-backed ids, then MERGE
         // new/modified entities + all live edges into the new graph (G-U5).
         const membershipIds = document.entities
           .filter((e) => state.baselineEntityIds.has(e.id))
@@ -407,18 +436,21 @@ export function ObjectLinterPage() {
           annotations: graphAnnotations,
           entityIds: membershipIds,
         })
-        const edgeUpserts = document.edges.filter(
+        const edgeSets = document.edges.filter(
           (e) => e.id != null && !state.pendingDeleteEdgeIds.has(e.id),
         )
         const createMutation = {
-          upsert: {
-            entities: synced.body.upsert.entities,
-            edges: edgeUpserts,
+          entities: {
+            set: synced.body.entities.set,
+            unset: [] as string[],
           },
-          delete: { entities: [] as string[], edges: [] as string[] },
+          edges: {
+            set: edgeSets,
+            unset: [] as string[],
+          },
         }
         if (isMutationDirty(createMutation)) {
-          await putGraphMutation(created.id, createMutation)
+          await patchGraphMutation(created.id, createMutation)
         }
         applyGraphHeader(created.id, created.annotations ?? graphAnnotations)
         markApplied()
@@ -426,13 +458,20 @@ export function ObjectLinterPage() {
       }
 
       if (mutDirty) {
-        const validation = await validateGraphMutation(synced.body)
+        const validation = await validateGraphMutation(body, {
+          graphId: currentGraphId,
+          mode: validateMode,
+        })
         setResult(validation)
         if (validation.issues.length > 0) {
           setError('Fix validation issues before Save')
           return
         }
-        await putGraphMutation(currentGraphId, synced.body)
+        if (mode === 'overwrite') {
+          await putGraphMutation(currentGraphId, body)
+        } else {
+          await patchGraphMutation(currentGraphId, body)
+        }
         markApplied()
       }
       if (annDirty) {
@@ -595,16 +634,39 @@ export function ObjectLinterPage() {
           disabled={saveEnabled}
           withArrow
         >
-          <span style={{ display: 'inline-flex' }}>
+          <Group gap={0} style={{ display: 'inline-flex' }}>
             <Button
               size={VIEW_ACTION_BUTTON_SIZE}
               loading={busy}
               disabled={!saveEnabled}
-              onClick={() => void saveGraph()}
+              onClick={() => void saveGraph('merge')}
+              style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
             >
               Save
             </Button>
-          </span>
+            <Menu position="bottom-end" withinPortal>
+              <Menu.Target>
+                <Button
+                  size={VIEW_ACTION_BUTTON_SIZE}
+                  loading={busy}
+                  disabled={!saveEnabled || currentGraphId == null}
+                  px={8}
+                  style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0, borderLeft: 0 }}
+                  aria-label="More save options"
+                >
+                  ▾
+                </Button>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item
+                  disabled={currentGraphId == null}
+                  onClick={() => setOverwriteOpen(true)}
+                >
+                  Overwrite…
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+          </Group>
         </Tooltip>
         <Tooltip
           label={
@@ -646,10 +708,10 @@ export function ObjectLinterPage() {
             </Button>
           </span>
         </Tooltip>
-        {mutationBody.upsert.entities.length + mutationBody.upsert.edges.length > 0 && (
+        {mutationBody.entities.set.length + mutationBody.edges.set.length > 0 && (
           <Badge color="blue" variant="light" size="sm">
-            {mutationBody.upsert.entities.length + mutationBody.upsert.edges.length} upsert
-            {mutationBody.upsert.entities.length + mutationBody.upsert.edges.length === 1
+            {mutationBody.entities.set.length + mutationBody.edges.set.length} upsert
+            {mutationBody.entities.set.length + mutationBody.edges.set.length === 1
               ? ''
               : 's'}
           </Badge>
@@ -830,8 +892,8 @@ export function ObjectLinterPage() {
                   {result.issues.map((issue, index) => {
                     const target = validationTargetFromIssue(
                       issue,
-                      mutationBody.upsert.entities,
-                      mutationBody.upsert.edges,
+                      mutationBody.entities.set,
+                      mutationBody.edges.set,
                     )
                     const clickable = target != null
                     return (
@@ -913,6 +975,34 @@ export function ObjectLinterPage() {
         onClose={() => setCloneOpen(false)}
         onCreated={onOpenGraph}
       />
+      <Modal
+        opened={overwriteOpen}
+        onClose={() => setOverwriteOpen(false)}
+        title="Overwrite graph"
+        centered
+      >
+        <Stack gap="sm">
+          <Text size="sm">
+            Overwrite replaces the entire graph membership and edges with the current draft. This
+            cannot be undone except by restoring a prior version.
+          </Text>
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setOverwriteOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              color="red"
+              loading={busy}
+              onClick={() => {
+                setOverwriteOpen(false)
+                void saveGraph('overwrite')
+              }}
+            >
+              Overwrite
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Stack>
   )
 }

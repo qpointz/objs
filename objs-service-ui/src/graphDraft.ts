@@ -22,21 +22,21 @@ export type GraphDraftState = {
   pendingDeleteEdgeIds: Set<string>
 }
 
-/** Text / UI / API mutation shape (BoMGraphMutation). */
+/** Text / UI / API mutation shape (BoMGraphMutation) — kind-first set/unset. */
 export type GraphMutationDocument = {
-  upsert: {
-    entities: BoMEntity[]
-    edges: BoMEdge[]
+  entities: {
+    set: BoMEntity[]
+    unset: string[]
   }
-  delete: {
-    entities: string[]
-    edges: string[]
+  edges: {
+    set: BoMEdge[]
+    unset: string[]
   }
 }
 
 export const EMPTY_MUTATION: GraphMutationDocument = {
-  upsert: { entities: [], edges: [] },
-  delete: { entities: [], edges: [] },
+  entities: { set: [], unset: [] },
+  edges: { set: [], unset: [] },
 }
 
 export const EMPTY_GRAPH: GraphDraftDocument = {
@@ -103,20 +103,20 @@ export function mutationShapeError(value: unknown): string | null {
     return 'Mutation must be an object'
   }
   const root = value as Record<string, unknown>
-  const upsert = root.upsert
-  const del = root.delete
-  if (!upsert || typeof upsert !== 'object' || Array.isArray(upsert)) {
-    return 'Mutation must contain an upsert object'
+  const entities = root.entities
+  const edges = root.edges
+  if (!entities || typeof entities !== 'object' || Array.isArray(entities)) {
+    return 'Mutation must contain an entities object'
   }
-  if (!del || typeof del !== 'object' || Array.isArray(del)) {
-    return 'Mutation must contain a delete object'
+  if (!edges || typeof edges !== 'object' || Array.isArray(edges)) {
+    return 'Mutation must contain an edges object'
   }
-  const u = upsert as Record<string, unknown>
-  const d = del as Record<string, unknown>
-  if (!Array.isArray(u.entities)) return 'upsert.entities must be an array'
-  if (!Array.isArray(u.edges)) return 'upsert.edges must be an array'
-  if (!Array.isArray(d.entities)) return 'delete.entities must be an array of ids'
-  if (!Array.isArray(d.edges)) return 'delete.edges must be an array of ids'
+  const e = entities as Record<string, unknown>
+  const g = edges as Record<string, unknown>
+  if (!Array.isArray(e.set)) return 'entities.set must be an array'
+  if (!Array.isArray(e.unset)) return 'entities.unset must be an array of ids'
+  if (!Array.isArray(g.set)) return 'edges.set must be an array'
+  if (!Array.isArray(g.unset)) return 'edges.unset must be an array of ids'
   return null
 }
 
@@ -156,24 +156,27 @@ function normalizeIdList(value: unknown): string[] {
 export function normalizeGraphMutation(value: unknown): GraphMutationDocument | null {
   if (mutationShapeError(value)) return null
   const root = value as {
-    upsert: { entities: unknown[]; edges: unknown[] }
-    delete: { entities: unknown[]; edges: unknown[] }
+    entities: { set: unknown[]; unset: unknown[] }
+    edges: { set: unknown[]; unset: unknown[] }
   }
-  const upsertDoc = normalizeGraphDocument(root.upsert)
-  if (!upsertDoc) return null
+  const setDoc = normalizeGraphDocument({
+    entities: root.entities.set,
+    edges: root.edges.set,
+  })
+  if (!setDoc) return null
   return {
-    upsert: {
-      entities: upsertDoc.entities,
-      edges: upsertDoc.edges,
+    entities: {
+      set: setDoc.entities,
+      unset: normalizeIdList(root.entities.unset),
     },
-    delete: {
-      entities: normalizeIdList(root.delete.entities),
-      edges: normalizeIdList(root.delete.edges),
+    edges: {
+      set: setDoc.edges,
+      unset: normalizeIdList(root.edges.unset),
     },
   }
 }
 
-/** Upserts + deletes for Text / Validate / Apply — excludes unchanged loaded items. */
+/** Sets + unsets for Text / Validate / Apply — excludes unchanged loaded items. */
 export function buildMutationDocument(state: GraphDraftState): GraphMutationDocument {
   const entities = state.document.entities
     .filter((e) => {
@@ -189,10 +192,13 @@ export function buildMutationDocument(state: GraphDraftState): GraphMutationDocu
     })
     .map(cloneEdge)
   return {
-    upsert: { entities, edges },
-    delete: {
-      entities: [...state.pendingDeleteEntityIds].sort(),
-      edges: [...state.pendingDeleteEdgeIds].sort(),
+    entities: {
+      set: entities,
+      unset: [...state.pendingDeleteEntityIds].sort(),
+    },
+    edges: {
+      set: edges,
+      unset: [...state.pendingDeleteEdgeIds].sort(),
     },
   }
 }
@@ -206,15 +212,15 @@ export function applyMutationDocument(
   mutation: GraphMutationDocument,
 ): GraphDraftState {
   const pendingDeleteEntityIds = new Set(
-    mutation.delete.entities.filter((id) => state.baselineEntityIds.has(id)),
+    mutation.entities.unset.filter((id) => state.baselineEntityIds.has(id)),
   )
   const pendingDeleteEdgeIds = new Set(
-    mutation.delete.edges.filter((id) => state.baselineEdgeIds.has(id)),
+    mutation.edges.unset.filter((id) => state.baselineEdgeIds.has(id)),
   )
 
   const softDeletedEntities = new Map<string, BoMEntity>()
   const softDeletedEdges = new Map<string, BoMEdge>()
-  const upsertById = new Map(mutation.upsert.entities.map((e) => [e.id, cloneEntity(e)]))
+  const setById = new Map(mutation.entities.set.map((e) => [e.id, cloneEntity(e)]))
 
   const liveEntities: BoMEntity[] = []
   for (const id of state.baselineEntityIds) {
@@ -225,20 +231,20 @@ export function applyMutationDocument(
       )
       continue
     }
-    const upsert = upsertById.get(id)
-    if (upsert) {
-      liveEntities.push(upsert)
-      upsertById.delete(id)
+    const setEntity = setById.get(id)
+    if (setEntity) {
+      liveEntities.push(setEntity)
+      setById.delete(id)
     } else {
       liveEntities.push(cloneEntity(state.baselineEntities.get(id)!))
     }
   }
-  for (const entity of upsertById.values()) {
+  for (const entity of setById.values()) {
     liveEntities.push(entity)
   }
 
   const mutationEdgeById = new Map(
-    mutation.upsert.edges.filter((e) => e.id).map((e) => [e.id as string, cloneEdge(e)]),
+    mutation.edges.set.filter((e) => e.id).map((e) => [e.id as string, cloneEdge(e)]),
   )
   const usedMutationEdgeIds = new Set<string>()
   const liveEdges: BoMEdge[] = []
@@ -257,15 +263,15 @@ export function applyMutationDocument(
       )
       continue
     }
-    const upsert = mutationEdgeById.get(id)
-    if (upsert) {
-      liveEdges.push(upsert)
+    const setEdge = mutationEdgeById.get(id)
+    if (setEdge) {
+      liveEdges.push(setEdge)
       usedMutationEdgeIds.add(id)
     } else {
       liveEdges.push(cloneEdge(baselineEdge))
     }
   }
-  for (const edge of mutation.upsert.edges) {
+  for (const edge of mutation.edges.set) {
     if (edge.id && usedMutationEdgeIds.has(edge.id)) continue
     if (edge.id && pendingDeleteEdgeIds.has(edge.id)) continue
     if (pendingDeleteEntityIds.has(edge.source) || pendingDeleteEntityIds.has(edge.target)) {
