@@ -94,8 +94,8 @@ class ObjsRegistryController(
         description = "Formats: seeds | json-schema | json-schema-codegen. " +
             "For JSON Schema formats, optional dialect / includeEdges / includeEdgePropertySchemas " +
             "configure the full-catalog projection (defaults: 2020-12, outbound, true). " +
-            "includeEdges: none | outbound | linked. " +
-            "json-schema-codegen adds a synthetic root that \$refs every \$def (POJO tools).",
+            "dialect: 2020-12 | draft-07. includeEdges: none | outbound | linked. " +
+            "json-schema-codegen adds a synthetic root that \$refs every catalog def (POJO tools).",
     )
     fun exportRegistry(
         @RequestParam format: String,

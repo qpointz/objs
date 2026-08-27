@@ -140,12 +140,16 @@ export function catalogSeedContainsGraph(yamlText: string): boolean {
   }
 }
 
-/** `$defs` keys from a full-catalog JSON Schema document (sorted). */
+/** `$defs` / `definitions` keys from a full-catalog JSON Schema document (sorted). */
 export function jsonSchemaDefKeys(body: string): string[] {
   try {
-    const doc = JSON.parse(body) as { $defs?: Record<string, unknown> }
-    if (!doc.$defs || typeof doc.$defs !== 'object') return []
-    return Object.keys(doc.$defs).sort((a, b) => a.localeCompare(b))
+    const doc = JSON.parse(body) as {
+      $defs?: Record<string, unknown>
+      definitions?: Record<string, unknown>
+    }
+    const defs = doc.$defs ?? doc.definitions
+    if (!defs || typeof defs !== 'object') return []
+    return Object.keys(defs).sort((a, b) => a.localeCompare(b))
   } catch {
     return []
   }

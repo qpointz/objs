@@ -165,10 +165,74 @@ class FullCatalogJsonSchemaExporterTest {
         assertThat(opts.includeEdges).isEqualTo(BoMJsonSchemaEdgeInclusion.LINKED)
         assertThat(opts.includeEdgePropertySchemas).isFalse()
 
+        val draft07 = BoMJsonSchemaExportOptions.fromWire(dialect = "draft-07")
+        assertThat(draft07.dialect).isEqualTo(BoMJsonSchemaDialect.DRAFT_07)
+
         assertThatThrownBy { BoMJsonSchemaExportOptions.fromWire(includeEdges = "both") }
             .isInstanceOf(BoMJsonSchemaExportOptionsException::class.java)
-        assertThatThrownBy { BoMJsonSchemaExportOptions.fromWire(dialect = "draft-07") }
+        assertThatThrownBy { BoMJsonSchemaExportOptions.fromWire(dialect = "draft-04") }
             .isInstanceOf(BoMJsonSchemaExportOptionsException::class.java)
+    }
+
+    @Test
+    fun shouldExportDraft07_withDefinitionsKeyword_andAllOfSingularRefs() {
+        registerProductCatalog()
+
+        val doc = exporter.export(
+            BoMJsonSchemaExportOptions(dialect = BoMJsonSchemaDialect.DRAFT_07),
+        )
+        assertThat(doc["\$schema"]).isEqualTo(BoMJsonSchemaDialect.DRAFT_07.schemaUri)
+        assertThat(doc).doesNotContainKey("\$defs")
+        @Suppress("UNCHECKED_CAST")
+        val opts = doc["x-objs-json-schema-options"] as Map<String, Any?>
+        assertThat(opts["dialect"]).isEqualTo("draft-07")
+
+        @Suppress("UNCHECKED_CAST")
+        val defs = doc["definitions"] as Map<String, Map<String, Any?>>
+        assertThat(defs.keys).contains("Product", "Component", "Organization")
+
+        @Suppress("UNCHECKED_CAST")
+        val props = defs.getValue("Product")["properties"] as Map<String, Map<String, Any?>>
+        val contains = props.getValue("containsComponent")
+        assertThat(contains["type"]).isEqualTo("array")
+        @Suppress("UNCHECKED_CAST")
+        assertThat((contains["items"] as Map<String, Any?>)["\$ref"])
+            .isEqualTo("#/definitions/Component")
+
+        val owned = props.getValue("ownedByOrganization")
+        assertThat(owned["\$ref"]).isNull()
+        @Suppress("UNCHECKED_CAST")
+        val allOf = owned["allOf"] as List<Map<String, Any?>>
+        assertThat(allOf).hasSize(1)
+        assertThat(allOf[0]["\$ref"]).isEqualTo("#/definitions/Organization")
+        assertThat(owned["x-objs-direction"]).isEqualTo("outbound")
+    }
+
+    @Test
+    fun shouldExportCodegenDraft07_refsDefinitions() {
+        schemas.register(
+            BoMSchema(
+                "Product",
+                "1.0.0",
+                BoMSchemaDsl.obj(
+                    "Product",
+                    "Product payload",
+                    listOf(BoMSchemaDsl.field("name", BoMSchemaDsl.string("Name", "Name"))),
+                ),
+            ),
+        )
+
+        val doc = exporter.exportForCodegen(
+            BoMJsonSchemaExportOptions(dialect = BoMJsonSchemaDialect.DRAFT_07),
+        )
+        assertThat(doc["\$schema"]).isEqualTo(BoMJsonSchemaDialect.DRAFT_07.schemaUri)
+        assertThat(doc).doesNotContainKey("\$defs")
+        @Suppress("UNCHECKED_CAST")
+        val props = doc["properties"] as Map<String, Map<String, Any?>>
+        assertThat(props.getValue("Product")["\$ref"]).isEqualTo("#/definitions/Product")
+        @Suppress("UNCHECKED_CAST")
+        val defs = doc["definitions"] as Map<String, Map<String, Any?>>
+        assertThat(defs.getValue("Product")["title"]).isEqualTo("Product")
     }
 
     @Test

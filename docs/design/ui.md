@@ -180,7 +180,7 @@ Opening **Schemas** without a type selected shows the catalog overview in the ma
   When a JSON Schema format is selected, Text shows export options shared with Export:
   - **Include edges** — `None` / `Outbound` / `Linked` (`includeEdges`);
   - **Edge property schemas** switch (`includeEdgePropertySchemas`; disabled when edges are None);
-  - **Dialect** — `2020-12` (only dialect in v1);
+  - **Dialect** — `2020-12` or `draft-07`;
   - **Go to type…** — searchable jump to a `$defs` entry (JSON Schema formats) or ObjectSchema type
     (YAML seeding format);
   - in-document find via Ctrl/Cmd+F in the code editor;

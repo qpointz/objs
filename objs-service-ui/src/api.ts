@@ -722,7 +722,7 @@ export async function listEdges(): Promise<BoMAllowedEdgeRule[]> {
 export type CatalogExportFormat = 'seeds' | 'json-schema' | 'json-schema-codegen'
 
 export type JsonSchemaExportOptions = {
-  dialect?: '2020-12'
+  dialect?: '2020-12' | 'draft-07'
   includeEdges?: 'none' | 'outbound' | 'linked'
   includeEdgePropertySchemas?: boolean
 }

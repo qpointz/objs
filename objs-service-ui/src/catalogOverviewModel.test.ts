@@ -108,6 +108,20 @@ describe('jsonSchemaDefKeys', () => {
     expect(jsonSchemaDefKeys(body)).toEqual(['Database', 'Dataset'])
     expect(jsonSchemaDefRevealQuery('Database')).toBe('"Database": {')
   })
+
+  it('shouldListDraft07DefinitionsKeys', () => {
+    const body = JSON.stringify(
+      {
+        definitions: {
+          Product: { type: 'object' },
+          Api: { type: 'object' },
+        },
+      },
+      null,
+      2,
+    )
+    expect(jsonSchemaDefKeys(body)).toEqual(['Api', 'Product'])
+  })
 })
 
 describe('catalogSeedObjectTypes', () => {

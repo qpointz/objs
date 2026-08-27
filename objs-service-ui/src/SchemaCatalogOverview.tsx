@@ -680,15 +680,18 @@ const SchemaCatalogOverviewInner = forwardRef<
                     />
                     <Select
                       size="xs"
-                      w={110}
+                      w={120}
                       label=""
                       aria-label="JSON Schema dialect"
-                      data={[{ value: '2020-12', label: '2020-12' }]}
+                      data={[
+                        { value: '2020-12', label: '2020-12' },
+                        { value: 'draft-07', label: 'draft-07' },
+                      ]}
                       value={jsonSchemaOptions.dialect}
                       onChange={(v) =>
                         setJsonSchemaOptions((prev) => ({
                           ...prev,
-                          dialect: (v as '2020-12') ?? '2020-12',
+                          dialect: (v as JsonSchemaExportOptions['dialect']) ?? '2020-12',
                         }))
                       }
                       allowDeselect={false}

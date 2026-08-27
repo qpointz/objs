@@ -3,6 +3,9 @@
 Standalone Gradle example: drop (or fetch) an objs **`json-schema-codegen`** export and generate
 Java classes with [jsonschema2pojo](https://www.jsonschema2pojo.org/).
 
+Default dialect is **2020-12** (`$defs`). For draft-07 (`definitions`), see the sibling
+[`../jsonschema-codegen-draft07`](../jsonschema-codegen-draft07).
+
 No schema wrapping — workbench **Export → JSON Schema (codegen)** downloads a file that is
 already POJO-ready.
 
@@ -10,7 +13,7 @@ already POJO-ready.
 
 | Path | Role |
 |------|------|
-| `src/jsonschema/registry-catalog.codegen.schema.json` | Committed snapshot (`format=json-schema-codegen`) |
+| `src/jsonschema/registry-catalog.codegen.schema.json` | Committed snapshot (`format=json-schema-codegen`, default dialect) |
 | `build/generated/sources/jsonschema2pojo/` | Generated Java under `org.poc.objs.codegen.generated` |
 
 Not part of the root multi-module build — own `settings.gradle.kts`.
@@ -20,7 +23,7 @@ Not part of the root multi-module build — own `settings.gradle.kts`.
 From the **repository root**:
 
 ```bash
-# Optional: refresh from a running instance (default :8080)
+# Optional: refresh from a running instance (default :8080, dialect 2020-12)
 ./gradlew -p examples/jsonschema-codegen fetchRegistrySchema
 
 # Custom URL
@@ -43,5 +46,7 @@ GET /api/v1/objs/registry/export?format=json-schema-codegen
 ```
 
 Same edge options as `json-schema` (`includeEdges`, `includeEdgePropertySchemas`, `dialect`).
-Adds a synthetic root (`ObjsCatalog`) that `$ref`s every `$defs` entry and sets each def `title`
-to the def key so class names stay PascalCase.
+`dialect=draft-07` emits `definitions` + `#/definitions/…` refs — use
+[`jsonschema-codegen-draft07`](../jsonschema-codegen-draft07) for that path. Default `2020-12`
+uses `$defs`. Adds a synthetic root (`ObjsCatalog`) that `$ref`s every catalog def and sets each
+def `title` to the def key so class names stay PascalCase.

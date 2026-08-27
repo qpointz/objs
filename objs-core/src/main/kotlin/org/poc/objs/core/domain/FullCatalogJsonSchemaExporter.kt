@@ -4,7 +4,7 @@ import org.springframework.stereotype.Service
 
 /**
  * Builds a single JSON Schema document for the full ontology catalog:
- * latest ENTITY type per name in `$defs`, with optional allow-list edges as
+ * latest ENTITY type per name in `$defs` / `definitions`, with optional allow-list edges as
  * relation properties (outbound and optionally inverse / linked).
  */
 @Service
@@ -15,6 +15,7 @@ class FullCatalogJsonSchemaExporter(
     fun export(options: BoMJsonSchemaExportOptions = BoMJsonSchemaExportOptions.DEFAULT): Map<String, Any?> {
         val latestEntities = latestByType(schemas.all().filter { it.usage == BoMSchemaUsage.ENTITY })
         val defKeyByType = latestEntities.keys.associateWith { jsonSchemaDefKey(it) }
+        val dialect = options.dialect
 
         val defs = linkedMapOf<String, Any?>()
         for ((type, schema) in latestEntities.toSortedMap()) {
@@ -33,7 +34,7 @@ class FullCatalogJsonSchemaExporter(
                     }
                     val targetDef = defKeyByType[rule.targetType] ?: continue
                     val propName = relationPropertyName(rule.role, rule.targetType)
-                    mutableProps[propName] = outboundRelationPropertySchema(rule, targetDef)
+                    mutableProps[propName] = outboundRelationPropertySchema(rule, targetDef, dialect)
                 }
             }
 
@@ -45,7 +46,7 @@ class FullCatalogJsonSchemaExporter(
                     }
                     val sourceDef = defKeyByType[rule.sourceType] ?: continue
                     val propName = inverseRelationPropertyName(rule.role, rule.sourceType)
-                    mutableProps[propName] = inverseRelationPropertySchema(rule, sourceDef)
+                    mutableProps[propName] = inverseRelationPropertySchema(rule, sourceDef, dialect)
                 }
             }
 
@@ -82,24 +83,25 @@ class FullCatalogJsonSchemaExporter(
         }
 
         return linkedMapOf(
-            "\$schema" to options.dialect.schemaUri,
+            "\$schema" to dialect.schemaUri,
             "title" to "Objs full catalog",
             "description" to "Latest ENTITY object types with allow-list relations as properties",
             "x-objs-export" to "full-catalog",
             "x-objs-json-schema-options" to options.toWireMap(),
-            "\$defs" to defs,
+            dialect.defsKeyword to defs,
         )
     }
 
     /**
      * Same catalog as [export], shaped for object-model codegen tools (e.g. jsonschema2pojo):
-     * a synthetic root `type: object` whose properties `$ref` every `$defs` entry, and each
-     * `$defs` `title` set to the def key so class names stay PascalCase identifiers.
+     * a synthetic root `type: object` whose properties `$ref` every catalog def entry, and each
+     * def `title` set to the def key so class names stay PascalCase identifiers.
      */
     fun exportForCodegen(options: BoMJsonSchemaExportOptions = BoMJsonSchemaExportOptions.DEFAULT): Map<String, Any?> {
         val base = export(options)
+        val dialect = options.dialect
         @Suppress("UNCHECKED_CAST")
-        val rawDefs = base["\$defs"] as Map<String, Any?>
+        val rawDefs = base[dialect.defsKeyword] as Map<String, Any?>
         val defs = linkedMapOf<String, Any?>()
         for ((key, node) in rawDefs) {
             val projected = (node as Map<String, Any?>).toMutableMap()
@@ -108,24 +110,28 @@ class FullCatalogJsonSchemaExporter(
         }
         val properties = linkedMapOf<String, Any?>()
         for (name in defs.keys.sorted()) {
-            properties[name] = linkedMapOf("\$ref" to "#/\$defs/$name")
+            properties[name] = linkedMapOf("\$ref" to "${dialect.defsRefPrefix}$name")
         }
         return linkedMapOf(
             "\$schema" to base["\$schema"],
             "title" to "ObjsCatalog",
             "description" to
-                "Codegen root: each property refs a catalog \$def (jsonschema2pojo-ready)",
+                "Codegen root: each property refs a catalog def (jsonschema2pojo-ready)",
             "type" to "object",
             "properties" to properties,
             "additionalProperties" to false,
             "x-objs-export" to "full-catalog-codegen",
             "x-objs-json-schema-options" to base["x-objs-json-schema-options"],
-            "\$defs" to defs,
+            dialect.defsKeyword to defs,
         )
     }
 
-    private fun outboundRelationPropertySchema(rule: BoMAllowedEdgeRule, targetDefKey: String): Map<String, Any?> {
-        val ref = linkedMapOf<String, Any?>("\$ref" to "#/\$defs/$targetDefKey")
+    private fun outboundRelationPropertySchema(
+        rule: BoMAllowedEdgeRule,
+        targetDefKey: String,
+        dialect: BoMJsonSchemaDialect,
+    ): Map<String, Any?> {
+        val refTarget = linkedMapOf<String, Any?>("\$ref" to "${dialect.defsRefPrefix}$targetDefKey")
         val base = linkedMapOf<String, Any?>(
             "title" to "${rule.role} → ${rule.targetType}",
             "description" to "Allow-list relation ${rule.role} to ${rule.targetType} (${rule.cardinality.wire})",
@@ -135,17 +141,21 @@ class FullCatalogJsonSchemaExporter(
             "x-objs-direction" to "outbound",
         )
         return if (rule.cardinality.isSingular) {
-            base + ref
+            mergeRef(base, refTarget, dialect)
         } else {
             base + linkedMapOf(
                 "type" to "array",
-                "items" to ref,
+                "items" to refTarget,
             )
         }
     }
 
-    private fun inverseRelationPropertySchema(rule: BoMAllowedEdgeRule, sourceDefKey: String): Map<String, Any?> {
-        val ref = linkedMapOf<String, Any?>("\$ref" to "#/\$defs/$sourceDefKey")
+    private fun inverseRelationPropertySchema(
+        rule: BoMAllowedEdgeRule,
+        sourceDefKey: String,
+        dialect: BoMJsonSchemaDialect,
+    ): Map<String, Any?> {
+        val refTarget = linkedMapOf<String, Any?>("\$ref" to "${dialect.defsRefPrefix}$sourceDefKey")
         val inverseSingular = !rule.cardinality.isSingular
         val inverseCardWire = if (inverseSingular) BoMEdgeCardinality.ONE_TO_ONE.wire else BoMEdgeCardinality.ONE_TO_MANY.wire
         val base = linkedMapOf<String, Any?>(
@@ -158,14 +168,26 @@ class FullCatalogJsonSchemaExporter(
             "x-objs-direction" to "inbound",
         )
         return if (inverseSingular) {
-            base + ref
+            mergeRef(base, refTarget, dialect)
         } else {
             base + linkedMapOf(
                 "type" to "array",
-                "items" to ref,
+                "items" to refTarget,
             )
         }
     }
+
+    /** Combine metadata with a `$ref` target; draft-07 uses `allOf` so siblings stay meaningful. */
+    private fun mergeRef(
+        metadata: Map<String, Any?>,
+        refTarget: Map<String, Any?>,
+        dialect: BoMJsonSchemaDialect,
+    ): Map<String, Any?> =
+        if (dialect.exclusiveRef) {
+            metadata + linkedMapOf("allOf" to listOf(refTarget))
+        } else {
+            metadata + refTarget
+        }
 
     companion object {
         fun latestByType(schemas: Collection<BoMSchema>): Map<String, BoMSchema> =
@@ -173,7 +195,7 @@ class FullCatalogJsonSchemaExporter(
                 .groupBy { it.type }
                 .mapValues { (_, versions) -> versions.maxBy { it.version } }
 
-        /** `$defs` key / PascalCase identifier for a catalog type name. */
+        /** Def key / PascalCase identifier for a catalog type name. */
         fun jsonSchemaDefKey(type: String): String =
             type.split(Regex("[^A-Za-z0-9]+"))
                 .filter { it.isNotEmpty() }

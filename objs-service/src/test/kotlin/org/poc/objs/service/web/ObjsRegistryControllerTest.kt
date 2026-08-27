@@ -600,6 +600,35 @@ class ObjsRegistryControllerTest {
     }
 
     @Test
+    fun shouldExportDraft07JsonSchema_withDefinitions() {
+        schemas.register(BoMSchema("Person", "1", BoMSchemaDsl.obj("Person", "Person payload")))
+        mockMvc.perform(
+            get("/api/v1/objs/registry/export")
+                .param("format", "json-schema")
+                .param("dialect", "draft-07"),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.['\$schema']").value("http://json-schema.org/draft-07/schema#"))
+            .andExpect(jsonPath("$.['x-objs-json-schema-options'].dialect").value("draft-07"))
+            .andExpect(jsonPath("$.definitions.Person.type").value("object"))
+            .andExpect(jsonPath("$.['\$defs']").doesNotExist())
+    }
+
+    @Test
+    fun shouldExportDraft07JsonSchemaCodegen() {
+        schemas.register(BoMSchema("Person", "1", BoMSchemaDsl.obj("Person", "Person payload")))
+        mockMvc.perform(
+            get("/api/v1/objs/registry/export")
+                .param("format", "json-schema-codegen")
+                .param("dialect", "draft-07"),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.['x-objs-export']").value("full-catalog-codegen"))
+            .andExpect(jsonPath("$.properties.Person['\$ref']").value("#/definitions/Person"))
+            .andExpect(jsonPath("$.definitions.Person.title").value("Person"))
+    }
+
+    @Test
     fun shouldRejectUnknownJsonSchemaOptions() {
         mockMvc.perform(
             get("/api/v1/objs/registry/export")

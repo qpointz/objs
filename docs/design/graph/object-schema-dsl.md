@@ -428,18 +428,20 @@ Optional query params (both formats; defaults match historical outbound export):
 
 | Param | Values | Default | Meaning |
 |-------|--------|---------|---------|
-| `dialect` | `2020-12` | `2020-12` | `$schema` dialect URI |
-| `includeEdges` | `none` \| `outbound` \| `linked` | `outbound` | Relation props on `$defs` |
-| `includeEdgePropertySchemas` | `true` \| `false` | `true` | Include edge-property schemas in `$defs` when edges are included |
+| `dialect` | `2020-12` \| `draft-07` | `2020-12` | `$schema` dialect URI; also selects `$defs` vs `definitions` |
+| `includeEdges` | `none` \| `outbound` \| `linked` | `outbound` | Relation props on catalog defs |
+| `includeEdgePropertySchemas` | `true` \| `false` | `true` | Include edge-property schemas in catalog defs when edges are included |
 
 Document shape (`json-schema`):
 
-- `$defs` entry per **ENTITY** type at the **latest** version (lexicographic max among versions);
+- reusable schemas under `$defs` (`2020-12`) or `definitions` (`draft-07`);
+- one entry per **ENTITY** type at the **latest** version (lexicographic max among versions);
 - payload fields from the per-schema projection;
 - directed allow-list edges as optional properties on the **source** type (when `includeEdges` is
   `outbound` or `linked`):
   - property name = camelCase(`role` + PascalCase(`targetType`)) (e.g. `containsDataset`);
-  - `1:1` → singular `$ref`; `1:*` and `UNSPECIFIED` → array of `$ref`;
+  - `1:1` → singular `$ref` (draft-07 wraps `$ref` in `allOf` so title / `x-objs-*` siblings remain);
+    `1:*` and `UNSPECIFIED` → array of `$ref`;
   - rules with `*` endpoints are omitted;
   - `x-objs-direction: outbound`;
 - when `includeEdges` is `linked`, also emit **inverse** props on the **target** type:
@@ -448,10 +450,11 @@ Document shape (`json-schema`):
   - `x-objs-direction: inbound`;
 - root markers: `x-objs-export: full-catalog`, `x-objs-json-schema-options` (echo of applied options).
 
-Document shape (`json-schema-codegen`): same `$defs` as above, plus:
+Document shape (`json-schema-codegen`): same catalog defs as above, plus:
 
-- root `type: object`, `title: ObjsCatalog`, `properties.<DefKey>.$ref → #/$defs/<DefKey>` for every def;
-- each `$defs` `title` overwritten to the def key (stable PascalCase class names);
+- root `type: object`, `title: ObjsCatalog`, `properties.<DefKey>.$ref` → `#/$defs/<DefKey>` or
+  `#/definitions/<DefKey>` for every def;
+- each catalog def `title` overwritten to the def key (stable PascalCase class names);
 - `x-objs-export: full-catalog-codegen`.
 
 An `EDGE_PROPERTIES` schema owns a property definition and may be referenced by many directed

@@ -92,9 +92,10 @@ See [`../graph/seeds.md`](../graph/seeds.md), [`../graph/object-schema-dsl.md`](
 and [`../graph/json-schema-to-seeds.md`](../graph/json-schema-to-seeds.md) (JSON Schema is export-only in product).
 
 JSON Schema export options (C-10): defaults are `dialect=2020-12`, `includeEdges=outbound`,
-`includeEdgePropertySchemas=true`. Use `includeEdges=linked` for bidirectional relation props
-(codegen parent/child navigation). Use `format=json-schema-codegen` when feeding jsonschema2pojo
-or similar generators (workbench: **Export → JSON Schema (codegen)**).
+`includeEdgePropertySchemas=true`. Dialects: `2020-12` (`$defs`) or `draft-07` (`definitions`).
+Use `includeEdges=linked` for bidirectional relation props (codegen parent/child navigation).
+Use `format=json-schema-codegen` when feeding jsonschema2pojo or similar generators
+(workbench: **Export → JSON Schema (codegen)**).
 ## Status
 
 | Method | Path | Behaviour |

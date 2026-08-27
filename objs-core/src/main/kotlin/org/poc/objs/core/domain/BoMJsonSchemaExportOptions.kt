@@ -40,7 +40,26 @@ data class BoMJsonSchemaExportOptions(
 
 enum class BoMJsonSchemaDialect(val wire: String, val schemaUri: String) {
     DRAFT_2020_12("2020-12", BoMJsonSchema.DIALECT),
+    DRAFT_07("draft-07", "http://json-schema.org/draft-07/schema#"),
     ;
+
+    /** Catalog reusable-schemas keyword: `$defs` (2020-12) or `definitions` (draft-07). */
+    val defsKeyword: String
+        get() = when (this) {
+            DRAFT_2020_12 -> "\$defs"
+            DRAFT_07 -> "definitions"
+        }
+
+    /** `$ref` prefix into [defsKeyword], e.g. `#/$defs/` or `#/definitions/`. */
+    val defsRefPrefix: String
+        get() = "#/$defsKeyword/"
+
+    /**
+     * In draft-07, `$ref` ignores sibling keywords. Wrap metadata + `$ref` in a map that keeps
+     * siblings valid: put `$ref` alone under `allOf` when [exclusiveRef] is true.
+     */
+    val exclusiveRef: Boolean
+        get() = this == DRAFT_07
 
     companion object {
         fun fromWire(raw: String): BoMJsonSchemaDialect {
