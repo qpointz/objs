@@ -20,9 +20,13 @@ Example::
         "Component", "1.0.0",
         title="Component",
         description="Software component",
+        tags=["sbom", "core"],
+        attributes={"color": "#4c6ef5"},
         fields=[
             string("name", title="Name", description="Display name",
-                   identifier=True, searchable=True),
+                   identifier=True, searchable=True,
+                   tags=["identity"],
+                   attributes={"uiGroup": "general"}),
         ],
     ))
     cat.write("ontology.seeds.yaml")
@@ -31,13 +35,57 @@ Example::
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Iterable, List, Optional, Sequence, Tuple, Union
+from typing import Any, Iterable, List, Mapping, Optional, Sequence, Tuple, Union
 
 SEED_API_VERSION = "objs.poc.org/v1"
 ENTITY = "ENTITY"
 EDGE_PROPERTIES = "EDGE_PROPERTIES"
 
 _SCALAR_TYPES = frozenset({"STRING", "NUMBER", "INTEGER", "BOOLEAN", "ENUM"})
+
+# Enum entry: (value, description) or (value, description, caption)
+EnumEntry = Union[str, Tuple[str, str], Tuple[str, str, str]]
+
+
+# ---------------------------------------------------------------------------
+# Catalog metadata helpers (tags + string attributes)
+# ---------------------------------------------------------------------------
+
+
+def _normalize_tags(tags: Optional[Sequence[str]]) -> Optional[List[str]]:
+    """Trim, drop blanks, de-dupe (first-seen order). None/empty → omit."""
+    if not tags:
+        return None
+    seen: List[str] = []
+    for item in tags:
+        tag = str(item).strip()
+        if tag and tag not in seen:
+            seen.append(tag)
+    return seen or None
+
+
+def _normalize_attributes(
+    attributes: Optional[Mapping[str, Any]],
+) -> Optional[dict]:
+    """Trim keys; drop blank keys; last duplicate key wins. None/empty → omit."""
+    if not attributes:
+        return None
+    out: dict = {}
+    for key, value in attributes.items():
+        trimmed = str(key).strip()
+        if trimmed:
+            out[trimmed] = "" if value is None else str(value)
+    return out or None
+
+
+def _emit_meta(target: dict, *, tags: Optional[Sequence[str]] = None,
+               attributes: Optional[Mapping[str, Any]] = None) -> None:
+    norm_tags = _normalize_tags(tags)
+    if norm_tags:
+        target["tags"] = norm_tags
+    norm_attrs = _normalize_attributes(attributes)
+    if norm_attrs:
+        target["attributes"] = norm_attrs
 
 
 # ---------------------------------------------------------------------------
@@ -52,7 +100,7 @@ class SchemaNode:
     description: str
     fields: Optional[List["Field"]] = None
     items: Optional["SchemaNode"] = None
-    values: Optional[List[Tuple[str, str]]] = None  # (value, description)
+    values: Optional[List[Tuple[str, str, Optional[str]]]] = None  # value, desc, caption?
     format: Optional[str] = None
     default: Any = None
 
@@ -78,9 +126,13 @@ class SchemaNode:
         elif t == "ENUM":
             if not self.values:
                 raise ValueError("ENUM node requires nonempty values")
-            d["values"] = [
-                {"value": v, "description": desc} for v, desc in self.values
-            ]
+            entries = []
+            for value, desc, caption in self.values:
+                entry: dict = {"value": value, "description": desc}
+                if caption:
+                    entry["caption"] = caption
+                entries.append(entry)
+            d["values"] = entries
         elif t == "STRING" and self.format:
             d["format"] = self.format
         if self.default is not None:
@@ -96,6 +148,8 @@ class Field:
     identifier: bool = False
     searchable: bool = False
     stereotype: Optional[Sequence[str]] = None
+    tags: Optional[Sequence[str]] = None
+    attributes: Optional[Mapping[str, Any]] = None
 
     def to_dict(self) -> dict:
         if not self.name or not str(self.name).strip():
@@ -117,6 +171,7 @@ class Field:
             d["searchable"] = True
         if self.stereotype:
             d["stereotype"] = list(self.stereotype)
+        _emit_meta(d, tags=self.tags, attributes=self.attributes)
         return d
 
 
@@ -137,6 +192,8 @@ def _scalar_field(
     format: Optional[str] = None,
     default: Any = None,
     stereotype: Optional[Sequence[str]] = None,
+    tags: Optional[Sequence[str]] = None,
+    attributes: Optional[Mapping[str, Any]] = None,
 ) -> Field:
     return Field(
         name=name,
@@ -151,6 +208,8 @@ def _scalar_field(
         identifier=identifier,
         searchable=searchable,
         stereotype=stereotype,
+        tags=tags,
+        attributes=attributes,
     )
 
 
@@ -165,6 +224,8 @@ def string(
     format: Optional[str] = None,
     default: Any = None,
     stereotype: Optional[Sequence[str]] = None,
+    tags: Optional[Sequence[str]] = None,
+    attributes: Optional[Mapping[str, Any]] = None,
 ) -> Field:
     return _scalar_field(
         name,
@@ -177,6 +238,8 @@ def string(
         format=format,
         default=default,
         stereotype=stereotype,
+        tags=tags,
+        attributes=attributes,
     )
 
 
@@ -190,6 +253,8 @@ def integer(
     searchable: bool = False,
     default: Any = None,
     stereotype: Optional[Sequence[str]] = None,
+    tags: Optional[Sequence[str]] = None,
+    attributes: Optional[Mapping[str, Any]] = None,
 ) -> Field:
     return _scalar_field(
         name,
@@ -201,6 +266,8 @@ def integer(
         searchable=searchable,
         default=default,
         stereotype=stereotype,
+        tags=tags,
+        attributes=attributes,
     )
 
 
@@ -214,6 +281,8 @@ def number(
     searchable: bool = False,
     default: Any = None,
     stereotype: Optional[Sequence[str]] = None,
+    tags: Optional[Sequence[str]] = None,
+    attributes: Optional[Mapping[str, Any]] = None,
 ) -> Field:
     return _scalar_field(
         name,
@@ -225,6 +294,8 @@ def number(
         searchable=searchable,
         default=default,
         stereotype=stereotype,
+        tags=tags,
+        attributes=attributes,
     )
 
 
@@ -238,6 +309,8 @@ def boolean(
     searchable: bool = False,
     default: Any = None,
     stereotype: Optional[Sequence[str]] = None,
+    tags: Optional[Sequence[str]] = None,
+    attributes: Optional[Mapping[str, Any]] = None,
 ) -> Field:
     return _scalar_field(
         name,
@@ -249,12 +322,14 @@ def boolean(
         searchable=searchable,
         default=default,
         stereotype=stereotype,
+        tags=tags,
+        attributes=attributes,
     )
 
 
 def enum(
     name: str,
-    values: Sequence[Union[str, Tuple[str, str]]],
+    values: Sequence[EnumEntry],
     *,
     title: str,
     description: str,
@@ -263,13 +338,27 @@ def enum(
     searchable: bool = False,
     default: Any = None,
     stereotype: Optional[Sequence[str]] = None,
+    tags: Optional[Sequence[str]] = None,
+    attributes: Optional[Mapping[str, Any]] = None,
 ) -> Field:
-    parsed: List[Tuple[str, str]] = []
+    """ENUM field. Values: ``"X"``, ``("X", "desc")``, or ``("X", "desc", "caption")``."""
+    parsed: List[Tuple[str, str, Optional[str]]] = []
     for item in values:
         if isinstance(item, tuple):
-            parsed.append((item[0], item[1]))
+            if len(item) == 2:
+                parsed.append((item[0], item[1], None))
+            elif len(item) >= 3:
+                caption = item[2]
+                parsed.append(
+                    (item[0], item[1], str(caption) if caption else None)
+                )
+            else:
+                raise ValueError(
+                    "enum value tuple must be (value, description) "
+                    "or (value, description, caption)"
+                )
         else:
-            parsed.append((item, item))
+            parsed.append((item, item, None))
     return Field(
         name=name,
         schema=SchemaNode(
@@ -283,6 +372,8 @@ def enum(
         identifier=identifier,
         searchable=searchable,
         stereotype=stereotype,
+        tags=tags,
+        attributes=attributes,
     )
 
 
@@ -294,6 +385,8 @@ def obj(
     description: str,
     required: bool = True,
     stereotype: Optional[Sequence[str]] = None,
+    tags: Optional[Sequence[str]] = None,
+    attributes: Optional[Mapping[str, Any]] = None,
 ) -> Field:
     """Nested OBJECT field. Do not pass identifier/searchable here — mark nested scalars."""
     return Field(
@@ -306,6 +399,8 @@ def obj(
         ),
         required=required,
         stereotype=stereotype,
+        tags=tags,
+        attributes=attributes,
     )
 
 
@@ -317,6 +412,8 @@ def array(
     description: str,
     required: bool = True,
     stereotype: Optional[Sequence[str]] = None,
+    tags: Optional[Sequence[str]] = None,
+    attributes: Optional[Mapping[str, Any]] = None,
 ) -> Field:
     """ARRAY field. Do not pass identifier/searchable here — forbidden under ARRAY paths."""
     return Field(
@@ -329,6 +426,8 @@ def array(
         ),
         required=required,
         stereotype=stereotype,
+        tags=tags,
+        attributes=attributes,
     )
 
 
@@ -362,6 +461,8 @@ class ObjectSchema:
     description: str
     fields: Sequence[Field] = field(default_factory=list)
     usage: str = ENTITY
+    tags: Optional[Sequence[str]] = None
+    attributes: Optional[Mapping[str, Any]] = None
 
     def to_document(self) -> dict:
         if not self.type or not str(self.type).strip():
@@ -379,6 +480,7 @@ class ObjectSchema:
         }
         if usage != ENTITY:
             doc["usage"] = usage
+        _emit_meta(doc, tags=self.tags, attributes=self.attributes)
         doc["contentSchema"] = SchemaNode(
             type="OBJECT",
             title=self.title,
@@ -399,6 +501,11 @@ class EdgeRule:
     empty_properties_allowed: bool = True
     properties_schema: Optional[Tuple[str, str]] = None  # (type, version)
     cardinality: str = "UNSPECIFIED"
+    description: Optional[str] = None
+    source_verb: Optional[str] = None
+    target_verb: Optional[str] = None
+    tags: Optional[Sequence[str]] = None
+    attributes: Optional[Mapping[str, Any]] = None
 
     def to_document(self) -> dict:
         for label, val in (
@@ -431,6 +538,13 @@ class EdgeRule:
                 )
             doc["propertiesSchemaType"] = self.properties_schema[0]
             doc["propertiesSchemaVersion"] = str(self.properties_schema[1])
+        if self.description and str(self.description).strip():
+            doc["description"] = str(self.description).strip()
+        if self.source_verb and str(self.source_verb).strip():
+            doc["sourceVerb"] = str(self.source_verb).strip()
+        if self.target_verb and str(self.target_verb).strip():
+            doc["targetVerb"] = str(self.target_verb).strip()
+        _emit_meta(doc, tags=self.tags, attributes=self.attributes)
         return doc
 
 

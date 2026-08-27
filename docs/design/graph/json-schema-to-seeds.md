@@ -395,13 +395,41 @@ No third-party packages required.
 | Symbol | Seed kind / role |
 |--------|------------------|
 | `Catalog` | Ordered bag; `add` / `extend` / `dumps()` / `write(path)` |
-| `ObjectSchema(type, version, title=…, description=…, fields=…, usage=ENTITY\|EDGE_PROPERTIES)` | `kind: ObjectSchema` |
-| `EdgeRule(source, role, target, …)` | `kind: AllowedEdgeRule` |
-| `string` / `integer` / `number` / `boolean` / `enum` / `obj` / `array` | Field helpers |
+| `ObjectSchema(type, version, title=…, description=…, fields=…, usage=ENTITY\|EDGE_PROPERTIES, tags=…, attributes=…)` | `kind: ObjectSchema` |
+| `EdgeRule(source, role, target, …, description=…, source_verb=…, target_verb=…, tags=…, attributes=…)` | `kind: AllowedEdgeRule` |
+| `string` / `integer` / `number` / `boolean` / `enum` / `obj` / `array` | Field helpers (`tags=…`, `attributes=…`) |
 | `string_node` | Leaf node for `array(..., items=…)` |
 | `EDGE_PROPERTIES` | Usage constant for edge property schemas |
 
 `required` defaults to **`True`** (objs seed default). Pass `required=False` for optional fields.
+
+### Catalog metadata (tags + attributes)
+
+Optional on **ObjectSchema** (envelope), **Field** helpers, and **EdgeRule**. Omitted when empty.
+Normalize: tags trimmed / de-duped; attribute keys trimmed (blank keys dropped).
+
+```python
+ObjectSchema(
+    "Component", "1.0.0",
+    title="Component",
+    description="Software component",
+    tags=["sbom", "core"],
+    attributes={"color": "#4c6ef5"},  # graph node accent; or "nocolor"
+    fields=[
+        string(
+            "name",
+            title="Name",
+            description="Display name",
+            identifier=True,
+            searchable=True,
+            tags=["identity"],
+            attributes={"uiGroup": "general"},
+        ),
+    ],
+)
+```
+
+Enum values accept an optional UI caption: `("HIGH", "Serious impact", "High")`.
 
 ### Field flags
 
@@ -473,9 +501,12 @@ Output is **catalog-only** multi-doc YAML (`ObjectSchema` + `AllowedEdgeRule`). 
 
 [`tools/objs_seed_example.py`](../../../tools/objs_seed_example.py) builds:
 
-- ENTITY schemas: `Product`, `Component`, `Container Image` (space in type name)
+- ENTITY schemas: `Product`, `Component`, `Container Image` (space in type name) with envelope
+  `tags` / `attributes` (incl. `color`) and field-level tags/attributes
+- Enum captions on `Component.severity`
 - `CanonicalEdge` with `usage: EDGE_PROPERTIES`
-- Edge rules: bare `OWNS`, `SCHEMA`+`1:*` `CONTAINS`, `SCHEMA`+`1:1` `PRIMARY_IMAGE`, wildcard `RELATED_TO`
+- Edge rules: bare `OWNS`, `SCHEMA`+`1:*` `CONTAINS`, `SCHEMA`+`1:1` `PRIMARY_IMAGE`, wildcard
+  `RELATED_TO` — including description / verbs / tags where relevant
 
 Abbreviated output shape:
 
@@ -485,6 +516,11 @@ apiVersion: objs.poc.org/v1
 kind: ObjectSchema
 type: Product
 version: "1.0.0"
+tags:
+  - catalog
+  - product
+attributes:
+  color: "#228be6"
 contentSchema:
   type: OBJECT
   # …
@@ -493,6 +529,10 @@ contentSchema:
       # …
       identifier: true
       searchable: true
+      tags:
+        - identity
+      attributes:
+        uiGroup: general
 ---
 apiVersion: objs.poc.org/v1
 kind: ObjectSchema
@@ -513,8 +553,12 @@ emptyPropertiesAllowed: true
 cardinality: "1:*"
 propertiesSchemaType: CanonicalEdge
 propertiesSchemaVersion: "1.0.0"
+description: Product includes the component in its bill
+sourceVerb: contains
+targetVerb: contained in
+tags:
+  - composition
 ```
-
 ### Limits
 
 - No `kind: Graph` (instance data) — see [seeds.md](seeds.md)

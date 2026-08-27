@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 """Runnable example for tools/objs_seed.py — entity schemas + edge rule variants.
 
+Demonstrates catalog metadata from catalog-schema-metadata (C-16):
+  - ObjectSchema envelope ``tags`` / ``attributes`` (incl. ``color``)
+  - Field-level ``tags`` / ``attributes``
+  - Enum optional ``caption``
+  - AllowedEdgeRule description / verbs / tags / attributes
+
 Usage:
   python tools/objs_seed_example.py
   python tools/objs_seed_example.py --out ontology.seeds.yaml
@@ -37,6 +43,8 @@ def build_catalog() -> Catalog:
             "1.0.0",
             title="Product",
             description="Product payload",
+            tags=["catalog", "product"],
+            attributes={"color": "#228be6"},
             fields=[
                 string(
                     "name",
@@ -45,12 +53,15 @@ def build_catalog() -> Catalog:
                     required=True,
                     identifier=True,
                     searchable=True,
+                    tags=["identity"],
+                    attributes={"uiGroup": "general"},
                 ),
                 string(
                     "version",
                     title="Version",
                     description="Product version string",
                     required=False,
+                    tags=["versioning"],
                 ),
             ],
         )
@@ -62,6 +73,8 @@ def build_catalog() -> Catalog:
             "1.0.0",
             title="Component",
             description="Software component",
+            tags=["sbom", "core"],
+            attributes={"color": "#4c6ef5"},
             fields=[
                 string(
                     "name",
@@ -70,16 +83,20 @@ def build_catalog() -> Catalog:
                     required=True,
                     identifier=True,
                     searchable=True,
+                    tags=["identity"],
+                    attributes={"uiGroup": "general", "priority": "high"},
                 ),
                 enum(
                     "severity",
                     [
-                        ("LOW", "Limited impact"),
-                        ("HIGH", "Serious impact"),
+                        ("LOW", "Limited impact", "Low"),
+                        ("HIGH", "Serious impact", "High"),
                     ],
                     title="Severity",
                     description="Optional severity label",
                     required=False,
+                    tags=["classification"],
+                    attributes={"uiGroup": "risk"},
                 ),
                 array(
                     "tags",
@@ -87,6 +104,8 @@ def build_catalog() -> Catalog:
                     title="Tags",
                     description="Search labels",
                     required=False,
+                    stereotype=["tags"],
+                    tags=["search"],
                 ),
             ],
         )
@@ -99,6 +118,8 @@ def build_catalog() -> Catalog:
             "1.0.0",
             title="Container Image",
             description="Container image artifact",
+            tags=["artifact"],
+            attributes={"color": "nocolor"},
             fields=[
                 string(
                     "name",
@@ -119,6 +140,7 @@ def build_catalog() -> Catalog:
             usage=EDGE_PROPERTIES,
             title="Canonical edge",
             description="Shared edge property bag",
+            tags=["edge-meta"],
             fields=[
                 string(
                     "createdAt",
@@ -133,6 +155,7 @@ def build_catalog() -> Catalog:
                     description="Provenance of the edge",
                     required=False,
                     searchable=True,
+                    tags=["provenance"],
                 ),
             ],
         )
@@ -147,6 +170,10 @@ def build_catalog() -> Catalog:
             "Component",
             properties_policy="NONE",
             cardinality="1:*",
+            description="Product owns the component",
+            source_verb="owns",
+            target_verb="owned by",
+            tags=["ownership"],
         )
     )
 
@@ -160,6 +187,11 @@ def build_catalog() -> Catalog:
             properties_schema=("CanonicalEdge", "1.0.0"),
             empty_properties_allowed=True,
             cardinality="1:*",
+            description="Product includes the component in its bill",
+            source_verb="contains",
+            target_verb="contained in",
+            tags=["composition"],
+            attributes={"weight": "primary"},
         )
     )
 
@@ -173,6 +205,9 @@ def build_catalog() -> Catalog:
             properties_schema=("CanonicalEdge", "1.0.0"),
             empty_properties_allowed=True,
             cardinality="1:1",
+            description="Primary container image for the component",
+            source_verb="has primary image",
+            target_verb="is primary image of",
         )
     )
 
@@ -184,6 +219,7 @@ def build_catalog() -> Catalog:
             "*",
             properties_policy="NONE",
             cardinality="UNSPECIFIED",
+            tags=["loose"],
         )
     )
 
