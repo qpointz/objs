@@ -171,26 +171,27 @@ workspace. Schema does **not** bind to shared graph context.
 Opening **Schemas** without a type selected shows the catalog overview in the main pane:
 
 - context bar: **Schema catalog** with type / edge-rule counts;
-- view actions: **Apply layout** (with direction menu: TB / LR / BT / RL), **Export** (Seeds YAML or
-  JSON Schema), **Import**, and **Create ▾**;
+- view actions: **Apply layout** (with direction menu: TB / LR / BT / RL), **Export** (YAML seeding
+  format, JSON Schema, or JSON Schema codegen), **Import**, and **Create ▾**;
 
 - ontology graph of all **ENTITY** object types and allow-list edges (wildcard `*` as one node);
 - **Visual** / **Text** tabs: Visual shows the ontology graph; Text is a read-only catalog export with
-  a **JSON Schema** / **Seeds** segmented control (same pattern as the type editor JSON/YAML toggle).
-  When **JSON Schema** is selected, Text shows export options shared with Export:
+  a format **dropdown** (**JSON Schema** / **JSON Schema (codegen)** / **YAML (Seeding format)**).
+  When a JSON Schema format is selected, Text shows export options shared with Export:
   - **Include edges** — `None` / `Outbound` / `Linked` (`includeEdges`);
   - **Edge property schemas** switch (`includeEdgePropertySchemas`; disabled when edges are None);
   - **Dialect** — `2020-12` (only dialect in v1);
-  - **Go to type…** — searchable jump to a `$defs` entry (JSON Schema) or ObjectSchema type (Seeds);
+  - **Go to type…** — searchable jump to a `$defs` entry (JSON Schema formats) or ObjectSchema type
+    (YAML seeding format);
   - in-document find via Ctrl/Cmd+F in the code editor;
 - click a type node (or a row in the type list) to open that type’s latest version;
 - nodes are draggable; positions and layout direction are kept in `localStorage`
   (`objs.ui.fullSchema.layout`) and restored on return (new types still use auto layout until moved);
 - **Apply layout** (with direction menu: TB / LR / BT / RL) re-runs automatic layout and clears
   saved node positions;
-- **Export** menu downloads either catalog seed YAML
-  (`GET /api/v1/objs/registry/export?format=seeds`) or full-catalog JSON Schema
-  (`…?format=json-schema` plus the current overview options; menu hint shows e.g. `outbound · 2020-12`);
+- **Export** menu downloads catalog seed YAML (`GET …/export?format=seeds`), full-catalog JSON Schema
+  (`…?format=json-schema`), or POJO-ready JSON Schema (`…?format=json-schema-codegen`) using the
+  current overview options (menu hint shows e.g. `outbound · 2020-12`);
 - **Import** MERGEs a catalog YAML (`POST /api/v1/objs/registry/import?format=seeds`). Files that
   contain `Graph` documents are rejected. Import never deletes catalog entries.
 

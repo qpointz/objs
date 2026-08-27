@@ -171,6 +171,49 @@ class FullCatalogJsonSchemaExporterTest {
             .isInstanceOf(BoMJsonSchemaExportOptionsException::class.java)
     }
 
+    @Test
+    fun shouldExportCodegenRoot_refsAllDefs_andUsesDefKeysAsTitles() {
+        schemas.register(
+            BoMSchema(
+                "Container Image",
+                "1.0.0",
+                BoMSchemaDsl.obj(
+                    "Container Image",
+                    "Image payload",
+                    listOf(BoMSchemaDsl.field("name", BoMSchemaDsl.string("Name", "Name"))),
+                ),
+            ),
+        )
+        schemas.register(
+            BoMSchema(
+                "Product",
+                "1.0.0",
+                BoMSchemaDsl.obj(
+                    "Product",
+                    "Product payload",
+                    listOf(BoMSchemaDsl.field("name", BoMSchemaDsl.string("Name", "Name"))),
+                ),
+            ),
+        )
+
+        val doc = exporter.exportForCodegen()
+        assertThat(doc["x-objs-export"]).isEqualTo("full-catalog-codegen")
+        assertThat(doc["type"]).isEqualTo("object")
+        assertThat(doc["title"]).isEqualTo("ObjsCatalog")
+
+        @Suppress("UNCHECKED_CAST")
+        val defs = doc["\$defs"] as Map<String, Map<String, Any?>>
+        assertThat(defs.keys).containsExactlyInAnyOrder("ContainerImage", "Product")
+        assertThat(defs.getValue("ContainerImage")["title"]).isEqualTo("ContainerImage")
+        assertThat(defs.getValue("Product")["title"]).isEqualTo("Product")
+
+        @Suppress("UNCHECKED_CAST")
+        val props = doc["properties"] as Map<String, Map<String, Any?>>
+        assertThat(props.keys).containsExactly("ContainerImage", "Product")
+        assertThat(props.getValue("ContainerImage")["\$ref"]).isEqualTo("#/\$defs/ContainerImage")
+        assertThat(props.getValue("Product")["\$ref"]).isEqualTo("#/\$defs/Product")
+    }
+
     private fun registerProductCatalog() {
         schemas.register(
             BoMSchema(

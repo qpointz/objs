@@ -719,7 +719,7 @@ export async function listEdges(): Promise<BoMAllowedEdgeRule[]> {
 }
 
 /** Catalog-only seed YAML (ObjectSchema + AllowedEdgeRule). */
-export type CatalogExportFormat = 'seeds' | 'json-schema'
+export type CatalogExportFormat = 'seeds' | 'json-schema' | 'json-schema-codegen'
 
 export type JsonSchemaExportOptions = {
   dialect?: '2020-12'
@@ -733,12 +733,18 @@ export const DEFAULT_JSON_SCHEMA_EXPORT_OPTIONS: Required<JsonSchemaExportOption
   includeEdgePropertySchemas: true,
 }
 
+export function isJsonSchemaCatalogFormat(
+  format: CatalogExportFormat,
+): format is 'json-schema' | 'json-schema-codegen' {
+  return format === 'json-schema' || format === 'json-schema-codegen'
+}
+
 export async function exportCatalog(
   format: CatalogExportFormat,
   options?: JsonSchemaExportOptions,
 ): Promise<string> {
   const params = new URLSearchParams({ format })
-  if (format === 'json-schema' && options) {
+  if (isJsonSchemaCatalogFormat(format) && options) {
     if (options.dialect) params.set('dialect', options.dialect)
     if (options.includeEdges) params.set('includeEdges', options.includeEdges)
     if (options.includeEdgePropertySchemas != null) {
@@ -751,7 +757,7 @@ export async function exportCatalog(
     throw new Error(typeof body === 'string' ? body : `HTTP ${res.status}`)
   }
   const text = await res.text()
-  if (format === 'json-schema') {
+  if (isJsonSchemaCatalogFormat(format)) {
     try {
       return JSON.stringify(JSON.parse(text), null, 2)
     } catch {

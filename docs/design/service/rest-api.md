@@ -85,14 +85,16 @@ Composer: **Save** → MERGE; **Overwrite…** → REPLACE.
 | `POST` | `/registry/import?format=seeds` | Multipart catalog seed YAML (MERGE); Graph kinds rejected |
 | `POST` | `/registry/refresh` | Rehydrate schema + allowed-edge catalogs from the store (bypass TTL) |
 | `GET` | `/registry/export?format=seeds` | Catalog-only seed YAML |
-| `GET` | `/registry/export?format=json-schema` | Full-catalog JSON Schema for codegen; optional `dialect` / `includeEdges` / `includeEdgePropertySchemas` |
+| `GET` | `/registry/export?format=json-schema` | Full-catalog JSON Schema (`$defs`); optional `dialect` / `includeEdges` / `includeEdgePropertySchemas` |
+| `GET` | `/registry/export?format=json-schema-codegen` | Same catalog with synthetic root for POJO tools (jsonschema2pojo) |
 
 See [`../graph/seeds.md`](../graph/seeds.md), [`../graph/object-schema-dsl.md`](../graph/object-schema-dsl.md),
 and [`../graph/json-schema-to-seeds.md`](../graph/json-schema-to-seeds.md) (JSON Schema is export-only in product).
 
 JSON Schema export options (C-10): defaults are `dialect=2020-12`, `includeEdges=outbound`,
 `includeEdgePropertySchemas=true`. Use `includeEdges=linked` for bidirectional relation props
-(codegen parent/child navigation).
+(codegen parent/child navigation). Use `format=json-schema-codegen` when feeding jsonschema2pojo
+or similar generators (workbench: **Export → JSON Schema (codegen)**).
 ## Status
 
 | Method | Path | Behaviour |

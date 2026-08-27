@@ -934,12 +934,19 @@ export function SchemaExplorerPage() {
               <Menu.Dropdown>
                 <Menu.Label>Format</Menu.Label>
                 <Menu.Item onClick={() => void catalogOverviewRef.current?.exportCatalog('seeds')}>
-                  Seeds (YAML)
+                  YAML (Seeding format)
                 </Menu.Item>
                 <Menu.Item
                   onClick={() => void catalogOverviewRef.current?.exportCatalog('json-schema')}
                 >
                   JSON Schema
+                </Menu.Item>
+                <Menu.Item
+                  onClick={() =>
+                    void catalogOverviewRef.current?.exportCatalog('json-schema-codegen')
+                  }
+                >
+                  JSON Schema (codegen)
                 </Menu.Item>
               </Menu.Dropdown>
             </Menu>

@@ -561,6 +561,19 @@ class ObjsRegistryControllerTest {
     }
 
     @Test
+    fun shouldExportFullCatalogJsonSchemaCodegen() {
+        schemas.register(BoMSchema("Person", "1", BoMSchemaDsl.obj("Person", "Person payload")))
+        mockMvc.perform(get("/api/v1/objs/registry/export").param("format", "json-schema-codegen"))
+            .andExpect(status().isOk)
+            .andExpect(content().contentTypeCompatibleWith(MediaType.parseMediaType("application/schema+json")))
+            .andExpect(jsonPath("$.['x-objs-export']").value("full-catalog-codegen"))
+            .andExpect(jsonPath("$.type").value("object"))
+            .andExpect(jsonPath("$.title").value("ObjsCatalog"))
+            .andExpect(jsonPath("$.properties.Person['\$ref']").value("#/\$defs/Person"))
+            .andExpect(jsonPath("$.['\$defs'].Person.title").value("Person"))
+    }
+
+    @Test
     fun shouldExportLinkedJsonSchema_whenIncludeEdgesLinked() {
         schemas.register(BoMSchema("Database", "1", BoMSchemaDsl.obj("Database", "Database payload")))
         schemas.register(BoMSchema("Dataset", "1", BoMSchemaDsl.obj("Dataset", "Dataset payload")))

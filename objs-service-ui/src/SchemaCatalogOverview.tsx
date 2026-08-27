@@ -42,6 +42,7 @@ import {
   DEFAULT_JSON_SCHEMA_EXPORT_OPTIONS,
   exportCatalog,
   importCatalogSeed,
+  isJsonSchemaCatalogFormat,
   listEdges,
   schemaDetailPath,
   type CatalogExportFormat,
@@ -290,7 +291,7 @@ const SchemaCatalogOverviewInner = forwardRef<
       setTextBusy(true)
       setTextError(null)
       try {
-        setTextBody(await exportCatalog(format, format === 'json-schema' ? options : undefined))
+        setTextBody(await exportCatalog(format, isJsonSchemaCatalogFormat(format) ? options : undefined))
       } catch (e) {
         setTextBody('')
         setTextError(e instanceof Error ? e.message : String(e))
@@ -311,14 +312,22 @@ const SchemaCatalogOverviewInner = forwardRef<
     setIoError(null)
     setIoBusy(true)
     try {
-      const body = await exportCatalog(format, format === 'json-schema' ? jsonSchemaOptions : undefined)
+      const body = await exportCatalog(
+        format,
+        isJsonSchemaCatalogFormat(format) ? jsonSchemaOptions : undefined,
+      )
       const blob = new Blob([body], {
-        type: format === 'json-schema' ? 'application/schema+json' : 'application/yaml',
+        type: isJsonSchemaCatalogFormat(format) ? 'application/schema+json' : 'application/yaml',
       })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = format === 'json-schema' ? 'objs-catalog.schema.json' : 'objs-catalog.yaml'
+      a.download =
+        format === 'json-schema-codegen'
+          ? 'objs-catalog.codegen.schema.json'
+          : format === 'json-schema'
+            ? 'objs-catalog.schema.json'
+            : 'objs-catalog.yaml'
       a.click()
       URL.revokeObjectURL(url)
     } catch (e) {
@@ -330,7 +339,7 @@ const SchemaCatalogOverviewInner = forwardRef<
 
   const jumpTargets = useMemo(() => {
     if (!textBody.trim()) return [] as { value: string; label: string }[]
-    if (textFormat === 'json-schema') {
+    if (textFormat === 'json-schema' || textFormat === 'json-schema-codegen') {
       return jsonSchemaDefKeys(textBody).map((k) => ({ value: k, label: k }))
     }
     return catalogSeedObjectTypes(textBody).map((t) => ({ value: t, label: t }))
@@ -340,7 +349,9 @@ const SchemaCatalogOverviewInner = forwardRef<
     setJumpTo(key)
     if (!key) return
     const query =
-      textFormat === 'json-schema' ? jsonSchemaDefRevealQuery(key) : catalogSeedTypeRevealQuery(key)
+      isJsonSchemaCatalogFormat(textFormat)
+        ? jsonSchemaDefRevealQuery(key)
+        : catalogSeedTypeRevealQuery(key)
     const ok = textEditorRef.current?.revealText(query)
     if (!ok && textFormat === 'seeds') {
       // Unquoted YAML type lines
@@ -623,16 +634,22 @@ const SchemaCatalogOverviewInner = forwardRef<
           <Stack gap="xs" style={{ flex: 1, minHeight: 0, height: '100%' }}>
             <Group justify="space-between" style={{ flexShrink: 0 }} wrap="wrap">
               <Group gap="sm" wrap="wrap">
-                <SegmentedControl
+                <Select
                   size="xs"
-                  value={textFormat}
-                  onChange={(v) => setTextFormat(v as CatalogExportFormat)}
+                  w={200}
+                  aria-label="Catalog text format"
+                  allowDeselect={false}
                   data={[
-                    { label: 'JSON Schema', value: 'json-schema' },
-                    { label: 'Seeds', value: 'seeds' },
+                    { value: 'json-schema', label: 'JSON Schema' },
+                    { value: 'json-schema-codegen', label: 'JSON Schema (codegen)' },
+                    { value: 'seeds', label: 'YAML (Seeding format)' },
                   ]}
+                  value={textFormat}
+                  onChange={(v) => {
+                    if (v) setTextFormat(v as CatalogExportFormat)
+                  }}
                 />
-                {textFormat === 'json-schema' && (
+                {isJsonSchemaCatalogFormat(textFormat) && (
                   <>
                     <SegmentedControl
                       size="xs"
@@ -714,7 +731,7 @@ const SchemaCatalogOverviewInner = forwardRef<
             >
               <SyntaxCodeEditor
                 ref={textEditorRef}
-                language={textFormat === 'json-schema' ? 'json' : 'yaml'}
+                language={isJsonSchemaCatalogFormat(textFormat) ? 'json' : 'yaml'}
                 readOnly
                 minHeight={240}
                 fillHeight

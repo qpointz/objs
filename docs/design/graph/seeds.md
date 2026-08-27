@@ -353,6 +353,7 @@ Ontology and graph instance I/O are **separated**. Both use a required `format` 
 | `POST` | `/api/v1/objs/registry/refresh` | Rehydrate catalogs from PostgreSQL (bypass `objs.catalogs.cache-ttl`) |
 | `GET` | `/api/v1/objs/registry/export?format=seeds` | Catalog YAML only |
 | `GET` | `/api/v1/objs/registry/export?format=json-schema` | Full-catalog JSON Schema (`dialect`, `includeEdges`, `includeEdgePropertySchemas` optional; see object-schema-dsl) |
+| `GET` | `/api/v1/objs/registry/export?format=json-schema-codegen` | Same catalog + synthetic root for POJO codegen |
 | `POST` | `/api/v1/objs/graph/import?format=seeds` | Multipart YAML; `Graph` kind only (each doc → one `bom_graph`) |
 | `GET` | `/api/v1/objs/graph/export?format=seeds` | Requires `graphId`; exports that graph's members/edges |
 

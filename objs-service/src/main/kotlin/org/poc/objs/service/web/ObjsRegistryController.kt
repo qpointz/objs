@@ -91,9 +91,11 @@ class ObjsRegistryController(
     @GetMapping("/export")
     @Operation(
         summary = "Export ontology catalogs in the requested format",
-        description = "For format=json-schema, optional dialect / includeEdges / includeEdgePropertySchemas " +
+        description = "Formats: seeds | json-schema | json-schema-codegen. " +
+            "For JSON Schema formats, optional dialect / includeEdges / includeEdgePropertySchemas " +
             "configure the full-catalog projection (defaults: 2020-12, outbound, true). " +
-            "includeEdges: none | outbound | linked.",
+            "includeEdges: none | outbound | linked. " +
+            "json-schema-codegen adds a synthetic root that \$refs every \$def (POJO tools).",
     )
     fun exportRegistry(
         @RequestParam format: String,
@@ -112,7 +114,7 @@ class ObjsRegistryController(
                     .header(HttpHeaders.CONTENT_TYPE, ObjsIoFormats.YAML_MEDIA_TYPE)
                     .body(yaml)
             }
-            ObjsIoFormats.JSON_SCHEMA -> {
+            ObjsIoFormats.JSON_SCHEMA, ObjsIoFormats.JSON_SCHEMA_CODEGEN -> {
                 val options = try {
                     BoMJsonSchemaExportOptions.fromWire(
                         dialect = dialect,
@@ -130,9 +132,14 @@ class ObjsRegistryController(
                         ),
                     )
                 }
+                val body = if (format == ObjsIoFormats.JSON_SCHEMA_CODEGEN) {
+                    fullCatalogJsonSchema.exportForCodegen(options)
+                } else {
+                    fullCatalogJsonSchema.export(options)
+                }
                 ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_TYPE, ObjsIoFormats.JSON_SCHEMA_MEDIA_TYPE)
-                    .body(fullCatalogJsonSchema.export(options))
+                    .body(body)
             }
             else -> ObjsIoFormats.unknownFormat(format)
         }

@@ -307,6 +307,10 @@ not UUIDs — see [seeds.md](seeds.md).
 - Wildcard rules are omitted from the export
 - Edge-property schemas may appear as separate `$defs`
 
+`format=json-schema-codegen` adds a synthetic root (`ObjsCatalog`) that `$ref`s every `$def` and
+rewrites each def `title` to the def key so tools like jsonschema2pojo can generate one class per
+type from a workbench download without further transform.
+
 **Do not mirror these synthetic properties in `ObjectSchema.contentSchema`.** Encode relations as
 `AllowedEdgeRule` documents. The export shape is a codegen view, not the authoring model.
 

@@ -91,6 +91,39 @@ class FullCatalogJsonSchemaExporter(
         )
     }
 
+    /**
+     * Same catalog as [export], shaped for object-model codegen tools (e.g. jsonschema2pojo):
+     * a synthetic root `type: object` whose properties `$ref` every `$defs` entry, and each
+     * `$defs` `title` set to the def key so class names stay PascalCase identifiers.
+     */
+    fun exportForCodegen(options: BoMJsonSchemaExportOptions = BoMJsonSchemaExportOptions.DEFAULT): Map<String, Any?> {
+        val base = export(options)
+        @Suppress("UNCHECKED_CAST")
+        val rawDefs = base["\$defs"] as Map<String, Any?>
+        val defs = linkedMapOf<String, Any?>()
+        for ((key, node) in rawDefs) {
+            val projected = (node as Map<String, Any?>).toMutableMap()
+            projected["title"] = key
+            defs[key] = projected
+        }
+        val properties = linkedMapOf<String, Any?>()
+        for (name in defs.keys.sorted()) {
+            properties[name] = linkedMapOf("\$ref" to "#/\$defs/$name")
+        }
+        return linkedMapOf(
+            "\$schema" to base["\$schema"],
+            "title" to "ObjsCatalog",
+            "description" to
+                "Codegen root: each property refs a catalog \$def (jsonschema2pojo-ready)",
+            "type" to "object",
+            "properties" to properties,
+            "additionalProperties" to false,
+            "x-objs-export" to "full-catalog-codegen",
+            "x-objs-json-schema-options" to base["x-objs-json-schema-options"],
+            "\$defs" to defs,
+        )
+    }
+
     private fun outboundRelationPropertySchema(rule: BoMAllowedEdgeRule, targetDefKey: String): Map<String, Any?> {
         val ref = linkedMapOf<String, Any?>("\$ref" to "#/\$defs/$targetDefKey")
         val base = linkedMapOf<String, Any?>(

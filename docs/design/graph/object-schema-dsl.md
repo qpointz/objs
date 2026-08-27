@@ -415,11 +415,16 @@ existing versions of the type and creates the next major only.
 
 ### Full-catalog JSON Schema
 
-`GET /api/v1/objs/registry/export?format=json-schema` returns one JSON Schema document for codegen
-of an object model. Programmatic API: `FullCatalogJsonSchemaExporter.export(options)` with
-`BoMJsonSchemaExportOptions`.
+`GET /api/v1/objs/registry/export?format=json-schema` returns one JSON Schema document for the
+latest ENTITY catalog (optional relation props). Programmatic API:
+`FullCatalogJsonSchemaExporter.export(options)` with `BoMJsonSchemaExportOptions`.
 
-Optional query params (defaults match historical outbound export):
+`GET /api/v1/objs/registry/export?format=json-schema-codegen` returns the same catalog shaped for
+POJO generators (jsonschema2pojo): synthetic root `ObjsCatalog` whose properties `$ref` every
+`$defs` entry, and each `$defs` `title` set to the def key. Programmatic API:
+`FullCatalogJsonSchemaExporter.exportForCodegen(options)`.
+
+Optional query params (both formats; defaults match historical outbound export):
 
 | Param | Values | Default | Meaning |
 |-------|--------|---------|---------|
@@ -427,7 +432,7 @@ Optional query params (defaults match historical outbound export):
 | `includeEdges` | `none` \| `outbound` \| `linked` | `outbound` | Relation props on `$defs` |
 | `includeEdgePropertySchemas` | `true` \| `false` | `true` | Include edge-property schemas in `$defs` when edges are included |
 
-Document shape:
+Document shape (`json-schema`):
 
 - `$defs` entry per **ENTITY** type at the **latest** version (lexicographic max among versions);
 - payload fields from the per-schema projection;
@@ -442,6 +447,12 @@ Document shape:
   - inverse of `1:*` / `UNSPECIFIED` → singular `$ref`; inverse of `1:1` → array of `$ref`;
   - `x-objs-direction: inbound`;
 - root markers: `x-objs-export: full-catalog`, `x-objs-json-schema-options` (echo of applied options).
+
+Document shape (`json-schema-codegen`): same `$defs` as above, plus:
+
+- root `type: object`, `title: ObjsCatalog`, `properties.<DefKey>.$ref → #/$defs/<DefKey>` for every def;
+- each `$defs` `title` overwritten to the def key (stable PascalCase class names);
+- `x-objs-export: full-catalog-codegen`.
 
 An `EDGE_PROPERTIES` schema owns a property definition and may be referenced by many directed
 allowed-edge rules. Each rule retains its own `(sourceType, role, targetType)` identity and stores
