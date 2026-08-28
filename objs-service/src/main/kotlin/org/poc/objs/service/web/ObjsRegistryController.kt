@@ -3,26 +3,26 @@ package org.poc.objs.service.web
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.poc.objs.core.domain.CatalogMetadata
-import org.poc.objs.core.domain.BoMCatalogSupport
-import org.poc.objs.core.domain.BoMAllowedEdgeCatalog
-import org.poc.objs.core.domain.BoMAllowedEdgeRule
-import org.poc.objs.core.domain.BoMEdgeCardinality
-import org.poc.objs.core.domain.BoMPropertiesPolicy
-import org.poc.objs.core.domain.BoMSchema
-import org.poc.objs.core.domain.BoMSchemaCatalog
-import org.poc.objs.core.domain.BoMSchemaDefinitionException
-import org.poc.objs.core.domain.BoMSchemaNode
-import org.poc.objs.core.domain.BoMSchemaUsage
-import org.poc.objs.core.domain.BoMSchemaVersioning
+import org.poc.objs.core.domain.CatalogSupport
+import org.poc.objs.core.domain.AllowedEdgeCatalog
+import org.poc.objs.api.domain.AllowedEdgeRule
+import org.poc.objs.api.domain.EdgeCardinality
+import org.poc.objs.api.domain.PropertiesPolicy
+import org.poc.objs.core.domain.Schema
+import org.poc.objs.core.domain.SchemaCatalog
+import org.poc.objs.core.domain.SchemaDefinitionException
+import org.poc.objs.core.domain.SchemaNode
+import org.poc.objs.core.domain.SchemaUsage
+import org.poc.objs.core.domain.SchemaVersioning
 import org.poc.objs.core.seed.CATALOG_SEED_KINDS
 import org.poc.objs.core.seed.CanonicalSeedSerializer
 import org.poc.objs.core.seed.SeedImportException
 import org.poc.objs.core.seed.SeedImporter
-import org.poc.objs.core.domain.BoMJsonSchemaExportOptions
-import org.poc.objs.core.domain.BoMJsonSchemaExportOptionsException
+import org.poc.objs.core.domain.JsonSchemaExportOptions
+import org.poc.objs.core.domain.JsonSchemaExportOptionsException
 import org.poc.objs.core.domain.FullCatalogJsonSchemaExporter
-import org.poc.objs.core.validation.BoMValidationIssue
-import org.poc.objs.core.validation.BoMValidationResult
+import org.poc.objs.core.validation.ValidationIssue
+import org.poc.objs.core.validation.ValidationResult
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -44,9 +44,9 @@ import org.springframework.web.multipart.MultipartFile
 @RequestMapping("/api/v1/objs/registry")
 @Tag(name = "registry")
 class ObjsRegistryController(
-    private val schemas: BoMSchemaCatalog,
-    private val edgeRules: BoMAllowedEdgeCatalog,
-    private val catalog: BoMCatalogSupport,
+    private val schemas: SchemaCatalog,
+    private val edgeRules: AllowedEdgeCatalog,
+    private val catalog: CatalogSupport,
     private val seedImporter: SeedImporter,
     private val seedSerializer: CanonicalSeedSerializer,
     private val fullCatalogJsonSchema: FullCatalogJsonSchemaExporter,
@@ -116,15 +116,15 @@ class ObjsRegistryController(
             }
             ObjsIoFormats.JSON_SCHEMA, ObjsIoFormats.JSON_SCHEMA_CODEGEN -> {
                 val options = try {
-                    BoMJsonSchemaExportOptions.fromWire(
+                    JsonSchemaExportOptions.fromWire(
                         dialect = dialect,
                         includeEdges = includeEdges,
                         includeEdgePropertySchemas = includeEdgePropertySchemas,
                     )
-                } catch (ex: BoMJsonSchemaExportOptionsException) {
+                } catch (ex: JsonSchemaExportOptionsException) {
                     return ResponseEntity.badRequest().body(
-                        BoMValidationResult.of(
-                            BoMValidationIssue(
+                        ValidationResult.of(
+                            ValidationIssue(
                                 code = "JSON_SCHEMA_OPTIONS_INVALID",
                                 message = ex.message ?: "Invalid JSON Schema export options",
                                 path = "options",
@@ -147,7 +147,7 @@ class ObjsRegistryController(
 
     @GetMapping("/types")
     @Operation(summary = "List distinct schema type names")
-    fun types(@RequestParam(required = false) usage: BoMSchemaUsage?): Set<String> {
+    fun types(@RequestParam(required = false) usage: SchemaUsage?): Set<String> {
         val all = schemas.all()
         val filtered = if (usage == null) all else all.filter { it.usage == usage }
         return filtered.map { it.type }.toSortedSet()
@@ -155,7 +155,7 @@ class ObjsRegistryController(
 
     @GetMapping("/schemas")
     @Operation(summary = "List registered schemas, optionally filtered by usage")
-    fun listSchemas(@RequestParam(required = false) usage: BoMSchemaUsage?): Collection<BoMSchema> {
+    fun listSchemas(@RequestParam(required = false) usage: SchemaUsage?): Collection<Schema> {
         val all = schemas.all()
         return if (usage == null) all else all.filter { it.usage == usage }
     }
@@ -166,8 +166,8 @@ class ObjsRegistryController(
         val list = schemas.listByType(type)
         if (list.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
-                BoMValidationResult.of(
-                    BoMValidationIssue("SCHEMA_TYPE_NOT_FOUND", "No schemas for type=$type"),
+                ValidationResult.of(
+                    ValidationIssue("SCHEMA_TYPE_NOT_FOUND", "No schemas for type=$type"),
                 ),
             )
         }
@@ -203,10 +203,10 @@ class ObjsRegistryController(
         @PathVariable version: String,
     ): ResponseEntity<Any> {
         val schema = schemas.get(type, version) ?: return notFoundSchema(type, version)
-        if (schema.usage != BoMSchemaUsage.EDGE_PROPERTIES) {
+        if (schema.usage != SchemaUsage.EDGE_PROPERTIES) {
             return ResponseEntity.badRequest().body(
-                BoMValidationResult.of(
-                    BoMValidationIssue(
+                ValidationResult.of(
+                    ValidationIssue(
                         "SCHEMA_USAGE_INVALID",
                         "Schema $type@$version is not an EDGE_PROPERTIES schema",
                     ),
@@ -228,10 +228,10 @@ class ObjsRegistryController(
         @RequestBody body: List<EdgeRelationRequest>,
     ): ResponseEntity<Any> {
         val schema = schemas.get(type, version) ?: return notFoundSchema(type, version)
-        if (schema.usage != BoMSchemaUsage.EDGE_PROPERTIES) {
+        if (schema.usage != SchemaUsage.EDGE_PROPERTIES) {
             return ResponseEntity.badRequest().body(
-                BoMValidationResult.of(
-                    BoMValidationIssue(
+                ValidationResult.of(
+                    ValidationIssue(
                         "SCHEMA_USAGE_INVALID",
                         "Schema $type@$version is not an EDGE_PROPERTIES schema",
                     ),
@@ -239,41 +239,41 @@ class ObjsRegistryController(
             )
         }
 
-        val issues = mutableListOf<BoMValidationIssue>()
+        val issues = mutableListOf<ValidationIssue>()
         val keys = mutableSetOf<Triple<String, String, String>>()
         body.forEachIndexed { index, request ->
             if (request.sourceType.isBlank()) {
-                issues += BoMValidationIssue("EDGE_SOURCE_REQUIRED", "Source type must not be blank", "[$index].sourceType")
+                issues += ValidationIssue("EDGE_SOURCE_REQUIRED", "Source type must not be blank", "[$index].sourceType")
             }
             if (request.role.isBlank()) {
-                issues += BoMValidationIssue("EDGE_ROLE_REQUIRED", "Role must not be blank", "[$index].role")
+                issues += ValidationIssue("EDGE_ROLE_REQUIRED", "Role must not be blank", "[$index].role")
             }
             if (request.targetType.isBlank()) {
-                issues += BoMValidationIssue("EDGE_TARGET_REQUIRED", "Target type must not be blank", "[$index].targetType")
+                issues += ValidationIssue("EDGE_TARGET_REQUIRED", "Target type must not be blank", "[$index].targetType")
             }
             val key = Triple(request.sourceType.trim(), request.role.trim(), request.targetType.trim())
             if (!keys.add(key)) {
-                issues += BoMValidationIssue(
+                issues += ValidationIssue(
                     "EDGE_RELATION_DUPLICATE",
                     "Duplicate relation (${key.first}, ${key.second}, ${key.third})",
                     "[$index]",
                 )
             }
             if (
-                request.sourceType != BoMAllowedEdgeRule.ANY &&
-                schemas.listByType(request.sourceType.trim()).none { it.usage == BoMSchemaUsage.ENTITY }
+                request.sourceType != AllowedEdgeRule.ANY &&
+                schemas.listByType(request.sourceType.trim()).none { it.usage == SchemaUsage.ENTITY }
             ) {
-                issues += BoMValidationIssue(
+                issues += ValidationIssue(
                     "EDGE_SOURCE_SCHEMA_NOT_FOUND",
                     "No ENTITY schema for source type=${request.sourceType}",
                     "[$index].sourceType",
                 )
             }
             if (
-                request.targetType != BoMAllowedEdgeRule.ANY &&
-                schemas.listByType(request.targetType.trim()).none { it.usage == BoMSchemaUsage.ENTITY }
+                request.targetType != AllowedEdgeRule.ANY &&
+                schemas.listByType(request.targetType.trim()).none { it.usage == SchemaUsage.ENTITY }
             ) {
-                issues += BoMValidationIssue(
+                issues += ValidationIssue(
                     "EDGE_TARGET_SCHEMA_NOT_FOUND",
                     "No ENTITY schema for target type=${request.targetType}",
                     "[$index].targetType",
@@ -281,22 +281,22 @@ class ObjsRegistryController(
             }
         }
         if (issues.isNotEmpty()) {
-            return ResponseEntity.badRequest().body(BoMValidationResult.of(issues))
+            return ResponseEntity.badRequest().body(ValidationResult.of(issues))
         }
 
         val previous = edgeRules.all().filter {
             it.propertiesSchemaType == type && it.propertiesSchemaVersion == version
         }
         val replacements = body.map {
-            BoMAllowedEdgeRule(
+            AllowedEdgeRule(
                 sourceType = it.sourceType.trim(),
                 role = it.role.trim(),
                 targetType = it.targetType.trim(),
-                propertiesPolicy = BoMPropertiesPolicy.SCHEMA,
+                propertiesPolicy = PropertiesPolicy.SCHEMA,
                 emptyPropertiesAllowed = it.emptyPropertiesAllowed,
                 propertiesSchemaType = type,
                 propertiesSchemaVersion = version,
-                cardinality = it.cardinality ?: BoMEdgeCardinality.UNSPECIFIED,
+                cardinality = it.cardinality ?: EdgeCardinality.UNSPECIFIED,
                 description = CatalogMetadata.optionalText(it.description),
                 sourceVerb = CatalogMetadata.optionalText(it.sourceVerb),
                 targetVerb = CatalogMetadata.optionalText(it.targetVerb),
@@ -326,10 +326,10 @@ class ObjsRegistryController(
                 schema = normalized,
                 jsonSchema = normalized.toJsonSchema(),
             )
-        } catch (ex: BoMSchemaDefinitionException) {
+        } catch (ex: SchemaDefinitionException) {
             SchemaLintResponse(
                 issues = listOf(
-                    BoMValidationIssue("SCHEMA_DEFINITION_INVALID", ex.message ?: "Invalid schema definition"),
+                    ValidationIssue("SCHEMA_DEFINITION_INVALID", ex.message ?: "Invalid schema definition"),
                 ),
             )
         }
@@ -345,14 +345,14 @@ class ObjsRegistryController(
         return try {
             val schema = normalizeRequest(type, version, body)
             if (
-                schema.usage != BoMSchemaUsage.EDGE_PROPERTIES &&
+                schema.usage != SchemaUsage.EDGE_PROPERTIES &&
                 edgeRules.all().any {
                     it.propertiesSchemaType == type && it.propertiesSchemaVersion == version
                 }
             ) {
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(
-                    BoMValidationResult.of(
-                        BoMValidationIssue(
+                    ValidationResult.of(
+                        ValidationIssue(
                             "SCHEMA_IN_USE",
                             "Remove associated edge relations before removing EDGE_PROPERTIES usage",
                         ),
@@ -361,10 +361,10 @@ class ObjsRegistryController(
             }
             schemas.register(schema)
             ResponseEntity.ok(schemas.get(type, version))
-        } catch (ex: BoMSchemaDefinitionException) {
+        } catch (ex: SchemaDefinitionException) {
             ResponseEntity.badRequest().body(
-                BoMValidationResult.of(
-                    BoMValidationIssue("SCHEMA_DEFINITION_INVALID", ex.message ?: "Invalid schema definition"),
+                ValidationResult.of(
+                    ValidationIssue("SCHEMA_DEFINITION_INVALID", ex.message ?: "Invalid schema definition"),
                 ),
             )
         }
@@ -377,11 +377,11 @@ class ObjsRegistryController(
         @RequestBody body: SchemaDefinitionRequest,
     ): ResponseEntity<Any> {
         return try {
-            val nextVersion = BoMSchemaVersioning.nextMajor(schemas.listByType(type).map { it.version })
+            val nextVersion = SchemaVersioning.nextMajor(schemas.listByType(type).map { it.version })
             if (schemas.contains(type, nextVersion)) {
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(
-                    BoMValidationResult.of(
-                        BoMValidationIssue(
+                    ValidationResult.of(
+                        ValidationIssue(
                             "SCHEMA_VERSION_EXISTS",
                             "Schema already exists for type=$type version=$nextVersion",
                         ),
@@ -391,10 +391,10 @@ class ObjsRegistryController(
             val schema = normalizeRequest(type, nextVersion, body)
             schemas.register(schema)
             ResponseEntity.status(HttpStatus.CREATED).body(schemas.get(type, nextVersion))
-        } catch (ex: BoMSchemaDefinitionException) {
+        } catch (ex: SchemaDefinitionException) {
             ResponseEntity.badRequest().body(
-                BoMValidationResult.of(
-                    BoMValidationIssue("SCHEMA_DEFINITION_INVALID", ex.message ?: "Invalid schema definition"),
+                ValidationResult.of(
+                    ValidationIssue("SCHEMA_DEFINITION_INVALID", ex.message ?: "Invalid schema definition"),
                 ),
             )
         }
@@ -411,8 +411,8 @@ class ObjsRegistryController(
         val versions = schemas.listByType(type)
         if (versions.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
-                BoMValidationResult.of(
-                    BoMValidationIssue("SCHEMA_TYPE_NOT_FOUND", "No schema versions for type=$type"),
+                ValidationResult.of(
+                    ValidationIssue("SCHEMA_TYPE_NOT_FOUND", "No schema versions for type=$type"),
                 ),
             )
         }
@@ -442,8 +442,8 @@ class ObjsRegistryController(
             }
         ) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(
-                BoMValidationResult.of(
-                    BoMValidationIssue(
+                ValidationResult.of(
+                    ValidationIssue(
                         "SCHEMA_IN_USE",
                         "Schema $type@$version is referenced by allowed edge relations",
                     ),
@@ -458,7 +458,7 @@ class ObjsRegistryController(
 
     @GetMapping("/edges")
     @Operation(summary = "List registered edge definitions (allow-list rules)")
-    fun listEdges(): Collection<BoMAllowedEdgeRule> = edgeRules.all()
+    fun listEdges(): Collection<AllowedEdgeRule> = edgeRules.all()
 
     @GetMapping("/types/{type}/edges")
     @Operation(summary = "List incoming and outgoing edge rules for an entity type, including wildcards")
@@ -469,16 +469,16 @@ class ObjsRegistryController(
 
     @PutMapping("/edges")
     @Operation(summary = "Register or replace an edge definition")
-    fun putEdge(@RequestBody body: EdgeRequest): BoMAllowedEdgeRule {
-        val rule = BoMAllowedEdgeRule(
+    fun putEdge(@RequestBody body: EdgeRequest): AllowedEdgeRule {
+        val rule = AllowedEdgeRule(
             sourceType = body.sourceType,
             role = body.role,
             targetType = body.targetType,
-            propertiesPolicy = body.propertiesPolicy ?: BoMPropertiesPolicy.NONE,
+            propertiesPolicy = body.propertiesPolicy ?: PropertiesPolicy.NONE,
             emptyPropertiesAllowed = body.emptyPropertiesAllowed ?: true,
             propertiesSchemaType = body.propertiesSchemaType,
             propertiesSchemaVersion = body.propertiesSchemaVersion,
-            cardinality = body.cardinality ?: BoMEdgeCardinality.UNSPECIFIED,
+            cardinality = body.cardinality ?: EdgeCardinality.UNSPECIFIED,
             description = CatalogMetadata.optionalText(body.description),
             sourceVerb = CatalogMetadata.optionalText(body.sourceVerb),
             targetVerb = CatalogMetadata.optionalText(body.targetVerb),
@@ -498,8 +498,8 @@ class ObjsRegistryController(
     ): ResponseEntity<Any> {
         if (!edgeRules.remove(sourceType, role, targetType)) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
-                BoMValidationResult.of(
-                    BoMValidationIssue(
+                ValidationResult.of(
+                    ValidationIssue(
                         "EDGE_DEFINITION_NOT_FOUND",
                         "No edge definition for ($sourceType, $role, $targetType)",
                     ),
@@ -509,10 +509,10 @@ class ObjsRegistryController(
         return ResponseEntity.noContent().build()
     }
 
-    private fun normalizeRequest(type: String, version: String, body: SchemaDefinitionRequest): BoMSchema {
-        val usage = body.usage ?: BoMSchemaUsage.ENTITY
-        return org.poc.objs.core.domain.BoMSchemaNormalizer.normalizeStrict(
-            BoMSchema(
+    private fun normalizeRequest(type: String, version: String, body: SchemaDefinitionRequest): Schema {
+        val usage = body.usage ?: SchemaUsage.ENTITY
+        return org.poc.objs.core.domain.SchemaNormalizer.normalizeStrict(
+            Schema(
                 type = type,
                 version = version,
                 contentSchema = body.contentSchema,
@@ -525,43 +525,43 @@ class ObjsRegistryController(
 
     private fun notFoundSchema(type: String, version: String): ResponseEntity<Any> =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(
-            BoMValidationResult.of(
-                BoMValidationIssue("SCHEMA_NOT_FOUND", "No schema for type=$type version=$version"),
+            ValidationResult.of(
+                ValidationIssue("SCHEMA_NOT_FOUND", "No schema for type=$type version=$version"),
             ),
         )
 
     private fun matchesType(pattern: String, type: String): Boolean =
-        pattern == BoMAllowedEdgeRule.ANY || pattern == type
+        pattern == AllowedEdgeRule.ANY || pattern == type
 
     data class SchemaDefinitionRequest(
-        val contentSchema: BoMSchemaNode,
-        val usage: BoMSchemaUsage? = null,
+        val contentSchema: SchemaNode,
+        val usage: SchemaUsage? = null,
         val tags: List<String> = emptyList(),
         val attributes: Map<String, String> = emptyMap(),
     )
 
     data class SchemaLintResponse(
-        val issues: List<BoMValidationIssue> = emptyList(),
-        val schema: BoMSchema? = null,
+        val issues: List<ValidationIssue> = emptyList(),
+        val schema: Schema? = null,
         val jsonSchema: Map<String, Any?>? = null,
     ) {
         val valid: Boolean get() = issues.isEmpty()
     }
 
     data class TypeEdgesResponse(
-        val incoming: List<BoMAllowedEdgeRule>,
-        val outgoing: List<BoMAllowedEdgeRule>,
+        val incoming: List<AllowedEdgeRule>,
+        val outgoing: List<AllowedEdgeRule>,
     )
 
     data class EdgeRequest(
         val sourceType: String,
         val role: String,
         val targetType: String,
-        val propertiesPolicy: BoMPropertiesPolicy? = null,
+        val propertiesPolicy: PropertiesPolicy? = null,
         val emptyPropertiesAllowed: Boolean? = null,
         val propertiesSchemaType: String? = null,
         val propertiesSchemaVersion: String? = null,
-        val cardinality: BoMEdgeCardinality? = null,
+        val cardinality: EdgeCardinality? = null,
         val description: String? = null,
         val sourceVerb: String? = null,
         val targetVerb: String? = null,
@@ -574,7 +574,7 @@ class ObjsRegistryController(
         val role: String,
         val targetType: String,
         val emptyPropertiesAllowed: Boolean = true,
-        val cardinality: BoMEdgeCardinality? = null,
+        val cardinality: EdgeCardinality? = null,
         val description: String? = null,
         val sourceVerb: String? = null,
         val targetVerb: String? = null,

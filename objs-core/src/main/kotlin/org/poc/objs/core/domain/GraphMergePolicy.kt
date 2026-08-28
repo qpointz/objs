@@ -1,19 +1,21 @@
 package org.poc.objs.core.domain
 
+import org.poc.objs.api.domain.*
+
 /**
- * Collision policy for [org.poc.objs.core.persistence.BoMNamedGraphStore.mergeGraph].
+ * Collision policy for [org.poc.objs.core.persistence.NamedGraphStore.mergeGraph].
  *
  * Detect overlap with [nodeKey] / [edgeKey]; choose a survivor with [onDuplicateNode] /
  * [onDuplicateEdge]. Not identity-twin grouping (FB-2).
  */
 interface GraphMergePolicy {
-    fun nodeKey(entity: BoMEntity): Any
+    fun nodeKey(entity: Entity): Any
 
-    fun edgeKey(edge: BoMEdge): Any
+    fun edgeKey(edge: Edge): Any
 
-    fun onDuplicateNode(kept: BoMEntity, incoming: BoMEntity): BoMEntity
+    fun onDuplicateNode(kept: Entity, incoming: Entity): Entity
 
-    fun onDuplicateEdge(kept: BoMEdge, incoming: BoMEdge): BoMEdge
+    fun onDuplicateEdge(kept: Edge, incoming: Edge): Edge
 }
 
 /**
@@ -21,12 +23,12 @@ interface GraphMergePolicy {
  * keep first in caller order; do not merge property maps.
  */
 open class FirstSeenGraphMergePolicy : GraphMergePolicy {
-    override fun nodeKey(entity: BoMEntity): Any =
+    override fun nodeKey(entity: Entity): Any =
         requireNotNull(entity.id) { "member entity missing id" }
 
-    override fun edgeKey(edge: BoMEdge): Any = Triple(edge.source, edge.role, edge.target)
+    override fun edgeKey(edge: Edge): Any = Triple(edge.source, edge.role, edge.target)
 
-    override fun onDuplicateNode(kept: BoMEntity, incoming: BoMEntity): BoMEntity = kept
+    override fun onDuplicateNode(kept: Entity, incoming: Entity): Entity = kept
 
-    override fun onDuplicateEdge(kept: BoMEdge, incoming: BoMEdge): BoMEdge = kept
+    override fun onDuplicateEdge(kept: Edge, incoming: Edge): Edge = kept
 }

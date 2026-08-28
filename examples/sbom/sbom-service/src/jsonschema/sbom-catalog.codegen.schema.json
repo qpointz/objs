@@ -1,0 +1,4041 @@
+﻿{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ObjsCatalog",
+  "description": "Codegen root: payload definitions and Objs relation metadata",
+  "type": "object",
+  "properties": {
+    "API": {
+      "$ref": "#/$defs/API"
+    },
+    "Artifact": {
+      "$ref": "#/$defs/Artifact"
+    },
+    "Build": {
+      "$ref": "#/$defs/Build"
+    },
+    "CanonicalEdge": {
+      "$ref": "#/$defs/CanonicalEdge"
+    },
+    "Component": {
+      "$ref": "#/$defs/Component"
+    },
+    "ContainerImage": {
+      "$ref": "#/$defs/ContainerImage"
+    },
+    "ContainerLayer": {
+      "$ref": "#/$defs/ContainerLayer"
+    },
+    "Database": {
+      "$ref": "#/$defs/Database"
+    },
+    "Dataset": {
+      "$ref": "#/$defs/Dataset"
+    },
+    "Deployment": {
+      "$ref": "#/$defs/Deployment"
+    },
+    "Environment": {
+      "$ref": "#/$defs/Environment"
+    },
+    "Host": {
+      "$ref": "#/$defs/Host"
+    },
+    "KubernetesCluster": {
+      "$ref": "#/$defs/KubernetesCluster"
+    },
+    "License": {
+      "$ref": "#/$defs/License"
+    },
+    "Namespace": {
+      "$ref": "#/$defs/Namespace"
+    },
+    "OperatingSystem": {
+      "$ref": "#/$defs/OperatingSystem"
+    },
+    "Organization": {
+      "$ref": "#/$defs/Organization"
+    },
+    "Policy": {
+      "$ref": "#/$defs/Policy"
+    },
+    "Product": {
+      "$ref": "#/$defs/Product"
+    },
+    "Runtime": {
+      "$ref": "#/$defs/Runtime"
+    },
+    "Service": {
+      "$ref": "#/$defs/Service"
+    },
+    "SourceModule": {
+      "$ref": "#/$defs/SourceModule"
+    },
+    "SourceRepository": {
+      "$ref": "#/$defs/SourceRepository"
+    },
+    "Vulnerability": {
+      "$ref": "#/$defs/Vulnerability"
+    }
+  },
+  "additionalProperties": false,
+  "x-objs-export": "full-catalog-codegen",
+  "x-objs-json-schema-options": {
+    "dialect": "2020-12",
+    "includeEdges": "linked",
+    "includeEdgePropertySchemas": true
+  },
+  "$defs": {
+    "API": {
+      "x-objs-type": "API",
+      "x-objs-version": "1.0.0",
+      "title": "API",
+      "description": "An API contract implemented by services",
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Display name of this asset",
+          "type": "string",
+          "x-objs-identifier": true,
+          "x-objs-searchable": true
+        },
+        "protocol": {
+          "title": "Protocol",
+          "description": "API protocol (HTTPS, gRPC, â€¦)",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "version": {
+          "title": "Version",
+          "description": "Version identifier",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "description": {
+          "title": "Description",
+          "description": "Short summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "protocol"
+      ],
+      "additionalProperties": true
+    },
+    "Artifact": {
+      "x-objs-type": "Artifact",
+      "x-objs-version": "1.0.0",
+      "title": "Artifact",
+      "description": "A built artifact produced from source or a build",
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Display name of this asset",
+          "type": "string",
+          "x-objs-identifier": true,
+          "x-objs-searchable": true
+        },
+        "artifactType": {
+          "title": "Artifact type",
+          "description": "Kind of artifact (jar, wheel, binary, â€¦)",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "checksum": {
+          "title": "Checksum",
+          "description": "Content checksum",
+          "type": "string",
+          "x-objs-identifier": true,
+          "x-objs-searchable": true
+        },
+        "size": {
+          "title": "Size",
+          "description": "Size in bytes",
+          "type": "integer"
+        },
+        "description": {
+          "title": "Description",
+          "description": "Short summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "artifactType"
+      ],
+      "additionalProperties": true
+    },
+    "Build": {
+      "x-objs-type": "Build",
+      "x-objs-version": "1.0.0",
+      "title": "Build",
+      "description": "A CI build that produces artifacts or images",
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Display name of this asset",
+          "type": "string",
+          "x-objs-identifier": true,
+          "x-objs-searchable": true
+        },
+        "buildNumber": {
+          "title": "Build number",
+          "description": "CI build number or identifier",
+          "type": "string",
+          "x-objs-identifier": true,
+          "x-objs-searchable": true
+        },
+        "builder": {
+          "title": "Builder",
+          "description": "CI system or pipeline that produced the build",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "status": {
+          "title": "Status",
+          "description": "Build status (succeeded, failed, running)",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "description": {
+          "title": "Description",
+          "description": "Short summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "buildNumber",
+        "status"
+      ],
+      "additionalProperties": true
+    },
+    "Component": {
+      "x-objs-type": "Component",
+      "x-objs-version": "1.0.0",
+      "title": "Component",
+      "description": "A software package or library in an application bill of materials",
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Display name of this asset",
+          "type": "string",
+          "x-objs-identifier": true,
+          "x-objs-searchable": true
+        },
+        "version": {
+          "title": "Version",
+          "description": "Version identifier",
+          "type": "string",
+          "x-objs-identifier": true,
+          "x-objs-searchable": true
+        },
+        "ecosystem": {
+          "title": "Ecosystem",
+          "description": "Package ecosystem (Maven, npm, PyPI, â€¦)",
+          "type": "string",
+          "x-objs-identifier": true,
+          "x-objs-searchable": true
+        },
+        "kind": {
+          "title": "Kind",
+          "description": "Component kind (library, application, framework, â€¦)",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "coordinates": {
+          "title": "Coordinates",
+          "description": "Package coordinates or PURL",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "description": {
+          "title": "Description",
+          "description": "Short summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version",
+        "ecosystem",
+        "kind"
+      ],
+      "additionalProperties": true
+    },
+    "ContainerImage": {
+      "x-objs-type": "Container Image",
+      "x-objs-version": "1.0.0",
+      "title": "ContainerImage",
+      "description": "A container image",
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Display name of this asset",
+          "type": "string",
+          "x-objs-identifier": true,
+          "x-objs-searchable": true
+        },
+        "tag": {
+          "title": "Tag",
+          "description": "Image tag",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "digest": {
+          "title": "Digest",
+          "description": "Image content digest",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "registry": {
+          "title": "Registry",
+          "description": "Container registry host",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "description": {
+          "title": "Description",
+          "description": "Short summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "tag"
+      ],
+      "additionalProperties": true
+    },
+    "ContainerLayer": {
+      "x-objs-type": "Container Layer",
+      "x-objs-version": "1.0.0",
+      "title": "ContainerLayer",
+      "description": "A layer inside a container image",
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Display name of this asset",
+          "type": "string",
+          "x-objs-identifier": true,
+          "x-objs-searchable": true
+        },
+        "digest": {
+          "title": "Digest",
+          "description": "Layer digest",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "size": {
+          "title": "Size",
+          "description": "Layer size in bytes",
+          "type": "integer",
+          "x-objs-searchable": true
+        },
+        "description": {
+          "title": "Description",
+          "description": "Short summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "digest"
+      ],
+      "additionalProperties": true
+    },
+    "Database": {
+      "x-objs-type": "Database",
+      "x-objs-version": "1.0.0",
+      "title": "Database",
+      "description": "A database used by applications",
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Display name of this asset",
+          "type": "string",
+          "x-objs-identifier": true,
+          "x-objs-searchable": true
+        },
+        "engine": {
+          "title": "Engine",
+          "description": "Database engine (PostgreSQL, MongoDB, Redis, â€¦)",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "version": {
+          "title": "Engine version",
+          "description": "Database engine version",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "description": {
+          "title": "Description",
+          "description": "Short summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "engine"
+      ],
+      "additionalProperties": true
+    },
+    "Dataset": {
+      "x-objs-type": "Dataset",
+      "x-objs-version": "1.0.0",
+      "title": "Dataset",
+      "description": "A dataset stored in a database or data platform",
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Display name of this asset",
+          "type": "string",
+          "x-objs-identifier": true,
+          "x-objs-searchable": true
+        },
+        "datasetType": {
+          "title": "Dataset type",
+          "description": "Kind of dataset (operational, analytics, reference)",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "classification": {
+          "title": "Classification",
+          "description": "Data classification (public, internal, confidential)",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "description": {
+          "title": "Description",
+          "description": "Short summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "datasetType"
+      ],
+      "additionalProperties": true
+    },
+    "Deployment": {
+      "x-objs-type": "Deployment",
+      "x-objs-version": "1.0.0",
+      "title": "Deployment",
+      "description": "A deployment of software into an environment",
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Display name of this asset",
+          "type": "string",
+          "x-objs-identifier": true,
+          "x-objs-searchable": true
+        },
+        "status": {
+          "title": "Status",
+          "description": "Deployment status",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "replicas": {
+          "title": "Replicas",
+          "description": "Number of running replicas",
+          "type": "integer",
+          "x-objs-searchable": true
+        },
+        "deployedAt": {
+          "title": "Deployed at",
+          "description": "When this deployment last went live",
+          "type": "string",
+          "format": "date-time",
+          "x-objs-searchable": true
+        },
+        "description": {
+          "title": "Description",
+          "description": "Short summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": true
+    },
+    "Environment": {
+      "x-objs-type": "Environment",
+      "x-objs-version": "1.0.0",
+      "title": "Environment",
+      "description": "A runtime environment that deployments target",
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Display name of this asset",
+          "type": "string",
+          "x-objs-identifier": true,
+          "x-objs-searchable": true
+        },
+        "environment": {
+          "title": "Stage",
+          "description": "Environment stage (production, staging, development)",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "description": {
+          "title": "Description",
+          "description": "Short summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "environment"
+      ],
+      "additionalProperties": true
+    },
+    "Host": {
+      "x-objs-type": "Host",
+      "x-objs-version": "1.0.0",
+      "title": "Host",
+      "description": "A host or virtual machine that runs deployments",
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Display name of this asset",
+          "type": "string",
+          "x-objs-identifier": true,
+          "x-objs-searchable": true
+        },
+        "hostname": {
+          "title": "Hostname",
+          "description": "Network hostname",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "ip": {
+          "title": "IP address",
+          "description": "Primary IP address",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "provider": {
+          "title": "Provider",
+          "description": "Cloud or infrastructure provider",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "description": {
+          "title": "Description",
+          "description": "Short summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "hostname"
+      ],
+      "additionalProperties": true
+    },
+    "KubernetesCluster": {
+      "x-objs-type": "Kubernetes Cluster",
+      "x-objs-version": "1.0.0",
+      "title": "KubernetesCluster",
+      "description": "A Kubernetes cluster",
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Display name of this asset",
+          "type": "string",
+          "x-objs-identifier": true,
+          "x-objs-searchable": true
+        },
+        "version": {
+          "title": "Kubernetes version",
+          "description": "Cluster Kubernetes version",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "description": {
+          "title": "Description",
+          "description": "Short summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": true
+    },
+    "License": {
+      "x-objs-type": "License",
+      "x-objs-version": "1.0.0",
+      "title": "License",
+      "description": "A software license",
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Display name of this asset",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "spdxId": {
+          "title": "SPDX ID",
+          "description": "SPDX license identifier",
+          "type": "string",
+          "x-objs-identifier": true,
+          "x-objs-searchable": true
+        },
+        "url": {
+          "title": "License URL",
+          "description": "Canonical license text URL",
+          "type": "string",
+          "format": "uri",
+          "x-objs-searchable": true
+        },
+        "description": {
+          "title": "Description",
+          "description": "Short summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "spdxId"
+      ],
+      "additionalProperties": true
+    },
+    "Namespace": {
+      "x-objs-type": "Namespace",
+      "x-objs-version": "1.0.0",
+      "title": "Namespace",
+      "description": "A namespace that groups deployed workloads",
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Display name of this asset",
+          "type": "string",
+          "x-objs-identifier": true,
+          "x-objs-searchable": true
+        },
+        "namespace": {
+          "title": "Namespace",
+          "description": "Kubernetes or tenancy namespace",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "description": {
+          "title": "Description",
+          "description": "Short summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "namespace"
+      ],
+      "additionalProperties": true
+    },
+    "OperatingSystem": {
+      "x-objs-type": "Operating System",
+      "x-objs-version": "1.0.0",
+      "title": "OperatingSystem",
+      "description": "An operating system used by hosts or images",
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Display name of this asset",
+          "type": "string",
+          "x-objs-identifier": true,
+          "x-objs-searchable": true
+        },
+        "distribution": {
+          "title": "Distribution",
+          "description": "OS distribution (Ubuntu, RHEL, Windows, â€¦)",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "version": {
+          "title": "Version",
+          "description": "Version identifier",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "architecture": {
+          "title": "Architecture",
+          "description": "CPU architecture",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "description": {
+          "title": "Description",
+          "description": "Short summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "distribution"
+      ],
+      "additionalProperties": true
+    },
+    "Organization": {
+      "x-objs-type": "Organization",
+      "x-objs-version": "1.0.0",
+      "title": "Organization",
+      "description": "A company, business unit, or team that owns or supplies software",
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Display name of this asset",
+          "type": "string",
+          "x-objs-identifier": true,
+          "x-objs-searchable": true
+        },
+        "domain": {
+          "title": "Domain",
+          "description": "Primary DNS domain",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "website": {
+          "title": "Website",
+          "description": "Organization website",
+          "type": "string",
+          "format": "uri",
+          "x-objs-searchable": true
+        },
+        "country": {
+          "title": "Country",
+          "description": "Country of registration or headquarters",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "description": {
+          "title": "Description",
+          "description": "Short summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": true
+    },
+    "Policy": {
+      "x-objs-type": "Policy",
+      "x-objs-version": "1.0.0",
+      "title": "Policy",
+      "description": "A compliance or governance policy",
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Display name of this asset",
+          "type": "string",
+          "x-objs-identifier": true,
+          "x-objs-searchable": true
+        },
+        "policyType": {
+          "title": "Policy type",
+          "description": "Kind of policy (license, security, quality)",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "version": {
+          "title": "Version",
+          "description": "Version identifier",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "description": {
+          "title": "Description",
+          "description": "Short summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": true
+    },
+    "Product": {
+      "x-objs-type": "Product",
+      "x-objs-version": "1.0.0",
+      "title": "Product",
+      "description": "A product composed of components, runtimes, and deployments",
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Display name of this asset",
+          "type": "string",
+          "x-objs-identifier": true,
+          "x-objs-searchable": true
+        },
+        "version": {
+          "title": "Version",
+          "description": "Version identifier",
+          "type": "string",
+          "x-objs-identifier": true,
+          "x-objs-searchable": true
+        },
+        "supplier": {
+          "title": "Supplier",
+          "description": "Vendor or internal team that supplies the product",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "lifecycle": {
+          "title": "Lifecycle",
+          "description": "Product lifecycle stage",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "homepage": {
+          "title": "Homepage",
+          "description": "Product home page",
+          "type": "string",
+          "format": "uri",
+          "x-objs-searchable": true
+        },
+        "description": {
+          "title": "Description",
+          "description": "Short summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ],
+      "additionalProperties": true
+    },
+    "Runtime": {
+      "x-objs-type": "Runtime",
+      "x-objs-version": "1.0.0",
+      "title": "Runtime",
+      "description": "A language or application runtime",
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Display name of this asset",
+          "type": "string",
+          "x-objs-identifier": true,
+          "x-objs-searchable": true
+        },
+        "runtimeType": {
+          "title": "Runtime type",
+          "description": "Runtime family (JVM, Node, Python, â€¦)",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "version": {
+          "title": "Version",
+          "description": "Version identifier",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "description": {
+          "title": "Description",
+          "description": "Short summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "runtimeType"
+      ],
+      "additionalProperties": true
+    },
+    "Service": {
+      "x-objs-type": "Service",
+      "x-objs-version": "1.0.0",
+      "title": "Service",
+      "description": "A network service exposed by a product",
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Display name of this asset",
+          "type": "string",
+          "x-objs-identifier": true,
+          "x-objs-searchable": true
+        },
+        "protocol": {
+          "title": "Protocol",
+          "description": "Service protocol",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "endpoint": {
+          "title": "Endpoint",
+          "description": "Service endpoint URL",
+          "type": "string",
+          "format": "uri",
+          "x-objs-searchable": true
+        },
+        "description": {
+          "title": "Description",
+          "description": "Short summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": true
+    },
+    "SourceModule": {
+      "x-objs-type": "Source Module",
+      "x-objs-version": "1.0.0",
+      "title": "SourceModule",
+      "description": "A module or package inside a source repository",
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Display name of this asset",
+          "type": "string",
+          "x-objs-identifier": true,
+          "x-objs-searchable": true
+        },
+        "path": {
+          "title": "Path",
+          "description": "Path of the module inside the repository",
+          "type": "string",
+          "x-objs-identifier": true,
+          "x-objs-searchable": true
+        },
+        "language": {
+          "title": "Language",
+          "description": "Primary programming language",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "description": {
+          "title": "Description",
+          "description": "Short summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "path"
+      ],
+      "additionalProperties": true
+    },
+    "SourceRepository": {
+      "x-objs-type": "Source Repository",
+      "x-objs-version": "1.0.0",
+      "title": "SourceRepository",
+      "description": "A source-control repository",
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Display name of this asset",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "url": {
+          "title": "Repository URL",
+          "description": "Clone or browse URL",
+          "type": "string",
+          "format": "uri",
+          "x-objs-identifier": true,
+          "x-objs-searchable": true
+        },
+        "revision": {
+          "title": "Revision",
+          "description": "Git commit or revision",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "branch": {
+          "title": "Branch",
+          "description": "Default or tracked branch",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "description": {
+          "title": "Description",
+          "description": "Short summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "url"
+      ],
+      "additionalProperties": true
+    },
+    "Vulnerability": {
+      "x-objs-type": "Vulnerability",
+      "x-objs-version": "1.0.0",
+      "title": "Vulnerability",
+      "description": "A known vulnerability affecting components or images",
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Display name of this asset",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "cve": {
+          "title": "CVE",
+          "description": "CVE identifier",
+          "type": "string",
+          "x-objs-identifier": true,
+          "x-objs-searchable": true
+        },
+        "severity": {
+          "title": "Severity",
+          "description": "Severity rating (critical, high, medium, low)",
+          "type": "string",
+          "x-objs-searchable": true
+        },
+        "cvss": {
+          "title": "CVSS score",
+          "description": "CVSS base score",
+          "type": "number"
+        },
+        "description": {
+          "title": "Description",
+          "description": "Short summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "cve",
+        "severity"
+      ],
+      "additionalProperties": true
+    },
+    "CanonicalEdge": {
+      "x-objs-type": "CanonicalEdge",
+      "x-objs-version": "1.0.0",
+      "title": "CanonicalEdge",
+      "description": "Properties shared by canonical SBOM relationships",
+      "type": "object",
+      "properties": {
+        "createdAt": {
+          "title": "Created at",
+          "description": "Relationship creation timestamp",
+          "type": "string",
+          "format": "date-time"
+        },
+        "source": {
+          "title": "Source",
+          "description": "How this relationship was recorded",
+          "type": "string"
+        },
+        "confidence": {
+          "title": "Confidence",
+          "description": "Confidence that the relationship is correct (0â€“1)",
+          "type": "number"
+        }
+      },
+      "additionalProperties": true
+    },
+    "Entity": {
+      "title": "Entity",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "type": {
+          "type": "string"
+        },
+        "schemaVersion": {
+          "type": "string"
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object"
+          }
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "headVersion": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "type",
+        "schemaVersion",
+        "payload"
+      ]
+    },
+    "Edge": {
+      "title": "Edge",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "graphId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "source": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "target": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "role": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "schemaVersion": {
+          "type": "string"
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object"
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "headVersion": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "source",
+        "target",
+        "role"
+      ]
+    },
+    "EntityMutation": {
+      "title": "EntityMutation",
+      "type": "object",
+      "properties": {
+        "set": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Entity"
+          }
+        },
+        "unset": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      }
+    },
+    "EdgeMutation": {
+      "title": "EdgeMutation",
+      "type": "object",
+      "properties": {
+        "set": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Edge"
+          }
+        },
+        "unset": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      }
+    },
+    "GraphMutation": {
+      "title": "GraphMutation",
+      "type": "object",
+      "properties": {
+        "entities": {
+          "$ref": "#/$defs/EntityMutation"
+        },
+        "edges": {
+          "$ref": "#/$defs/EdgeMutation"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "MERGE",
+            "REPLACE"
+          ]
+        }
+      },
+      "required": [
+        "entities",
+        "edges",
+        "mode"
+      ]
+    }
+  },
+  "x-objs-relations": [
+    {
+      "sourceType": "Build",
+      "sourceDefinition": "Build",
+      "sourceSchemaVersion": "1.0.0",
+      "role": "BUILDS",
+      "targetType": "Artifact",
+      "targetDefinition": "Artifact",
+      "targetSchemaVersion": "1.0.0",
+      "propertiesPolicy": "SCHEMA",
+      "emptyPropertiesAllowed": true,
+      "propertySchema": {
+        "resolved": true,
+        "representation": "schema",
+        "type": "CanonicalEdge",
+        "schemaVersion": "1.0.0",
+        "definitionKey": "CanonicalEdge"
+      },
+      "cardinality": "1:*",
+      "description": "Build produces the artifact",
+      "sourceVerb": "builds",
+      "targetVerb": "built by",
+      "tags": [
+      ],
+      "attributes": {
+      },
+      "navigation": {
+        "outbound": {
+          "direction": "outbound",
+          "role": "BUILDS",
+          "targetType": "Artifact",
+          "targetDefinition": "Artifact",
+          "targetSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "buildsArtifact",
+          "staticBinding": true,
+          "readOnly": false
+        },
+        "inbound": {
+          "direction": "inbound",
+          "role": "BUILDS",
+          "sourceType": "Build",
+          "sourceDefinition": "Build",
+          "sourceSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "buildsFromBuild",
+          "staticBinding": true,
+          "readOnly": true
+        }
+      },
+      "codegen": {
+        "skip": false,
+        "noInverse": false,
+        "baseClass": null,
+        "outboundMethod": "buildsArtifact",
+        "inboundMethod": "buildsFromBuild",
+        "sourceStaticBinding": true,
+        "targetStaticBinding": true,
+        "wildcardSource": false,
+        "wildcardTarget": false
+      }
+    },
+    {
+      "sourceType": "Build",
+      "sourceDefinition": "Build",
+      "sourceSchemaVersion": "1.0.0",
+      "role": "BUILDS",
+      "targetType": "Container Image",
+      "targetDefinition": "ContainerImage",
+      "targetSchemaVersion": "1.0.0",
+      "propertiesPolicy": "SCHEMA",
+      "emptyPropertiesAllowed": true,
+      "propertySchema": {
+        "resolved": true,
+        "representation": "schema",
+        "type": "CanonicalEdge",
+        "schemaVersion": "1.0.0",
+        "definitionKey": "CanonicalEdge"
+      },
+      "cardinality": "1:*",
+      "description": "Build produces the container image",
+      "sourceVerb": "builds",
+      "targetVerb": "built by",
+      "tags": [
+      ],
+      "attributes": {
+      },
+      "navigation": {
+        "outbound": {
+          "direction": "outbound",
+          "role": "BUILDS",
+          "targetType": "Container Image",
+          "targetDefinition": "ContainerImage",
+          "targetSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "buildsContainerImage",
+          "staticBinding": true,
+          "readOnly": false
+        },
+        "inbound": {
+          "direction": "inbound",
+          "role": "BUILDS",
+          "sourceType": "Build",
+          "sourceDefinition": "Build",
+          "sourceSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "buildsFromBuild",
+          "staticBinding": true,
+          "readOnly": true
+        }
+      },
+      "codegen": {
+        "skip": false,
+        "noInverse": false,
+        "baseClass": null,
+        "outboundMethod": "buildsContainerImage",
+        "inboundMethod": "buildsFromBuild",
+        "sourceStaticBinding": true,
+        "targetStaticBinding": true,
+        "wildcardSource": false,
+        "wildcardTarget": false
+      }
+    },
+    {
+      "sourceType": "Build",
+      "sourceDefinition": "Build",
+      "sourceSchemaVersion": "1.0.0",
+      "role": "USES",
+      "targetType": "Component",
+      "targetDefinition": "Component",
+      "targetSchemaVersion": "1.0.0",
+      "propertiesPolicy": "SCHEMA",
+      "emptyPropertiesAllowed": true,
+      "propertySchema": {
+        "resolved": true,
+        "representation": "schema",
+        "type": "CanonicalEdge",
+        "schemaVersion": "1.0.0",
+        "definitionKey": "CanonicalEdge"
+      },
+      "cardinality": "1:*",
+      "description": "Build compiles or consumes the component",
+      "sourceVerb": "uses",
+      "targetVerb": "used by",
+      "tags": [
+      ],
+      "attributes": {
+      },
+      "navigation": {
+        "outbound": {
+          "direction": "outbound",
+          "role": "USES",
+          "targetType": "Component",
+          "targetDefinition": "Component",
+          "targetSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "usesComponent",
+          "staticBinding": true,
+          "readOnly": false
+        },
+        "inbound": {
+          "direction": "inbound",
+          "role": "USES",
+          "sourceType": "Build",
+          "sourceDefinition": "Build",
+          "sourceSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "usesFromBuild",
+          "staticBinding": true,
+          "readOnly": true
+        }
+      },
+      "codegen": {
+        "skip": false,
+        "noInverse": false,
+        "baseClass": null,
+        "outboundMethod": "usesComponent",
+        "inboundMethod": "usesFromBuild",
+        "sourceStaticBinding": true,
+        "targetStaticBinding": true,
+        "wildcardSource": false,
+        "wildcardTarget": false
+      }
+    },
+    {
+      "sourceType": "Component",
+      "sourceDefinition": "Component",
+      "sourceSchemaVersion": "1.0.0",
+      "role": "DEPENDS_ON",
+      "targetType": "Component",
+      "targetDefinition": "Component",
+      "targetSchemaVersion": "1.0.0",
+      "propertiesPolicy": "SCHEMA",
+      "emptyPropertiesAllowed": true,
+      "propertySchema": {
+        "resolved": true,
+        "representation": "schema",
+        "type": "CanonicalEdge",
+        "schemaVersion": "1.0.0",
+        "definitionKey": "CanonicalEdge"
+      },
+      "cardinality": "1:*",
+      "description": "Component requires the other component at build or runtime",
+      "sourceVerb": "depends on",
+      "targetVerb": "depended on by",
+      "tags": [
+      ],
+      "attributes": {
+      },
+      "navigation": {
+        "outbound": {
+          "direction": "outbound",
+          "role": "DEPENDS_ON",
+          "targetType": "Component",
+          "targetDefinition": "Component",
+          "targetSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "dependsOnComponent",
+          "staticBinding": true,
+          "readOnly": false
+        },
+        "inbound": {
+          "direction": "inbound",
+          "role": "DEPENDS_ON",
+          "sourceType": "Component",
+          "sourceDefinition": "Component",
+          "sourceSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "dependsOnFromComponent",
+          "staticBinding": true,
+          "readOnly": true
+        }
+      },
+      "codegen": {
+        "skip": false,
+        "noInverse": false,
+        "baseClass": null,
+        "outboundMethod": "dependsOnComponent",
+        "inboundMethod": "dependsOnFromComponent",
+        "sourceStaticBinding": true,
+        "targetStaticBinding": true,
+        "wildcardSource": false,
+        "wildcardTarget": false
+      }
+    },
+    {
+      "sourceType": "Component",
+      "sourceDefinition": "Component",
+      "sourceSchemaVersion": "1.0.0",
+      "role": "HAS_VULNERABILITY",
+      "targetType": "Vulnerability",
+      "targetDefinition": "Vulnerability",
+      "targetSchemaVersion": "1.0.0",
+      "propertiesPolicy": "SCHEMA",
+      "emptyPropertiesAllowed": true,
+      "propertySchema": {
+        "resolved": true,
+        "representation": "schema",
+        "type": "CanonicalEdge",
+        "schemaVersion": "1.0.0",
+        "definitionKey": "CanonicalEdge"
+      },
+      "cardinality": "1:*",
+      "description": "Component is affected by the vulnerability",
+      "sourceVerb": "has",
+      "targetVerb": "found in",
+      "tags": [
+      ],
+      "attributes": {
+      },
+      "navigation": {
+        "outbound": {
+          "direction": "outbound",
+          "role": "HAS_VULNERABILITY",
+          "targetType": "Vulnerability",
+          "targetDefinition": "Vulnerability",
+          "targetSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "hasVulnerabilityVulnerability",
+          "staticBinding": true,
+          "readOnly": false
+        },
+        "inbound": {
+          "direction": "inbound",
+          "role": "HAS_VULNERABILITY",
+          "sourceType": "Component",
+          "sourceDefinition": "Component",
+          "sourceSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "hasVulnerabilityFromComponent",
+          "staticBinding": true,
+          "readOnly": true
+        }
+      },
+      "codegen": {
+        "skip": false,
+        "noInverse": false,
+        "baseClass": null,
+        "outboundMethod": "hasVulnerabilityVulnerability",
+        "inboundMethod": "hasVulnerabilityFromComponent",
+        "sourceStaticBinding": true,
+        "targetStaticBinding": true,
+        "wildcardSource": false,
+        "wildcardTarget": false
+      }
+    },
+    {
+      "sourceType": "Component",
+      "sourceDefinition": "Component",
+      "sourceSchemaVersion": "1.0.0",
+      "role": "LICENSED_UNDER",
+      "targetType": "License",
+      "targetDefinition": "License",
+      "targetSchemaVersion": "1.0.0",
+      "propertiesPolicy": "SCHEMA",
+      "emptyPropertiesAllowed": true,
+      "propertySchema": {
+        "resolved": true,
+        "representation": "schema",
+        "type": "CanonicalEdge",
+        "schemaVersion": "1.0.0",
+        "definitionKey": "CanonicalEdge"
+      },
+      "cardinality": "1:*",
+      "description": "Component is distributed under the license",
+      "sourceVerb": "licensed under",
+      "targetVerb": "licenses",
+      "tags": [
+      ],
+      "attributes": {
+      },
+      "navigation": {
+        "outbound": {
+          "direction": "outbound",
+          "role": "LICENSED_UNDER",
+          "targetType": "License",
+          "targetDefinition": "License",
+          "targetSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "licensedUnderLicense",
+          "staticBinding": true,
+          "readOnly": false
+        },
+        "inbound": {
+          "direction": "inbound",
+          "role": "LICENSED_UNDER",
+          "sourceType": "Component",
+          "sourceDefinition": "Component",
+          "sourceSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "licensedUnderFromComponent",
+          "staticBinding": true,
+          "readOnly": true
+        }
+      },
+      "codegen": {
+        "skip": false,
+        "noInverse": false,
+        "baseClass": null,
+        "outboundMethod": "licensedUnderLicense",
+        "inboundMethod": "licensedUnderFromComponent",
+        "sourceStaticBinding": true,
+        "targetStaticBinding": true,
+        "wildcardSource": false,
+        "wildcardTarget": false
+      }
+    },
+    {
+      "sourceType": "Component",
+      "sourceDefinition": "Component",
+      "sourceSchemaVersion": "1.0.0",
+      "role": "PROVIDED_BY",
+      "targetType": "Organization",
+      "targetDefinition": "Organization",
+      "targetSchemaVersion": "1.0.0",
+      "propertiesPolicy": "SCHEMA",
+      "emptyPropertiesAllowed": true,
+      "propertySchema": {
+        "resolved": true,
+        "representation": "schema",
+        "type": "CanonicalEdge",
+        "schemaVersion": "1.0.0",
+        "definitionKey": "CanonicalEdge"
+      },
+      "cardinality": "1:1",
+      "description": "Organization supplies the component",
+      "sourceVerb": "provided by",
+      "targetVerb": "provides",
+      "tags": [
+      ],
+      "attributes": {
+      },
+      "navigation": {
+        "outbound": {
+          "direction": "outbound",
+          "role": "PROVIDED_BY",
+          "targetType": "Organization",
+          "targetDefinition": "Organization",
+          "targetSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "providedByOrganization",
+          "staticBinding": true,
+          "readOnly": false
+        },
+        "inbound": {
+          "direction": "inbound",
+          "role": "PROVIDED_BY",
+          "sourceType": "Component",
+          "sourceDefinition": "Component",
+          "sourceSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "providedByFromComponent",
+          "staticBinding": true,
+          "readOnly": true
+        }
+      },
+      "codegen": {
+        "skip": false,
+        "noInverse": false,
+        "baseClass": null,
+        "outboundMethod": "providedByOrganization",
+        "inboundMethod": "providedByFromComponent",
+        "sourceStaticBinding": true,
+        "targetStaticBinding": true,
+        "wildcardSource": false,
+        "wildcardTarget": false
+      }
+    },
+    {
+      "sourceType": "Container Image",
+      "sourceDefinition": "ContainerImage",
+      "sourceSchemaVersion": "1.0.0",
+      "role": "BASED_ON",
+      "targetType": "Operating System",
+      "targetDefinition": "OperatingSystem",
+      "targetSchemaVersion": "1.0.0",
+      "propertiesPolicy": "SCHEMA",
+      "emptyPropertiesAllowed": true,
+      "propertySchema": {
+        "resolved": true,
+        "representation": "schema",
+        "type": "CanonicalEdge",
+        "schemaVersion": "1.0.0",
+        "definitionKey": "CanonicalEdge"
+      },
+      "cardinality": "1:1",
+      "description": "Image is based on the operating system",
+      "sourceVerb": "based on",
+      "targetVerb": "base of",
+      "tags": [
+      ],
+      "attributes": {
+      },
+      "navigation": {
+        "outbound": {
+          "direction": "outbound",
+          "role": "BASED_ON",
+          "targetType": "Operating System",
+          "targetDefinition": "OperatingSystem",
+          "targetSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "basedOnOperatingSystem",
+          "staticBinding": true,
+          "readOnly": false
+        },
+        "inbound": {
+          "direction": "inbound",
+          "role": "BASED_ON",
+          "sourceType": "Container Image",
+          "sourceDefinition": "ContainerImage",
+          "sourceSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "basedOnFromContainerImage",
+          "staticBinding": true,
+          "readOnly": true
+        }
+      },
+      "codegen": {
+        "skip": false,
+        "noInverse": false,
+        "baseClass": null,
+        "outboundMethod": "basedOnOperatingSystem",
+        "inboundMethod": "basedOnFromContainerImage",
+        "sourceStaticBinding": true,
+        "targetStaticBinding": true,
+        "wildcardSource": false,
+        "wildcardTarget": false
+      }
+    },
+    {
+      "sourceType": "Container Image",
+      "sourceDefinition": "ContainerImage",
+      "sourceSchemaVersion": "1.0.0",
+      "role": "CONTAINS",
+      "targetType": "Container Layer",
+      "targetDefinition": "ContainerLayer",
+      "targetSchemaVersion": "1.0.0",
+      "propertiesPolicy": "SCHEMA",
+      "emptyPropertiesAllowed": true,
+      "propertySchema": {
+        "resolved": true,
+        "representation": "schema",
+        "type": "CanonicalEdge",
+        "schemaVersion": "1.0.0",
+        "definitionKey": "CanonicalEdge"
+      },
+      "cardinality": "1:*",
+      "description": "Image is built from filesystem layers",
+      "sourceVerb": "contains",
+      "targetVerb": "contained in",
+      "tags": [
+        "composition"
+      ],
+      "attributes": {
+      },
+      "navigation": {
+        "outbound": {
+          "direction": "outbound",
+          "role": "CONTAINS",
+          "targetType": "Container Layer",
+          "targetDefinition": "ContainerLayer",
+          "targetSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "containsContainerLayer",
+          "staticBinding": true,
+          "readOnly": false
+        },
+        "inbound": {
+          "direction": "inbound",
+          "role": "CONTAINS",
+          "sourceType": "Container Image",
+          "sourceDefinition": "ContainerImage",
+          "sourceSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "containsFromContainerImage",
+          "staticBinding": true,
+          "readOnly": true
+        }
+      },
+      "codegen": {
+        "skip": false,
+        "noInverse": false,
+        "baseClass": null,
+        "outboundMethod": "containsContainerLayer",
+        "inboundMethod": "containsFromContainerImage",
+        "sourceStaticBinding": true,
+        "targetStaticBinding": true,
+        "wildcardSource": false,
+        "wildcardTarget": false
+      }
+    },
+    {
+      "sourceType": "Container Image",
+      "sourceDefinition": "ContainerImage",
+      "sourceSchemaVersion": "1.0.0",
+      "role": "HAS_VULNERABILITY",
+      "targetType": "Vulnerability",
+      "targetDefinition": "Vulnerability",
+      "targetSchemaVersion": "1.0.0",
+      "propertiesPolicy": "SCHEMA",
+      "emptyPropertiesAllowed": true,
+      "propertySchema": {
+        "resolved": true,
+        "representation": "schema",
+        "type": "CanonicalEdge",
+        "schemaVersion": "1.0.0",
+        "definitionKey": "CanonicalEdge"
+      },
+      "cardinality": "1:*",
+      "description": "Image is affected by the vulnerability",
+      "sourceVerb": "has",
+      "targetVerb": "found in",
+      "tags": [
+      ],
+      "attributes": {
+      },
+      "navigation": {
+        "outbound": {
+          "direction": "outbound",
+          "role": "HAS_VULNERABILITY",
+          "targetType": "Vulnerability",
+          "targetDefinition": "Vulnerability",
+          "targetSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "hasVulnerabilityVulnerability",
+          "staticBinding": true,
+          "readOnly": false
+        },
+        "inbound": {
+          "direction": "inbound",
+          "role": "HAS_VULNERABILITY",
+          "sourceType": "Container Image",
+          "sourceDefinition": "ContainerImage",
+          "sourceSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "hasVulnerabilityFromContainerImage",
+          "staticBinding": true,
+          "readOnly": true
+        }
+      },
+      "codegen": {
+        "skip": false,
+        "noInverse": false,
+        "baseClass": null,
+        "outboundMethod": "hasVulnerabilityVulnerability",
+        "inboundMethod": "hasVulnerabilityFromContainerImage",
+        "sourceStaticBinding": true,
+        "targetStaticBinding": true,
+        "wildcardSource": false,
+        "wildcardTarget": false
+      }
+    },
+    {
+      "sourceType": "Container Image",
+      "sourceDefinition": "ContainerImage",
+      "sourceSchemaVersion": "1.0.0",
+      "role": "PACKAGES",
+      "targetType": "Artifact",
+      "targetDefinition": "Artifact",
+      "targetSchemaVersion": "1.0.0",
+      "propertiesPolicy": "SCHEMA",
+      "emptyPropertiesAllowed": true,
+      "propertySchema": {
+        "resolved": true,
+        "representation": "schema",
+        "type": "CanonicalEdge",
+        "schemaVersion": "1.0.0",
+        "definitionKey": "CanonicalEdge"
+      },
+      "cardinality": "1:*",
+      "description": "Image packages the artifact in its filesystem",
+      "sourceVerb": "packages",
+      "targetVerb": "packaged in",
+      "tags": [
+      ],
+      "attributes": {
+      },
+      "navigation": {
+        "outbound": {
+          "direction": "outbound",
+          "role": "PACKAGES",
+          "targetType": "Artifact",
+          "targetDefinition": "Artifact",
+          "targetSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "packagesArtifact",
+          "staticBinding": true,
+          "readOnly": false
+        },
+        "inbound": {
+          "direction": "inbound",
+          "role": "PACKAGES",
+          "sourceType": "Container Image",
+          "sourceDefinition": "ContainerImage",
+          "sourceSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "packagesFromContainerImage",
+          "staticBinding": true,
+          "readOnly": true
+        }
+      },
+      "codegen": {
+        "skip": false,
+        "noInverse": false,
+        "baseClass": null,
+        "outboundMethod": "packagesArtifact",
+        "inboundMethod": "packagesFromContainerImage",
+        "sourceStaticBinding": true,
+        "targetStaticBinding": true,
+        "wildcardSource": false,
+        "wildcardTarget": false
+      }
+    },
+    {
+      "sourceType": "Database",
+      "sourceDefinition": "Database",
+      "sourceSchemaVersion": "1.0.0",
+      "role": "CONTAINS",
+      "targetType": "Dataset",
+      "targetDefinition": "Dataset",
+      "targetSchemaVersion": "1.0.0",
+      "propertiesPolicy": "SCHEMA",
+      "emptyPropertiesAllowed": true,
+      "propertySchema": {
+        "resolved": true,
+        "representation": "schema",
+        "type": "CanonicalEdge",
+        "schemaVersion": "1.0.0",
+        "definitionKey": "CanonicalEdge"
+      },
+      "cardinality": "1:*",
+      "description": "Database hosts the dataset",
+      "sourceVerb": "contains",
+      "targetVerb": "contained in",
+      "tags": [
+        "composition"
+      ],
+      "attributes": {
+      },
+      "navigation": {
+        "outbound": {
+          "direction": "outbound",
+          "role": "CONTAINS",
+          "targetType": "Dataset",
+          "targetDefinition": "Dataset",
+          "targetSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "containsDataset",
+          "staticBinding": true,
+          "readOnly": false
+        },
+        "inbound": {
+          "direction": "inbound",
+          "role": "CONTAINS",
+          "sourceType": "Database",
+          "sourceDefinition": "Database",
+          "sourceSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "containsFromDatabase",
+          "staticBinding": true,
+          "readOnly": true
+        }
+      },
+      "codegen": {
+        "skip": false,
+        "noInverse": false,
+        "baseClass": null,
+        "outboundMethod": "containsDataset",
+        "inboundMethod": "containsFromDatabase",
+        "sourceStaticBinding": true,
+        "targetStaticBinding": true,
+        "wildcardSource": false,
+        "wildcardTarget": false
+      }
+    },
+    {
+      "sourceType": "Deployment",
+      "sourceDefinition": "Deployment",
+      "sourceSchemaVersion": "1.0.0",
+      "role": "DEPLOYS",
+      "targetType": "Container Image",
+      "targetDefinition": "ContainerImage",
+      "targetSchemaVersion": "1.0.0",
+      "propertiesPolicy": "SCHEMA",
+      "emptyPropertiesAllowed": true,
+      "propertySchema": {
+        "resolved": true,
+        "representation": "schema",
+        "type": "CanonicalEdge",
+        "schemaVersion": "1.0.0",
+        "definitionKey": "CanonicalEdge"
+      },
+      "cardinality": "1:1",
+      "description": "Deployment rolls out the container image",
+      "sourceVerb": "deploys",
+      "targetVerb": "deployed by",
+      "tags": [
+      ],
+      "attributes": {
+      },
+      "navigation": {
+        "outbound": {
+          "direction": "outbound",
+          "role": "DEPLOYS",
+          "targetType": "Container Image",
+          "targetDefinition": "ContainerImage",
+          "targetSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "deploysContainerImage",
+          "staticBinding": true,
+          "readOnly": false
+        },
+        "inbound": {
+          "direction": "inbound",
+          "role": "DEPLOYS",
+          "sourceType": "Deployment",
+          "sourceDefinition": "Deployment",
+          "sourceSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "deploysFromDeployment",
+          "staticBinding": true,
+          "readOnly": true
+        }
+      },
+      "codegen": {
+        "skip": false,
+        "noInverse": false,
+        "baseClass": null,
+        "outboundMethod": "deploysContainerImage",
+        "inboundMethod": "deploysFromDeployment",
+        "sourceStaticBinding": true,
+        "targetStaticBinding": true,
+        "wildcardSource": false,
+        "wildcardTarget": false
+      }
+    },
+    {
+      "sourceType": "Deployment",
+      "sourceDefinition": "Deployment",
+      "sourceSchemaVersion": "1.0.0",
+      "role": "LOCATED_IN",
+      "targetType": "Namespace",
+      "targetDefinition": "Namespace",
+      "targetSchemaVersion": "1.0.0",
+      "propertiesPolicy": "SCHEMA",
+      "emptyPropertiesAllowed": true,
+      "propertySchema": {
+        "resolved": true,
+        "representation": "schema",
+        "type": "CanonicalEdge",
+        "schemaVersion": "1.0.0",
+        "definitionKey": "CanonicalEdge"
+      },
+      "cardinality": "1:1",
+      "description": "Deployment runs in the namespace",
+      "sourceVerb": "located in",
+      "targetVerb": "contains",
+      "tags": [
+      ],
+      "attributes": {
+      },
+      "navigation": {
+        "outbound": {
+          "direction": "outbound",
+          "role": "LOCATED_IN",
+          "targetType": "Namespace",
+          "targetDefinition": "Namespace",
+          "targetSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "locatedInNamespace",
+          "staticBinding": true,
+          "readOnly": false
+        },
+        "inbound": {
+          "direction": "inbound",
+          "role": "LOCATED_IN",
+          "sourceType": "Deployment",
+          "sourceDefinition": "Deployment",
+          "sourceSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "locatedInFromDeployment",
+          "staticBinding": true,
+          "readOnly": true
+        }
+      },
+      "codegen": {
+        "skip": false,
+        "noInverse": false,
+        "baseClass": null,
+        "outboundMethod": "locatedInNamespace",
+        "inboundMethod": "locatedInFromDeployment",
+        "sourceStaticBinding": true,
+        "targetStaticBinding": true,
+        "wildcardSource": false,
+        "wildcardTarget": false
+      }
+    },
+    {
+      "sourceType": "Deployment",
+      "sourceDefinition": "Deployment",
+      "sourceSchemaVersion": "1.0.0",
+      "role": "RUNS_ON",
+      "targetType": "Host",
+      "targetDefinition": "Host",
+      "targetSchemaVersion": "1.0.0",
+      "propertiesPolicy": "SCHEMA",
+      "emptyPropertiesAllowed": true,
+      "propertySchema": {
+        "resolved": true,
+        "representation": "schema",
+        "type": "CanonicalEdge",
+        "schemaVersion": "1.0.0",
+        "definitionKey": "CanonicalEdge"
+      },
+      "cardinality": "1:*",
+      "description": "Deployment runs on the host",
+      "sourceVerb": "runs on",
+      "targetVerb": "hosts",
+      "tags": [
+      ],
+      "attributes": {
+      },
+      "navigation": {
+        "outbound": {
+          "direction": "outbound",
+          "role": "RUNS_ON",
+          "targetType": "Host",
+          "targetDefinition": "Host",
+          "targetSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "runsOnHost",
+          "staticBinding": true,
+          "readOnly": false
+        },
+        "inbound": {
+          "direction": "inbound",
+          "role": "RUNS_ON",
+          "sourceType": "Deployment",
+          "sourceDefinition": "Deployment",
+          "sourceSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "runsOnFromDeployment",
+          "staticBinding": true,
+          "readOnly": true
+        }
+      },
+      "codegen": {
+        "skip": false,
+        "noInverse": false,
+        "baseClass": null,
+        "outboundMethod": "runsOnHost",
+        "inboundMethod": "runsOnFromDeployment",
+        "sourceStaticBinding": true,
+        "targetStaticBinding": true,
+        "wildcardSource": false,
+        "wildcardTarget": false
+      }
+    },
+    {
+      "sourceType": "Deployment",
+      "sourceDefinition": "Deployment",
+      "sourceSchemaVersion": "1.0.0",
+      "role": "TARGETS",
+      "targetType": "Environment",
+      "targetDefinition": "Environment",
+      "targetSchemaVersion": "1.0.0",
+      "propertiesPolicy": "SCHEMA",
+      "emptyPropertiesAllowed": true,
+      "propertySchema": {
+        "resolved": true,
+        "representation": "schema",
+        "type": "CanonicalEdge",
+        "schemaVersion": "1.0.0",
+        "definitionKey": "CanonicalEdge"
+      },
+      "cardinality": "1:1",
+      "description": "Deployment targets the runtime environment",
+      "sourceVerb": "targets",
+      "targetVerb": "targeted by",
+      "tags": [
+      ],
+      "attributes": {
+      },
+      "navigation": {
+        "outbound": {
+          "direction": "outbound",
+          "role": "TARGETS",
+          "targetType": "Environment",
+          "targetDefinition": "Environment",
+          "targetSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "targetsEnvironment",
+          "staticBinding": true,
+          "readOnly": false
+        },
+        "inbound": {
+          "direction": "inbound",
+          "role": "TARGETS",
+          "sourceType": "Deployment",
+          "sourceDefinition": "Deployment",
+          "sourceSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "targetsFromDeployment",
+          "staticBinding": true,
+          "readOnly": true
+        }
+      },
+      "codegen": {
+        "skip": false,
+        "noInverse": false,
+        "baseClass": null,
+        "outboundMethod": "targetsEnvironment",
+        "inboundMethod": "targetsFromDeployment",
+        "sourceStaticBinding": true,
+        "targetStaticBinding": true,
+        "wildcardSource": false,
+        "wildcardTarget": false
+      }
+    },
+    {
+      "sourceType": "Host",
+      "sourceDefinition": "Host",
+      "sourceSchemaVersion": "1.0.0",
+      "role": "MEMBER_OF",
+      "targetType": "Kubernetes Cluster",
+      "targetDefinition": "KubernetesCluster",
+      "targetSchemaVersion": "1.0.0",
+      "propertiesPolicy": "SCHEMA",
+      "emptyPropertiesAllowed": true,
+      "propertySchema": {
+        "resolved": true,
+        "representation": "schema",
+        "type": "CanonicalEdge",
+        "schemaVersion": "1.0.0",
+        "definitionKey": "CanonicalEdge"
+      },
+      "cardinality": "1:1",
+      "description": "Host is a node in the Kubernetes cluster",
+      "sourceVerb": "member of",
+      "targetVerb": "includes",
+      "tags": [
+      ],
+      "attributes": {
+      },
+      "navigation": {
+        "outbound": {
+          "direction": "outbound",
+          "role": "MEMBER_OF",
+          "targetType": "Kubernetes Cluster",
+          "targetDefinition": "KubernetesCluster",
+          "targetSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "memberOfKubernetesCluster",
+          "staticBinding": true,
+          "readOnly": false
+        },
+        "inbound": {
+          "direction": "inbound",
+          "role": "MEMBER_OF",
+          "sourceType": "Host",
+          "sourceDefinition": "Host",
+          "sourceSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "memberOfFromHost",
+          "staticBinding": true,
+          "readOnly": true
+        }
+      },
+      "codegen": {
+        "skip": false,
+        "noInverse": false,
+        "baseClass": null,
+        "outboundMethod": "memberOfKubernetesCluster",
+        "inboundMethod": "memberOfFromHost",
+        "sourceStaticBinding": true,
+        "targetStaticBinding": true,
+        "wildcardSource": false,
+        "wildcardTarget": false
+      }
+    },
+    {
+      "sourceType": "Product",
+      "sourceDefinition": "Product",
+      "sourceSchemaVersion": "1.0.0",
+      "role": "CALLS",
+      "targetType": "API",
+      "targetDefinition": "API",
+      "targetSchemaVersion": "1.0.0",
+      "propertiesPolicy": "SCHEMA",
+      "emptyPropertiesAllowed": true,
+      "propertySchema": {
+        "resolved": true,
+        "representation": "schema",
+        "type": "CanonicalEdge",
+        "schemaVersion": "1.0.0",
+        "definitionKey": "CanonicalEdge"
+      },
+      "cardinality": "1:*",
+      "description": "Product invokes the API",
+      "sourceVerb": "calls",
+      "targetVerb": "called by",
+      "tags": [
+      ],
+      "attributes": {
+      },
+      "navigation": {
+        "outbound": {
+          "direction": "outbound",
+          "role": "CALLS",
+          "targetType": "API",
+          "targetDefinition": "API",
+          "targetSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "callsAPI",
+          "staticBinding": true,
+          "readOnly": false
+        },
+        "inbound": {
+          "direction": "inbound",
+          "role": "CALLS",
+          "sourceType": "Product",
+          "sourceDefinition": "Product",
+          "sourceSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "callsFromProduct",
+          "staticBinding": true,
+          "readOnly": true
+        }
+      },
+      "codegen": {
+        "skip": false,
+        "noInverse": false,
+        "baseClass": null,
+        "outboundMethod": "callsAPI",
+        "inboundMethod": "callsFromProduct",
+        "sourceStaticBinding": true,
+        "targetStaticBinding": true,
+        "wildcardSource": false,
+        "wildcardTarget": false
+      }
+    },
+    {
+      "sourceType": "Product",
+      "sourceDefinition": "Product",
+      "sourceSchemaVersion": "1.0.0",
+      "role": "COMPLIES_WITH",
+      "targetType": "Policy",
+      "targetDefinition": "Policy",
+      "targetSchemaVersion": "1.0.0",
+      "propertiesPolicy": "SCHEMA",
+      "emptyPropertiesAllowed": true,
+      "propertySchema": {
+        "resolved": true,
+        "representation": "schema",
+        "type": "CanonicalEdge",
+        "schemaVersion": "1.0.0",
+        "definitionKey": "CanonicalEdge"
+      },
+      "cardinality": "1:*",
+      "description": "Product is governed by the policy",
+      "sourceVerb": "complies with",
+      "targetVerb": "constrains",
+      "tags": [
+      ],
+      "attributes": {
+      },
+      "navigation": {
+        "outbound": {
+          "direction": "outbound",
+          "role": "COMPLIES_WITH",
+          "targetType": "Policy",
+          "targetDefinition": "Policy",
+          "targetSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "compliesWithPolicy",
+          "staticBinding": true,
+          "readOnly": false
+        },
+        "inbound": {
+          "direction": "inbound",
+          "role": "COMPLIES_WITH",
+          "sourceType": "Product",
+          "sourceDefinition": "Product",
+          "sourceSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "compliesWithFromProduct",
+          "staticBinding": true,
+          "readOnly": true
+        }
+      },
+      "codegen": {
+        "skip": false,
+        "noInverse": false,
+        "baseClass": null,
+        "outboundMethod": "compliesWithPolicy",
+        "inboundMethod": "compliesWithFromProduct",
+        "sourceStaticBinding": true,
+        "targetStaticBinding": true,
+        "wildcardSource": false,
+        "wildcardTarget": false
+      }
+    },
+    {
+      "sourceType": "Product",
+      "sourceDefinition": "Product",
+      "sourceSchemaVersion": "1.0.0",
+      "role": "CONNECTS_TO",
+      "targetType": "Database",
+      "targetDefinition": "Database",
+      "targetSchemaVersion": "1.0.0",
+      "propertiesPolicy": "SCHEMA",
+      "emptyPropertiesAllowed": true,
+      "propertySchema": {
+        "resolved": true,
+        "representation": "schema",
+        "type": "CanonicalEdge",
+        "schemaVersion": "1.0.0",
+        "definitionKey": "CanonicalEdge"
+      },
+      "cardinality": "1:*",
+      "description": "Product connects to the database",
+      "sourceVerb": "connects to",
+      "targetVerb": "connected from",
+      "tags": [
+      ],
+      "attributes": {
+      },
+      "navigation": {
+        "outbound": {
+          "direction": "outbound",
+          "role": "CONNECTS_TO",
+          "targetType": "Database",
+          "targetDefinition": "Database",
+          "targetSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "connectsToDatabase",
+          "staticBinding": true,
+          "readOnly": false
+        },
+        "inbound": {
+          "direction": "inbound",
+          "role": "CONNECTS_TO",
+          "sourceType": "Product",
+          "sourceDefinition": "Product",
+          "sourceSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "connectsToFromProduct",
+          "staticBinding": true,
+          "readOnly": true
+        }
+      },
+      "codegen": {
+        "skip": false,
+        "noInverse": false,
+        "baseClass": null,
+        "outboundMethod": "connectsToDatabase",
+        "inboundMethod": "connectsToFromProduct",
+        "sourceStaticBinding": true,
+        "targetStaticBinding": true,
+        "wildcardSource": false,
+        "wildcardTarget": false
+      }
+    },
+    {
+      "sourceType": "Product",
+      "sourceDefinition": "Product",
+      "sourceSchemaVersion": "1.0.0",
+      "role": "CONTAINS",
+      "targetType": "Artifact",
+      "targetDefinition": "Artifact",
+      "targetSchemaVersion": "1.0.0",
+      "propertiesPolicy": "SCHEMA",
+      "emptyPropertiesAllowed": true,
+      "propertySchema": {
+        "resolved": true,
+        "representation": "schema",
+        "type": "CanonicalEdge",
+        "schemaVersion": "1.0.0",
+        "definitionKey": "CanonicalEdge"
+      },
+      "cardinality": "1:*",
+      "description": "Product includes the artifact in its bill",
+      "sourceVerb": "contains",
+      "targetVerb": "contained in",
+      "tags": [
+        "composition"
+      ],
+      "attributes": {
+      },
+      "navigation": {
+        "outbound": {
+          "direction": "outbound",
+          "role": "CONTAINS",
+          "targetType": "Artifact",
+          "targetDefinition": "Artifact",
+          "targetSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "containsArtifact",
+          "staticBinding": true,
+          "readOnly": false
+        },
+        "inbound": {
+          "direction": "inbound",
+          "role": "CONTAINS",
+          "sourceType": "Product",
+          "sourceDefinition": "Product",
+          "sourceSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "containsFromProduct",
+          "staticBinding": true,
+          "readOnly": true
+        }
+      },
+      "codegen": {
+        "skip": false,
+        "noInverse": false,
+        "baseClass": null,
+        "outboundMethod": "containsArtifact",
+        "inboundMethod": "containsFromProduct",
+        "sourceStaticBinding": true,
+        "targetStaticBinding": true,
+        "wildcardSource": false,
+        "wildcardTarget": false
+      }
+    },
+    {
+      "sourceType": "Product",
+      "sourceDefinition": "Product",
+      "sourceSchemaVersion": "1.0.0",
+      "role": "CONTAINS",
+      "targetType": "Component",
+      "targetDefinition": "Component",
+      "targetSchemaVersion": "1.0.0",
+      "propertiesPolicy": "SCHEMA",
+      "emptyPropertiesAllowed": true,
+      "propertySchema": {
+        "resolved": true,
+        "representation": "schema",
+        "type": "CanonicalEdge",
+        "schemaVersion": "1.0.0",
+        "definitionKey": "CanonicalEdge"
+      },
+      "cardinality": "1:*",
+      "description": "Product includes the software component in its bill",
+      "sourceVerb": "contains",
+      "targetVerb": "contained in",
+      "tags": [
+        "composition"
+      ],
+      "attributes": {
+      },
+      "navigation": {
+        "outbound": {
+          "direction": "outbound",
+          "role": "CONTAINS",
+          "targetType": "Component",
+          "targetDefinition": "Component",
+          "targetSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "containsComponent",
+          "staticBinding": true,
+          "readOnly": false
+        },
+        "inbound": {
+          "direction": "inbound",
+          "role": "CONTAINS",
+          "sourceType": "Product",
+          "sourceDefinition": "Product",
+          "sourceSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "containsFromProduct",
+          "staticBinding": true,
+          "readOnly": true
+        }
+      },
+      "codegen": {
+        "skip": false,
+        "noInverse": false,
+        "baseClass": null,
+        "outboundMethod": "containsComponent",
+        "inboundMethod": "containsFromProduct",
+        "sourceStaticBinding": true,
+        "targetStaticBinding": true,
+        "wildcardSource": false,
+        "wildcardTarget": false
+      }
+    },
+    {
+      "sourceType": "Product",
+      "sourceDefinition": "Product",
+      "sourceSchemaVersion": "1.0.0",
+      "role": "OWNED_BY",
+      "targetType": "Organization",
+      "targetDefinition": "Organization",
+      "targetSchemaVersion": "1.0.0",
+      "propertiesPolicy": "SCHEMA",
+      "emptyPropertiesAllowed": true,
+      "propertySchema": {
+        "resolved": true,
+        "representation": "schema",
+        "type": "CanonicalEdge",
+        "schemaVersion": "1.0.0",
+        "definitionKey": "CanonicalEdge"
+      },
+      "cardinality": "1:1",
+      "description": "Organization owns the product",
+      "sourceVerb": "owned by",
+      "targetVerb": "owns",
+      "tags": [
+      ],
+      "attributes": {
+      },
+      "navigation": {
+        "outbound": {
+          "direction": "outbound",
+          "role": "OWNED_BY",
+          "targetType": "Organization",
+          "targetDefinition": "Organization",
+          "targetSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "ownedByOrganization",
+          "staticBinding": true,
+          "readOnly": false
+        },
+        "inbound": {
+          "direction": "inbound",
+          "role": "OWNED_BY",
+          "sourceType": "Product",
+          "sourceDefinition": "Product",
+          "sourceSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "ownedByFromProduct",
+          "staticBinding": true,
+          "readOnly": true
+        }
+      },
+      "codegen": {
+        "skip": false,
+        "noInverse": false,
+        "baseClass": null,
+        "outboundMethod": "ownedByOrganization",
+        "inboundMethod": "ownedByFromProduct",
+        "sourceStaticBinding": true,
+        "targetStaticBinding": true,
+        "wildcardSource": false,
+        "wildcardTarget": false
+      }
+    },
+    {
+      "sourceType": "Product",
+      "sourceDefinition": "Product",
+      "sourceSchemaVersion": "1.0.0",
+      "role": "RUNS_ON",
+      "targetType": "Runtime",
+      "targetDefinition": "Runtime",
+      "targetSchemaVersion": "1.0.0",
+      "propertiesPolicy": "SCHEMA",
+      "emptyPropertiesAllowed": true,
+      "propertySchema": {
+        "resolved": true,
+        "representation": "schema",
+        "type": "CanonicalEdge",
+        "schemaVersion": "1.0.0",
+        "definitionKey": "CanonicalEdge"
+      },
+      "cardinality": "1:1",
+      "description": "Product runs on the language runtime",
+      "sourceVerb": "runs on",
+      "targetVerb": "runs",
+      "tags": [
+      ],
+      "attributes": {
+      },
+      "navigation": {
+        "outbound": {
+          "direction": "outbound",
+          "role": "RUNS_ON",
+          "targetType": "Runtime",
+          "targetDefinition": "Runtime",
+          "targetSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "runsOnRuntime",
+          "staticBinding": true,
+          "readOnly": false
+        },
+        "inbound": {
+          "direction": "inbound",
+          "role": "RUNS_ON",
+          "sourceType": "Product",
+          "sourceDefinition": "Product",
+          "sourceSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "runsOnFromProduct",
+          "staticBinding": true,
+          "readOnly": true
+        }
+      },
+      "codegen": {
+        "skip": false,
+        "noInverse": false,
+        "baseClass": null,
+        "outboundMethod": "runsOnRuntime",
+        "inboundMethod": "runsOnFromProduct",
+        "sourceStaticBinding": true,
+        "targetStaticBinding": true,
+        "wildcardSource": false,
+        "wildcardTarget": false
+      }
+    },
+    {
+      "sourceType": "Runtime",
+      "sourceDefinition": "Runtime",
+      "sourceSchemaVersion": "1.0.0",
+      "role": "RUNS_ON",
+      "targetType": "Operating System",
+      "targetDefinition": "OperatingSystem",
+      "targetSchemaVersion": "1.0.0",
+      "propertiesPolicy": "SCHEMA",
+      "emptyPropertiesAllowed": true,
+      "propertySchema": {
+        "resolved": true,
+        "representation": "schema",
+        "type": "CanonicalEdge",
+        "schemaVersion": "1.0.0",
+        "definitionKey": "CanonicalEdge"
+      },
+      "cardinality": "1:1",
+      "description": "Runtime runs on the operating system",
+      "sourceVerb": "runs on",
+      "targetVerb": "hosts",
+      "tags": [
+      ],
+      "attributes": {
+      },
+      "navigation": {
+        "outbound": {
+          "direction": "outbound",
+          "role": "RUNS_ON",
+          "targetType": "Operating System",
+          "targetDefinition": "OperatingSystem",
+          "targetSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "runsOnOperatingSystem",
+          "staticBinding": true,
+          "readOnly": false
+        },
+        "inbound": {
+          "direction": "inbound",
+          "role": "RUNS_ON",
+          "sourceType": "Runtime",
+          "sourceDefinition": "Runtime",
+          "sourceSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "runsOnFromRuntime",
+          "staticBinding": true,
+          "readOnly": true
+        }
+      },
+      "codegen": {
+        "skip": false,
+        "noInverse": false,
+        "baseClass": null,
+        "outboundMethod": "runsOnOperatingSystem",
+        "inboundMethod": "runsOnFromRuntime",
+        "sourceStaticBinding": true,
+        "targetStaticBinding": true,
+        "wildcardSource": false,
+        "wildcardTarget": false
+      }
+    },
+    {
+      "sourceType": "Service",
+      "sourceDefinition": "Service",
+      "sourceSchemaVersion": "1.0.0",
+      "role": "IMPLEMENTS",
+      "targetType": "API",
+      "targetDefinition": "API",
+      "targetSchemaVersion": "1.0.0",
+      "propertiesPolicy": "SCHEMA",
+      "emptyPropertiesAllowed": true,
+      "propertySchema": {
+        "resolved": true,
+        "representation": "schema",
+        "type": "CanonicalEdge",
+        "schemaVersion": "1.0.0",
+        "definitionKey": "CanonicalEdge"
+      },
+      "cardinality": "1:*",
+      "description": "Service implements the API contract",
+      "sourceVerb": "implements",
+      "targetVerb": "implemented by",
+      "tags": [
+      ],
+      "attributes": {
+      },
+      "navigation": {
+        "outbound": {
+          "direction": "outbound",
+          "role": "IMPLEMENTS",
+          "targetType": "API",
+          "targetDefinition": "API",
+          "targetSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "implementsAPI",
+          "staticBinding": true,
+          "readOnly": false
+        },
+        "inbound": {
+          "direction": "inbound",
+          "role": "IMPLEMENTS",
+          "sourceType": "Service",
+          "sourceDefinition": "Service",
+          "sourceSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "implementsFromService",
+          "staticBinding": true,
+          "readOnly": true
+        }
+      },
+      "codegen": {
+        "skip": false,
+        "noInverse": false,
+        "baseClass": null,
+        "outboundMethod": "implementsAPI",
+        "inboundMethod": "implementsFromService",
+        "sourceStaticBinding": true,
+        "targetStaticBinding": true,
+        "wildcardSource": false,
+        "wildcardTarget": false
+      }
+    },
+    {
+      "sourceType": "Source Module",
+      "sourceDefinition": "SourceModule",
+      "sourceSchemaVersion": "1.0.0",
+      "role": "PRODUCES",
+      "targetType": "Artifact",
+      "targetDefinition": "Artifact",
+      "targetSchemaVersion": "1.0.0",
+      "propertiesPolicy": "SCHEMA",
+      "emptyPropertiesAllowed": true,
+      "propertySchema": {
+        "resolved": true,
+        "representation": "schema",
+        "type": "CanonicalEdge",
+        "schemaVersion": "1.0.0",
+        "definitionKey": "CanonicalEdge"
+      },
+      "cardinality": "1:*",
+      "description": "Source module produces the artifact",
+      "sourceVerb": "produces",
+      "targetVerb": "produced by",
+      "tags": [
+      ],
+      "attributes": {
+      },
+      "navigation": {
+        "outbound": {
+          "direction": "outbound",
+          "role": "PRODUCES",
+          "targetType": "Artifact",
+          "targetDefinition": "Artifact",
+          "targetSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "producesArtifact",
+          "staticBinding": true,
+          "readOnly": false
+        },
+        "inbound": {
+          "direction": "inbound",
+          "role": "PRODUCES",
+          "sourceType": "Source Module",
+          "sourceDefinition": "SourceModule",
+          "sourceSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "producesFromSourceModule",
+          "staticBinding": true,
+          "readOnly": true
+        }
+      },
+      "codegen": {
+        "skip": false,
+        "noInverse": false,
+        "baseClass": null,
+        "outboundMethod": "producesArtifact",
+        "inboundMethod": "producesFromSourceModule",
+        "sourceStaticBinding": true,
+        "targetStaticBinding": true,
+        "wildcardSource": false,
+        "wildcardTarget": false
+      }
+    },
+    {
+      "sourceType": "Source Repository",
+      "sourceDefinition": "SourceRepository",
+      "sourceSchemaVersion": "1.0.0",
+      "role": "CONTAINS",
+      "targetType": "Source Module",
+      "targetDefinition": "SourceModule",
+      "targetSchemaVersion": "1.0.0",
+      "propertiesPolicy": "SCHEMA",
+      "emptyPropertiesAllowed": true,
+      "propertySchema": {
+        "resolved": true,
+        "representation": "schema",
+        "type": "CanonicalEdge",
+        "schemaVersion": "1.0.0",
+        "definitionKey": "CanonicalEdge"
+      },
+      "cardinality": "1:*",
+      "description": "Repository contains the source module",
+      "sourceVerb": "contains",
+      "targetVerb": "contained in",
+      "tags": [
+        "composition"
+      ],
+      "attributes": {
+      },
+      "navigation": {
+        "outbound": {
+          "direction": "outbound",
+          "role": "CONTAINS",
+          "targetType": "Source Module",
+          "targetDefinition": "SourceModule",
+          "targetSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "containsSourceModule",
+          "staticBinding": true,
+          "readOnly": false
+        },
+        "inbound": {
+          "direction": "inbound",
+          "role": "CONTAINS",
+          "sourceType": "Source Repository",
+          "sourceDefinition": "SourceRepository",
+          "sourceSchemaVersion": "1.0.0",
+          "edgeProperty": {
+            "resolved": true,
+            "representation": "schema",
+            "type": "CanonicalEdge",
+            "schemaVersion": "1.0.0",
+            "definitionKey": "CanonicalEdge"
+          },
+          "method": "containsFromSourceRepository",
+          "staticBinding": true,
+          "readOnly": true
+        }
+      },
+      "codegen": {
+        "skip": false,
+        "noInverse": false,
+        "baseClass": null,
+        "outboundMethod": "containsSourceModule",
+        "inboundMethod": "containsFromSourceRepository",
+        "sourceStaticBinding": true,
+        "targetStaticBinding": true,
+        "wildcardSource": false,
+        "wildcardTarget": false
+      }
+    }
+  ],
+  "x-objs-codegen": {
+    "version": 1,
+    "language": "java",
+    "writeProfile": {
+      "entityPayload": "payload-only",
+      "relationProperties": "read-only"
+    },
+    "definitions": [
+      {
+        "definitionKey": "API",
+        "kind": "ENTITY",
+        "type": "API",
+        "schemaVersion": "1.0.0",
+        "latest": true,
+        "generated": true,
+        "skip": false,
+        "javaTypeName": "Api",
+        "baseClass": null,
+        "interfaces": [
+        ],
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#fab005"
+        }
+      },
+      {
+        "definitionKey": "Artifact",
+        "kind": "ENTITY",
+        "type": "Artifact",
+        "schemaVersion": "1.0.0",
+        "latest": true,
+        "generated": true,
+        "skip": false,
+        "javaTypeName": "Artifact",
+        "baseClass": null,
+        "interfaces": [
+        ],
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#fab005"
+        }
+      },
+      {
+        "definitionKey": "Build",
+        "kind": "ENTITY",
+        "type": "Build",
+        "schemaVersion": "1.0.0",
+        "latest": true,
+        "generated": true,
+        "skip": false,
+        "javaTypeName": "Build",
+        "baseClass": null,
+        "interfaces": [
+        ],
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#82c91e"
+        }
+      },
+      {
+        "definitionKey": "CanonicalEdge",
+        "kind": "EDGE_PROPERTIES",
+        "type": "CanonicalEdge",
+        "schemaVersion": "1.0.0",
+        "latest": true,
+        "generated": true,
+        "skip": false,
+        "javaTypeName": "CanonicalEdge",
+        "baseClass": null,
+        "interfaces": [
+        ],
+        "tags": [
+        ],
+        "attributes": {
+        }
+      },
+      {
+        "definitionKey": "Component",
+        "kind": "ENTITY",
+        "type": "Component",
+        "schemaVersion": "1.0.0",
+        "latest": true,
+        "generated": true,
+        "skip": false,
+        "javaTypeName": "Component",
+        "baseClass": null,
+        "interfaces": [
+        ],
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#4c6ef5"
+        }
+      },
+      {
+        "definitionKey": "ContainerImage",
+        "kind": "ENTITY",
+        "type": "Container Image",
+        "schemaVersion": "1.0.0",
+        "latest": true,
+        "generated": true,
+        "skip": false,
+        "javaTypeName": "ContainerImage",
+        "baseClass": null,
+        "interfaces": [
+        ],
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#228be6"
+        }
+      },
+      {
+        "definitionKey": "ContainerLayer",
+        "kind": "ENTITY",
+        "type": "Container Layer",
+        "schemaVersion": "1.0.0",
+        "latest": true,
+        "generated": true,
+        "skip": false,
+        "javaTypeName": "ContainerLayer",
+        "baseClass": null,
+        "interfaces": [
+        ],
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#fab005"
+        }
+      },
+      {
+        "definitionKey": "Database",
+        "kind": "ENTITY",
+        "type": "Database",
+        "schemaVersion": "1.0.0",
+        "latest": true,
+        "generated": true,
+        "skip": false,
+        "javaTypeName": "Database",
+        "baseClass": null,
+        "interfaces": [
+        ],
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#fa5252"
+        }
+      },
+      {
+        "definitionKey": "Dataset",
+        "kind": "ENTITY",
+        "type": "Dataset",
+        "schemaVersion": "1.0.0",
+        "latest": true,
+        "generated": true,
+        "skip": false,
+        "javaTypeName": "Dataset",
+        "baseClass": null,
+        "interfaces": [
+        ],
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#228be6"
+        }
+      },
+      {
+        "definitionKey": "Deployment",
+        "kind": "ENTITY",
+        "type": "Deployment",
+        "schemaVersion": "1.0.0",
+        "latest": true,
+        "generated": true,
+        "skip": false,
+        "javaTypeName": "Deployment",
+        "baseClass": null,
+        "interfaces": [
+        ],
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#40c057"
+        }
+      },
+      {
+        "definitionKey": "Environment",
+        "kind": "ENTITY",
+        "type": "Environment",
+        "schemaVersion": "1.0.0",
+        "latest": true,
+        "generated": true,
+        "skip": false,
+        "javaTypeName": "Environment",
+        "baseClass": null,
+        "interfaces": [
+        ],
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#fd7e14"
+        }
+      },
+      {
+        "definitionKey": "Host",
+        "kind": "ENTITY",
+        "type": "Host",
+        "schemaVersion": "1.0.0",
+        "latest": true,
+        "generated": true,
+        "skip": false,
+        "javaTypeName": "Host",
+        "baseClass": null,
+        "interfaces": [
+        ],
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#228be6"
+        }
+      },
+      {
+        "definitionKey": "KubernetesCluster",
+        "kind": "ENTITY",
+        "type": "Kubernetes Cluster",
+        "schemaVersion": "1.0.0",
+        "latest": true,
+        "generated": true,
+        "skip": false,
+        "javaTypeName": "KubernetesCluster",
+        "baseClass": null,
+        "interfaces": [
+        ],
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#12b886"
+        }
+      },
+      {
+        "definitionKey": "License",
+        "kind": "ENTITY",
+        "type": "License",
+        "schemaVersion": "1.0.0",
+        "latest": true,
+        "generated": true,
+        "skip": false,
+        "javaTypeName": "License",
+        "baseClass": null,
+        "interfaces": [
+        ],
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#40c057"
+        }
+      },
+      {
+        "definitionKey": "Namespace",
+        "kind": "ENTITY",
+        "type": "Namespace",
+        "schemaVersion": "1.0.0",
+        "latest": true,
+        "generated": true,
+        "skip": false,
+        "javaTypeName": "Namespace",
+        "baseClass": null,
+        "interfaces": [
+        ],
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#fd7e14"
+        }
+      },
+      {
+        "definitionKey": "OperatingSystem",
+        "kind": "ENTITY",
+        "type": "Operating System",
+        "schemaVersion": "1.0.0",
+        "latest": true,
+        "generated": true,
+        "skip": false,
+        "javaTypeName": "OperatingSystem",
+        "baseClass": null,
+        "interfaces": [
+        ],
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#82c91e"
+        }
+      },
+      {
+        "definitionKey": "Organization",
+        "kind": "ENTITY",
+        "type": "Organization",
+        "schemaVersion": "1.0.0",
+        "latest": true,
+        "generated": true,
+        "skip": false,
+        "javaTypeName": "Organization",
+        "baseClass": null,
+        "interfaces": [
+        ],
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#fd7e14"
+        }
+      },
+      {
+        "definitionKey": "Policy",
+        "kind": "ENTITY",
+        "type": "Policy",
+        "schemaVersion": "1.0.0",
+        "latest": true,
+        "generated": true,
+        "skip": false,
+        "javaTypeName": "Policy",
+        "baseClass": null,
+        "interfaces": [
+        ],
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#e64980"
+        }
+      },
+      {
+        "definitionKey": "Product",
+        "kind": "ENTITY",
+        "type": "Product",
+        "schemaVersion": "1.0.0",
+        "latest": true,
+        "generated": true,
+        "skip": false,
+        "javaTypeName": "Product",
+        "baseClass": null,
+        "interfaces": [
+        ],
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#fa5252"
+        }
+      },
+      {
+        "definitionKey": "Runtime",
+        "kind": "ENTITY",
+        "type": "Runtime",
+        "schemaVersion": "1.0.0",
+        "latest": true,
+        "generated": true,
+        "skip": false,
+        "javaTypeName": "Runtime",
+        "baseClass": null,
+        "interfaces": [
+        ],
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#228be6"
+        }
+      },
+      {
+        "definitionKey": "Service",
+        "kind": "ENTITY",
+        "type": "Service",
+        "schemaVersion": "1.0.0",
+        "latest": true,
+        "generated": true,
+        "skip": false,
+        "javaTypeName": "Service",
+        "baseClass": null,
+        "interfaces": [
+        ],
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#15aabf"
+        }
+      },
+      {
+        "definitionKey": "SourceModule",
+        "kind": "ENTITY",
+        "type": "Source Module",
+        "schemaVersion": "1.0.0",
+        "latest": true,
+        "generated": true,
+        "skip": false,
+        "javaTypeName": "SourceModule",
+        "baseClass": null,
+        "interfaces": [
+        ],
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#40c057"
+        }
+      },
+      {
+        "definitionKey": "SourceRepository",
+        "kind": "ENTITY",
+        "type": "Source Repository",
+        "schemaVersion": "1.0.0",
+        "latest": true,
+        "generated": true,
+        "skip": false,
+        "javaTypeName": "SourceRepository",
+        "baseClass": null,
+        "interfaces": [
+        ],
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#be4bdb"
+        }
+      },
+      {
+        "definitionKey": "Vulnerability",
+        "kind": "ENTITY",
+        "type": "Vulnerability",
+        "schemaVersion": "1.0.0",
+        "latest": true,
+        "generated": true,
+        "skip": false,
+        "javaTypeName": "Vulnerability",
+        "baseClass": null,
+        "interfaces": [
+        ],
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#12b886"
+        }
+      }
+    ],
+    "schemas": [
+      {
+        "type": "API",
+        "schemaVersion": "1.0.0",
+        "kind": "ENTITY",
+        "definitionKey": "API",
+        "latest": true,
+        "skip": false,
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#fab005"
+        }
+      },
+      {
+        "type": "Artifact",
+        "schemaVersion": "1.0.0",
+        "kind": "ENTITY",
+        "definitionKey": "Artifact",
+        "latest": true,
+        "skip": false,
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#fab005"
+        }
+      },
+      {
+        "type": "Build",
+        "schemaVersion": "1.0.0",
+        "kind": "ENTITY",
+        "definitionKey": "Build",
+        "latest": true,
+        "skip": false,
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#82c91e"
+        }
+      },
+      {
+        "type": "CanonicalEdge",
+        "schemaVersion": "1.0.0",
+        "kind": "EDGE_PROPERTIES",
+        "definitionKey": "CanonicalEdge",
+        "latest": true,
+        "skip": false,
+        "tags": [
+        ],
+        "attributes": {
+        }
+      },
+      {
+        "type": "Component",
+        "schemaVersion": "1.0.0",
+        "kind": "ENTITY",
+        "definitionKey": "Component",
+        "latest": true,
+        "skip": false,
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#4c6ef5"
+        }
+      },
+      {
+        "type": "Container Image",
+        "schemaVersion": "1.0.0",
+        "kind": "ENTITY",
+        "definitionKey": "ContainerImage",
+        "latest": true,
+        "skip": false,
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#228be6"
+        }
+      },
+      {
+        "type": "Container Layer",
+        "schemaVersion": "1.0.0",
+        "kind": "ENTITY",
+        "definitionKey": "ContainerLayer",
+        "latest": true,
+        "skip": false,
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#fab005"
+        }
+      },
+      {
+        "type": "Database",
+        "schemaVersion": "1.0.0",
+        "kind": "ENTITY",
+        "definitionKey": "Database",
+        "latest": true,
+        "skip": false,
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#fa5252"
+        }
+      },
+      {
+        "type": "Dataset",
+        "schemaVersion": "1.0.0",
+        "kind": "ENTITY",
+        "definitionKey": "Dataset",
+        "latest": true,
+        "skip": false,
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#228be6"
+        }
+      },
+      {
+        "type": "Deployment",
+        "schemaVersion": "1.0.0",
+        "kind": "ENTITY",
+        "definitionKey": "Deployment",
+        "latest": true,
+        "skip": false,
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#40c057"
+        }
+      },
+      {
+        "type": "Environment",
+        "schemaVersion": "1.0.0",
+        "kind": "ENTITY",
+        "definitionKey": "Environment",
+        "latest": true,
+        "skip": false,
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#fd7e14"
+        }
+      },
+      {
+        "type": "Host",
+        "schemaVersion": "1.0.0",
+        "kind": "ENTITY",
+        "definitionKey": "Host",
+        "latest": true,
+        "skip": false,
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#228be6"
+        }
+      },
+      {
+        "type": "Kubernetes Cluster",
+        "schemaVersion": "1.0.0",
+        "kind": "ENTITY",
+        "definitionKey": "KubernetesCluster",
+        "latest": true,
+        "skip": false,
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#12b886"
+        }
+      },
+      {
+        "type": "License",
+        "schemaVersion": "1.0.0",
+        "kind": "ENTITY",
+        "definitionKey": "License",
+        "latest": true,
+        "skip": false,
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#40c057"
+        }
+      },
+      {
+        "type": "Namespace",
+        "schemaVersion": "1.0.0",
+        "kind": "ENTITY",
+        "definitionKey": "Namespace",
+        "latest": true,
+        "skip": false,
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#fd7e14"
+        }
+      },
+      {
+        "type": "Operating System",
+        "schemaVersion": "1.0.0",
+        "kind": "ENTITY",
+        "definitionKey": "OperatingSystem",
+        "latest": true,
+        "skip": false,
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#82c91e"
+        }
+      },
+      {
+        "type": "Organization",
+        "schemaVersion": "1.0.0",
+        "kind": "ENTITY",
+        "definitionKey": "Organization",
+        "latest": true,
+        "skip": false,
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#fd7e14"
+        }
+      },
+      {
+        "type": "Policy",
+        "schemaVersion": "1.0.0",
+        "kind": "ENTITY",
+        "definitionKey": "Policy",
+        "latest": true,
+        "skip": false,
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#e64980"
+        }
+      },
+      {
+        "type": "Product",
+        "schemaVersion": "1.0.0",
+        "kind": "ENTITY",
+        "definitionKey": "Product",
+        "latest": true,
+        "skip": false,
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#fa5252"
+        }
+      },
+      {
+        "type": "Runtime",
+        "schemaVersion": "1.0.0",
+        "kind": "ENTITY",
+        "definitionKey": "Runtime",
+        "latest": true,
+        "skip": false,
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#228be6"
+        }
+      },
+      {
+        "type": "Service",
+        "schemaVersion": "1.0.0",
+        "kind": "ENTITY",
+        "definitionKey": "Service",
+        "latest": true,
+        "skip": false,
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#15aabf"
+        }
+      },
+      {
+        "type": "Source Module",
+        "schemaVersion": "1.0.0",
+        "kind": "ENTITY",
+        "definitionKey": "SourceModule",
+        "latest": true,
+        "skip": false,
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#40c057"
+        }
+      },
+      {
+        "type": "Source Repository",
+        "schemaVersion": "1.0.0",
+        "kind": "ENTITY",
+        "definitionKey": "SourceRepository",
+        "latest": true,
+        "skip": false,
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#be4bdb"
+        }
+      },
+      {
+        "type": "Vulnerability",
+        "schemaVersion": "1.0.0",
+        "kind": "ENTITY",
+        "definitionKey": "Vulnerability",
+        "latest": true,
+        "skip": false,
+        "tags": [
+        ],
+        "attributes": {
+          "color": "#12b886"
+        }
+      }
+    ],
+    "mutations": {
+      "entity": {
+        "definitionKey": "Entity"
+      },
+      "edge": {
+        "definitionKey": "Edge"
+      },
+      "entityMutation": {
+        "definitionKey": "EntityMutation"
+      },
+      "edgeMutation": {
+        "definitionKey": "EdgeMutation"
+      },
+      "graphMutation": {
+        "definitionKey": "GraphMutation"
+      }
+    },
+    "diagnostics": [
+    ]
+  }
+}

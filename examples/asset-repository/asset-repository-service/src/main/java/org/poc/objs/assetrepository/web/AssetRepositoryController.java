@@ -11,7 +11,7 @@ import org.poc.objs.assetrepository.service.CollectionService;
 import org.poc.objs.assetrepository.service.ObjectWriteService;
 import org.poc.objs.assetrepository.service.SchemaQueryService;
 import org.poc.objs.assetrepository.web.dto.ApiDtos;
-import org.poc.objs.core.domain.BoMSchema;
+import org.poc.objs.core.domain.Schema;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -51,19 +51,19 @@ public class AssetRepositoryController {
 
     @GetMapping("/schemas")
     @Operation(summary = "List object schemas", description = "Optional type filter.")
-    List<BoMSchema> listSchemas(@RequestParam(required = false) String type) {
+    List<Schema> listSchemas(@RequestParam(required = false) String type) {
         return schemaQuery.list(type);
     }
 
     @GetMapping("/schemas/{type}")
     @Operation(summary = "List schema versions for a type")
-    List<BoMSchema> listSchemasByType(@PathVariable("type") String type) {
+    List<Schema> listSchemasByType(@PathVariable("type") String type) {
         return schemaQuery.listByType(type);
     }
 
     @GetMapping("/schemas/{type}/{version}")
     @Operation(summary = "Get object schema by type and version")
-    BoMSchema getSchema(@PathVariable("type") String type, @PathVariable("version") String version) {
+    Schema getSchema(@PathVariable("type") String type, @PathVariable("version") String version) {
         return schemaQuery.get(type, version);
     }
 
@@ -75,7 +75,7 @@ public class AssetRepositoryController {
 
     @GetMapping("/collections/{id}/schemas")
     @Operation(summary = "Schemas for a collection's accepted types")
-    List<BoMSchema> collectionSchemas(@PathVariable("id") UUID id) {
+    List<Schema> collectionSchemas(@PathVariable("id") UUID id) {
         return schemaQuery.forCollection(id);
     }
 

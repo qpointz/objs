@@ -37,6 +37,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | C-20 | Store text search (FB-3 contains/`q`); design first | feature | planned | [`planned/store-text-search/`](planned/store-text-search/STORY.md), [`SEQUENCE.md`](SEQUENCE.md) |
 | C-21 | Catalog cache TTL (Caffeine) + registry refresh without restart | improvement | done | [`completed/20260826-catalog-cache-ttl/`](completed/20260826-catalog-cache-ttl/STORY.md) |
 | C-22 | Graph mutate MERGE vs REPLACE (stable id rebuild + history) | feature | done | [`completed/20260826-graph-mutate-replace/`](completed/20260826-graph-mutate-replace/STORY.md) |
+| C-23 | Spring-free `objs-api` + schema-driven entity/edge codegen | feature | done | [`completed/20260828-objs-api-codegen/`](completed/20260828-objs-api-codegen/STORY.md) |
 
 ---
 
@@ -76,7 +77,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | P-1 | Gradle cleanup: `platform()` BOM, prune deps, minimize plugins | improvement | done | [`completed/20260813-build-system-cleanup/`](completed/20260813-build-system-cleanup/STORY.md) |
 | P-2 | Align SPA URL prefix with classpath `static/<name>/`; rename workbench runner `:objs-service-app` | improvement | done | [`completed/20260817-spa-url-classpath-align/`](completed/20260817-spa-url-classpath-align/STORY.md) |
 | P-3 | Isolate objs Flyway from derived-app Flyway (two history tables; vendor SQL in JAR) | refactoring | done | [`completed/20260817-flyway-module-isolation/`](completed/20260817-flyway-module-isolation/STORY.md) |
-| P-4 | Makefile source export — clean copy outside repo with package/module rename (dumper) | feature | in-progress | [`in-progress/source-export/`](in-progress/source-export/STORY.md) |
+| P-4 | Makefile source export — clean copy outside repo with package/module rename (dumper) | feature | done | [`completed/20260828-source-export/`](completed/20260828-source-export/STORY.md) |
 
 ---
 
@@ -86,5 +87,5 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 |--------|------:|
 | backlog | 2 |
 | planned | 2 |
-| in-progress | 1 |
-| done | 29 |
+| in-progress | 0 |
+| done | 31 |

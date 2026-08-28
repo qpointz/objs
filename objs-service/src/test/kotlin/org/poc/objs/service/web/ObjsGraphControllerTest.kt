@@ -4,10 +4,10 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.mock
-import org.poc.objs.core.persistence.BoMGraphStore
-import org.poc.objs.core.persistence.BoMNamedGraphStore
-import org.poc.objs.core.validation.BoMValidationIssue
-import org.poc.objs.core.validation.BoMValidationResult
+import org.poc.objs.core.persistence.GraphStore
+import org.poc.objs.core.persistence.NamedGraphStore
+import org.poc.objs.core.validation.ValidationIssue
+import org.poc.objs.core.validation.ValidationResult
 import org.springframework.http.MediaType
 import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter
 import org.springframework.test.web.servlet.MockMvc
@@ -21,21 +21,21 @@ import tools.jackson.databind.json.JsonMapper
 class ObjsGraphControllerTest {
 
     private lateinit var mockMvc: MockMvc
-    private lateinit var store: BoMGraphStore
+    private lateinit var store: GraphStore
 
     @Suppress("UNCHECKED_CAST")
     private fun <T> anyObj(): T = org.mockito.ArgumentMatchers.any() as T
 
     @BeforeEach
     fun setUp() {
-        store = mock(BoMGraphStore::class.java)
+        store = mock(GraphStore::class.java)
         mockMvc = MockMvcBuilders
             .standaloneSetup(
                 ObjsGraphController(
                     store,
                     mock(org.poc.objs.core.seed.SeedImporter::class.java),
                     mock(org.poc.objs.core.seed.CanonicalSeedSerializer::class.java),
-                    mock(BoMNamedGraphStore::class.java),
+                    mock(NamedGraphStore::class.java),
                 ),
                 ObjsStatusController(),
             )
@@ -53,7 +53,7 @@ class ObjsGraphControllerTest {
     @Test
     fun shouldValidateGraph_returning200() {
         given(store.validateMutation(anyObj())).willReturn(
-            BoMValidationResult.of(BoMValidationIssue("SCHEMA_VIOLATION", "bad")),
+            ValidationResult.of(ValidationIssue("SCHEMA_VIOLATION", "bad")),
         )
 
         mockMvc.perform(

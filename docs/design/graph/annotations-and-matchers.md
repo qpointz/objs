@@ -4,7 +4,7 @@
 **Parent:** [README.md](README.md)
 
 There is **no global graph** and **no "subgraph pack" product concept**. The entity **pool** holds all
-entities; a **graph** (`bom_graph`) is a durable header (`id` + `annotations` only) plus its member
+entities; a **graph** (`objs_graph`) is a durable header (`id` + `annotations` only) plus its member
 entities and its own graph-local edges. See [model.md](model.md) for the pool-vs-graph split.
 
 ## Role of annotations
@@ -22,7 +22,7 @@ graph** (via `obj-expr` over entities).
 ## What is annotated
 
 - **Entities** carry annotations.
-- **Graph headers** (`bom_graph`) carry annotations (their only content besides `id`).
+- **Graph headers** (`objs_graph`) carry annotations (their only content besides `id`).
 - **Edges are not annotated** — **provisional / half-open** decision; may be revisited.
 
 ## Matchers
@@ -63,7 +63,7 @@ obj-expr: "type == 'Component' && a.app == 'payments' && p.kind == 'library'"
 - obj-expr: "type == 'Component'"
 ```
 
-- `all` is a stage-0 graph-scope matcher (boolean `true` only). It selects every `bom_graph`
+- `all` is a stage-0 graph-scope matcher (boolean `true` only). It selects every `objs_graph`
   and unions members/edges with distinct entity and edge ids.
 - `graph-expr` evaluates Boolean JEXL over each graph header with bindings `id` and `a` (header
   annotations). Matching graphs contribute the **union** of their stored member entities and
@@ -104,14 +104,14 @@ HTTP query uses `POST /api/v1/objs/graphs/query` (header-scoped, `graph-expr`/ch
 
 ## Graphs (persisted)
 
-A **graph** (`bom_graph`) is the only persisted grouping concept — there is no separate "soft-link
+A **graph** (`objs_graph`) is the only persisted grouping concept — there is no separate "soft-link
 pack" beside it.
 
 | Concern | Behaviour |
 |---------|-----------|
-| Header | `bom_graph(id, annotations)` — **no** other columns (no `parent_graph_id`, no `kind`) |
-| Membership | M2M `bom_graph_entity` — same entity may be a member of **many** graphs; zero graphs = orphan |
-| Edges | `bom_graph_edge` with `graph_id` NOT NULL — owned by exactly one graph; both endpoints must be members of that graph |
+| Header | `objs_graph(id, annotations)` — **no** other columns (no `parent_graph_id`, no `kind`) |
+| Membership | M2M `objs_graph_entity` — same entity may be a member of **many** graphs; zero graphs = orphan |
+| Edges | `objs_graph_edge` with `graph_id` NOT NULL — owned by exactly one graph; both endpoints must be members of that graph |
 | Resolve | Get-by-id / `graph-expr` return the graph's **current** member entities and graph-local edges |
 | Clone (optional) | Copies members + edges into a **new** independent graph (new entity/edge ids); source graph unchanged; **no** parent/lineage column is written |
 | Delete graph | Removes header + membership + edges (CASCADE); entity rows in the pool are **kept** |
@@ -119,7 +119,7 @@ pack" beside it.
 
 **Snapshot hierarchy is out of foundation scope.** If an application wants a lineage tree over clones
 (e.g. SBOM decision snapshots), it records that itself — in its own tables or in graph-header
-annotations (e.g. `a.parentGraphId`). Objs core stores no parent/lineage column on `bom_graph`.
+annotations (e.g. `a.parentGraphId`). Objs core stores no parent/lineage column on `objs_graph`.
 
 Programmatic apps that hold a graph id use **get-by-id**
 (`GET /api/v1/objs/graphs/{id}`). Discovery across graphs uses **`graph-expr`** (or list).

@@ -378,10 +378,10 @@ flowchart LR
     project --> rest[JSONSchemaEndpoint]
 ```
 
-- PostgreSQL `bom_entity_schema.definition_doc` stores only the normalized DSL `contentSchema`
+- PostgreSQL `objs_entity_schema.definition_doc` stores only the normalized DSL `contentSchema`
   (including field `tags` / `attributes`).
-- Envelope `tags` / `attributes` are columns on `bom_entity_schema`, not inside `definition_doc`.
-- `bom_entity_schema.usage` stores the scalar usage (`ENTITY` / `EDGE_PROPERTIES`).
+- Envelope `tags` / `attributes` are columns on `objs_entity_schema`, not inside `definition_doc`.
+- `objs_entity_schema.usage` stores the scalar usage (`ENTITY` / `EDGE_PROPERTIES`).
 - `(type, version)` remain relational key columns.
 - Startup hydrates typed definitions from PostgreSQL before registry consumers run.
 - Registration writes the definition first, then updates the in-memory cache.

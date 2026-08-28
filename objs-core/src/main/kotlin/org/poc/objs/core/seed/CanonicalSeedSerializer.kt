@@ -1,11 +1,11 @@
 package org.poc.objs.core.seed
 
-import org.poc.objs.core.domain.BoMAllowedEdgeCatalog
-import org.poc.objs.core.domain.BoMAllowedEdgeRule
-import org.poc.objs.core.domain.BoMEdge
-import org.poc.objs.core.domain.BoMEntity
-import org.poc.objs.core.domain.BoMSchema
-import org.poc.objs.core.domain.BoMSchemaCatalog
+import org.poc.objs.core.domain.AllowedEdgeCatalog
+import org.poc.objs.api.domain.AllowedEdgeRule
+import org.poc.objs.api.domain.Edge
+import org.poc.objs.api.domain.Entity
+import org.poc.objs.core.domain.Schema
+import org.poc.objs.core.domain.SchemaCatalog
 import org.springframework.stereotype.Service
 import java.util.UUID
 
@@ -15,8 +15,8 @@ import java.util.UUID
  */
 @Service
 class CanonicalSeedSerializer(
-    private val schemas: BoMSchemaCatalog,
-    private val edgeRules: BoMAllowedEdgeCatalog,
+    private val schemas: SchemaCatalog,
+    private val edgeRules: AllowedEdgeCatalog,
     private val objectSchemaHandler: ObjectSchemaSeedHandler,
     private val allowedEdgeRuleHandler: AllowedEdgeRuleSeedHandler,
     private val graphHandler: GraphSeedHandler,
@@ -49,13 +49,13 @@ class CanonicalSeedSerializer(
         return SeedYaml.writeDocuments(documents)
     }
 
-    fun serializeSchemas(schemas: Collection<BoMSchema>): String =
+    fun serializeSchemas(schemas: Collection<Schema>): String =
         SeedYaml.writeDocuments(
             schemas.sortedWith(compareBy({ it.type }, { it.version }))
                 .map { objectSchemaHandler.serialize(it) },
         )
 
-    fun serializeEdgeRules(rules: Collection<BoMAllowedEdgeRule>): String =
+    fun serializeEdgeRules(rules: Collection<AllowedEdgeRule>): String =
         SeedYaml.writeDocuments(
             rules.sortedWith(compareBy({ it.sourceType }, { it.role }, { it.targetType }))
                 .map { allowedEdgeRuleHandler.serialize(it) },
@@ -63,8 +63,8 @@ class CanonicalSeedSerializer(
 
     data class GraphExport(
         val name: String,
-        val entities: List<BoMEntity>,
-        val edges: List<BoMEdge>,
+        val entities: List<Entity>,
+        val edges: List<Edge>,
         val entityKeys: Map<UUID, String>,
         val edgeKeys: Map<UUID, String>,
     )

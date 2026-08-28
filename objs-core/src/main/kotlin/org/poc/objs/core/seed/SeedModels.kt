@@ -1,6 +1,6 @@
 package org.poc.objs.core.seed
 
-import org.poc.objs.core.validation.BoMValidationIssue
+import org.poc.objs.core.validation.ValidationIssue
 
 const val SEED_API_VERSION_V1 = "objs.poc.org/v1"
 
@@ -29,7 +29,7 @@ data class SeedDocumentResult(
     val identity: String? = null,
     val applied: Boolean = false,
     val skipped: Boolean = false,
-    val errors: List<BoMValidationIssue> = emptyList(),
+    val errors: List<ValidationIssue> = emptyList(),
     val warnings: List<String> = emptyList(),
 )
 
@@ -53,7 +53,7 @@ data class SeedImportResult(
             .groupingBy { it.kind!! }
             .eachCount()
 
-    fun allErrors(): List<BoMValidationIssue> = documents.flatMap { it.errors }
+    fun allErrors(): List<ValidationIssue> = documents.flatMap { it.errors }
 
     companion object {
         fun empty(): SeedImportResult = SeedImportResult()

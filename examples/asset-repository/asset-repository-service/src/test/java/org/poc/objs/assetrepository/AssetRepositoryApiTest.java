@@ -10,8 +10,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
-import org.poc.objs.core.domain.BoMSchema;
-import org.poc.objs.core.domain.BoMSchemaCatalog;
+import org.poc.objs.core.domain.Schema;
+import org.poc.objs.core.domain.SchemaCatalog;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -34,7 +34,7 @@ class AssetRepositoryApiTest {
     MockMvc mockMvc;
 
     @Autowired
-    BoMSchemaCatalog schemas;
+    SchemaCatalog schemas;
 
     private final ObjectMapper mapper = new ObjectMapper();
 
@@ -298,9 +298,9 @@ class AssetRepositoryApiTest {
 
     @Test
     void shouldDefaultCreateToHighestSchemaVersion() throws Exception {
-        BoMSchema v1 = schemas.get("Prompt", "1.0.0");
+        Schema v1 = schemas.get("Prompt", "1.0.0");
         assertThat(v1).isNotNull();
-        schemas.register(new BoMSchema(
+        schemas.register(new Schema(
                 v1.getType(),
                 "2.0.0",
                 v1.getContentSchema(),

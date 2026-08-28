@@ -6,7 +6,7 @@ import org.apache.tinkerpop.gremlin.structure.T
 import org.apache.tinkerpop.gremlin.structure.Vertex
 import org.apache.tinkerpop.gremlin.tinkergraph.structure.AbstractTinkerGraph
 import org.apache.tinkerpop.gremlin.tinkergraph.structure.TinkerGraph
-import org.poc.objs.core.domain.BoMGraphContents
+import org.poc.objs.api.domain.GraphContents
 import java.util.UUID
 
 /**
@@ -14,10 +14,10 @@ import java.util.UUID
  * `annotations` / edge `properties` stay as nested map property values
  * (not exploded into child vertices).
  */
-class EnvelopeMaterializationStrategy : BoMGremlinMaterializationStrategy {
+class EnvelopeMaterializationStrategy : GremlinMaterializationStrategy {
     override val name: String = NAME
 
-    override fun materialize(subgraph: BoMGraphContents): Graph {
+    override fun materialize(subgraph: GraphContents): Graph {
         val graph = TinkerGraph.open(uuidConfig())
         val vertices = LinkedHashMap<UUID, Vertex>()
 

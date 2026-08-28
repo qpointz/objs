@@ -4,17 +4,17 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.poc.objs.core.domain.BoMAllowedEdgeRule
-import org.poc.objs.core.domain.BoMPropertiesPolicy
-import org.poc.objs.core.domain.BoMSchema
-import org.poc.objs.core.domain.BoMSchemaDsl
-import org.poc.objs.core.domain.BoMSchemaUsage
-import org.poc.objs.core.domain.InMemoryBoMAllowedEdgeCatalog
-import org.poc.objs.core.domain.InMemoryBoMSchemaCatalog
+import org.poc.objs.api.domain.AllowedEdgeRule
+import org.poc.objs.api.domain.PropertiesPolicy
+import org.poc.objs.core.domain.Schema
+import org.poc.objs.core.domain.SchemaDsl
+import org.poc.objs.core.domain.SchemaUsage
+import org.poc.objs.core.domain.InMemoryAllowedEdgeCatalog
+import org.poc.objs.core.domain.InMemorySchemaCatalog
 
 class SeedImporterTest {
-    private lateinit var schemas: InMemoryBoMSchemaCatalog
-    private lateinit var rules: InMemoryBoMAllowedEdgeCatalog
+    private lateinit var schemas: InMemorySchemaCatalog
+    private lateinit var rules: InMemoryAllowedEdgeCatalog
     private lateinit var importer: SeedImporter
     private lateinit var serializer: CanonicalSeedSerializer
     private lateinit var objectHandler: ObjectSchemaSeedHandler
@@ -22,11 +22,11 @@ class SeedImporterTest {
 
     @BeforeEach
     fun setUp() {
-        schemas = InMemoryBoMSchemaCatalog()
-        rules = InMemoryBoMAllowedEdgeCatalog()
+        schemas = InMemorySchemaCatalog()
+        rules = InMemoryAllowedEdgeCatalog()
         objectHandler = ObjectSchemaSeedHandler(schemas)
         ruleHandler = AllowedEdgeRuleSeedHandler(rules)
-        // Graph apply needs BoMGraphStore; covered by SeedImporterIT. Unit tests cover schema/rule kinds.
+        // Graph apply needs GraphStore; covered by SeedImporterIT. Unit tests cover schema/rule kinds.
         importer = SeedImporter(listOf(objectHandler, ruleHandler))
         serializer = CanonicalSeedSerializer(
             schemas,
@@ -35,7 +35,7 @@ class SeedImporterTest {
             ruleHandler,
             GraphSeedHandler(
                 // unused in these tests
-                org.mockito.Mockito.mock(org.poc.objs.core.persistence.BoMNamedGraphStore::class.java),
+                org.mockito.Mockito.mock(org.poc.objs.core.persistence.NamedGraphStore::class.java),
             ),
         )
     }
@@ -74,7 +74,7 @@ class SeedImporterTest {
         assertThat(result.appliedByKind()[SEED_KIND_OBJECT_SCHEMA]).isEqualTo(1)
         assertThat(result.appliedByKind()[SEED_KIND_ALLOWED_EDGE_RULE]).isEqualTo(1)
         assertThat(rules.find("Person", "knows", "Person")!!.cardinality)
-            .isEqualTo(org.poc.objs.core.domain.BoMEdgeCardinality.UNSPECIFIED)
+            .isEqualTo(org.poc.objs.api.domain.EdgeCardinality.UNSPECIFIED)
     }
 
     @Test
@@ -92,7 +92,7 @@ class SeedImporterTest {
         val result = importer.importYaml(yaml)
         assertThat(result.isSuccess).isTrue()
         assertThat(rules.find("Product", "CONTAINS", "Component")!!.cardinality)
-            .isEqualTo(org.poc.objs.core.domain.BoMEdgeCardinality.ONE_TO_MANY)
+            .isEqualTo(org.poc.objs.api.domain.EdgeCardinality.ONE_TO_MANY)
     }
 
     @Test
@@ -197,7 +197,7 @@ class SeedImporterTest {
     @Test
     fun shouldParseGraphWithDeterministicUuidV5Ids() {
         val handler = GraphSeedHandler(
-            org.mockito.Mockito.mock(org.poc.objs.core.persistence.BoMNamedGraphStore::class.java),
+            org.mockito.Mockito.mock(org.poc.objs.core.persistence.NamedGraphStore::class.java),
         )
         val docs = SeedYaml.parseDocuments(
             """
@@ -262,23 +262,23 @@ class SeedImporterTest {
     @Test
     fun shouldRoundTripSchemaAndRuleKinds() {
         schemas.register(
-            BoMSchema(
+            Schema(
                 "Person",
                 "1",
-                BoMSchemaDsl.obj(
+                SchemaDsl.obj(
                     "Person",
                     "Person payload",
-                    listOf(BoMSchemaDsl.field("name", BoMSchemaDsl.string("Name", "Person name"))),
+                    listOf(SchemaDsl.field("name", SchemaDsl.string("Name", "Person name"))),
                 ),
-                usage = BoMSchemaUsage.ENTITY,
+                usage = SchemaUsage.ENTITY,
             ),
         )
         rules.register(
-            BoMAllowedEdgeRule(
+            AllowedEdgeRule(
                 "Person",
                 "knows",
                 "Person",
-                BoMPropertiesPolicy.NONE,
+                PropertiesPolicy.NONE,
             ),
         )
         val yaml = serializer.serializeCatalogs()
@@ -294,7 +294,7 @@ class SeedImporterTest {
         assertThat(schemas.get("Person", "1")).isNotNull
         assertThat(rules.find("Person", "knows", "Person")).isNotNull
         assertThat(rules.find("Person", "knows", "Person")!!.cardinality)
-            .isEqualTo(org.poc.objs.core.domain.BoMEdgeCardinality.UNSPECIFIED)
+            .isEqualTo(org.poc.objs.api.domain.EdgeCardinality.UNSPECIFIED)
     }
 
     @Test

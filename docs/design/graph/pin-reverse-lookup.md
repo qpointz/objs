@@ -6,10 +6,10 @@
 
 ## Problem
 
-C-17 shipped `listGraphIdsForEntity(entityId)` against **live** membership (`bom_graph_entity` only).
+C-17 shipped `listGraphIdsForEntity(entityId)` against **live** membership (`objs_graph_entity` only).
 
 After C-18, a graph can **freeze** membership via `createDeepGraphVersion`: pins live in
-`bom_graph_version_member` keyed by `(graph_id, graph_version, entity_id, entity_version)`.
+`objs_graph_version_member` keyed by `(graph_id, graph_version, entity_id, entity_version)`.
 Live membership can change (detach, delete graph HEAD) while pins remain for reconstruct.
 
 Callers such as SBOM asset **usage** must still see graphs that **memorized** an entity at freeze
@@ -27,8 +27,8 @@ fun listGraphIdsForEntity(entityId: UUID): List<UUID>
 
 | Source | Rule |
 |--------|------|
-| Live | All `graph_id` from `bom_graph_entity` where `entity_id = ?` |
-| Pins | All **distinct** `graph_id` from `bom_graph_version_member` where `entity_id = ?` (any pinned `entity_version`) |
+| Live | All `graph_id` from `objs_graph_entity` where `entity_id = ?` |
+| Pins | All **distinct** `graph_id` from `objs_graph_version_member` where `entity_id = ?` (any pinned `entity_version`) |
 | Result | Set union, stable sort by UUID string |
 
 **Not returned:** `(graph_id, graph_version)` pairs — domain layers map `graph_id` → product rows
@@ -39,7 +39,7 @@ Pin-time edges are not incident lookup (reconstruct a deep version when needed).
 
 ## Index
 
-Flyway **V5** (objs line): index on `bom_graph_version_member(entity_id)` for reverse pin lookup.
+Flyway **V5** (objs line): index on `objs_graph_version_member(entity_id)` for reverse pin lookup.
 Both PostgreSQL and H2.
 
 ## Consumers

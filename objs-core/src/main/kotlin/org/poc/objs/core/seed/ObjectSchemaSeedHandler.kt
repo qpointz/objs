@@ -1,17 +1,17 @@
 package org.poc.objs.core.seed
 
-import org.poc.objs.core.domain.BoMSchema
-import org.poc.objs.core.domain.BoMSchemaCatalog
-import org.poc.objs.core.domain.BoMSchemaDefinitionException
-import org.poc.objs.core.domain.BoMSchemaNode
-import org.poc.objs.core.domain.BoMSchemaNormalizer
-import org.poc.objs.core.domain.BoMSchemaUsage
+import org.poc.objs.core.domain.Schema
+import org.poc.objs.core.domain.SchemaCatalog
+import org.poc.objs.core.domain.SchemaDefinitionException
+import org.poc.objs.core.domain.SchemaNode
+import org.poc.objs.core.domain.SchemaNormalizer
+import org.poc.objs.core.domain.SchemaUsage
 import org.poc.objs.core.typed.PayloadMapper
 import org.springframework.stereotype.Component
 
 @Component
 class ObjectSchemaSeedHandler(
-    private val schemas: BoMSchemaCatalog,
+    private val schemas: SchemaCatalog,
 ) : SeedDocumentHandler {
     override val kind: String = SEED_KIND_OBJECT_SCHEMA
     override val applyOrder: Int = 0
@@ -32,7 +32,7 @@ class ObjectSchemaSeedHandler(
                 "contentSchema must be an object",
             )
         val contentSchema = try {
-            PayloadMapper.fromMap(contentMap, BoMSchemaNode::class.java)
+            PayloadMapper.fromMap(contentMap, SchemaNode::class.java)
         } catch (ex: Exception) {
             throw SeedDocumentParseException(
                 document.index,
@@ -41,8 +41,8 @@ class ObjectSchemaSeedHandler(
             )
         }
         val schema = try {
-            BoMSchemaNormalizer.normalizeStrict(
-                BoMSchema(
+            SchemaNormalizer.normalizeStrict(
+                Schema(
                     type = type,
                     version = version,
                     contentSchema = contentSchema,
@@ -51,7 +51,7 @@ class ObjectSchemaSeedHandler(
                     attributes = parseSeedAttributes(document.raw["attributes"], document.index),
                 ),
             )
-        } catch (ex: BoMSchemaDefinitionException) {
+        } catch (ex: SchemaDefinitionException) {
             throw SeedDocumentParseException(document.index, ex.message ?: "Invalid schema", ex)
         }
         return ParsedSeedDocument(
@@ -62,7 +62,7 @@ class ObjectSchemaSeedHandler(
     }
 
     override fun apply(parsed: ParsedSeedDocument): SeedDocumentResult {
-        val schema = parsed.payload as BoMSchema
+        val schema = parsed.payload as Schema
         schemas.register(schema)
         return SeedDocumentResult(
             index = parsed.document.index,
@@ -73,14 +73,14 @@ class ObjectSchemaSeedHandler(
         )
     }
 
-    fun serialize(schema: BoMSchema): Map<String, Any?> {
+    fun serialize(schema: Schema): Map<String, Any?> {
         val document = linkedMapOf<String, Any?>(
             "apiVersion" to SEED_API_VERSION_V1,
             "kind" to kind,
             "type" to schema.type,
             "version" to schema.version,
         )
-        if (schema.usage != BoMSchemaUsage.ENTITY) {
+        if (schema.usage != SchemaUsage.ENTITY) {
             document["usage"] = schema.usage.name
         }
         emitSeedTags(document, schema.tags)
@@ -89,13 +89,13 @@ class ObjectSchemaSeedHandler(
         return document
     }
 
-    private fun parseUsage(raw: Any?, index: Int): BoMSchemaUsage {
-        if (raw == null) return BoMSchemaUsage.ENTITY
+    private fun parseUsage(raw: Any?, index: Int): SchemaUsage {
+        if (raw == null) return SchemaUsage.ENTITY
         if (raw is Collection<*> || raw is Array<*>) {
             throw SeedDocumentParseException(index, "usage must be a single value (ENTITY or EDGE_PROPERTIES), not a list")
         }
         return try {
-            BoMSchemaUsage.valueOf(raw.toString().trim())
+            SchemaUsage.valueOf(raw.toString().trim())
         } catch (ex: IllegalArgumentException) {
             throw SeedDocumentParseException(index, "Unknown schema usage: $raw", ex)
         }

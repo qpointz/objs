@@ -1,11 +1,14 @@
 package org.poc.objs.sbom.builder
 
-import org.poc.objs.core.domain.BoMGraph
-import org.poc.objs.core.typed.GraphBuilder
-import org.poc.objs.core.typed.NodeRef
-import org.poc.objs.core.typed.TypedEdge
-import org.poc.objs.core.typed.TypedEntity
-import org.poc.objs.core.typed.mergeAnnotations
+import org.poc.objs.api.domain.Graph
+import org.poc.objs.api.typed.PayloadMapper
+import tools.jackson.databind.json.JsonMapper
+import tools.jackson.module.kotlin.kotlinModule
+import org.poc.objs.api.typed.GraphBuilder
+import org.poc.objs.api.typed.NodeRef
+import org.poc.objs.api.typed.TypedEdge
+import org.poc.objs.api.typed.TypedEntity
+import org.poc.objs.api.typed.mergeAnnotations
 import org.poc.objs.sbom.annotations.Provenance
 import org.poc.objs.sbom.annotations.SbomAnnotationKeys
 import org.poc.objs.sbom.annotations.SbomContext
@@ -18,9 +21,11 @@ import java.util.UUID
 
 class SbomGraphBuilder(
     private val context: SbomContext,
+    private val payloadMapper: PayloadMapper = PayloadMapper(JsonMapper.builder().addModule(kotlinModule()).build()),
     private val extraDefaults: Map<String, String> = emptyMap(),
 ) {
     private val builder = GraphBuilder(
+        payloadMapper = payloadMapper,
         defaultAnnotations = context.toAnnotations() + extraDefaults,
     )
     private val nodeApps = mutableMapOf<UUID, Pair<String, String>>()
@@ -75,7 +80,7 @@ class SbomGraphBuilder(
         properties: CanonicalEdgePayload? = null,
     ): SbomGraphBuilder = link(source, SbomRoles.DEPENDS_ON, target, properties)
 
-    fun build(): BoMGraph = builder.build()
+    fun build(): Graph = builder.build()
 
     private fun assertSameContext(a: NodeRef, b: NodeRef) {
         val ca = nodeApps[a.id]

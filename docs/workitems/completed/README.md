@@ -10,6 +10,8 @@ docs/workitems/completed/YYYYMMDD-<story-slug>/
 
 ## Index (optional, newest first)
 
+- [`20260828-objs-api-codegen`](20260828-objs-api-codegen/STORY.md) — Spring-free API and schema-driven Java graph codegen (C-23)
+- [`20260828-source-export`](20260828-source-export/STORY.md) — Makefile source export with package/module transformation and verification (P-4)
 - [`20260826-catalog-cache-ttl`](20260826-catalog-cache-ttl/STORY.md) — Catalog cache TTL (Caffeine) + registry refresh (C-21)
 - [`20260822-foundation-after-versions`](20260822-foundation-after-versions/STORY.md) — Pin reverse lookup; leftover matcher pushdown `>` / prefix (C-19)
 - [`20260822-workbench-ux`](20260822-workbench-ux/STORY.md) — Shared graph context; version pin; view chrome; object viewer; tour v2 (U-7)

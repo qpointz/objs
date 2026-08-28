@@ -11,9 +11,9 @@ import org.poc.objs.assetrepository.domain.CollectionRepository;
 import org.poc.objs.assetrepository.domain.CollectionTypeEntity;
 import org.poc.objs.assetrepository.domain.CollectionTypeSpec;
 import org.poc.objs.assetrepository.domain.ObjectWriteMode;
-import org.poc.objs.core.domain.BoMGraphSpec;
-import org.poc.objs.core.persistence.BoMGraphStore;
-import org.poc.objs.core.persistence.BoMNamedGraphStore;
+import org.poc.objs.core.domain.GraphSpec;
+import org.poc.objs.core.persistence.GraphStore;
+import org.poc.objs.core.persistence.NamedGraphStore;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,10 +25,10 @@ public class CollectionService {
     public static final String ANNO_COLLECTION_ID = "collectionId";
 
     private final CollectionRepository collections;
-    private final BoMNamedGraphStore graphs;
-    private final BoMGraphStore graphStore;
+    private final NamedGraphStore graphs;
+    private final GraphStore graphStore;
 
-    public CollectionService(CollectionRepository collections, BoMNamedGraphStore graphs, BoMGraphStore graphStore) {
+    public CollectionService(CollectionRepository collections, NamedGraphStore graphs, GraphStore graphStore) {
         this.collections = collections;
         this.graphs = graphs;
         this.graphStore = graphStore;
@@ -69,7 +69,7 @@ public class CollectionService {
         Map<String, String> annotations = new HashMap<>();
         annotations.put(ANNO_COLLECTION, entity.getName());
         annotations.put(ANNO_OWNER, entity.getOwner());
-        graphs.create(new BoMGraphSpec(graphId, annotations, java.util.Set.of(), java.util.Set.of()));
+        graphs.create(new GraphSpec(graphId, annotations, java.util.Set.of(), java.util.Set.of()));
 
         entity.setGraphId(graphId);
         CollectionEntity saved = collections.save(entity);

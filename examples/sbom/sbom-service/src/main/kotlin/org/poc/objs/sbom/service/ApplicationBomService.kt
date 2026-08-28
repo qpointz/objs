@@ -1,7 +1,7 @@
 package org.poc.objs.sbom.service
 
-import org.poc.objs.core.domain.BoMGraphSpec
-import org.poc.objs.core.persistence.BoMNamedGraphStore
+import org.poc.objs.core.domain.GraphSpec
+import org.poc.objs.core.persistence.NamedGraphStore
 import org.poc.objs.sbom.domain.AssetView
 import org.poc.objs.sbom.domain.ApplicationVersionSummary
 import org.poc.objs.sbom.domain.BomSummary
@@ -30,7 +30,7 @@ class ApplicationBomService(
     private val applications: SbomApplicationRepository,
     private val versions: SbomApplicationVersionRepository,
     private val boms: SbomApplicationSbomRepository,
-    private val namedGraphs: BoMNamedGraphStore,
+    private val namedGraphs: NamedGraphStore,
     private val graphs: BomGraphSupport,
 ) {
     fun list(applicationId: UUID, versionId: UUID): List<BomSummary> {
@@ -104,7 +104,7 @@ class ApplicationBomService(
         val nextOrder = (boms.findByVersionIdOrderBySortOrderAscIdAsc(versionId).maxOfOrNull { it.sortOrder } ?: -1) + 1
         val graph =
             namedGraphs.create(
-                BoMGraphSpec(
+                GraphSpec(
                     annotations =
                         mapOf(
                             "kind" to "application-bom",
@@ -222,7 +222,7 @@ class ApplicationBomService(
             bomCount = boms.countByVersionId(id).toInt(),
         )
 
-    private fun org.poc.objs.core.domain.BoMEntity.toAssetView(): AssetView {
+    private fun org.poc.objs.api.domain.Entity.toAssetView(): AssetView {
         val id = requireNotNull(id) { "asset missing id" }
         return AssetView(
             id = id,
@@ -234,7 +234,7 @@ class ApplicationBomService(
         )
     }
 
-    private fun org.poc.objs.core.domain.BoMEdge.toRelationView(): RelationView {
+    private fun org.poc.objs.api.domain.Edge.toRelationView(): RelationView {
         val id = requireNotNull(id) { "relation missing id" }
         return RelationView(
             id = id,

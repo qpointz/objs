@@ -1,19 +1,19 @@
 package org.poc.objs.sbom.service
 
-import org.poc.objs.core.domain.BoMAllowedEdgeCatalog
-import org.poc.objs.core.domain.BoMGraph
-import org.poc.objs.core.domain.BoMGraphMutation
-import org.poc.objs.core.domain.BoMSchemaCatalog
-import org.poc.objs.core.domain.BoMGraphContents
-import org.poc.objs.core.domain.BoMGraphSpec
-import org.poc.objs.core.match.BoMChainedMatcher
-import org.poc.objs.core.match.BoMGraphExprMatcher
-import org.poc.objs.core.match.BoMMatcher
-import org.poc.objs.core.match.BoMObjExprMatcher
-import org.poc.objs.core.persistence.BoMGraphStore
-import org.poc.objs.core.persistence.BoMNamedGraphStore
-import org.poc.objs.core.typed.mergeAnnotations
-import org.poc.objs.core.validation.BoMValidationResult
+import org.poc.objs.core.domain.AllowedEdgeCatalog
+import org.poc.objs.api.domain.Graph
+import org.poc.objs.api.domain.GraphMutation
+import org.poc.objs.core.domain.SchemaCatalog
+import org.poc.objs.api.domain.GraphContents
+import org.poc.objs.core.domain.GraphSpec
+import org.poc.objs.core.match.ChainedMatcher
+import org.poc.objs.core.match.GraphExprMatcher
+import org.poc.objs.core.match.Matcher
+import org.poc.objs.core.match.ObjExprMatcher
+import org.poc.objs.core.persistence.GraphStore
+import org.poc.objs.core.persistence.NamedGraphStore
+import org.poc.objs.api.typed.mergeAnnotations
+import org.poc.objs.core.validation.ValidationResult
 import org.poc.objs.sbom.annotations.SbomAnnotationKeys
 import org.poc.objs.sbom.annotations.SbomContext
 import org.poc.objs.sbom.model.SbomApplicationCatalog
@@ -23,20 +23,20 @@ import org.springframework.stereotype.Service
 import java.util.UUID
 
 /**
- * SBOM persistence facade: **one `bom_graph` per `(app, appVersion)` snapshot** (WI-006).
+ * SBOM persistence facade: **one `objs_graph` per `(app, appVersion)` snapshot** (WI-006).
  *
  * Each app-version graph id is derived deterministically from the context so repeated saves land
  * in the same graph; the header is created lazily on first write. This is an *application-level*
  * partitioning choice (graph-per-snapshot), not a foundation feature — objs core keeps no
- * parent/lineage columns on `bom_graph` (any snapshot genealogy an app wants stays in its own
+ * parent/lineage columns on `objs_graph` (any snapshot genealogy an app wants stays in its own
  * annotations/tables, never in objs foundation columns).
  */
 @Service
 class SbomService(
-    private val graphs: BoMNamedGraphStore,
-    private val store: BoMGraphStore,
-    private val schemas: BoMSchemaCatalog,
-    private val edgeRules: BoMAllowedEdgeCatalog,
+    private val graphs: NamedGraphStore,
+    private val store: GraphStore,
+    private val schemas: SchemaCatalog,
+    private val edgeRules: AllowedEdgeCatalog,
 ) {
     private var packRegistered = false
 
@@ -51,7 +51,7 @@ class SbomService(
      * Upsert [graph] into the `(app, appVersion)` graph inferred from its entities' annotations
      * (every entity in [graph] must already carry both — see [SbomGraphBuilder]).
      */
-    fun save(graph: BoMGraph): BoMValidationResult {
+    fun save(graph: Graph): ValidationResult {
         ensureRegistry()
         return save(contextOf(graph), graph)
     }
@@ -63,9 +63,9 @@ class SbomService(
      */
     fun save(
         context: SbomContext,
-        graph: BoMGraph,
+        graph: Graph,
         requestAnnotations: Map<String, String> = emptyMap(),
-    ): BoMValidationResult {
+    ): ValidationResult {
         ensureRegistry()
         val defaults = context.toAnnotations() + requestAnnotations
         for (entity in graph.entities) {
@@ -77,7 +77,7 @@ class SbomService(
         val graphId = ensureGraph(context)
         return graphs.mutate(
             graphId,
-            BoMGraphMutation.of(graph),
+            GraphMutation.of(graph),
         )
     }
 
@@ -88,21 +88,21 @@ class SbomService(
      * `obj-expr` for provenance filters) — never a whole-pool scan. Versioned fetch matches
      * `a.app` + `a.appVersion`; all-versions matches `a.app` only.
      */
-    fun getSbom(app: String, appVersion: String? = null, extra: Map<String, String> = emptyMap()): BoMGraphContents {
+    fun getSbom(app: String, appVersion: String? = null, extra: Map<String, String> = emptyMap()): GraphContents {
         val graphExpr = if (appVersion != null) {
-            BoMGraphExprMatcher(
+            GraphExprMatcher(
                 "a.${SbomAnnotationKeys.APP} == '${escape(app)}' && " +
                     "a.${SbomAnnotationKeys.APP_VERSION} == '${escape(appVersion)}'",
             )
         } else {
-            BoMGraphExprMatcher("a.${SbomAnnotationKeys.APP} == '${escape(app)}'")
+            GraphExprMatcher("a.${SbomAnnotationKeys.APP} == '${escape(app)}'")
         }
         val objFilter = objExprMatcher(extra)
-        val matcher: BoMMatcher = objFilter?.let { BoMChainedMatcher(listOf(graphExpr, it)) } ?: graphExpr
+        val matcher: Matcher = objFilter?.let { ChainedMatcher(listOf(graphExpr, it)) } ?: graphExpr
         return store.select(matcher)
     }
 
-    fun getSbom(context: SbomContext, extra: Map<String, String> = emptyMap()): BoMGraphContents =
+    fun getSbom(context: SbomContext, extra: Map<String, String> = emptyMap()): GraphContents =
         getSbom(context.app, context.appVersion, extra)
 
     /**
@@ -131,12 +131,12 @@ class SbomService(
     private fun ensureGraph(context: SbomContext): UUID {
         val id = graphIdFor(context)
         if (graphs.get(id) == null) {
-            graphs.create(BoMGraphSpec(id = id, annotations = context.toAnnotations()))
+            graphs.create(GraphSpec(id = id, annotations = context.toAnnotations()))
         }
         return id
     }
 
-    private fun contextOf(graph: BoMGraph): SbomContext {
+    private fun contextOf(graph: Graph): SbomContext {
         val annotations = graph.entities.firstOrNull()?.annotations
             ?: error("Cannot infer SbomContext: graph has no entities")
         val app = annotations[SbomAnnotationKeys.APP]
@@ -146,10 +146,10 @@ class SbomService(
         return SbomContext(app, appVersion)
     }
 
-    private fun objExprMatcher(extra: Map<String, String>): BoMObjExprMatcher? {
+    private fun objExprMatcher(extra: Map<String, String>): ObjExprMatcher? {
         if (extra.isEmpty()) return null
         val clauses = extra.entries.joinToString(" && ") { (k, v) -> "a.$k == '${escape(v)}'" }
-        return BoMObjExprMatcher(clauses)
+        return ObjExprMatcher(clauses)
     }
 
     private fun escape(value: String): String = value.replace("'", "\\'")

@@ -1,15 +1,15 @@
 package org.poc.objs.core.seed
 
 import org.poc.objs.core.domain.CatalogMetadata
-import org.poc.objs.core.domain.BoMAllowedEdgeCatalog
-import org.poc.objs.core.domain.BoMAllowedEdgeRule
-import org.poc.objs.core.domain.BoMEdgeCardinality
-import org.poc.objs.core.domain.BoMPropertiesPolicy
+import org.poc.objs.core.domain.AllowedEdgeCatalog
+import org.poc.objs.api.domain.AllowedEdgeRule
+import org.poc.objs.api.domain.EdgeCardinality
+import org.poc.objs.api.domain.PropertiesPolicy
 import org.springframework.stereotype.Component
 
 @Component
 class AllowedEdgeRuleSeedHandler(
-    private val edgeRules: BoMAllowedEdgeCatalog,
+    private val edgeRules: AllowedEdgeCatalog,
 ) : SeedDocumentHandler {
     override val kind: String = SEED_KIND_ALLOWED_EDGE_RULE
     override val applyOrder: Int = 10
@@ -19,9 +19,9 @@ class AllowedEdgeRuleSeedHandler(
         val role = requireText(document.raw, "role", document.index)
         val targetType = requireText(document.raw, "targetType", document.index)
         val policy = when (val raw = document.raw["propertiesPolicy"]?.toString()) {
-            null -> BoMPropertiesPolicy.NONE
+            null -> PropertiesPolicy.NONE
             else -> try {
-                BoMPropertiesPolicy.valueOf(raw)
+                PropertiesPolicy.valueOf(raw)
             } catch (_: IllegalArgumentException) {
                 throw SeedDocumentParseException(
                     document.index,
@@ -40,7 +40,7 @@ class AllowedEdgeRuleSeedHandler(
         val propertiesSchemaType = document.raw["propertiesSchemaType"]?.toString()?.trim()?.takeIf { it.isNotEmpty() }
         val propertiesSchemaVersion =
             document.raw["propertiesSchemaVersion"]?.toString()?.trim()?.takeIf { it.isNotEmpty() }
-        if (policy == BoMPropertiesPolicy.SCHEMA) {
+        if (policy == PropertiesPolicy.SCHEMA) {
             if (propertiesSchemaType == null || propertiesSchemaVersion == null) {
                 throw SeedDocumentParseException(
                     document.index,
@@ -49,9 +49,9 @@ class AllowedEdgeRuleSeedHandler(
             }
         }
         val cardinality = when (val raw = document.raw["cardinality"]?.toString()?.trim()) {
-            null, "" -> BoMEdgeCardinality.UNSPECIFIED
+            null, "" -> EdgeCardinality.UNSPECIFIED
             else -> try {
-                BoMEdgeCardinality.fromWire(raw)
+                EdgeCardinality.fromWire(raw)
             } catch (_: IllegalArgumentException) {
                 throw SeedDocumentParseException(
                     document.index,
@@ -59,7 +59,7 @@ class AllowedEdgeRuleSeedHandler(
                 )
             }
         }
-        val rule = BoMAllowedEdgeRule(
+        val rule = AllowedEdgeRule(
             sourceType = sourceType,
             role = role,
             targetType = targetType,
@@ -82,7 +82,7 @@ class AllowedEdgeRuleSeedHandler(
     }
 
     override fun apply(parsed: ParsedSeedDocument): SeedDocumentResult {
-        val rule = parsed.payload as BoMAllowedEdgeRule
+        val rule = parsed.payload as AllowedEdgeRule
         edgeRules.register(rule)
         return SeedDocumentResult(
             index = parsed.document.index,
@@ -93,7 +93,7 @@ class AllowedEdgeRuleSeedHandler(
         )
     }
 
-    fun serialize(rule: BoMAllowedEdgeRule): Map<String, Any?> {
+    fun serialize(rule: AllowedEdgeRule): Map<String, Any?> {
         val document = linkedMapOf<String, Any?>(
             "apiVersion" to SEED_API_VERSION_V1,
             "kind" to kind,

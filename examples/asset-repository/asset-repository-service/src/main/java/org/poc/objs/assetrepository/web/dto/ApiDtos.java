@@ -3,7 +3,7 @@ package org.poc.objs.assetrepository.web.dto;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.poc.objs.core.domain.BoMAllowedEdgeRule;
+import org.poc.objs.api.domain.AllowedEdgeRule;
 import org.poc.objs.assetrepository.domain.ObjectWriteMode;
 
 public final class ApiDtos {
@@ -39,8 +39,8 @@ public final class ApiDtos {
     }
 
     public record TypeAllowedEdgesDto(
-            List<BoMAllowedEdgeRule> incoming,
-            List<BoMAllowedEdgeRule> outgoing
+            List<AllowedEdgeRule> incoming,
+            List<AllowedEdgeRule> outgoing
     ) {
     }
 

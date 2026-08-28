@@ -5,10 +5,10 @@ import org.junit.jupiter.api.Test
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
-import org.poc.objs.core.domain.BoMEntity
-import org.poc.objs.core.persistence.BoMGraphStore
-import org.poc.objs.core.validation.BoMValidationIssue
-import org.poc.objs.core.validation.BoMValidationResult
+import org.poc.objs.api.domain.Entity
+import org.poc.objs.core.persistence.GraphStore
+import org.poc.objs.core.validation.ValidationIssue
+import org.poc.objs.core.validation.ValidationResult
 import org.springframework.http.MediaType
 import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter
 import org.springframework.test.web.servlet.MockMvc
@@ -25,14 +25,14 @@ import java.util.UUID
 class ObjsEntitiesControllerTest {
 
     private lateinit var mockMvc: MockMvc
-    private lateinit var store: BoMGraphStore
+    private lateinit var store: GraphStore
 
     @Suppress("UNCHECKED_CAST")
     private fun <T> anyObj(): T = org.mockito.ArgumentMatchers.any() as T
 
     @BeforeEach
     fun setUp() {
-        store = mock(BoMGraphStore::class.java)
+        store = mock(GraphStore::class.java)
         mockMvc = MockMvcBuilders
             .standaloneSetup(ObjsEntitiesController(store))
             .setMessageConverters(JacksonJsonHttpMessageConverter(JsonMapper.builder().findAndAddModules().build()))
@@ -43,7 +43,7 @@ class ObjsEntitiesControllerTest {
     fun shouldListPoolEntities() {
         val id = UUID.randomUUID()
         given(store.listEntities()).willReturn(
-            listOf(BoMEntity(id = id, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "A"))),
+            listOf(Entity(id = id, type = "Person", schemaVersion = "1", payload = mutableMapOf("name" to "A"))),
         )
         mockMvc.perform(get("/api/v1/objs/entities"))
             .andExpect(status().isOk)
@@ -54,8 +54,8 @@ class ObjsEntitiesControllerTest {
     fun shouldQueryPool_withObjExpr() {
         val id = UUID.randomUUID()
         given(store.selectFromPool(anyObj())).willReturn(
-            org.poc.objs.core.domain.BoMGraphContents(
-                entities = listOf(BoMEntity(id = id, type = "Person", schemaVersion = "1")),
+            org.poc.objs.api.domain.GraphContents(
+                entities = listOf(Entity(id = id, type = "Person", schemaVersion = "1")),
                 edges = emptyList(),
             ),
         )
@@ -74,7 +74,7 @@ class ObjsEntitiesControllerTest {
 
     @Test
     fun shouldCreateEntity_inPoolOnly() {
-        given(store.write(anyObj())).willReturn(BoMValidationResult.ok())
+        given(store.write(anyObj())).willReturn(ValidationResult.ok())
 
         mockMvc.perform(
             post("/api/v1/objs/entities")
@@ -90,7 +90,7 @@ class ObjsEntitiesControllerTest {
     @Test
     fun shouldRejectCreate_whenInvalid() {
         given(store.write(anyObj())).willReturn(
-            BoMValidationResult.of(BoMValidationIssue("SCHEMA_VIOLATION", "bad")),
+            ValidationResult.of(ValidationIssue("SCHEMA_VIOLATION", "bad")),
         )
 
         mockMvc.perform(
@@ -106,7 +106,7 @@ class ObjsEntitiesControllerTest {
     fun shouldGetById() {
         val id = UUID.randomUUID()
         given(store.getEntity(id)).willReturn(
-            BoMEntity(id = id, type = "Person", schemaVersion = "1"),
+            Entity(id = id, type = "Person", schemaVersion = "1"),
         )
         mockMvc.perform(get("/api/v1/objs/entities/$id"))
             .andExpect(status().isOk)
@@ -124,8 +124,8 @@ class ObjsEntitiesControllerTest {
     @Test
     fun shouldUpdateEntity() {
         val id = UUID.randomUUID()
-        given(store.getEntity(id)).willReturn(BoMEntity(id = id, type = "Person", schemaVersion = "1"))
-        given(store.write(anyObj())).willReturn(BoMValidationResult.ok())
+        given(store.getEntity(id)).willReturn(Entity(id = id, type = "Person", schemaVersion = "1"))
+        given(store.write(anyObj())).willReturn(ValidationResult.ok())
 
         mockMvc.perform(
             put("/api/v1/objs/entities/$id")
@@ -152,7 +152,7 @@ class ObjsEntitiesControllerTest {
     @Test
     fun shouldDeleteEntity() {
         val id = UUID.randomUUID()
-        given(store.deleteEntity(id)).willReturn(BoMValidationResult.ok())
+        given(store.deleteEntity(id)).willReturn(ValidationResult.ok())
 
         mockMvc.perform(delete("/api/v1/objs/entities/$id"))
             .andExpect(status().isNoContent)
@@ -162,7 +162,7 @@ class ObjsEntitiesControllerTest {
     fun shouldReturn404_whenDeletingMissing() {
         val id = UUID.randomUUID()
         given(store.deleteEntity(id)).willReturn(
-            BoMValidationResult.of(BoMValidationIssue("ENTITY_NOT_FOUND", "missing")),
+            ValidationResult.of(ValidationIssue("ENTITY_NOT_FOUND", "missing")),
         )
 
         mockMvc.perform(delete("/api/v1/objs/entities/$id"))

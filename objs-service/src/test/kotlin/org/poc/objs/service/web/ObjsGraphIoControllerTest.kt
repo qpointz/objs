@@ -5,13 +5,13 @@ import org.junit.jupiter.api.Test
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
-import org.poc.objs.core.domain.BoMEntity
-import org.poc.objs.core.domain.BoMResolvedGraph
-import org.poc.objs.core.domain.BoMGraphContents
-import org.poc.objs.core.domain.InMemoryBoMAllowedEdgeCatalog
-import org.poc.objs.core.domain.InMemoryBoMSchemaCatalog
-import org.poc.objs.core.persistence.BoMGraphStore
-import org.poc.objs.core.persistence.BoMNamedGraphStore
+import org.poc.objs.api.domain.Entity
+import org.poc.objs.core.domain.ResolvedGraph
+import org.poc.objs.api.domain.GraphContents
+import org.poc.objs.core.domain.InMemoryAllowedEdgeCatalog
+import org.poc.objs.core.domain.InMemorySchemaCatalog
+import org.poc.objs.core.persistence.GraphStore
+import org.poc.objs.core.persistence.NamedGraphStore
 import org.poc.objs.core.seed.AllowedEdgeRuleSeedHandler
 import org.poc.objs.core.seed.CanonicalSeedSerializer
 import org.poc.objs.core.seed.GRAPH_SEED_KINDS
@@ -22,7 +22,7 @@ import org.poc.objs.core.seed.SeedDocumentResult
 import org.poc.objs.core.seed.SeedImportException
 import org.poc.objs.core.seed.SeedImportResult
 import org.poc.objs.core.seed.SeedImporter
-import org.poc.objs.core.validation.BoMValidationIssue
+import org.poc.objs.core.validation.ValidationIssue
 import org.springframework.http.MediaType
 import org.springframework.http.converter.StringHttpMessageConverter
 import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter
@@ -41,8 +41,8 @@ import java.util.UUID
 class ObjsGraphIoControllerTest {
     private lateinit var mockMvc: MockMvc
     private lateinit var importer: SeedImporter
-    private lateinit var graphStore: BoMGraphStore
-    private lateinit var namedGraphs: BoMNamedGraphStore
+    private lateinit var graphStore: GraphStore
+    private lateinit var namedGraphs: NamedGraphStore
     private lateinit var serializer: CanonicalSeedSerializer
 
     @Suppress("UNCHECKED_CAST")
@@ -51,10 +51,10 @@ class ObjsGraphIoControllerTest {
     @BeforeEach
     fun setUp() {
         importer = mock(SeedImporter::class.java)
-        graphStore = mock(BoMGraphStore::class.java)
-        namedGraphs = mock(BoMNamedGraphStore::class.java)
-        val schemas = InMemoryBoMSchemaCatalog()
-        val rules = InMemoryBoMAllowedEdgeCatalog()
+        graphStore = mock(GraphStore::class.java)
+        namedGraphs = mock(NamedGraphStore::class.java)
+        val schemas = InMemorySchemaCatalog()
+        val rules = InMemoryAllowedEdgeCatalog()
         serializer = CanonicalSeedSerializer(
             schemas,
             rules,
@@ -111,7 +111,7 @@ class ObjsGraphIoControllerTest {
                                 kind = "ObjectSchema",
                                 apiVersion = "objs.poc.org/v1",
                                 errors = listOf(
-                                    BoMValidationIssue("SEED_KIND_NOT_ALLOWED", "not allowed"),
+                                    ValidationIssue("SEED_KIND_NOT_ALLOWED", "not allowed"),
                                 ),
                             ),
                         ),
@@ -148,12 +148,12 @@ class ObjsGraphIoControllerTest {
         val graphId = UUID.randomUUID()
         val id = UUID.randomUUID()
         given(namedGraphs.get(graphId)).willReturn(
-            BoMResolvedGraph(
+            ResolvedGraph(
                 id = graphId,
                 annotations = mapOf("app" to "demo"),
-                contents = BoMGraphContents(
+                contents = GraphContents(
                     entities = listOf(
-                        BoMEntity(
+                        Entity(
                             id = id,
                             type = "Person",
                             schemaVersion = "1",

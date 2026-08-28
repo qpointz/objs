@@ -1,10 +1,10 @@
 package org.poc.objs.sbom.service
 
-import org.poc.objs.core.domain.BoMEntity
-import org.poc.objs.core.domain.BoMIdentityProjection
-import org.poc.objs.core.domain.BoMSchemaCatalog
-import org.poc.objs.core.domain.BoMSchemaUsage
-import org.poc.objs.core.persistence.BoMNamedGraphStore
+import org.poc.objs.api.domain.Entity
+import org.poc.objs.core.domain.IdentityProjection
+import org.poc.objs.core.domain.SchemaCatalog
+import org.poc.objs.core.domain.SchemaUsage
+import org.poc.objs.core.persistence.NamedGraphStore
 import org.poc.objs.sbom.domain.CategoryAssetPage
 import org.poc.objs.sbom.domain.CategoryAssetRow
 import org.poc.objs.sbom.resolution.PortfolioGraphSelector
@@ -15,8 +15,8 @@ import java.util.UUID
 class CategoryAssetsService(
     private val portfolios: PortfolioService,
     private val graphs: PortfolioGraphSelector,
-    private val namedGraphs: BoMNamedGraphStore,
-    private val schemas: BoMSchemaCatalog,
+    private val namedGraphs: NamedGraphStore,
+    private val schemas: SchemaCatalog,
 ) {
     fun list(
         portfolioId: UUID,
@@ -29,7 +29,7 @@ class CategoryAssetsService(
         val apps = portfolios.applicationsInScope(portfolioId, level, includeSubcategories)
         val resolution = graphs.selectCurrentBom(tree.portfolio.uniqueness, apps)
         val nameByApp = apps.associate { it.applicationId to it.applicationName }
-        data class Acc(val entity: BoMEntity, val apps: MutableSet<UUID>)
+        data class Acc(val entity: Entity, val apps: MutableSet<UUID>)
         val groups = linkedMapOf<String, Acc>()
         for ((appId, graphIds) in resolution.graphByApp) {
             for (graphId in graphIds) {
@@ -37,9 +37,9 @@ class CategoryAssetsService(
                 for (entity in contents.entities) {
                     val schema =
                         schemas.listByType(entity.type)
-                            .filter { it.usage == BoMSchemaUsage.ENTITY }
+                            .filter { it.usage == SchemaUsage.ENTITY }
                             .maxByOrNull { it.version }
-                    val identity = schema?.let { BoMIdentityProjection.project(it.contentSchema, entity.payload) }.orEmpty()
+                    val identity = schema?.let { IdentityProjection.project(it.contentSchema, entity.payload) }.orEmpty()
                     val identityKey =
                         if (identity.isEmpty()) {
                             entity.id?.toString() ?: continue
@@ -56,10 +56,10 @@ class CategoryAssetsService(
                 .map { acc ->
                     val schema =
                         schemas.listByType(acc.entity.type)
-                            .filter { it.usage == BoMSchemaUsage.ENTITY }
+                            .filter { it.usage == SchemaUsage.ENTITY }
                             .maxByOrNull { it.version }
                     val identity =
-                        schema?.let { BoMIdentityProjection.project(it.contentSchema, acc.entity.payload) }.orEmpty()
+                        schema?.let { IdentityProjection.project(it.contentSchema, acc.entity.payload) }.orEmpty()
                     val appIds = acc.apps.sortedBy { nameByApp[it]?.lowercase() }
                     CategoryAssetRow(
                         assetId = acc.entity.id ?: UUID(0, 0),

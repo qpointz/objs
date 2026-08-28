@@ -11,22 +11,22 @@
 
 ## Pool vs graphs
 
-No global graph: an entity **pool** (`bom_entity`) shared by many **graphs** (`bom_graph`). See
+No global graph: an entity **pool** (`objs_entity`) shared by many **graphs** (`objs_graph`). See
 [model.md](model.md) and [annotations-and-matchers.md](annotations-and-matchers.md).
 
 | Table | Role |
 |-------|------|
-| `bom_entity` | Global entity pool — payload + annotations. Membership in 0..n graphs (orphans OK). |
-| `bom_graph` | Graph header: **`id` + `annotations` only** — no `parent_graph_id` / `kind` |
-| `bom_graph_entity` | Membership M2M `(graph_id, entity_id)` |
-| `bom_graph_edge` | Graph-local edge; **`graph_id` NOT NULL** — always owned by exactly one graph |
-| `bom_entity_schema` | Entity/payload schema catalog `(type, version)` + envelope `tags` / `attributes` |
-| `bom_edge_schema` | Edge allow-list `(source_type, role, target_type)` + properties policy + cardinality + description/verbs/tags/attributes |
-| `bom_seed_ledger` | Startup seed fingerprints |
-| `bom_entity.created_at` / `updated_at` (and every other `bom_*`) | Store-owned clocks — **C-18** Flyway V3. Client JSON ignored. |
-| `head_version` on `bom_entity` / `bom_graph` / `bom_graph_edge` | Nullable last **capture**. NULL until first Snapshot. Composite FK to `*_version` when set. |
-| `bom_entity_version` / `bom_graph_version` / `bom_graph_edge_version` | Immutable history. PK `(parent_id, version BIGINT)`. No FK back to HEAD. |
-| `bom_graph_version_member` / `bom_graph_version_edge` | Deep-freeze pins for `createDeepGraphVersion`. Index on `bom_graph_version_member(entity_id)` for pin reverse lookup (C-19 Flyway V5). |
+| `objs_entity` | Global entity pool — payload + annotations. Membership in 0..n graphs (orphans OK). |
+| `objs_graph` | Graph header: **`id` + `annotations` only** — no `parent_graph_id` / `kind` |
+| `objs_graph_entity` | Membership M2M `(graph_id, entity_id)` |
+| `objs_graph_edge` | Graph-local edge; **`graph_id` NOT NULL** — always owned by exactly one graph |
+| `objs_entity_schema` | Entity/payload schema catalog `(type, version)` + envelope `tags` / `attributes` |
+| `objs_edge_schema` | Edge allow-list `(source_type, role, target_type)` + properties policy + cardinality + description/verbs/tags/attributes |
+| `objs_seed_ledger` | Startup seed fingerprints |
+| `objs_entity.created_at` / `updated_at` (and every other `objs_*`) | Store-owned clocks — **C-18** Flyway V3. Client JSON ignored. |
+| `head_version` on `objs_entity` / `objs_graph` / `objs_graph_edge` | Nullable last **capture**. NULL until first Snapshot. Composite FK to `*_version` when set. |
+| `objs_entity_version` / `objs_graph_version` / `objs_graph_edge_version` | Immutable history. PK `(parent_id, version BIGINT)`. No FK back to HEAD. |
+| `objs_graph_version_member` / `objs_graph_version_edge` | Deep-freeze pins for `createDeepGraphVersion`. Index on `objs_graph_version_member(entity_id)` for pin reverse lookup (C-19 Flyway V5). |
 
 Live GET **never** joins `*_version`. Default persist is in-place HEAD (no version row). Capture is explicit `createDeepGraphVersion` (C-18 default `ExplicitOnlyVersioningStrategy`). DIY edits to `*_version` are **unsupported — at your own risk** (H2 demo). As-built schema: [`database-model.md`](database-model.md). Historical lock: [`ER.md`](../../workitems/completed/20260819-versions-and-snapshots/ER.md).
 
@@ -56,7 +56,7 @@ annotations); H2 uses JSON.
 **Flyway (derived app):** a **separate** Boot Flyway (`flyway_schema_history`) owns only app
 tables. Locations are `classpath:db/migration` or `classpath:db/migration/{vendor}` — never objs
 paths. Both lines may use `V1`. Autoconfig sets Boot `baselineOnMigrate` with `baselineVersion` `0`
-so the app `V1` still runs after `bom_*` exist. Process lock:
+so the app `V1` still runs after `objs_*` exist. Process lock:
 [`docs/workitems/RULES.md`](../../workitems/RULES.md) **Flyway (library + derived apps)**.
 
 Greenfield only: recreate the DB or drop **both** history tables plus domain tables if an older
@@ -84,36 +84,36 @@ Workbench runner **without** app DDL (`:objs-service-app`):
 ```yaml
 spring:
   flyway:
-    enabled: false   # objs autoconfig still creates bom_*
+    enabled: false   # objs autoconfig still creates objs_*
 ```
 
 ```mermaid
 erDiagram
-  bom_entity_schema ||--o{ bom_entity : "type+version"
-  bom_entity_schema ||--o{ bom_edge_schema : "optional props schema"
-  bom_edge_schema }o..o{ bom_graph_edge : "allow-list"
-  bom_graph ||--o{ bom_graph_entity : members
-  bom_entity ||--o{ bom_graph_entity : "in 0..n graphs"
-  bom_graph ||--o{ bom_graph_edge : owns
-  bom_entity ||--o{ bom_graph_edge : source
-  bom_entity ||--o{ bom_graph_edge : target
+  objs_entity_schema ||--o{ objs_entity : "type+version"
+  objs_entity_schema ||--o{ objs_edge_schema : "optional props schema"
+  objs_edge_schema }o..o{ objs_graph_edge : "allow-list"
+  objs_graph ||--o{ objs_graph_entity : members
+  objs_entity ||--o{ objs_graph_entity : "in 0..n graphs"
+  objs_graph ||--o{ objs_graph_edge : owns
+  objs_entity ||--o{ objs_graph_edge : source
+  objs_entity ||--o{ objs_graph_edge : target
 
-  bom_graph {
+  objs_graph {
     uuid id PK
     json annotations
   }
-  bom_graph_entity {
+  objs_graph_entity {
     uuid graph_id PK_FK
     uuid entity_id PK_FK
   }
-  bom_entity {
+  objs_entity {
     uuid id PK
     varchar type
     varchar schema_version
     jsonb payload
     jsonb annotations
   }
-  bom_graph_edge {
+  objs_graph_edge {
     uuid id PK
     uuid graph_id FK
     uuid source_id FK
@@ -131,13 +131,13 @@ erDiagram
 - **Primary key / identity: `UUID`** (Java `UUID.randomUUID()`, PostgreSQL `uuid`).
 - Domain-specific fields from the informational model are **not** first-class columns.
 - Entity **payload** and **annotations** are **JSONB** on PostgreSQL; edge **properties** likewise.
-- GIN index on `bom_entity.annotations` uses `jsonb_path_ops` for containment (`@>`) sources.
+- GIN index on `objs_entity.annotations` uses `jsonb_path_ops` for containment (`@>`) sources.
   Pushdown predicate is `WHERE annotations @> $filter::jsonb` (no cast on the column) so the planner can use GIN; `SELECT` may still cast columns to `text` for JDBC without affecting index use.
-- GIN index on `bom_graph.annotations` (same `jsonb_path_ops`) supports `graph-expr` `==`/`&&`
+- GIN index on `objs_graph.annotations` (same `jsonb_path_ops`) supports `graph-expr` `==`/`&&`
   containment; `!=` / `||` use SQL `->>` / DNF OR (may not use GIN)
   pushdown (`a.key == '…'` / `id == '…'`) in open-graph search and cross-graph `select`. Non-lowerable
   expressions and free-text `q` still evaluate headers in memory.
-- Composite indexes `(graph_id, source_id)` / `(graph_id, target_id)` on `bom_graph_edge` complement
+- Composite indexes `(graph_id, source_id)` / `(graph_id, target_id)` on `objs_graph_edge` complement
   the single-column endpoint indexes for graph-scoped adjacency.
 - H2 remains acceptable for non-pushdown unit smoke only; **graph-query SQL pushdown assumes PostgreSQL**.
 
@@ -167,7 +167,7 @@ Remaining time is dominated by selected-row transfer and HTTP JSON serialization
 
 ## Seed ledger
 
-Table `bom_seed_ledger` (created by `V1__bom_schema`) stores startup seed fingerprints.
+Table `objs_seed_ledger` (created by `V1__objs_schema`) stores startup seed fingerprints.
 See [`seeds.md`](seeds.md).
 
 ## Edges
@@ -176,7 +176,7 @@ See [`seeds.md`](seeds.md).
 - **Source** / **target** reference entity ids as **`UUID`**, and both must already be members of `graph_id` (enforced at persist).
 - Edges have their **own** UUID id.
 - Edge properties use JSONB when properties are present (bare edges may store null/empty).
-- Deleting a graph CASCADEs its `bom_graph_edge` rows; deleting a pool entity cascades its incident edges and its `bom_graph_entity` membership rows across every graph.
+- Deleting a graph CASCADEs its `objs_graph_edge` rows; deleting a pool entity cascades its incident edges and its `objs_graph_entity` membership rows across every graph.
 
 ## Validation gate
 
@@ -184,14 +184,14 @@ Persistence is the **enforcement** point for payload schema and allowed edges �
 
 ## Schema and edge-rule catalogs
 
-- `bom_entity_schema` stores `(type, version)`, authoritative DSL in `definition_doc`
+- `objs_entity_schema` stores `(type, version)`, authoritative DSL in `definition_doc`
   (the `contentSchema` node, including field `tags` / `attributes`), schema `usage`
   (`ENTITY` / `EDGE_PROPERTIES`), and envelope `tags` / `attributes` as JSON columns.
   See [object-schema-dsl.md](object-schema-dsl.md).
 - Generated JSON Schema is not persisted. It is projected from the DSL for validation and tooling.
   Envelope/field tags and attributes are **not** copied into JSON Schema.
   Entity envelope `attributes.color` (`#rrggbb` or `nocolor`) is the graph node accent.
-- `bom_edge_schema` stores directed allow-list rules, property policies, nullable
+- `objs_edge_schema` stores directed allow-list rules, property policies, nullable
   `properties_schema_type + properties_schema_version` references, **cardinality**
   (`UNSPECIFIED` / `1:1` / `1:*`, column default `UNSPECIFIED`), plus optional `description`,
   `source_verb`, `target_verb`, `tags`, and `attributes`. One property schema may be shared by
@@ -210,7 +210,7 @@ Persistence is the **enforcement** point for payload schema and allowed edges �
 - Foundation story tests use **H2** (G-11).
 - **Primary runtime database remains PostgreSQL**; document H2 vs JSONB/dialect limitations if any appear during implementation.
 
-- **Flyway from day one** — migrations are the source of truth for PostgreSQL DDL. objs `bom_*`
+- **Flyway from day one** — migrations are the source of truth for PostgreSQL DDL. objs `objs_*`
   and derived-app tables are **two Flyway lines** (two history tables); do not merge locations.
 - Do **not** rely on Hibernate `ddl-auto` to invent/evolve production schema (dev may use validate / none against migrated DB).
 

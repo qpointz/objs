@@ -1,14 +1,14 @@
 package org.poc.objs.sbom.service
 
-import org.poc.objs.core.domain.BoMEdge
-import org.poc.objs.core.domain.BoMEntity
+import org.poc.objs.api.domain.Edge
+import org.poc.objs.api.domain.Entity
 import org.poc.objs.sbom.annotations.SbomAnnotationKeys
 import org.poc.objs.sbom.domain.AssetView
 import org.poc.objs.sbom.domain.RelationView
 
 /** Product-language mapping from objs entities/edges (no BoM* in public shapes). */
 object AssetViews {
-    fun asset(entity: BoMEntity): AssetView {
+    fun asset(entity: Entity): AssetView {
         val id = requireNotNull(entity.id) { "asset missing id" }
         return AssetView(
             id = id,
@@ -20,7 +20,7 @@ object AssetViews {
         )
     }
 
-    fun relation(edge: BoMEdge): RelationView {
+    fun relation(edge: Edge): RelationView {
         val id = requireNotNull(edge.id) { "relation missing id" }
         return RelationView(
             id = id,

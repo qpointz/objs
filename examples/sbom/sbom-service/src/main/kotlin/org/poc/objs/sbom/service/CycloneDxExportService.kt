@@ -1,8 +1,8 @@
 package org.poc.objs.sbom.service
 
-import org.poc.objs.core.domain.BoMEntity
-import org.poc.objs.core.domain.BoMGraphContents
-import org.poc.objs.core.persistence.BoMNamedGraphStore
+import org.poc.objs.api.domain.Entity
+import org.poc.objs.api.domain.GraphContents
+import org.poc.objs.core.persistence.NamedGraphStore
 import org.poc.objs.sbom.domain.BomUnion
 import org.poc.objs.sbom.persistence.SbomApplicationRepository
 import org.poc.objs.sbom.persistence.SbomApplicationSbomRepository
@@ -23,7 +23,7 @@ class CycloneDxExportService(
     private val applications: SbomApplicationRepository,
     private val versions: SbomApplicationVersionRepository,
     private val boms: SbomApplicationSbomRepository,
-    private val namedGraphs: BoMNamedGraphStore,
+    private val namedGraphs: NamedGraphStore,
 ) {
     fun exportDraft(applicationId: UUID): Map<String, Any?> {
         val app = requireApp(applicationId)
@@ -54,7 +54,7 @@ class CycloneDxExportService(
     }
 
     private fun exportContents(
-        contents: BoMGraphContents,
+        contents: GraphContents,
         applicationName: String,
         versionLabel: String,
     ): Map<String, Any?> {
@@ -113,7 +113,7 @@ class CycloneDxExportService(
         )
     }
 
-    private fun BoMEntity.toCdxComponent(): Map<String, Any?>? {
+    private fun Entity.toCdxComponent(): Map<String, Any?>? {
         val id = id ?: return null
         val name = payload["name"]?.toString()?.takeIf { it.isNotBlank() } ?: return null
         val version = payload["version"]?.toString()?.takeIf { it.isNotBlank() } ?: "0.0.0"
@@ -140,7 +140,7 @@ class CycloneDxExportService(
         return out
     }
 
-    private fun unionOf(versionId: UUID): BoMGraphContents {
+    private fun unionOf(versionId: UUID): GraphContents {
         val graphIds = boms.findByVersionIdOrderBySortOrderAscIdAsc(versionId).map { it.graphId }
         if (graphIds.isEmpty()) {
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Version has no BOM")

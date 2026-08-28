@@ -1,17 +1,17 @@
 package org.poc.objs.sbom.domain
 
-import org.poc.objs.core.domain.BoMEdge
-import org.poc.objs.core.domain.BoMGraphContents
-import org.poc.objs.core.domain.BoMResolvedGraph
+import org.poc.objs.api.domain.Edge
+import org.poc.objs.api.domain.GraphContents
+import org.poc.objs.core.domain.ResolvedGraph
 import java.util.UUID
 
 /**
  * Ephemeral Combined SBOM / multi-select union (G-A3). Never persisted on the version.
  */
 object BomUnion {
-    fun of(graphs: List<BoMResolvedGraph>): BoMGraphContents {
+    fun of(graphs: List<ResolvedGraph>): GraphContents {
         val entityIds = linkedSetOf<UUID>()
-        val entities = ArrayList<org.poc.objs.core.domain.BoMEntity>()
+        val entities = ArrayList<org.poc.objs.api.domain.Entity>()
         for (graph in graphs) {
             for (entity in graph.contents.entities) {
                 val id = entity.id ?: continue
@@ -21,7 +21,7 @@ object BomUnion {
             }
         }
         val seenEdges = linkedSetOf<String>()
-        val edges = ArrayList<BoMEdge>()
+        val edges = ArrayList<Edge>()
         for (graph in graphs) {
             for (edge in graph.contents.edges) {
                 val key = "${edge.source}>${edge.role}>${edge.target}"
@@ -30,7 +30,7 @@ object BomUnion {
                 }
             }
         }
-        return BoMGraphContents(entities = entities, edges = edges)
+        return GraphContents(entities = entities, edges = edges)
     }
 
     fun combinedTags(

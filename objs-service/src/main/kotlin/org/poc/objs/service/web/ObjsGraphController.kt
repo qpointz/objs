@@ -4,15 +4,15 @@ import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
-import org.poc.objs.core.domain.BoMGraphMutation
-import org.poc.objs.core.persistence.BoMGraphStore
-import org.poc.objs.core.persistence.BoMNamedGraphStore
+import org.poc.objs.api.domain.GraphMutation
+import org.poc.objs.core.persistence.GraphStore
+import org.poc.objs.core.persistence.NamedGraphStore
 import org.poc.objs.core.seed.CanonicalSeedSerializer
 import org.poc.objs.core.seed.GRAPH_SEED_KINDS
 import org.poc.objs.core.seed.SeedImportException
 import org.poc.objs.core.seed.SeedImporter
-import org.poc.objs.core.validation.BoMValidationIssue
-import org.poc.objs.core.validation.BoMValidationResult
+import org.poc.objs.core.validation.ValidationIssue
+import org.poc.objs.core.validation.ValidationResult
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
@@ -38,19 +38,19 @@ import java.util.UUID
 @RequestMapping("/api/v1/objs")
 @Tag(name = "graph")
 class ObjsGraphController(
-    private val store: BoMGraphStore,
+    private val store: GraphStore,
     private val seedImporter: SeedImporter,
     private val seedSerializer: CanonicalSeedSerializer,
-    private val namedGraphs: BoMNamedGraphStore,
+    private val namedGraphs: NamedGraphStore,
 ) {
     @PostMapping("/graph/validate")
     @Operation(
         summary = "Dry-run validate a graph mutation (no persist)",
-        description = "Accepts the same BoMGraphMutation body as graph mutate (entities/edges set and " +
+        description = "Accepts the same GraphMutation body as graph mutate (entities/edges set and " +
             "optional unset) but never persists; use POST /graphs/{id}/validate for a graph-scoped dry-run.",
     )
     @ApiResponse(responseCode = "200", description = "Validation result (may be invalid)")
-    fun validateGraph(@RequestBody mutation: BoMGraphMutation): BoMValidationResult =
+    fun validateGraph(@RequestBody mutation: GraphMutation): ValidationResult =
         store.validateMutation(mutation)
 
     @PostMapping(
@@ -93,8 +93,8 @@ class ObjsGraphController(
         }
         if (graphId == null) {
             return ResponseEntity.badRequest().body(
-                BoMValidationResult.of(
-                    BoMValidationIssue(
+                ValidationResult.of(
+                    ValidationIssue(
                         code = "GRAPH_ID_REQUIRED",
                         message = "graphId query param required; refusing to export the entire pool",
                     ),

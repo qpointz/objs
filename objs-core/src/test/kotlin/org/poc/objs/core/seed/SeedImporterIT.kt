@@ -4,12 +4,12 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.poc.objs.core.domain.BoMAllowedEdgeCatalog
-import org.poc.objs.core.domain.BoMSchemaCatalog
-import org.poc.objs.core.persistence.BoMEdgeRepository
-import org.poc.objs.core.persistence.BoMEntityRepository
-import org.poc.objs.core.persistence.BoMGraphStore
-import org.poc.objs.core.persistence.BoMNamedGraphStore
+import org.poc.objs.core.domain.AllowedEdgeCatalog
+import org.poc.objs.core.domain.SchemaCatalog
+import org.poc.objs.core.persistence.EdgeRepository
+import org.poc.objs.core.persistence.EntityRepository
+import org.poc.objs.core.persistence.GraphStore
+import org.poc.objs.core.persistence.NamedGraphStore
 import org.poc.objs.core.persistence.ObjsCoreAutoConfiguration
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.SpringBootConfiguration
@@ -22,7 +22,7 @@ import org.springframework.transaction.annotation.Transactional
 
 @DataJpaTest
 @ImportAutoConfiguration(ObjsCoreAutoConfiguration::class)
-@Import(BoMGraphStore::class, BoMNamedGraphStore::class)
+@Import(GraphStore::class, NamedGraphStore::class)
 @TestPropertySource(
     properties = [
         "spring.datasource.url=jdbc:h2:mem:objs-seed;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",
@@ -41,16 +41,16 @@ class SeedImporterIT {
     lateinit var importer: SeedImporter
 
     @Autowired
-    lateinit var schemas: BoMSchemaCatalog
+    lateinit var schemas: SchemaCatalog
 
     @Autowired
-    lateinit var rules: BoMAllowedEdgeCatalog
+    lateinit var rules: AllowedEdgeCatalog
 
     @Autowired
-    lateinit var entities: BoMEntityRepository
+    lateinit var entities: EntityRepository
 
     @Autowired
-    lateinit var edges: BoMEdgeRepository
+    lateinit var edges: EdgeRepository
 
     @BeforeEach
     fun clear() {

@@ -1,15 +1,15 @@
 package org.poc.objs.sbom.service
 
-import org.poc.objs.core.domain.BoMEdge
-import org.poc.objs.core.domain.BoMEntity
-import org.poc.objs.core.domain.BoMGraph
-import org.poc.objs.core.domain.BoMGraphContents
-import org.poc.objs.core.domain.BoMGraphException
-import org.poc.objs.core.domain.BoMGraphSpec
-import org.poc.objs.core.domain.BoMMutateMode
-import org.poc.objs.core.domain.bomMutation
-import org.poc.objs.core.persistence.BoMGraphStore
-import org.poc.objs.core.persistence.BoMNamedGraphStore
+import org.poc.objs.api.domain.Edge
+import org.poc.objs.api.domain.Entity
+import org.poc.objs.api.domain.Graph
+import org.poc.objs.api.domain.GraphContents
+import org.poc.objs.core.domain.GraphException
+import org.poc.objs.core.domain.GraphSpec
+import org.poc.objs.api.domain.MutationMode
+import org.poc.objs.api.domain.graphMutation
+import org.poc.objs.core.persistence.GraphStore
+import org.poc.objs.core.persistence.NamedGraphStore
 import org.poc.objs.sbom.annotations.SbomAnnotationKeys
 import org.poc.objs.sbom.domain.ApplicationFingerprintSummary
 import org.poc.objs.sbom.domain.ApplicationVersionSummary
@@ -53,8 +53,8 @@ class ApplicationVersionService(
     private val versions: SbomApplicationVersionRepository,
     private val fingerprints: SbomApplicationFingerprintRepository,
     private val boms: SbomApplicationSbomRepository,
-    private val namedGraphs: BoMNamedGraphStore,
-    private val graphStore: BoMGraphStore,
+    private val namedGraphs: NamedGraphStore,
+    private val graphStore: GraphStore,
     private val sbom: SbomService,
     private val assetTypes: AssetTypeCatalogService,
 ) {
@@ -288,7 +288,7 @@ class ApplicationVersionService(
         forbidFingerprintGraph(bomGraphId(row))
         try {
             namedGraphs.detach(bomGraphId(row), assetId)
-        } catch (ex: BoMGraphException) {
+        } catch (ex: GraphException) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, ex.message)
         }
         return toBomView(app, row)
@@ -360,7 +360,7 @@ class ApplicationVersionService(
                     if (role.isEmpty()) {
                         throw ResponseStatusException(HttpStatus.BAD_REQUEST, "role is required")
                     }
-                    BoMEdge(
+                    Edge(
                         source = rel.fromAssetId,
                         target = rel.toAssetId,
                         role = role,
@@ -372,9 +372,9 @@ class ApplicationVersionService(
         val result =
             namedGraphs.mutate(
                 graphId,
-                bomMutation {
-                    mode(BoMMutateMode.REPLACE)
-                    setAll(BoMGraph(entities = entities, edges = edges))
+                graphMutation {
+                    mode(MutationMode.REPLACE)
+                    setAll(Graph(entities = entities, edges = edges))
                 },
             )
         if (!result.isValid) {
@@ -563,7 +563,7 @@ class ApplicationVersionService(
             write.assetId != null && write.type == null && write.payload == null -> {
                 try {
                     namedGraphs.attach(graphId, write.assetId)
-                } catch (ex: BoMGraphException) {
+                } catch (ex: GraphException) {
                     throw ResponseStatusException(HttpStatus.BAD_REQUEST, ex.message)
                 }
             }
@@ -573,7 +573,7 @@ class ApplicationVersionService(
                     annotations[SbomAnnotationKeys.OWNER] = app.name
                 }
                 val entity =
-                    BoMEntity(
+                    Entity(
                         type = write.type.trim(),
                         schemaVersion = write.schemaVersion?.trim()?.takeIf { it.isNotEmpty() }
                             ?: latestSchemaVersion(write.type.trim()),
@@ -583,7 +583,7 @@ class ApplicationVersionService(
                 val result =
                     namedGraphs.mutate(
                         graphId,
-                        bomMutation { entities { set(entity) } },
+                        graphMutation { entities { set(entity) } },
                     )
                 if (!result.isValid) {
                     throw ResponseStatusException(
@@ -607,7 +607,7 @@ class ApplicationVersionService(
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "role is required")
         }
         val edge =
-            BoMEdge(
+            Edge(
                 source = write.fromAssetId,
                 target = write.toAssetId,
                 role = role,
@@ -618,7 +618,7 @@ class ApplicationVersionService(
         val result =
             namedGraphs.mutate(
                 graphId,
-                bomMutation { edges { set(edge) } },
+                graphMutation { edges { set(edge) } },
             )
         if (!result.isValid) {
             throw ResponseStatusException(
@@ -633,7 +633,7 @@ class ApplicationVersionService(
         val result =
             namedGraphs.mutate(
                 graphId,
-                bomMutation { edges { unset(ids) } },
+                graphMutation { edges { unset(ids) } },
             )
         if (!result.isValid) {
             throw ResponseStatusException(
@@ -643,10 +643,10 @@ class ApplicationVersionService(
         }
     }
 
-    private fun materialize(contents: BoMGraphContents, annotations: Map<String, String>): UUID {
+    private fun materialize(contents: GraphContents, annotations: Map<String, String>): UUID {
         val graph =
             namedGraphs.create(
-                BoMGraphSpec(
+                GraphSpec(
                     annotations = annotations,
                     entityIds = contents.entities.mapNotNull { it.id }.toSet(),
                 ),
@@ -654,7 +654,7 @@ class ApplicationVersionService(
         val edgeCopies =
             contents.edges
                 .map { edge ->
-                    BoMEdge(
+                    Edge(
                         source = edge.source,
                         target = edge.target,
                         role = edge.role,
@@ -667,7 +667,7 @@ class ApplicationVersionService(
             val result =
                 namedGraphs.mutate(
                     graph.id,
-                    bomMutation { edges { set(edgeCopies) } },
+                    graphMutation { edges { set(edgeCopies) } },
                 )
             if (!result.isValid) {
                 throw ResponseStatusException(
@@ -878,7 +878,7 @@ class ApplicationVersionService(
         row.version.takeIf { it.isNotBlank() }?.let { annotations["version"] = it }
         val graphId =
             if (sourceGraphId == null) {
-                namedGraphs.create(BoMGraphSpec(annotations = annotations)).id
+                namedGraphs.create(GraphSpec(annotations = annotations)).id
             } else {
                 namedGraphs.copyGraph(sourceGraphId, annotations).id
             }
@@ -933,7 +933,7 @@ class ApplicationVersionService(
             contentSha256 = contentSha256,
         )
 
-    private fun BoMEntity.toAssetView(): AssetView {
+    private fun Entity.toAssetView(): AssetView {
         val id = requireNotNull(id) { "asset missing id" }
         return AssetView(
             id = id,
@@ -945,7 +945,7 @@ class ApplicationVersionService(
         )
     }
 
-    private fun BoMEdge.toRelationView(): RelationView {
+    private fun Edge.toRelationView(): RelationView {
         val id = requireNotNull(id) { "relation missing id" }
         return RelationView(
             id = id,

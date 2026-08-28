@@ -7,21 +7,21 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.servlet.http.HttpServletRequest
-import org.poc.objs.core.domain.BoMGraphMutation
-import org.poc.objs.core.domain.BoMMutateMode
-import org.poc.objs.core.domain.BoMResolvedGraph
-import org.poc.objs.core.domain.BoMGraphContents
-import org.poc.objs.core.domain.BoMGraphException
-import org.poc.objs.core.domain.BoMGraphHeader
-import org.poc.objs.core.domain.BoMGraphListItem
-import org.poc.objs.core.domain.BoMGraphSpec
-import org.poc.objs.core.match.BoMMatcherDsl
-import org.poc.objs.core.match.BoMMatcherFormat
-import org.poc.objs.core.persistence.BoMGraphStore
-import org.poc.objs.core.persistence.BoMNamedGraphStore
-import org.poc.objs.core.validation.BoMValidationException
-import org.poc.objs.core.validation.BoMValidationIssue
-import org.poc.objs.core.validation.BoMValidationResult
+import org.poc.objs.api.domain.GraphMutation
+import org.poc.objs.api.domain.MutationMode
+import org.poc.objs.core.domain.ResolvedGraph
+import org.poc.objs.api.domain.GraphContents
+import org.poc.objs.core.domain.GraphException
+import org.poc.objs.core.domain.GraphHeader
+import org.poc.objs.core.domain.GraphListItem
+import org.poc.objs.core.domain.GraphSpec
+import org.poc.objs.core.match.MatcherDsl
+import org.poc.objs.core.match.MatcherFormat
+import org.poc.objs.core.persistence.GraphStore
+import org.poc.objs.core.persistence.NamedGraphStore
+import org.poc.objs.core.validation.ValidationException
+import org.poc.objs.core.validation.ValidationIssue
+import org.poc.objs.core.validation.ValidationResult
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
@@ -47,9 +47,9 @@ import java.util.UUID
 @RequestMapping("/api/v1/objs/graphs")
 @Tag(name = "graphs")
 class ObjsGraphsController(
-    private val namedGraphs: BoMNamedGraphStore,
-    private val graphStore: BoMGraphStore,
-    private val matcherDsl: BoMMatcherDsl = BoMMatcherDsl.create(),
+    private val namedGraphs: NamedGraphStore,
+    private val graphStore: GraphStore,
+    private val matcherDsl: MatcherDsl = MatcherDsl.create(),
 ) {
     @Schema(description = "Graph header write body")
     data class GraphWriteBody(
@@ -58,11 +58,11 @@ class ObjsGraphsController(
         val entityIds: Set<UUID> = emptySet(),
     )
 
-    @Schema(description = "Graph header response: id + annotations + resolved BoMGraphContents")
+    @Schema(description = "Graph header response: id + annotations + resolved GraphContents")
     data class GraphResponse(
         val id: UUID,
         val annotations: Map<String, String>,
-        val graph: BoMGraphContents,
+        val graph: GraphContents,
     )
 
     data class CloneBody(
@@ -71,12 +71,12 @@ class ObjsGraphsController(
 
     @Schema(description = "Open-graph search envelope (G-U10); additive fields may appear later")
     data class GraphSearchResponse(
-        val items: List<BoMGraphHeader>,
+        val items: List<GraphHeader>,
     )
 
     @GetMapping
     @Operation(summary = "List graph headers")
-    fun list(): List<BoMGraphListItem> = namedGraphs.list()
+    fun list(): List<GraphListItem> = namedGraphs.list()
 
     @GetMapping("/search")
     @Operation(
@@ -98,7 +98,7 @@ class ObjsGraphsController(
     @Operation(summary = "Create a graph header, optionally seeding membership with existing pool entity ids")
     fun create(@RequestBody body: GraphWriteBody): ResponseEntity<GraphResponse> {
         val created = namedGraphs.create(
-            BoMGraphSpec(id = body.id, annotations = body.annotations, entityIds = body.entityIds),
+            GraphSpec(id = body.id, annotations = body.annotations, entityIds = body.entityIds),
         )
         return ResponseEntity.status(HttpStatus.CREATED).body(created.toResponse())
     }
@@ -136,14 +136,14 @@ class ObjsGraphsController(
         ApiResponse(
             responseCode = "400",
             description = "Validation failed",
-            content = [Content(schema = Schema(implementation = BoMValidationResult::class))],
+            content = [Content(schema = Schema(implementation = ValidationResult::class))],
         ),
         ApiResponse(responseCode = "404", description = "Graph not found"),
     )
     fun mutateMerge(
         @PathVariable id: UUID,
-        @RequestBody mutation: BoMGraphMutation,
-    ): ResponseEntity<Any> = mutateWithMode(id, mutation, BoMMutateMode.MERGE)
+        @RequestBody mutation: GraphMutation,
+    ): ResponseEntity<Any> = mutateWithMode(id, mutation, MutationMode.MERGE)
 
     @PutMapping("/{id}")
     @Operation(
@@ -157,28 +157,28 @@ class ObjsGraphsController(
         ApiResponse(
             responseCode = "400",
             description = "Validation failed",
-            content = [Content(schema = Schema(implementation = BoMValidationResult::class))],
+            content = [Content(schema = Schema(implementation = ValidationResult::class))],
         ),
         ApiResponse(responseCode = "404", description = "Graph not found"),
     )
     fun mutateReplace(
         @PathVariable id: UUID,
-        @RequestBody mutation: BoMGraphMutation,
-    ): ResponseEntity<Any> = mutateWithMode(id, mutation, BoMMutateMode.REPLACE)
+        @RequestBody mutation: GraphMutation,
+    ): ResponseEntity<Any> = mutateWithMode(id, mutation, MutationMode.REPLACE)
 
     @PatchMapping("/{id}/validate")
     @Operation(summary = "Dry-run MERGE validate (no persist)")
     fun validateMerge(
         @PathVariable id: UUID,
-        @RequestBody mutation: BoMGraphMutation,
-    ): ResponseEntity<Any> = validateWithMode(id, mutation, BoMMutateMode.MERGE)
+        @RequestBody mutation: GraphMutation,
+    ): ResponseEntity<Any> = validateWithMode(id, mutation, MutationMode.MERGE)
 
     @PutMapping("/{id}/validate")
     @Operation(summary = "Dry-run REPLACE validate (no persist)")
     fun validateReplace(
         @PathVariable id: UUID,
-        @RequestBody mutation: BoMGraphMutation,
-    ): ResponseEntity<Any> = validateWithMode(id, mutation, BoMMutateMode.REPLACE)
+        @RequestBody mutation: GraphMutation,
+    ): ResponseEntity<Any> = validateWithMode(id, mutation, MutationMode.REPLACE)
 
     @PostMapping("/{id}/validate")
     @Operation(
@@ -187,13 +187,13 @@ class ObjsGraphsController(
     )
     fun validatePost(
         @PathVariable id: UUID,
-        @RequestBody mutation: BoMGraphMutation,
-    ): ResponseEntity<Any> = validateWithMode(id, mutation, BoMMutateMode.MERGE)
+        @RequestBody mutation: GraphMutation,
+    ): ResponseEntity<Any> = validateWithMode(id, mutation, MutationMode.MERGE)
 
     private fun mutateWithMode(
         id: UUID,
-        mutation: BoMGraphMutation,
-        mode: BoMMutateMode,
+        mutation: GraphMutation,
+        mode: MutationMode,
     ): ResponseEntity<Any> {
         val resolved = resolveVerbMode(mutation, mode) ?: return modeMismatch(mode)
         val result = namedGraphs.mutate(id, resolved)
@@ -205,25 +205,25 @@ class ObjsGraphsController(
 
     private fun validateWithMode(
         id: UUID,
-        mutation: BoMGraphMutation,
-        mode: BoMMutateMode,
+        mutation: GraphMutation,
+        mode: MutationMode,
     ): ResponseEntity<Any> {
         val resolved = resolveVerbMode(mutation, mode) ?: return modeMismatch(mode)
         return ResponseEntity.ok(namedGraphs.validateMutate(id, resolved))
     }
 
     /** Verb wins; body `mode` may be omitted (defaults MERGE) or must match the verb. */
-    private fun resolveVerbMode(mutation: BoMGraphMutation, verbMode: BoMMutateMode): BoMGraphMutation? {
-        if (mutation.mode != BoMMutateMode.MERGE && mutation.mode != verbMode) {
+    private fun resolveVerbMode(mutation: GraphMutation, verbMode: MutationMode): GraphMutation? {
+        if (mutation.mode != MutationMode.MERGE && mutation.mode != verbMode) {
             return null
         }
         return mutation.copy(mode = verbMode)
     }
 
-    private fun modeMismatch(verbMode: BoMMutateMode): ResponseEntity<Any> =
+    private fun modeMismatch(verbMode: MutationMode): ResponseEntity<Any> =
         ResponseEntity.badRequest().body(
-            BoMValidationResult.of(
-                BoMValidationIssue(
+            ValidationResult.of(
+                ValidationIssue(
                     code = "MUTATE_MODE_MISMATCH",
                     message = "Body mode disagrees with HTTP verb (expected $verbMode)",
                 ),
@@ -283,12 +283,12 @@ class ObjsGraphsController(
         ApiResponse(
             responseCode = "200",
             description = "Graph contents (selected members + induced edges)",
-            content = [Content(schema = Schema(implementation = BoMGraphContents::class))],
+            content = [Content(schema = Schema(implementation = GraphContents::class))],
         ),
         ApiResponse(
             responseCode = "400",
             description = "Invalid matcher DSL or expression",
-            content = [Content(schema = Schema(implementation = BoMValidationResult::class))],
+            content = [Content(schema = Schema(implementation = ValidationResult::class))],
         ),
         ApiResponse(responseCode = "404", description = "Graph not found"),
     )
@@ -319,12 +319,12 @@ class ObjsGraphsController(
         ApiResponse(
             responseCode = "200",
             description = "Union of matching graphs' stored members + graph-local edges",
-            content = [Content(schema = Schema(implementation = BoMGraphContents::class))],
+            content = [Content(schema = Schema(implementation = GraphContents::class))],
         ),
         ApiResponse(
             responseCode = "400",
             description = "Invalid matcher DSL, or missing stage-0 all / graph-expr",
-            content = [Content(schema = Schema(implementation = BoMValidationResult::class))],
+            content = [Content(schema = Schema(implementation = ValidationResult::class))],
         ),
     )
     fun queryGraphs(request: HttpServletRequest): ResponseEntity<Any> {
@@ -351,7 +351,7 @@ class ObjsGraphsController(
     fun createVersion(
         @PathVariable id: UUID,
         @RequestBody(required = false) body: CloneBody?,
-    ): ResponseEntity<org.poc.objs.core.domain.BoMGraphVersionSummary> {
+    ): ResponseEntity<org.poc.objs.core.domain.GraphVersionSummary> {
         val created = namedGraphs.createDeepGraphVersion(id, body?.annotations ?: emptyMap())
         return ResponseEntity.status(HttpStatus.CREATED).body(created)
     }
@@ -389,15 +389,15 @@ class ObjsGraphsController(
         return ResponseEntity.ok(graphStore.selectInGraphVersion(id, version, matcher))
     }
 
-    @ExceptionHandler(BoMValidationException::class)
-    fun handleValidation(ex: BoMValidationException): ResponseEntity<BoMValidationResult> {
+    @ExceptionHandler(ValidationException::class)
+    fun handleValidation(ex: ValidationException): ResponseEntity<ValidationResult> {
         val notFound = ex.result.issues.any { it.code == "GRAPH_NOT_FOUND" }
         val status = if (notFound) HttpStatus.NOT_FOUND else HttpStatus.BAD_REQUEST
         return ResponseEntity.status(status).body(ex.result)
     }
 
-    @ExceptionHandler(BoMGraphException::class)
-    fun handleGraphException(ex: BoMGraphException): ResponseEntity<Map<String, String>> {
+    @ExceptionHandler(GraphException::class)
+    fun handleGraphException(ex: GraphException): ResponseEntity<Map<String, String>> {
         val status = when (ex.code) {
             "GRAPH_NOT_FOUND", "GRAPH_VERSION_NOT_FOUND",
             "ENTITY_VERSION_NOT_FOUND", "EDGE_VERSION_NOT_FOUND",
@@ -412,16 +412,16 @@ class ObjsGraphsController(
     private fun readBody(request: HttpServletRequest): String =
         request.inputStream.readBytes().toString(StandardCharsets.UTF_8)
 
-    private fun resolveFormat(request: HttpServletRequest): BoMMatcherFormat {
+    private fun resolveFormat(request: HttpServletRequest): MatcherFormat {
         val subtype = request.contentType?.let { MediaType.parseMediaType(it) }?.subtype?.lowercase().orEmpty()
         return if (subtype.contains("yaml") || subtype.contains("yml")) {
-            BoMMatcherFormat.YAML
+            MatcherFormat.YAML
         } else {
-            BoMMatcherFormat.JSON
+            MatcherFormat.JSON
         }
     }
 
-    private fun BoMResolvedGraph.toResponse() = GraphResponse(
+    private fun ResolvedGraph.toResponse() = GraphResponse(
         id = id,
         annotations = annotations,
         graph = contents,

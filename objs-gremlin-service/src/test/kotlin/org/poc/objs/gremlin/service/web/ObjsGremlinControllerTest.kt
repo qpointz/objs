@@ -5,12 +5,12 @@ import org.junit.jupiter.api.Test
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
-import org.poc.objs.core.domain.BoMEdge
-import org.poc.objs.core.domain.BoMEntity
-import org.poc.objs.core.domain.BoMGraphContents
-import org.poc.objs.core.match.BoMMatcher
-import org.poc.objs.core.persistence.BoMGraphStore
-import org.poc.objs.gremlin.core.BoMGremlinEngine
+import org.poc.objs.api.domain.Edge
+import org.poc.objs.api.domain.Entity
+import org.poc.objs.api.domain.GraphContents
+import org.poc.objs.core.match.Matcher
+import org.poc.objs.core.persistence.GraphStore
+import org.poc.objs.gremlin.core.GremlinEngine
 import org.springframework.http.MediaType
 import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter
 import org.springframework.test.web.servlet.MockMvc
@@ -24,7 +24,7 @@ import java.util.UUID
 class ObjsGremlinControllerTest {
 
     private lateinit var mockMvc: MockMvc
-    private lateinit var store: BoMGraphStore
+    private lateinit var store: GraphStore
 
     @Suppress("UNCHECKED_CAST")
     private fun <T> anyObj(): T = org.mockito.ArgumentMatchers.any() as T
@@ -33,17 +33,17 @@ class ObjsGremlinControllerTest {
     private val b = UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
     private val e = UUID.fromString("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee")
 
-    private fun sampleContents(): BoMGraphContents =
-        BoMGraphContents(
+    private fun sampleContents(): GraphContents =
+        GraphContents(
             entities = listOf(
-                BoMEntity(
+                Entity(
                     id = a,
                     type = "Component",
                     schemaVersion = "1.0.0",
                     payload = mutableMapOf("name" to "lib"),
                     annotations = mutableMapOf("env" to "test"),
                 ),
-                BoMEntity(
+                Entity(
                     id = b,
                     type = "Component",
                     schemaVersion = "1.0.0",
@@ -52,15 +52,15 @@ class ObjsGremlinControllerTest {
                 ),
             ),
             edges = listOf(
-                BoMEdge(id = e, source = a, target = b, role = "DEPENDS_ON"),
+                Edge(id = e, source = a, target = b, role = "DEPENDS_ON"),
             ),
         )
 
     @BeforeEach
     fun setUp() {
-        store = mock(BoMGraphStore::class.java)
+        store = mock(GraphStore::class.java)
         mockMvc = MockMvcBuilders
-            .standaloneSetup(ObjsGremlinController(store, BoMGremlinEngine()))
+            .standaloneSetup(ObjsGremlinController(store, GremlinEngine()))
             .setMessageConverters(
                 JacksonJsonHttpMessageConverter(JsonMapper.builder().findAndAddModules().build()),
             )
@@ -69,7 +69,7 @@ class ObjsGremlinControllerTest {
 
     @Test
     fun shouldTraverse_whenAllMatcherAndScript() {
-        given(store.select(anyObj<BoMMatcher>())).willReturn(sampleContents())
+        given(store.select(anyObj<Matcher>())).willReturn(sampleContents())
 
         mockMvc.perform(
             post("/api/v1/objs/graph/traverse/gremlin")
@@ -88,7 +88,7 @@ class ObjsGremlinControllerTest {
             .andExpect(jsonPath("$.contents.entities").isArray)
             .andExpect(jsonPath("$.meta.language").value("gremlin-lang"))
 
-        verify(store).select(anyObj<BoMMatcher>())
+        verify(store).select(anyObj<Matcher>())
     }
 
     @Test
@@ -128,7 +128,7 @@ class ObjsGremlinControllerTest {
 
     @Test
     fun shouldReturnScalar_whenCount() {
-        given(store.select(anyObj<BoMMatcher>())).willReturn(sampleContents())
+        given(store.select(anyObj<Matcher>())).willReturn(sampleContents())
 
         mockMvc.perform(
             post("/api/v1/objs/graph/traverse/gremlin")
@@ -150,7 +150,7 @@ class ObjsGremlinControllerTest {
     @Test
     fun shouldTraverseInGraph_whenGraphIdAndMatchAll() {
         val graphId = UUID.fromString("11111111-1111-1111-1111-111111111111")
-        given(store.selectInGraph(anyObj<UUID>(), anyObj<BoMMatcher>())).willReturn(sampleContents())
+        given(store.selectInGraph(anyObj<UUID>(), anyObj<Matcher>())).willReturn(sampleContents())
 
         mockMvc.perform(
             post("/api/v1/objs/graph/traverse/gremlin")
@@ -172,12 +172,12 @@ class ObjsGremlinControllerTest {
             .andExpect(jsonPath("$.contents.entities").isArray)
             .andExpect(jsonPath("$.items.length()").value(2))
 
-        verify(store).selectInGraph(anyObj<UUID>(), anyObj<BoMMatcher>())
+        verify(store).selectInGraph(anyObj<UUID>(), anyObj<Matcher>())
     }
 
     @Test
     fun shouldAcceptChainedMatcher() {
-        given(store.select(anyObj<BoMMatcher>())).willReturn(sampleContents())
+        given(store.select(anyObj<Matcher>())).willReturn(sampleContents())
 
         mockMvc.perform(
             post("/api/v1/objs/graph/traverse/gremlin")

@@ -1,7 +1,7 @@
 package org.poc.objs.sbom.codegen
 
-import org.poc.objs.core.domain.InMemoryBoMAllowedEdgeCatalog
-import org.poc.objs.core.domain.InMemoryBoMSchemaCatalog
+import org.poc.objs.core.domain.InMemoryAllowedEdgeCatalog
+import org.poc.objs.core.domain.InMemorySchemaCatalog
 import org.poc.objs.core.seed.AllowedEdgeRuleSeedHandler
 import org.poc.objs.core.seed.ObjectSchemaSeedHandler
 import org.poc.objs.core.seed.SeedYaml
@@ -21,8 +21,8 @@ object ExportSbomOntology {
         val out = Path.of(args[0])
         Files.createDirectories(out.parent)
 
-        val schemas = InMemoryBoMSchemaCatalog()
-        val edges = InMemoryBoMAllowedEdgeCatalog()
+        val schemas = InMemorySchemaCatalog()
+        val edges = InMemoryAllowedEdgeCatalog()
         SbomRegistry.pack().registerInto(schemas, edges)
 
         val schemaHandler = ObjectSchemaSeedHandler(schemas)

@@ -53,7 +53,7 @@ CREATE TABLE sbom_application_sbom (
     CONSTRAINT fk_sbom_application_sbom_version
         FOREIGN KEY (version_id) REFERENCES sbom_application_version (id) ON DELETE CASCADE,
     CONSTRAINT fk_sbom_application_sbom_graph
-        FOREIGN KEY (graph_id) REFERENCES bom_graph (id)
+        FOREIGN KEY (graph_id) REFERENCES objs_graph (id)
 );
 
 CREATE INDEX idx_sbom_application_sbom_version ON sbom_application_sbom (version_id, sort_order);
@@ -70,7 +70,7 @@ CREATE TABLE sbom_application_fingerprint (
     CONSTRAINT fk_sbom_application_fingerprint_version
         FOREIGN KEY (version_id) REFERENCES sbom_application_version (id) ON DELETE CASCADE,
     CONSTRAINT fk_sbom_application_fingerprint_graph
-        FOREIGN KEY (graph_id) REFERENCES bom_graph (id)
+        FOREIGN KEY (graph_id) REFERENCES objs_graph (id)
 );
 
 CREATE INDEX idx_sbom_application_fingerprint_version

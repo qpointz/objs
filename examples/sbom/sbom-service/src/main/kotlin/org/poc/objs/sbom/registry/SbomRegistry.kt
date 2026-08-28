@@ -1,14 +1,14 @@
 package org.poc.objs.sbom.registry
 
-import org.poc.objs.core.domain.BoMAllowedEdgeRule
-import org.poc.objs.core.domain.BoMEdgeCardinality
-import org.poc.objs.core.domain.BoMPropertiesPolicy
-import org.poc.objs.core.domain.BoMSchema
-import org.poc.objs.core.domain.BoMSchemaDsl
-import org.poc.objs.core.domain.BoMSchemaNode
-import org.poc.objs.core.domain.BoMSchemaUsage
+import org.poc.objs.api.domain.AllowedEdgeRule
+import org.poc.objs.api.domain.EdgeCardinality
+import org.poc.objs.api.domain.PropertiesPolicy
+import org.poc.objs.core.domain.Schema
+import org.poc.objs.core.domain.SchemaDsl
+import org.poc.objs.core.domain.SchemaNode
+import org.poc.objs.core.domain.SchemaUsage
 import org.poc.objs.core.typed.RegistryPack
-import org.poc.objs.core.typed.TypedEdgeMeta
+import org.poc.objs.api.typed.TypedEdgeMeta
 import org.poc.objs.sbom.model.ApiType
 import org.poc.objs.sbom.model.ArtifactType
 import org.poc.objs.sbom.model.BuildType
@@ -59,17 +59,17 @@ object SbomRoles {
 }
 
 object SbomRegistry {
-    private fun text(title: String, description: String) = BoMSchemaDsl.string(title, description)
+    private fun text(title: String, description: String) = SchemaDsl.string(title, description)
 
     private fun uri(title: String, description: String) =
-        BoMSchemaDsl.string(title, description, format = "uri")
+        SchemaDsl.string(title, description, format = "uri")
 
     private fun timestamp(title: String, description: String) =
-        BoMSchemaDsl.string(title, description, format = "date-time")
+        SchemaDsl.string(title, description, format = "date-time")
 
-    private fun number(title: String, description: String) = BoMSchemaDsl.number(title, description)
+    private fun number(title: String, description: String) = SchemaDsl.number(title, description)
 
-    private fun integer(title: String, description: String) = BoMSchemaDsl.integer(title, description)
+    private fun integer(title: String, description: String) = SchemaDsl.integer(title, description)
 
     private val nameField = text("Name", "Display name of this asset")
     private val descriptionField = text("Description", "Short summary")
@@ -83,16 +83,16 @@ object SbomRegistry {
         source: String,
         role: String,
         target: String,
-        cardinality: BoMEdgeCardinality = BoMEdgeCardinality.ONE_TO_MANY,
+        cardinality: EdgeCardinality = EdgeCardinality.ONE_TO_MANY,
         description: String? = null,
         sourceVerb: String? = null,
         targetVerb: String? = null,
         tags: List<String> = emptyList(),
-    ) = BoMAllowedEdgeRule(
+    ) = AllowedEdgeRule(
         sourceType = source,
         role = role,
         targetType = target,
-        propertiesPolicy = BoMPropertiesPolicy.SCHEMA,
+        propertiesPolicy = PropertiesPolicy.SCHEMA,
         emptyPropertiesAllowed = true,
         propertiesSchemaType = CanonicalEdgeType.meta.type,
         propertiesSchemaVersion = SCHEMA_VERSION,
@@ -132,17 +132,17 @@ object SbomRegistry {
     private fun schema(
         type: String,
         required: List<String>,
-        properties: Map<String, BoMSchemaNode>,
+        properties: Map<String, SchemaNode>,
         identifiers: Set<String> = setOf("name"),
         searchable: Set<String> = properties.keys - setOf("description"),
         description: String,
-    ): BoMSchema = RegistryPack.objectSchema(
+    ): Schema = RegistryPack.objectSchema(
         type = type,
         version = SCHEMA_VERSION,
         title = type,
         description = description,
         fields = (properties + commonOptional).map { (name, fieldSchema) ->
-            BoMSchemaDsl.field(
+            SchemaDsl.field(
                 name,
                 fieldSchema,
                 required = name in required,
@@ -157,12 +157,12 @@ object SbomRegistry {
         role: String,
         sourceType: String,
         targetType: String,
-        cardinality: BoMEdgeCardinality = BoMEdgeCardinality.ONE_TO_MANY,
+        cardinality: EdgeCardinality = EdgeCardinality.ONE_TO_MANY,
     ) = TypedEdgeMeta(
         role = role,
         sourceType = sourceType,
         targetType = targetType,
-        propertiesPolicy = BoMPropertiesPolicy.SCHEMA,
+        propertiesPolicy = PropertiesPolicy.SCHEMA,
         propertiesMeta = CanonicalEdgeType.meta,
         emptyPropertiesAllowed = true,
         cardinality = cardinality,
@@ -172,7 +172,7 @@ object SbomRegistry {
         SbomRoles.DEPENDS_ON,
         "Component",
         "Component",
-        BoMEdgeCardinality.ONE_TO_MANY,
+        EdgeCardinality.ONE_TO_MANY,
     )
 
     /** Full canonical ontology: all entity schemas + relationship allow-list. */
@@ -182,19 +182,19 @@ object SbomRegistry {
             version = SCHEMA_VERSION,
             title = "Canonical edge",
             description = "Properties shared by canonical SBOM relationships",
-            usage = BoMSchemaUsage.EDGE_PROPERTIES,
+            usage = SchemaUsage.EDGE_PROPERTIES,
             fields = listOf(
-                BoMSchemaDsl.field(
+                SchemaDsl.field(
                     "createdAt",
-                    BoMSchemaDsl.string("Created at", "Relationship creation timestamp", format = "date-time"),
+                    SchemaDsl.string("Created at", "Relationship creation timestamp", format = "date-time"),
                     required = false,
                 ),
-                BoMSchemaDsl.field(
+                SchemaDsl.field(
                     "source",
                     text("Source", "How this relationship was recorded"),
                     required = false,
                 ),
-                BoMSchemaDsl.field(
+                SchemaDsl.field(
                     "confidence",
                     number("Confidence", "Confidence that the relationship is correct (0–1)"),
                     required = false,
@@ -459,8 +459,8 @@ object SbomRegistry {
         )
 
         // Exact triples from canonical-spec.md relationship table (+ cardinality)
-        val one = BoMEdgeCardinality.ONE_TO_ONE
-        val many = BoMEdgeCardinality.ONE_TO_MANY
+        val one = EdgeCardinality.ONE_TO_ONE
+        val many = EdgeCardinality.ONE_TO_MANY
         val edgeRules = listOf(
             edgeRule(
                 "Product",

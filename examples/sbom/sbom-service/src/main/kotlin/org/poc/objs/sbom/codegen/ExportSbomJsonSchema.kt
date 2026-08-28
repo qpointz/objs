@@ -1,11 +1,11 @@
 package org.poc.objs.sbom.codegen
 
-import org.poc.objs.core.domain.BoMJsonSchema
-import org.poc.objs.core.domain.BoMJsonSchemaEdgeInclusion
-import org.poc.objs.core.domain.BoMJsonSchemaExportOptions
+import org.poc.objs.core.domain.JsonSchema
+import org.poc.objs.core.domain.JsonSchemaEdgeInclusion
+import org.poc.objs.core.domain.JsonSchemaExportOptions
 import org.poc.objs.core.domain.FullCatalogJsonSchemaExporter
-import org.poc.objs.core.domain.InMemoryBoMAllowedEdgeCatalog
-import org.poc.objs.core.domain.InMemoryBoMSchemaCatalog
+import org.poc.objs.core.domain.InMemoryAllowedEdgeCatalog
+import org.poc.objs.core.domain.InMemorySchemaCatalog
 import org.poc.objs.sbom.registry.SbomRegistry
 import tools.jackson.databind.json.JsonMapper
 import java.nio.file.Files
@@ -31,13 +31,13 @@ object ExportSbomJsonSchema {
         val typesDir = outDir.resolve("types")
         Files.createDirectories(typesDir)
 
-        val schemas = InMemoryBoMSchemaCatalog()
-        val edges = InMemoryBoMAllowedEdgeCatalog()
+        val schemas = InMemorySchemaCatalog()
+        val edges = InMemoryAllowedEdgeCatalog()
         SbomRegistry.pack().registerInto(schemas, edges)
 
         val exporter = FullCatalogJsonSchemaExporter(schemas, edges)
         val linked = exporter.export(
-            BoMJsonSchemaExportOptions(includeEdges = BoMJsonSchemaEdgeInclusion.LINKED),
+            JsonSchemaExportOptions(includeEdges = JsonSchemaEdgeInclusion.LINKED),
         ).toMutableMap()
 
         @Suppress("UNCHECKED_CAST")
@@ -57,8 +57,8 @@ object ExportSbomJsonSchema {
         mapper.writerWithDefaultPrettyPrinter().writeValue(catalogFile.toFile(), linked)
 
         // Payload-only schemas for TypedEntity / Wave* replacement experiments.
-        for (schema in schemas.all().filter { it.usage == org.poc.objs.core.domain.BoMSchemaUsage.ENTITY }) {
-            val projected = BoMJsonSchema.from(schema).toMutableMap()
+        for (schema in schemas.all().filter { it.usage == org.poc.objs.core.domain.SchemaUsage.ENTITY }) {
+            val projected = JsonSchema.from(schema).toMutableMap()
             val defKey = FullCatalogJsonSchemaExporter.jsonSchemaDefKey(schema.type)
             val file = typesDir.resolve("$defKey.json")
             mapper.writerWithDefaultPrettyPrinter().writeValue(file.toFile(), projected)

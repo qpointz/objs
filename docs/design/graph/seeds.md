@@ -257,7 +257,7 @@ cardinality: "1:*"
 
 ## Kind: `Graph` (instance data)
 
-Creates/updates one `bom_graph`: header annotations, member entities, and graph-local edges.
+Creates/updates one `objs_graph`: header annotations, member entities, and graph-local edges.
 Primary for demo/startup data and graph import/export. Ontology-only catalogs omit this kind.
 
 ### Document fields
@@ -316,7 +316,7 @@ edges:
     role: OWNS
 ```
 
-Each `kind: Graph` document creates/uses one **`bom_graph`**. Entities are attached as members;
+Each `kind: Graph` document creates/uses one **`objs_graph`**. Entities are attached as members;
 edges are stamped with that `graph_id`.
 
 ---
@@ -336,7 +336,7 @@ objs:
 
 - Locations: `classpath:` and `file:` only.
 - The normalized resource location is the ledger key; seed resources need no separate name.
-- Ledger table `bom_seed_ledger` stores SHA-256 fingerprints (`sha256:…`).
+- Ledger table `objs_seed_ledger` stores SHA-256 fingerprints (`sha256:…`).
 - Identical successful fingerprints are skipped on restart.
 - Failed attempts never overwrite the last successful fingerprint.
 - Catalog hydration runs before seed loading. Runtime catalogs use write-through + TTL
@@ -354,7 +354,7 @@ Ontology and graph instance I/O are **separated**. Both use a required `format` 
 | `GET` | `/api/v1/objs/registry/export?format=seeds` | Catalog YAML only |
 | `GET` | `/api/v1/objs/registry/export?format=json-schema` | Full-catalog JSON Schema (`dialect`, `includeEdges`, `includeEdgePropertySchemas` optional; see object-schema-dsl) |
 | `GET` | `/api/v1/objs/registry/export?format=json-schema-codegen` | Same catalog + synthetic root for POJO codegen |
-| `POST` | `/api/v1/objs/graph/import?format=seeds` | Multipart YAML; `Graph` kind only (each doc → one `bom_graph`) |
+| `POST` | `/api/v1/objs/graph/import?format=seeds` | Multipart YAML; `Graph` kind only (each doc → one `objs_graph`) |
 | `GET` | `/api/v1/objs/graph/export?format=seeds` | Requires `graphId`; exports that graph's members/edges |
 
 Former `/api/v1/objs/seeds/**` paths are removed.

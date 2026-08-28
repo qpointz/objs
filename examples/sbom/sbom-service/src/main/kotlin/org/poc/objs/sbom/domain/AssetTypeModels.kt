@@ -4,7 +4,7 @@ import java.util.UUID
 
 /**
  * Product-facing view of an asset type from the graph schema catalog (G-A8).
- * Built from [org.poc.objs.core.domain.BoMSchemaCatalog], not from hand Wave* models.
+ * Built from [org.poc.objs.core.domain.SchemaCatalog], not from hand Wave* models.
  */
 data class AssetTypeSummary(
     val type: String,

@@ -10,6 +10,7 @@ plugins {
 description = "Objs core: entity SDK, validation, and JPA persistence (Kotlin)."
 
 dependencies {
+    api(project(":objs-api"))
     api(platform(libs.boot.dependencies))
     api(libs.boot.starter)
     api(libs.boot.starter.data.jpa)

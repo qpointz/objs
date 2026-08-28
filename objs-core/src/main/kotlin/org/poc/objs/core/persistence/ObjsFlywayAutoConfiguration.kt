@@ -19,7 +19,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean
 
 /**
- * Second Flyway line for `bom_*` DDL. Runs before Boot Flyway and JPA validate.
+ * Second Flyway line for `objs_*` DDL. Runs before Boot Flyway and JPA validate.
  * Not registered as [Flyway] so Boot still creates the app Flyway bean.
  */
 @AutoConfiguration(after = [DataSourceAutoConfiguration::class])
@@ -50,7 +50,7 @@ class ObjsFlywayAutoConfiguration {
     }
 
     /**
-     * Objs already created `bom_*`, so Boot Flyway sees a non-empty schema without
+     * Objs already created `objs_*`, so Boot Flyway sees a non-empty schema without
      * `flyway_schema_history`. Baseline at `0` so a greenfield app line can still apply `V1`.
      * Apps that already have Boot history (e.g. at V8) are unaffected.
      */

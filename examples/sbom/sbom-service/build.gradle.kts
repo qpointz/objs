@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.spring)
     alias(libs.plugins.kotlin.jpa)
+    id("org.jsonschema2pojo") version "1.3.3"
 }
 
 description = "SBOM applications inventory — domain + Boot-launchable example under examples/sbom."
@@ -21,8 +22,11 @@ fun Configuration.forbidsFoundationCompile(): Boolean {
     return n == "api" || n == "compileOnly" || n == "implementation" || n.endsWith("Implementation")
 }
 
+val codegenTool by configurations.creating
+
 dependencies {
     implementation(platform(libs.boot.dependencies))
+    implementation(project(":objs-api"))
     implementation(project(":objs-core"))
     implementation(project(":objs-gremlin-core"))
     implementation(libs.boot.starter.webmvc)
@@ -35,6 +39,56 @@ dependencies {
     runtimeOnly(libs.h2.database)
     runtimeOnly(libs.postgresql)
     runtimeOnly(libs.flyway.postgresql)
+
+    codegenTool(project(":objs-codegen-java"))
+}
+
+val sbomCodegenSchema =
+    layout.projectDirectory.file("src/jsonschema/sbom-catalog.codegen.schema.json")
+val sbomGeneratedPojoDir =
+    layout.buildDirectory.dir("generated/sources/jsonschema2pojo")
+val sbomGeneratedBindingsDir =
+    layout.buildDirectory.dir("generated/sources/typed-bindings")
+
+jsonSchema2Pojo {
+    setSource(files(sbomCodegenSchema))
+    targetDirectory = sbomGeneratedPojoDir.get().asFile
+    targetPackage = "org.poc.objs.sbom.codegen.generated"
+    setSourceType("jsonschema")
+    setAnnotationStyle("jackson2")
+    setUseTitleAsClassname(true)
+    setIncludeAdditionalProperties(true)
+    setGenerateBuilders(true)
+    setIncludeConstructors(true)
+    setRemoveOldOutput(true)
+    setTargetVersion("21")
+}
+
+sourceSets {
+    named("main") {
+        java.srcDir(sbomGeneratedBindingsDir)
+    }
+}
+
+tasks.register<JavaExec>("generateSbomObjsJava") {
+    group = "codegen"
+    description = "Generate SBOM typed graph bindings from the checked-in codegen schema"
+    classpath = codegenTool
+    mainClass.set("org.poc.objs.codegen.java.JavaCodegenMain")
+    args(
+        sbomCodegenSchema.asFile.absolutePath,
+        sbomGeneratedBindingsDir.get().asFile.absolutePath,
+        "org.poc.objs.sbom.codegen.generated",
+    )
+    dependsOn("generateJsonSchema2Pojo")
+}
+
+tasks.named<JavaCompile>("compileJava") {
+    dependsOn("generateJsonSchema2Pojo", "generateSbomObjsJava")
+}
+
+tasks.named("compileKotlin") {
+    dependsOn("generateJsonSchema2Pojo", "generateSbomObjsJava")
 }
 
 configurations.configureEach {
@@ -71,8 +125,8 @@ tasks.named<JavaExec>("run") {
 }
 
 /**
- * Refresh `src/jsonschema/sbom-catalog-linked.schema.json` from SbomRegistry.
- * `./gradlew :sbom-service:exportSbomJsonSchema`
+ * Refresh the SBOM ontology seed from SbomRegistry.
+ * `./gradlew :sbom-service:exportSbomOntology`
  */
 tasks.register<JavaExec>("exportSbomOntology") {
     group = "codegen"

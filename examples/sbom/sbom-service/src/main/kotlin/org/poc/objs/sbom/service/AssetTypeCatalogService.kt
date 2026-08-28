@@ -1,9 +1,9 @@
 package org.poc.objs.sbom.service
 
-import org.poc.objs.core.domain.BoMCatalogSupport
-import org.poc.objs.core.domain.BoMSchema
-import org.poc.objs.core.domain.BoMSchemaCatalog
-import org.poc.objs.core.domain.BoMSchemaUsage
+import org.poc.objs.core.domain.CatalogSupport
+import org.poc.objs.core.domain.Schema
+import org.poc.objs.core.domain.SchemaCatalog
+import org.poc.objs.core.domain.SchemaUsage
 import org.poc.objs.sbom.domain.AssetFieldHint
 import org.poc.objs.sbom.domain.AssetTypeDetail
 import org.poc.objs.sbom.domain.AssetTypeSummary
@@ -15,8 +15,8 @@ import org.springframework.stereotype.Service
  */
 @Service
 class AssetTypeCatalogService(
-    private val schemas: BoMSchemaCatalog,
-    private val catalog: BoMCatalogSupport,
+    private val schemas: SchemaCatalog,
+    private val catalog: CatalogSupport,
 ) {
     fun listEntityTypes(): List<AssetTypeSummary> =
         catalog.latestEntitySchemas().map { schema ->
@@ -43,14 +43,14 @@ class AssetTypeCatalogService(
         )
     }
 
-    private fun resolve(type: String, version: String?): BoMSchema? {
+    private fun resolve(type: String, version: String?): Schema? {
         if (!version.isNullOrBlank()) {
-            return schemas.get(type, version)?.takeIf { it.usage == BoMSchemaUsage.ENTITY }
+            return schemas.get(type, version)?.takeIf { it.usage == SchemaUsage.ENTITY }
         }
         return catalog.latestEntitySchema(type)
     }
 
-    private fun org.poc.objs.core.domain.BoMFieldHint.toHint() =
+    private fun org.poc.objs.core.domain.FieldHint.toHint() =
         AssetFieldHint(
             path = path,
             title = title,

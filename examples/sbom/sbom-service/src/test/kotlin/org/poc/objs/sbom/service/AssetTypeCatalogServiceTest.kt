@@ -3,10 +3,10 @@ package org.poc.objs.sbom.service
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.poc.objs.core.domain.BoMSchema
-import org.poc.objs.core.domain.BoMSchemaCatalog
-import org.poc.objs.core.domain.BoMSchemaDsl
-import org.poc.objs.core.domain.BoMSchemaUsage
+import org.poc.objs.core.domain.Schema
+import org.poc.objs.core.domain.SchemaCatalog
+import org.poc.objs.core.domain.SchemaDsl
+import org.poc.objs.core.domain.SchemaUsage
 import org.poc.objs.core.persistence.ObjsCoreAutoConfiguration
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.SpringBootConfiguration
@@ -36,7 +36,7 @@ class AssetTypeCatalogServiceTest {
     class TestApp
 
     @Autowired
-    lateinit var schemas: BoMSchemaCatalog
+    lateinit var schemas: SchemaCatalog
 
     @Autowired
     lateinit var catalog: AssetTypeCatalogService
@@ -45,28 +45,28 @@ class AssetTypeCatalogServiceTest {
     fun seedSchema() {
         schemas.clear()
         schemas.register(
-            BoMSchema(
+            Schema(
                 type = "Component",
                 version = "1.0.0",
-                usage = BoMSchemaUsage.ENTITY,
-                contentSchema = BoMSchemaDsl.obj(
+                usage = SchemaUsage.ENTITY,
+                contentSchema = SchemaDsl.obj(
                     "Component",
                     "Software component",
                     listOf(
-                        BoMSchemaDsl.field(
+                        SchemaDsl.field(
                             "name",
-                            BoMSchemaDsl.string("Name", "Component name"),
+                            SchemaDsl.string("Name", "Component name"),
                             identifier = true,
                             searchable = true,
                         ),
-                        BoMSchemaDsl.field(
+                        SchemaDsl.field(
                             "version",
-                            BoMSchemaDsl.string("Version", "Component version"),
+                            SchemaDsl.string("Version", "Component version"),
                             searchable = true,
                         ),
-                        BoMSchemaDsl.field(
+                        SchemaDsl.field(
                             "kind",
-                            BoMSchemaDsl.string("Kind", "library/framework"),
+                            SchemaDsl.string("Kind", "library/framework"),
                         ),
                     ),
                 ),
@@ -86,27 +86,27 @@ class AssetTypeCatalogServiceTest {
     @Test
     fun shouldPreferHighestSchemaVersion_whenTypeHasMultipleVersions() {
         schemas.register(
-            BoMSchema(
+            Schema(
                 type = "Component",
                 version = "1.2.0",
-                usage = BoMSchemaUsage.ENTITY,
-                contentSchema = BoMSchemaDsl.obj("Component 1.2", "older patch line"),
+                usage = SchemaUsage.ENTITY,
+                contentSchema = SchemaDsl.obj("Component 1.2", "older patch line"),
             ),
         )
         schemas.register(
-            BoMSchema(
+            Schema(
                 type = "Component",
                 version = "2.0.0",
-                usage = BoMSchemaUsage.ENTITY,
-                contentSchema = BoMSchemaDsl.obj("Component v2", "latest"),
+                usage = SchemaUsage.ENTITY,
+                contentSchema = SchemaDsl.obj("Component v2", "latest"),
             ),
         )
         schemas.register(
-            BoMSchema(
+            Schema(
                 type = "Component",
                 version = "1.10.0",
-                usage = BoMSchemaUsage.ENTITY,
-                contentSchema = BoMSchemaDsl.obj("Component 1.10", "not latest"),
+                usage = SchemaUsage.ENTITY,
+                contentSchema = SchemaDsl.obj("Component 1.10", "not latest"),
             ),
         )
         val types = catalog.listEntityTypes()
@@ -134,17 +134,17 @@ class AssetTypeCatalogServiceTest {
     fun shouldFallBackToFieldName_whenSchemaTitleIsGenericScalar() {
         schemas.clear()
         schemas.register(
-            BoMSchema(
+            Schema(
                 type = "Thing",
                 version = "1.0.0",
-                usage = BoMSchemaUsage.ENTITY,
-                contentSchema = BoMSchemaDsl.obj(
+                usage = SchemaUsage.ENTITY,
+                contentSchema = SchemaDsl.obj(
                     "Thing",
                     "Thing payload",
                     listOf(
-                        BoMSchemaDsl.field(
+                        SchemaDsl.field(
                             "purl",
-                            BoMSchemaDsl.string("Text", "Text value"),
+                            SchemaDsl.string("Text", "Text value"),
                             searchable = true,
                         ),
                     ),

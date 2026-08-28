@@ -3,8 +3,8 @@ package org.poc.objs.assetrepository.spi;
 import java.util.List;
 import java.util.UUID;
 import org.poc.objs.assetrepository.domain.CollectionEntity;
-import org.poc.objs.core.domain.BoMEdge;
-import org.poc.objs.core.domain.BoMEntity;
+import org.poc.objs.api.domain.Edge;
+import org.poc.objs.api.domain.Entity;
 
 /**
  * Post-persist event analysis hook (G-P5). Default implementations emit nothing.
@@ -20,11 +20,11 @@ public interface EventExtension {
     record CollectionChangeSet(
             CollectionEntity collection,
             List<ObjectChange> objects,
-            List<BoMEdge> edges
+            List<Edge> edges
     ) {
     }
 
-    record ObjectChange(UUID id, String type, Op op, BoMEntity entity) {
+    record ObjectChange(UUID id, String type, Op op, Entity entity) {
         public enum Op {
             CREATE,
             UPDATE,

@@ -1,7 +1,7 @@
 package org.poc.objs.sbom.model
 
-import org.poc.objs.core.typed.EntityTypeMeta
-import org.poc.objs.core.typed.TypedEntity
+import org.poc.objs.api.typed.EntityTypeMeta
+import org.poc.objs.api.typed.TypedEntity
 import java.util.UUID
 
 // --- Wave B: build & packaging ---

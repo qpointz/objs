@@ -2,8 +2,8 @@ package org.poc.objs.service.web
 
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
-import org.poc.objs.core.domain.BoMGraphException
-import org.poc.objs.core.persistence.BoMGraphStore
+import org.poc.objs.core.domain.GraphException
+import org.poc.objs.core.persistence.GraphStore
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
@@ -18,7 +18,7 @@ import java.util.UUID
 @RequestMapping("/api/v1/objs/edges")
 @Tag(name = "edges")
 class ObjsEdgesController(
-    private val store: BoMGraphStore,
+    private val store: GraphStore,
 ) {
     @GetMapping("/{id}/versions/stats")
     @Operation(summary = "Edge version stats: total count + newest recent N")
@@ -39,7 +39,7 @@ class ObjsEdgesController(
     ): ResponseEntity<Any> =
         try {
             ResponseEntity.ok(store.getEdgeVersion(id, version))
-        } catch (ex: BoMGraphException) {
+        } catch (ex: GraphException) {
             ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 mapOf("error" to (ex.message ?: ex.code), "code" to ex.code),
             )

@@ -3,14 +3,14 @@ package org.poc.objs.assetrepository.spi;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import org.poc.objs.core.domain.BoMEdge;
-import org.poc.objs.core.domain.BoMEntity;
+import org.poc.objs.api.domain.Edge;
+import org.poc.objs.api.domain.Entity;
 
 /** Mutable pending write batch between identity resolution and persist. */
 public final class WriteBatch {
 
     private final List<PendingObject> objects = new ArrayList<>();
-    private final List<BoMEdge> edges = new ArrayList<>();
+    private final List<Edge> edges = new ArrayList<>();
     private final List<UUID> deleteEntityIds = new ArrayList<>();
     private final List<UUID> deleteEdgeIds = new ArrayList<>();
 
@@ -18,7 +18,7 @@ public final class WriteBatch {
         return objects;
     }
 
-    public List<BoMEdge> getEdges() {
+    public List<Edge> getEdges() {
         return edges;
     }
 
@@ -30,6 +30,6 @@ public final class WriteBatch {
         return deleteEdgeIds;
     }
 
-    public record PendingObject(BoMEntity entity, EventExtension.ObjectChange.Op op) {
+    public record PendingObject(Entity entity, EventExtension.ObjectChange.Op op) {
     }
 }

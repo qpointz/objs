@@ -40,6 +40,8 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`spa-url-classpath-align`](completed/20260817-spa-url-classpath-align/STORY.md) — Align SPA URL prefix with classpath folder (`/workbench`, `/ar`, `/sbom`); rename `:objs-app` → `:objs-service-app`; UI JAR on the runner only (P-2). WI-000…WI-004.
 - [`multi-bom-app-versions`](completed/20260817-multi-bom-app-versions/STORY.md) — Multi-BOM constituents + Combined SBOM; multi-draft (target + optional combine); tags; fingerprint name/category; inventory UI polish (D-8). WI-000…WI-008.
 - [`flyway-module-isolation`](completed/20260817-flyway-module-isolation/STORY.md) — Two Flyway lines: objs-core vendor SQL + `flyway_schema_history_objs` before Boot Flyway; examples as derived apps (P-3). WI-000…WI-004.
+- [`source-export`](completed/20260828-source-export/STORY.md) — Makefile-driven clean source export with package/module transformation, SPI rewriting, verification, and selected documentation (P-4). WI-000…WI-004.
+- [`objs-api-codegen`](completed/20260828-objs-api-codegen/STORY.md) — Spring-free Kotlin/JVM API, reusable Java code generator, schema-aware mutation builder, typed in-memory read view, and consumer integration (C-23). WI-000…WI-009.
 - [`catalog-schema-metadata`](completed/20260818-catalog-schema-metadata/STORY.md) — Allowed-edge description/verbs; free-text STRING `format`; tags + string attributes; enum `caption`; example schema browse lists allow-list rules (C-16). WI-000…WI-006.
 - [`live-store-apis`](completed/20260819-live-store-apis/STORY.md) — Live store APIs before versions: catalog helpers, reverse lookup, identity query, `copyGraph` + `mergeGraph`, paging (C-17). WI-000…WI-007.
 - [`versions-and-snapshots`](completed/20260819-versions-and-snapshots/STORY.md) — HEAD+history, clocks, `createDeepGraphVersion` freeze (same graph); `clone()` kept as new-id copy; workbench versions + product tour; SBOM fingerprint freeze (C-18). WI-000…WI-007.
@@ -47,10 +49,6 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`foundation-after-versions`](completed/20260822-foundation-after-versions/STORY.md) — Pin reverse lookup (live ∪ version pins); leftover matcher pushdown `>` / prefix (C-19). WI-000…WI-005 (WI-002 cancelled → C-18).
 - [`catalog-cache-ttl`](completed/20260826-catalog-cache-ttl/STORY.md) — Write-through + Caffeine TTL catalog snapshots; `POST /registry/refresh`; `objs.catalogs.cache-ttl` (C-21). WI-001…WI-003.
 - [`graph-mutate-replace`](completed/20260826-graph-mutate-replace/STORY.md) — Kind-first mutate body (`set`/`unset`); named-graph MERGE (`PATCH`) vs REPLACE (`PUT`); `bomMutation` builder; Composer Save/Overwrite; SBOM `replaceBom` (C-22). WI-000…WI-008.
-
-### In Progress
-
-- [`source-export`](in-progress/source-export/STORY.md) — Makefile `export TARGET_PACKAGE=…` → clean renamed copy outside bom-poc (dumper; SPI `.imports`; selected docs) (P-4).
 
 ### Planned
 

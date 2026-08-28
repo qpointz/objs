@@ -3,7 +3,7 @@ package org.poc.objs.assetrepository.web;
 import java.util.NoSuchElementException;
 import org.poc.objs.assetrepository.service.ObjectWriteService;
 import org.poc.objs.assetrepository.web.dto.ApiDtos;
-import org.poc.objs.core.validation.BoMValidationException;
+import org.poc.objs.core.validation.ValidationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -30,8 +30,8 @@ public class AssetRepositoryExceptionHandler {
                 .body(new ApiDtos.ErrorBody("CONFLICT", ex.getMessage()));
     }
 
-    @ExceptionHandler(BoMValidationException.class)
-    ResponseEntity<ApiDtos.ErrorBody> validation(BoMValidationException ex) {
+    @ExceptionHandler(ValidationException.class)
+    ResponseEntity<ApiDtos.ErrorBody> validation(ValidationException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ApiDtos.ErrorBody("VALIDATION", ex.getMessage()));
     }

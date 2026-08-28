@@ -1,11 +1,11 @@
 package org.poc.objs.sbom.service
 
-import org.poc.objs.core.domain.BoMEdge
-import org.poc.objs.core.domain.BoMGraphContents
-import org.poc.objs.core.domain.BoMGraphSpec
-import org.poc.objs.core.domain.BoMResolvedGraph
-import org.poc.objs.core.domain.bomMutation
-import org.poc.objs.core.persistence.BoMNamedGraphStore
+import org.poc.objs.api.domain.Edge
+import org.poc.objs.api.domain.GraphContents
+import org.poc.objs.core.domain.GraphSpec
+import org.poc.objs.core.domain.ResolvedGraph
+import org.poc.objs.api.domain.graphMutation
+import org.poc.objs.core.persistence.NamedGraphStore
 import org.poc.objs.sbom.domain.BomUnion
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Component
@@ -14,20 +14,20 @@ import java.util.UUID
 
 @Component
 class BomGraphSupport(
-    private val namedGraphs: BoMNamedGraphStore,
+    private val namedGraphs: NamedGraphStore,
 ) {
-    fun load(graphIds: List<UUID>): List<BoMResolvedGraph> =
+    fun load(graphIds: List<UUID>): List<ResolvedGraph> =
         graphIds.mapNotNull { namedGraphs.get(it) }
 
-    fun union(graphIds: List<UUID>): BoMGraphContents = BomUnion.of(load(graphIds))
+    fun union(graphIds: List<UUID>): GraphContents = BomUnion.of(load(graphIds))
 
     fun copy(sourceGraphId: UUID, annotations: Map<String, String>): UUID =
         namedGraphs.copyGraph(sourceGraphId, annotations).id
 
-    fun materialize(contents: BoMGraphContents, annotations: Map<String, String>): UUID {
+    fun materialize(contents: GraphContents, annotations: Map<String, String>): UUID {
         val graph =
             namedGraphs.create(
-                BoMGraphSpec(
+                GraphSpec(
                     annotations = annotations,
                     entityIds = contents.entities.mapNotNull { it.id }.toSet(),
                 ),
@@ -35,7 +35,7 @@ class BomGraphSupport(
         val edgeCopies =
             contents.edges
                 .map { edge ->
-                    BoMEdge(
+                    Edge(
                         source = edge.source,
                         target = edge.target,
                         role = edge.role,
@@ -48,7 +48,7 @@ class BomGraphSupport(
             val result =
                 namedGraphs.mutate(
                     graph.id,
-                    bomMutation { edges { set(edgeCopies) } },
+                    graphMutation { edges { set(edgeCopies) } },
                 )
             if (!result.isValid) {
                 throw ResponseStatusException(

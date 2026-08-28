@@ -3,15 +3,15 @@ package org.poc.objs.sbom.service
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.poc.objs.core.domain.BoMAllowedEdgeCatalog
-import org.poc.objs.core.domain.BoMAllowedEdgeRule
-import org.poc.objs.core.domain.BoMSchema
-import org.poc.objs.core.domain.BoMSchemaCatalog
-import org.poc.objs.core.domain.BoMSchemaDsl
-import org.poc.objs.core.domain.BoMSchemaUsage
-import org.poc.objs.core.persistence.BoMGraphStore
-import org.poc.objs.core.persistence.BoMNamedGraphStore
-import org.poc.objs.core.persistence.BoMPoolEntityReader
+import org.poc.objs.core.domain.AllowedEdgeCatalog
+import org.poc.objs.api.domain.AllowedEdgeRule
+import org.poc.objs.core.domain.Schema
+import org.poc.objs.core.domain.SchemaCatalog
+import org.poc.objs.core.domain.SchemaDsl
+import org.poc.objs.core.domain.SchemaUsage
+import org.poc.objs.core.persistence.GraphStore
+import org.poc.objs.core.persistence.NamedGraphStore
+import org.poc.objs.core.persistence.PoolEntityReader
 import org.poc.objs.core.persistence.ObjsCoreAutoConfiguration
 import org.poc.objs.sbom.persistence.SbomPersistenceConfiguration
 import org.springframework.beans.factory.annotation.Autowired
@@ -25,9 +25,9 @@ import org.springframework.test.context.TestPropertySource
 @ImportAutoConfiguration(ObjsCoreAutoConfiguration::class)
 @Import(
     SbomPersistenceConfiguration::class,
-    BoMGraphStore::class,
-    BoMNamedGraphStore::class,
-    BoMPoolEntityReader::class,
+    GraphStore::class,
+    NamedGraphStore::class,
+    PoolEntityReader::class,
     SbomService::class,
     AssetTypeCatalogService::class,
     SchemaBrowseService::class,
@@ -50,7 +50,7 @@ class SchemaBrowseServiceTest {
     class TestApp
 
     @Autowired
-    lateinit var schemas: BoMSchemaCatalog
+    lateinit var schemas: SchemaCatalog
 
     @Autowired
     lateinit var sbom: SbomService
@@ -59,7 +59,7 @@ class SchemaBrowseServiceTest {
     lateinit var browse: SchemaBrowseService
 
     @Autowired
-    lateinit var edges: BoMAllowedEdgeCatalog
+    lateinit var edges: AllowedEdgeCatalog
 
     @BeforeEach
     fun reset() {
@@ -89,19 +89,19 @@ class SchemaBrowseServiceTest {
     @Test
     fun shouldGroupRegisteredVersions() {
         schemas.register(
-            BoMSchema(
+            Schema(
                 type = "ExtraThing",
                 version = "1.0.0",
-                usage = BoMSchemaUsage.ENTITY,
-                contentSchema = BoMSchemaDsl.obj("ExtraThing", "v1", emptyList()),
+                usage = SchemaUsage.ENTITY,
+                contentSchema = SchemaDsl.obj("ExtraThing", "v1", emptyList()),
             ),
         )
         schemas.register(
-            BoMSchema(
+            Schema(
                 type = "ExtraThing",
                 version = "2.0.0",
-                usage = BoMSchemaUsage.ENTITY,
-                contentSchema = BoMSchemaDsl.obj("ExtraThing", "v2", emptyList()),
+                usage = SchemaUsage.ENTITY,
+                contentSchema = SchemaDsl.obj("ExtraThing", "v2", emptyList()),
             ),
         )
         val entry = browse.catalog().single { it.type == "ExtraThing" }
@@ -123,10 +123,10 @@ class SchemaBrowseServiceTest {
         assertThat(component.incoming).anyMatch { it.sourceType == "Product" && it.role == "CONTAINS" }
 
         edges.register(
-            BoMAllowedEdgeRule(
-                sourceType = BoMAllowedEdgeRule.ANY,
+            AllowedEdgeRule(
+                sourceType = AllowedEdgeRule.ANY,
                 role = "ANNOTATES",
-                targetType = BoMAllowedEdgeRule.ANY,
+                targetType = AllowedEdgeRule.ANY,
             ),
         )
         val withWild = browse.allowedEdgesForType("Component")

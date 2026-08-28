@@ -1,11 +1,11 @@
 package org.poc.objs.sbom.service
 
-import org.poc.objs.core.domain.BoMAllowedEdgeCatalog
-import org.poc.objs.core.domain.BoMAllowedEdgeRule
-import org.poc.objs.core.domain.BoMSchema
-import org.poc.objs.core.domain.BoMSchemaCatalog
-import org.poc.objs.core.domain.BoMSchemaUsage
-import org.poc.objs.core.persistence.BoMNamedGraphStore
+import org.poc.objs.core.domain.AllowedEdgeCatalog
+import org.poc.objs.api.domain.AllowedEdgeRule
+import org.poc.objs.core.domain.Schema
+import org.poc.objs.core.domain.SchemaCatalog
+import org.poc.objs.core.domain.SchemaUsage
+import org.poc.objs.core.persistence.NamedGraphStore
 import org.poc.objs.sbom.domain.SchemaCatalogEntry
 import org.poc.objs.sbom.domain.SchemaUsedInRef
 import org.poc.objs.sbom.persistence.SbomApplicationRepository
@@ -17,22 +17,22 @@ import org.springframework.web.server.ResponseStatusException
 import java.util.UUID
 
 data class TypeAllowedEdges(
-    val incoming: List<BoMAllowedEdgeRule>,
-    val outgoing: List<BoMAllowedEdgeRule>,
+    val incoming: List<AllowedEdgeRule>,
+    val outgoing: List<AllowedEdgeRule>,
 )
 
 @Service
 class SchemaBrowseService(
-    private val schemas: BoMSchemaCatalog,
-    private val edges: BoMAllowedEdgeCatalog,
-    private val catalog: org.poc.objs.core.domain.BoMCatalogSupport,
+    private val schemas: SchemaCatalog,
+    private val edges: AllowedEdgeCatalog,
+    private val catalog: org.poc.objs.core.domain.CatalogSupport,
     private val sbom: SbomService,
     private val applications: SbomApplicationRepository,
     private val versions: SbomApplicationVersionRepository,
     private val boms: SbomApplicationSbomRepository,
-    private val namedGraphs: BoMNamedGraphStore,
+    private val namedGraphs: NamedGraphStore,
 ) {
-    fun list(typeFilter: String?): List<BoMSchema> {
+    fun list(typeFilter: String?): List<Schema> {
         sbom.ensureRegistry()
         val type = typeFilter?.trim().orEmpty()
         if (type.isEmpty()) {
@@ -41,7 +41,7 @@ class SchemaBrowseService(
         return listByType(type)
     }
 
-    fun listByType(type: String): List<BoMSchema> {
+    fun listByType(type: String): List<Schema> {
         sbom.ensureRegistry()
         val rows = schemas.listByType(type).sortedBy { it.version }
         if (rows.isEmpty()) {
@@ -56,7 +56,7 @@ class SchemaBrowseService(
         return TypeAllowedEdges(incoming = edgesForType.incoming, outgoing = edgesForType.outgoing)
     }
 
-    fun get(type: String, version: String): BoMSchema {
+    fun get(type: String, version: String): Schema {
         sbom.ensureRegistry()
         return schemas.get(type, version)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Schema not found: $type@$version")
@@ -64,7 +64,7 @@ class SchemaBrowseService(
 
     fun catalog(): List<SchemaCatalogEntry> {
         sbom.ensureRegistry()
-        val byType = linkedMapOf<String, MutableList<BoMSchema>>()
+        val byType = linkedMapOf<String, MutableList<Schema>>()
         schemas.all()
             .sortedWith(compareBy({ it.type }, { it.version }))
             .forEach { byType.getOrPut(it.type) { mutableListOf() }.add(it) }

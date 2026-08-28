@@ -20,6 +20,18 @@ Design: [`docs/design/asset-repository/example.md`](../../docs/design/asset-repo
 
 Uses the **`demo`** profile by default (ontology + collection instance seeds). Skip the Vite UI build with `-PskipUi=true` if you only need the API.
 
+## Offline typed bindings
+
+The checked-in [`asset-repository-catalog.codegen.schema.json`](asset-repository-service/src/jsonschema/asset-repository-catalog.codegen.schema.json)
+drives both JSON-schema POJO generation and the application-owned typed graph bindings. No backend is
+needed during compilation:
+
+```bash
+./gradlew :asset-repository-service:compileJava
+```
+
+Generated output is written under `asset-repository-service/build/generated/sources/`.
+
 | Surface | URL |
 |---------|-----|
 | Domain UI | http://localhost:8080/ar/ |

@@ -1,11 +1,11 @@
 package org.poc.objs.sbom.service
 
-import org.poc.objs.core.domain.BoMEntity
-import org.poc.objs.core.match.BoMGraphIdsMatcher
-import org.poc.objs.core.persistence.BoMGraphStore
-import org.poc.objs.core.persistence.BoMNamedGraphStore
-import org.poc.objs.gremlin.core.BoMGremlinEngine
-import org.poc.objs.gremlin.core.BoMGremlinItem
+import org.poc.objs.api.domain.Entity
+import org.poc.objs.core.match.GraphIdsMatcher
+import org.poc.objs.core.persistence.GraphStore
+import org.poc.objs.core.persistence.NamedGraphStore
+import org.poc.objs.gremlin.core.GremlinEngine
+import org.poc.objs.gremlin.core.GremlinItem
 import org.poc.objs.sbom.domain.MiCompositionSection
 import org.poc.objs.sbom.domain.MiDependencyEdge
 import org.poc.objs.sbom.domain.MiDuplicateSignal
@@ -31,9 +31,9 @@ import java.util.UUID
 class MiReportService(
     private val portfolios: PortfolioService,
     private val graphs: PortfolioGraphSelector,
-    private val store: BoMGraphStore,
-    private val namedGraphs: BoMNamedGraphStore,
-    private val engine: BoMGremlinEngine = BoMGremlinEngine(),
+    private val store: GraphStore,
+    private val namedGraphs: NamedGraphStore,
+    private val engine: GremlinEngine = GremlinEngine(),
 ) {
     fun run(portfolioId: UUID, request: RunMiReportRequest): MiReportResult {
         val report =
@@ -92,15 +92,15 @@ class MiReportService(
         if (graphIds.isEmpty()) {
             return MiCompositionSection(emptyMap(), 0, 0)
         }
-        val matcher = BoMGraphIdsMatcher(graphIds)
+        val matcher = GraphIdsMatcher(graphIds)
         val byType = engine.selectAndEval(store, matcher, "g.V().label().groupCount()")
         val typeCounts: Map<String, Long> =
             when (val item = byType.items.singleOrNull()) {
-                is BoMGremlinItem.MapValue ->
+                is GremlinItem.MapValue ->
                     item.value.mapKeys { it.key.toString() }.mapValues { (_, v) ->
                         (v as? Number)?.toLong() ?: 0L
                     }
-                is BoMGremlinItem.Scalar ->
+                is GremlinItem.Scalar ->
                     (item.value as? Map<*, *>)?.entries?.associate { (k, v) ->
                         k.toString() to ((v as? Number)?.toLong() ?: 0L)
                     } ?: emptyMap()
@@ -163,7 +163,7 @@ class MiReportService(
         nameByApp: Map<UUID, String>,
     ): List<MiSharedAsset> {
         val owners = linkedMapOf<UUID, MutableSet<UUID>>()
-        val entityById = linkedMapOf<UUID, BoMEntity>()
+        val entityById = linkedMapOf<UUID, Entity>()
         for (app in apps) {
             for (gId in graphByApp.getValue(app.applicationId)) {
                 for (id in namedGraphs.listEntityIdsInGraph(gId)) {
@@ -193,7 +193,7 @@ class MiReportService(
         if (graphIds.isEmpty()) {
             return emptyList<MiDuplicateSignal>() to emptyList()
         }
-        val contents = store.select(BoMGraphIdsMatcher(graphIds))
+        val contents = store.select(GraphIdsMatcher(graphIds))
         val inScope = contents.entities.mapNotNull { it.id }.toSet()
         val dupes = mutableListOf<MiDuplicateSignal>()
         for (type in contents.entities.map { it.type }.distinct()) {

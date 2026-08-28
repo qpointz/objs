@@ -1,6 +1,6 @@
 package org.poc.objs.core.seed
 
-import org.poc.objs.core.validation.BoMValidationIssue
+import org.poc.objs.core.validation.ValidationIssue
 
 class SeedDocumentParseException @JvmOverloads constructor(
     val documentIndex: Int,
@@ -10,7 +10,7 @@ class SeedDocumentParseException @JvmOverloads constructor(
 
 class SeedDocumentValidationException(
     val documentIndex: Int,
-    val issues: List<BoMValidationIssue>,
+    val issues: List<ValidationIssue>,
     message: String,
 ) : RuntimeException("document[$documentIndex]: $message")
 

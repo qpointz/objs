@@ -5,7 +5,7 @@ and authoring object-schema DSL definitions.
 
 ## Shared graph context
 
-There is **no global graph** and **no pack chrome**. Graphs are durable `bom_graph` headers with
+There is **no global graph** and **no pack chrome**. Graphs are durable `objs_graph` headers with
 member entities and graph-local edges (see [`graph/model.md`](graph/model.md)).
 
 **Explorer · Objects · Query** share one **graph context** (`GraphContextProvider`). Changing context

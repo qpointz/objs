@@ -1,6 +1,6 @@
 package org.poc.objs.core.seed
 
-import org.poc.objs.core.validation.BoMValidationIssue
+import org.poc.objs.core.validation.ValidationIssue
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.io.InputStream
@@ -58,7 +58,7 @@ class SeedImporter(
                     kind = doc.kind,
                     apiVersion = doc.apiVersion,
                     errors = listOf(
-                        BoMValidationIssue(
+                        ValidationIssue(
                             "SEED_KIND_NOT_ALLOWED",
                             "Seed kind '${doc.kind}' is not allowed for this endpoint",
                             path = "document[${doc.index}].kind",
@@ -74,7 +74,7 @@ class SeedImporter(
                     kind = doc.kind,
                     apiVersion = doc.apiVersion,
                     errors = listOf(
-                        BoMValidationIssue(
+                        ValidationIssue(
                             "SEED_KIND_UNSUPPORTED",
                             "Unsupported seed kind '${doc.kind}'",
                             path = "document[${doc.index}].kind",
@@ -91,7 +91,7 @@ class SeedImporter(
                     kind = doc.kind,
                     apiVersion = doc.apiVersion,
                     errors = listOf(
-                        BoMValidationIssue(
+                        ValidationIssue(
                             "SEED_DOCUMENT_INVALID",
                             ex.message ?: "Invalid seed document",
                             path = "document[${doc.index}]",
@@ -104,7 +104,7 @@ class SeedImporter(
                     kind = doc.kind,
                     apiVersion = doc.apiVersion,
                     errors = listOf(
-                        BoMValidationIssue(
+                        ValidationIssue(
                             "SEED_DOCUMENT_INVALID",
                             ex.message ?: "Invalid seed document",
                             path = "document[${doc.index}]",
@@ -137,7 +137,7 @@ class SeedImporter(
                         identity = doc.identity,
                         errors = ex.issues.ifEmpty {
                             listOf(
-                                BoMValidationIssue(
+                                ValidationIssue(
                                     "SEED_APPLY_FAILED",
                                     ex.message ?: "Seed apply failed",
                                     path = "document[${doc.document.index}]",
@@ -155,7 +155,7 @@ class SeedImporter(
                         apiVersion = doc.document.apiVersion,
                         identity = doc.identity,
                         errors = listOf(
-                            BoMValidationIssue(
+                            ValidationIssue(
                                 "SEED_APPLY_FAILED",
                                 ex.message ?: "Seed apply failed",
                                 path = "document[${doc.document.index}]",
@@ -177,7 +177,7 @@ class SeedImporter(
                 kind = doc.kind,
                 apiVersion = doc.apiVersion,
                 errors = listOf(
-                    BoMValidationIssue(
+                    ValidationIssue(
                         "SEED_APIVERSION_MISSING",
                         "apiVersion is required",
                         path = "document[${doc.index}].apiVersion",
@@ -191,7 +191,7 @@ class SeedImporter(
                 kind = doc.kind,
                 apiVersion = doc.apiVersion,
                 errors = listOf(
-                    BoMValidationIssue(
+                    ValidationIssue(
                         "SEED_APIVERSION_UNSUPPORTED",
                         "Unsupported apiVersion '${doc.apiVersion}'",
                         path = "document[${doc.index}].apiVersion",
@@ -205,7 +205,7 @@ class SeedImporter(
                 kind = doc.kind,
                 apiVersion = doc.apiVersion,
                 errors = listOf(
-                    BoMValidationIssue(
+                    ValidationIssue(
                         "SEED_KIND_MISSING",
                         "kind is required",
                         path = "document[${doc.index}].kind",

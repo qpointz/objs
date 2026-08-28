@@ -3,7 +3,7 @@
 **Status:** C-18 shipped schema  
 **Source of truth:** Flyway SQL + JPA in `objs-core`, not the story [`ER.md`](../../workitems/completed/20260819-versions-and-snapshots/ER.md) (that file is the historical lock).  
 **Vendors:** PostgreSQL (JSONB + GIN) and H2 (JSON, no GIN). Same tables.  
-**Greenfield only.** Recreate the database (drop `bom_*` and both Flyway histories). No data migration.
+V6 migrates existing databases from the former `bom_*` table names to the `objs_*` namespace.
 
 Objs Flyway: `classpath:org/poc/objs/core/db/migration/{vendor}` into `flyway_schema_history_objs`.
 
@@ -13,6 +13,8 @@ Objs Flyway: `classpath:org/poc/objs/core/db/migration/{vendor}` into `flyway_sc
 | V2 | `V2__catalog_metadata.sql` | Catalog envelope tags/attributes/verbs |
 | V3 | `V3__audit_clocks.sql` | `created_at` / `updated_at` on HEAD tables that lacked them |
 | V4 | `V4__version_store.sql` | `*_version` tables, nullable `head_version`, deep-freeze pins |
+| V5 | `V5__graph_version_member_entity_index.sql` | Reverse lookup index for deep-freeze pins |
+| V6 | `V6__rename_bom_tables_to_objs.sql` | Rename all Objs persistence tables to the `objs_*` namespace |
 
 Live GET never joins `*_version`. Default persist is in-place HEAD (`ExplicitOnlyVersioningStrategy`). Capture is `createDeepGraphVersion` (Composer **Create version**). `clone()` copies HEAD into new ids and does not copy `*_version`.
 
@@ -24,28 +26,28 @@ SQL column `type` is drawn as `obj_type` (`type` breaks Mermaid ER).
 erDiagram
   direction LR
 
-  bom_entity_schema ||--o{ bom_entity : "HEAD schema"
-  bom_entity_schema ||--o{ bom_entity_version : "history schema"
-  bom_entity_schema ||--o{ bom_edge_schema : "optional props schema"
-  bom_edge_schema }o--o{ bom_graph_edge : "allow-list HEAD"
-  bom_edge_schema }o--o{ bom_graph_edge_version : "allow-list history"
+  objs_entity_schema ||--o{ objs_entity : "HEAD schema"
+  objs_entity_schema ||--o{ objs_entity_version : "history schema"
+  objs_entity_schema ||--o{ objs_edge_schema : "optional props schema"
+  objs_edge_schema }o--o{ objs_graph_edge : "allow-list HEAD"
+  objs_edge_schema }o--o{ objs_graph_edge_version : "allow-list history"
 
-  bom_entity ||--o{ bom_entity_version : "head_and_history"
-  bom_entity ||--o{ bom_graph_entity : "live member"
-  bom_entity ||--o{ bom_graph_edge : "live endpoint"
-  bom_entity_version ||--o{ bom_graph_version_member : "pinned entity version"
+  objs_entity ||--o{ objs_entity_version : "head_and_history"
+  objs_entity ||--o{ objs_graph_entity : "live member"
+  objs_entity ||--o{ objs_graph_edge : "live endpoint"
+  objs_entity_version ||--o{ objs_graph_version_member : "pinned entity version"
 
-  bom_graph ||--o{ bom_graph_version : "head_and_history"
-  bom_graph ||--o{ bom_graph_entity : "members"
-  bom_graph ||--o{ bom_graph_edge : "owns"
+  objs_graph ||--o{ objs_graph_version : "head_and_history"
+  objs_graph ||--o{ objs_graph_entity : "members"
+  objs_graph ||--o{ objs_graph_edge : "owns"
 
-  bom_graph_version ||--o{ bom_graph_version_member : "deep members"
-  bom_graph_version ||--o{ bom_graph_version_edge : "deep edges"
+  objs_graph_version ||--o{ objs_graph_version_member : "deep members"
+  objs_graph_version ||--o{ objs_graph_version_edge : "deep edges"
 
-  bom_graph_edge ||--o{ bom_graph_edge_version : "head_and_history"
-  bom_graph_edge_version ||--o{ bom_graph_version_edge : "pinned edge version"
+  objs_graph_edge ||--o{ objs_graph_edge_version : "head_and_history"
+  objs_graph_edge_version ||--o{ objs_graph_version_edge : "pinned edge version"
 
-  bom_entity {
+  objs_entity {
     uuid id PK
     bigint head_version FK
     string obj_type
@@ -56,7 +58,7 @@ erDiagram
     datetime updated_at
   }
 
-  bom_entity_version {
+  objs_entity_version {
     uuid entity_id PK
     bigint version PK
     string obj_type
@@ -68,7 +70,7 @@ erDiagram
     datetime head_deleted_at
   }
 
-  bom_graph {
+  objs_graph {
     uuid id PK
     bigint head_version FK
     string annotations
@@ -76,7 +78,7 @@ erDiagram
     datetime updated_at
   }
 
-  bom_graph_version {
+  objs_graph_version {
     uuid graph_id PK
     bigint version PK
     string graph_annotations
@@ -86,7 +88,7 @@ erDiagram
     datetime head_deleted_at
   }
 
-  bom_graph_version_member {
+  objs_graph_version_member {
     uuid graph_id PK
     bigint graph_version PK
     uuid entity_id PK
@@ -95,7 +97,7 @@ erDiagram
     datetime updated_at
   }
 
-  bom_graph_version_edge {
+  objs_graph_version_edge {
     uuid graph_id PK
     bigint graph_version PK
     uuid edge_id PK
@@ -104,14 +106,14 @@ erDiagram
     datetime updated_at
   }
 
-  bom_graph_entity {
+  objs_graph_entity {
     uuid graph_id PK
     uuid entity_id PK
     datetime created_at
     datetime updated_at
   }
 
-  bom_graph_edge {
+  objs_graph_edge {
     uuid id PK
     uuid graph_id FK
     bigint head_version FK
@@ -125,7 +127,7 @@ erDiagram
     datetime updated_at
   }
 
-  bom_graph_edge_version {
+  objs_graph_edge_version {
     uuid edge_id PK
     bigint version PK
     uuid graph_id
@@ -145,9 +147,9 @@ erDiagram
 
 | Kind | Tables | Read path |
 |------|--------|-----------|
-| Live HEAD | `bom_entity`, `bom_graph`, `bom_graph_entity`, `bom_graph_edge` | Graph GET / pool GET |
-| History | `bom_entity_version`, `bom_graph_version`, `bom_graph_edge_version` | Capture + reconstruct |
-| Deep freeze children | `bom_graph_version_member`, `bom_graph_version_edge` | Pins original entity/edge **ids** + `version` |
+| Live HEAD | `objs_entity`, `objs_graph`, `objs_graph_entity`, `objs_graph_edge` | Graph GET / pool GET |
+| History | `objs_entity_version`, `objs_graph_version`, `objs_graph_edge_version` | Capture + reconstruct |
+| Deep freeze children | `objs_graph_version_member`, `objs_graph_version_edge` | Pins original entity/edge **ids** + `version` |
 
 `head_version` is nullable. NULL means never captured. When set, composite FK `(id, head_version) → *_version(parent_id, version)` (MATCH SIMPLE: NULL skips the check).
 
@@ -155,25 +157,25 @@ Version PK is `(parent_id, version BIGINT)`. `version` is **not** globally uniqu
 
 Version parent ids have **no** FK back to HEAD. After DELETE HEAD, reconstruct still works.
 
-V4 drops `bom_graph_edge` FKs to `bom_entity` (source/target) so deleting HEAD entities does not `RESTRICT` on live edges; pins remain on `*_version`.
+V4 drops `objs_graph_edge` FKs to `objs_entity` (source/target) so deleting HEAD entities does not `RESTRICT` on live edges; pins remain on `*_version`.
 
 ## Clocks
 
-Every `bom_*` table has `created_at` / `updated_at` `TIMESTAMP NOT NULL`. Persist owns values; client JSON is ignored. Version-row `updated_at` equals `created_at` (append-only). Graph HEAD `updated_at` also bumps on live membership/edge change.
+Every `objs_*` table has `created_at` / `updated_at` `TIMESTAMP NOT NULL`. Persist owns values; client JSON is ignored. Version-row `updated_at` equals `created_at` (append-only). Graph HEAD `updated_at` also bumps on live membership/edge change.
 
 ## Indexes
 
-- `bom_entity (type, schema_version)`
-- `bom_graph_entity (entity_id)`
-- `bom_graph_edge (graph_id)`, `(source_id)`, `(target_id)`, `(role)`, `(graph_id, source_id)`, `(graph_id, target_id)`
-- PostgreSQL GIN `jsonb_path_ops` on `bom_entity.annotations` and `bom_graph.annotations`
-- `bom_seed_ledger (last_attempt_status)`
+- `objs_entity (type, schema_version)`
+- `objs_graph_entity (entity_id)`
+- `objs_graph_edge (graph_id)`, `(source_id)`, `(target_id)`, `(role)`, `(graph_id, source_id)`, `(graph_id, target_id)`
+- PostgreSQL GIN `jsonb_path_ops` on `objs_entity.annotations` and `objs_graph.annotations`
+- `objs_seed_ledger (last_attempt_status)`
 
 ## Catalog / seed (unchanged shape)
 
-`bom_entity_schema` PK `(type, version)`; V2 adds `tags`, `attributes`.  
-`bom_edge_schema` PK `(source_type, role, target_type)`; V2 adds description, verbs, tags, attributes.  
-`bom_seed_ledger` PK `seed_key`.
+`objs_entity_schema` PK `(type, version)`; V2 adds `tags`, `attributes`.
+`objs_edge_schema` PK `(source_type, role, target_type)`; V2 adds description, verbs, tags, attributes.
+`objs_seed_ledger` PK `seed_key`.
 
 ## Versioning SPI
 

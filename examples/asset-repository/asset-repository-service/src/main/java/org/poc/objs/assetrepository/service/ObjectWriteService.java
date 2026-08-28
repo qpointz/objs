@@ -12,23 +12,23 @@ import org.poc.objs.assetrepository.spi.EventExtension;
 import org.poc.objs.assetrepository.spi.PreprocessingExtension;
 import org.poc.objs.assetrepository.spi.WriteBatch;
 import org.poc.objs.assetrepository.web.dto.ApiDtos;
-import org.poc.objs.core.domain.BoMCatalogSupport;
-import org.poc.objs.core.domain.BoMEdge;
-import org.poc.objs.core.domain.BoMEntity;
-import org.poc.objs.core.domain.BoMGraphContents;
-import org.poc.objs.core.domain.BoMEdgeMutation;
-import org.poc.objs.core.domain.BoMEntityMutation;
-import org.poc.objs.core.domain.BoMGraphMutation;
-import org.poc.objs.core.domain.BoMIdentityProjection;
-import org.poc.objs.core.domain.BoMSchema;
-import org.poc.objs.core.domain.BoMSchemaCatalog;
-import org.poc.objs.core.domain.BoMSchemaUsage;
-import org.poc.objs.core.match.BoMMatcher;
-import org.poc.objs.core.match.BoMMatcherDsl;
-import org.poc.objs.core.match.BoMMatcherFormat;
-import org.poc.objs.core.persistence.BoMGraphStore;
-import org.poc.objs.core.persistence.BoMNamedGraphStore;
-import org.poc.objs.core.validation.BoMValidationException;
+import org.poc.objs.core.domain.CatalogSupport;
+import org.poc.objs.api.domain.Edge;
+import org.poc.objs.api.domain.Entity;
+import org.poc.objs.api.domain.GraphContents;
+import org.poc.objs.api.domain.EdgeMutation;
+import org.poc.objs.api.domain.EntityMutation;
+import org.poc.objs.api.domain.GraphMutation;
+import org.poc.objs.core.domain.IdentityProjection;
+import org.poc.objs.core.domain.Schema;
+import org.poc.objs.core.domain.SchemaCatalog;
+import org.poc.objs.core.domain.SchemaUsage;
+import org.poc.objs.core.match.Matcher;
+import org.poc.objs.core.match.MatcherDsl;
+import org.poc.objs.core.match.MatcherFormat;
+import org.poc.objs.core.persistence.GraphStore;
+import org.poc.objs.core.persistence.NamedGraphStore;
+import org.poc.objs.core.validation.ValidationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,19 +36,19 @@ import org.springframework.transaction.annotation.Transactional;
 public class ObjectWriteService {
 
     private final CollectionService collections;
-    private final BoMNamedGraphStore namedGraphs;
-    private final BoMGraphStore graphStore;
-    private final BoMSchemaCatalog schemas;
-    private final BoMCatalogSupport catalog;
+    private final NamedGraphStore namedGraphs;
+    private final GraphStore graphStore;
+    private final SchemaCatalog schemas;
+    private final CatalogSupport catalog;
     private final List<PreprocessingExtension> preprocessors;
     private final List<EventExtension> eventExtensions;
 
     public ObjectWriteService(
             CollectionService collections,
-            BoMNamedGraphStore namedGraphs,
-            BoMGraphStore graphStore,
-            BoMSchemaCatalog schemas,
-            BoMCatalogSupport catalog,
+            NamedGraphStore namedGraphs,
+            GraphStore graphStore,
+            SchemaCatalog schemas,
+            CatalogSupport catalog,
             List<PreprocessingExtension> preprocessors,
             List<EventExtension> eventExtensions
     ) {
@@ -79,10 +79,10 @@ public class ObjectWriteService {
         CollectionEntity collection = collections.require(collectionId);
         findInCollection(collection, objectId);
         List<ApiDtos.ObjectRelationDto> out = new ArrayList<>();
-        for (BoMEdge edge : namedGraphs.listIncidentEdges(objectId, collection.getGraphId())) {
+        for (Edge edge : namedGraphs.listIncidentEdges(objectId, collection.getGraphId())) {
             boolean outgoing = objectId.equals(edge.getSource());
             UUID relatedId = outgoing ? edge.getTarget() : edge.getSource();
-            BoMEntity related = graphStore.getEntity(relatedId);
+            Entity related = graphStore.getEntity(relatedId);
             if (related != null) {
                 out.add(new ApiDtos.ObjectRelationDto(
                         edge.getId(),
@@ -103,7 +103,7 @@ public class ObjectWriteService {
         if (expr == null || expr.isBlank()) {
             return listObjects(collectionId);
         }
-        BoMGraphContents contents =
+        GraphContents contents =
                 graphStore.selectInGraph(collection.getGraphId(), matcher(expr));
         return contents.getEntities().stream().map(this::toDto).toList();
     }
@@ -137,7 +137,7 @@ public class ObjectWriteService {
 
         Map<String, UUID> keyToId = new LinkedHashMap<>();
         for (int idx = 0; idx < batch.getObjects().size(); idx++) {
-            BoMEntity entity = batch.getObjects().get(idx).entity();
+            Entity entity = batch.getObjects().get(idx).entity();
             if (entity.getId() == null) {
                 entity.setId(UUID.randomUUID());
             }
@@ -152,7 +152,7 @@ public class ObjectWriteService {
             for (ApiDtos.RelationInput rel : request.relations()) {
                 UUID source = resolveKey(keyToId, rel.sourceKey());
                 UUID target = resolveKey(keyToId, rel.targetKey());
-                batch.getEdges().add(new BoMEdge(null, null, source, target, rel.role(), null, null, null));
+                batch.getEdges().add(new Edge(null, null, source, target, rel.role(), null, null, null));
             }
         }
 
@@ -168,7 +168,7 @@ public class ObjectWriteService {
 
         WriteBatch batch = new WriteBatch();
         batch.getDeleteEntityIds().add(objectId);
-        BoMEntity stub = newEntity(objectId, "Deleted", "0", new HashMap<>());
+        Entity stub = newEntity(objectId, "Deleted", "0", new HashMap<>());
         batch.getObjects().add(new WriteBatch.PendingObject(stub, EventExtension.ObjectChange.Op.DELETE));
         batch = runPreprocess(collection, batch);
         persist(collection, batch);
@@ -231,8 +231,8 @@ public class ObjectWriteService {
     }
 
     @SuppressWarnings("unchecked")
-    private BoMEntity newEntity(UUID id, String type, String version, Map<String, Object> payload) {
-        return new BoMEntity(
+    private Entity newEntity(UUID id, String type, String version, Map<String, Object> payload) {
+        return new Entity(
                 id,
                 type,
                 version,
@@ -246,11 +246,11 @@ public class ObjectWriteService {
             String version,
             Map<String, Object> payload
     ) {
-        BoMSchema schema = schemas.get(type, version);
+        Schema schema = schemas.get(type, version);
         if (schema == null) {
             throw new IllegalArgumentException("Unknown schema " + type + "@" + version);
         }
-        Map<String, ?> wanted = BoMIdentityProjection.INSTANCE.project(schema.getContentSchema(), payload);
+        Map<String, ?> wanted = IdentityProjection.INSTANCE.project(schema.getContentSchema(), payload);
         if (wanted.isEmpty()) {
             return null;
         }
@@ -258,7 +258,7 @@ public class ObjectWriteService {
         Map<String, Object> identity = (Map<String, Object>) wanted;
         java.util.Set<UUID> members = new java.util.HashSet<>(namedGraphs.listEntityIdsInGraph(collection.getGraphId()));
         UUID match = null;
-        for (BoMEntity entity : graphStore.findEntitiesByIdentity(type, identity)) {
+        for (Entity entity : graphStore.findEntitiesByIdentity(type, identity)) {
             UUID id = entity.getId();
             if (id == null || !members.contains(id)) {
                 continue;
@@ -272,19 +272,19 @@ public class ObjectWriteService {
     }
 
     private void persist(CollectionEntity collection, WriteBatch batch) {
-        BoMEntityMutation entities = new BoMEntityMutation();
+        EntityMutation entities = new EntityMutation();
         for (WriteBatch.PendingObject pending : batch.getObjects()) {
             if (pending.op() != EventExtension.ObjectChange.Op.DELETE) {
                 entities.getSet().add(pending.entity());
             }
         }
-        BoMEdgeMutation edges = new BoMEdgeMutation();
+        EdgeMutation edges = new EdgeMutation();
         edges.getSet().addAll(batch.getEdges());
         entities.getUnset().addAll(batch.getDeleteEntityIds());
         edges.getUnset().addAll(batch.getDeleteEdgeIds());
-        var result = namedGraphs.mutate(collection.getGraphId(), new BoMGraphMutation(entities, edges));
+        var result = namedGraphs.mutate(collection.getGraphId(), new GraphMutation(entities, edges));
         if (!result.isValid()) {
-            throw new BoMValidationException("write", result);
+            throw new ValidationException("write", result);
         }
     }
 
@@ -312,7 +312,7 @@ public class ObjectWriteService {
                 .orElseThrow(() -> new java.util.NoSuchElementException("Object not found: " + objectId));
     }
 
-    private ApiDtos.ObjectDto toDto(BoMEntity entity) {
+    private ApiDtos.ObjectDto toDto(Entity entity) {
         Map<String, Object> payload = new LinkedHashMap<>();
         if (entity.getPayload() != null) {
             payload.putAll(entity.getPayload());
@@ -322,9 +322,9 @@ public class ObjectWriteService {
 
     private String latestSchemaVersion(String type) {
         return schemas.listByType(type).stream()
-                .filter(schema -> schema.getUsage() == BoMSchemaUsage.ENTITY)
+                .filter(schema -> schema.getUsage() == SchemaUsage.ENTITY)
                 .max((a, b) -> compareSchemaVersions(a.getVersion(), b.getVersion()))
-                .map(BoMSchema::getVersion)
+                .map(Schema::getVersion)
                 .orElse("1.0.0");
     }
 
@@ -350,9 +350,9 @@ public class ObjectWriteService {
         }
     }
 
-    private static BoMMatcher matcher(String objExpr) {
+    private static Matcher matcher(String objExpr) {
         String json = "{\"obj-expr\":\"" + objExpr.replace("\\", "\\\\").replace("\"", "\\\"") + "\"}";
-        return new BoMMatcherDsl().decode(json, BoMMatcherFormat.JSON);
+        return new MatcherDsl().decode(json, MatcherFormat.JSON);
     }
 
     private String buildFilterExpr(Map<String, String> filters) {

@@ -3,23 +3,23 @@ package org.poc.objs.gremlin.core.materialize
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
-import org.poc.objs.core.domain.BoMEdge
-import org.poc.objs.core.domain.BoMEntity
-import org.poc.objs.core.domain.BoMGraphContents
+import org.poc.objs.api.domain.Edge
+import org.poc.objs.api.domain.Entity
+import org.poc.objs.api.domain.GraphContents
 import java.util.UUID
 
 class EnvelopeMaterializationStrategyTest {
 
-    private val materializer = BoMGremlinMaterializer()
+    private val materializer = GremlinMaterializer()
 
     @Test
     fun shouldMaterializeVerticesAndEdges_whenEnvelope() {
         val a = UUID.fromString("11111111-1111-1111-1111-111111111111")
         val b = UUID.fromString("22222222-2222-2222-2222-222222222222")
         val e = UUID.fromString("33333333-3333-3333-3333-333333333333")
-        val subgraph = BoMGraphContents(
+        val subgraph = GraphContents(
             entities = listOf(
-                BoMEntity(
+                Entity(
                     id = a,
                     type = "Component",
                     schemaVersion = "1.0.0",
@@ -29,7 +29,7 @@ class EnvelopeMaterializationStrategyTest {
                     ),
                     annotations = mutableMapOf("env" to "test"),
                 ),
-                BoMEntity(
+                Entity(
                     id = b,
                     type = "Component",
                     schemaVersion = "1.0.0",
@@ -37,7 +37,7 @@ class EnvelopeMaterializationStrategyTest {
                 ),
             ),
             edges = listOf(
-                BoMEdge(
+                Edge(
                     id = e,
                     source = a,
                     target = b,
@@ -79,8 +79,8 @@ class EnvelopeMaterializationStrategyTest {
     fun shouldDefaultToEnvelope_whenStrategyOmitted() {
         val id = UUID.randomUUID()
         val graph = materializer.materialize(
-            BoMGraphContents(
-                entities = listOf(BoMEntity(id = id, type = "X", schemaVersion = "1")),
+            GraphContents(
+                entities = listOf(Entity(id = id, type = "X", schemaVersion = "1")),
                 edges = emptyList(),
             ),
         )
@@ -91,7 +91,7 @@ class EnvelopeMaterializationStrategyTest {
     fun shouldFail_whenUnknownStrategy() {
         assertThatThrownBy {
             materializer.materialize(
-                BoMGraphContents(entities = emptyList(), edges = emptyList()),
+                GraphContents(entities = emptyList(), edges = emptyList()),
                 strategy = "flatten",
             )
         }.isInstanceOf(IllegalArgumentException::class.java)
@@ -102,8 +102,8 @@ class EnvelopeMaterializationStrategyTest {
     fun shouldFail_whenEntityIdNull() {
         assertThatThrownBy {
             materializer.materialize(
-                BoMGraphContents(
-                    entities = listOf(BoMEntity(type = "X", schemaVersion = "1")),
+                GraphContents(
+                    entities = listOf(Entity(type = "X", schemaVersion = "1")),
                     edges = emptyList(),
                 ),
             )

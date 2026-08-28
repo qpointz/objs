@@ -1,11 +1,11 @@
 package org.poc.objs.core.seed
 
-import org.poc.objs.core.domain.BoMEdge
-import org.poc.objs.core.domain.BoMEntity
-import org.poc.objs.core.domain.BoMGraph
-import org.poc.objs.core.domain.BoMGraphMutation
-import org.poc.objs.core.domain.BoMGraphSpec
-import org.poc.objs.core.persistence.BoMNamedGraphStore
+import org.poc.objs.api.domain.Edge
+import org.poc.objs.api.domain.Entity
+import org.poc.objs.api.domain.Graph
+import org.poc.objs.api.domain.GraphMutation
+import org.poc.objs.core.domain.GraphSpec
+import org.poc.objs.core.persistence.NamedGraphStore
 import org.springframework.stereotype.Component
 import java.util.UUID
 
@@ -13,7 +13,7 @@ data class SeedGraphPayload(
     val name: String,
     val graphId: UUID,
     val annotations: Map<String, String>,
-    val graph: BoMGraph,
+    val graph: Graph,
     val entityKeys: Map<String, UUID>,
     val edgeKeys: Map<String, UUID>,
 )
@@ -21,13 +21,13 @@ data class SeedGraphPayload(
 /**
  * Seed handler for `kind: Graph`.
  *
- * Each Graph document becomes one `bom_graph` (header + membership + graph-local edges). Optional
+ * Each Graph document becomes one `objs_graph` (header + membership + graph-local edges). Optional
  * document fields: `id` (graph UUID), `annotations` (header annotations). When `id` is omitted,
  * a stable UUIDv3 is derived from `graph-seed:<name>`.
  */
 @Component
 class GraphSeedHandler(
-    private val namedGraphs: BoMNamedGraphStore,
+    private val namedGraphs: NamedGraphStore,
 ) : SeedDocumentHandler {
     override val kind: String = SEED_KIND_GRAPH
     override val applyOrder: Int = 30
@@ -42,7 +42,7 @@ class GraphSeedHandler(
         val edgesRaw = document.raw["edges"] as? List<*> ?: emptyList<Any?>()
 
         val entityKeys = linkedMapOf<String, UUID>()
-        val entities = mutableListOf<BoMEntity>()
+        val entities = mutableListOf<Entity>()
         entitiesRaw.forEachIndexed { i, raw ->
             val map = asObject(raw, document.index, "entities[$i]")
             val key = requireText(map, "key", document.index, "entities[$i].key")
@@ -52,7 +52,7 @@ class GraphSeedHandler(
             val id = parseOptionalUuid(map["id"], document.index, "entities[$i].id")
                 ?: UuidV5.entityId(name, key)
             entityKeys[key] = id
-            entities += BoMEntity(
+            entities += Entity(
                 id = id,
                 type = requireText(map, "type", document.index, "entities[$i].type"),
                 schemaVersion = requireText(map, "schemaVersion", document.index, "entities[$i].schemaVersion"),
@@ -62,7 +62,7 @@ class GraphSeedHandler(
         }
 
         val edgeKeys = linkedMapOf<String, UUID>()
-        val edges = mutableListOf<BoMEdge>()
+        val edges = mutableListOf<Edge>()
         edgesRaw.forEachIndexed { i, raw ->
             val map = asObject(raw, document.index, "edges[$i]")
             val key = requireText(map, "key", document.index, "edges[$i].key")
@@ -85,7 +85,7 @@ class GraphSeedHandler(
                 ?: UuidV5.edgeId(name, key)
             edgeKeys[key] = id
             val properties = map["properties"]?.let { stringKeyedMap(it).toMutableMap() }
-            edges += BoMEdge(
+            edges += Edge(
                 id = id,
                 graphId = graphId,
                 source = sourceId,
@@ -104,7 +104,7 @@ class GraphSeedHandler(
                 name = name,
                 graphId = graphId,
                 annotations = annotations,
-                graph = BoMGraph(entities = entities, edges = edges),
+                graph = Graph(entities = entities, edges = edges),
                 entityKeys = entityKeys,
                 edgeKeys = edgeKeys,
             ),
@@ -115,7 +115,7 @@ class GraphSeedHandler(
         val payload = parsed.payload as SeedGraphPayload
         if (namedGraphs.get(payload.graphId) == null) {
             namedGraphs.create(
-                BoMGraphSpec(
+                GraphSpec(
                     id = payload.graphId,
                     annotations = payload.annotations,
                 ),
@@ -123,7 +123,7 @@ class GraphSeedHandler(
         }
         val result = namedGraphs.mutate(
             payload.graphId,
-            BoMGraphMutation.of(payload.graph),
+            GraphMutation.of(payload.graph),
         )
         if (!result.isValid) {
             throw SeedDocumentValidationException(
@@ -143,8 +143,8 @@ class GraphSeedHandler(
 
     fun serialize(
         name: String,
-        entities: List<BoMEntity>,
-        edges: List<BoMEdge>,
+        entities: List<Entity>,
+        edges: List<Edge>,
         entityKeys: Map<UUID, String>,
         edgeKeys: Map<UUID, String>,
         graphId: UUID? = null,

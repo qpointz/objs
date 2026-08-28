@@ -1,7 +1,7 @@
 package org.poc.objs.service.web
 
-import org.poc.objs.core.validation.BoMValidationIssue
-import org.poc.objs.core.validation.BoMValidationResult
+import org.poc.objs.core.validation.ValidationIssue
+import org.poc.objs.core.validation.ValidationResult
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.HttpMessageNotReadableException
@@ -12,11 +12,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
 @RestControllerAdvice(assignableTypes = [ObjsRegistryController::class])
 class ObjsRegistryExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException::class)
-    fun handleUnreadable(ex: HttpMessageNotReadableException): ResponseEntity<BoMValidationResult> {
+    fun handleUnreadable(ex: HttpMessageNotReadableException): ResponseEntity<ValidationResult> {
         val detail = ex.mostSpecificCause.message ?: ex.message ?: "Malformed request body"
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
-            BoMValidationResult.of(
-                BoMValidationIssue("SCHEMA_REQUEST_INVALID", detail),
+            ValidationResult.of(
+                ValidationIssue("SCHEMA_REQUEST_INVALID", detail),
             ),
         )
     }

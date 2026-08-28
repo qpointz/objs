@@ -1,15 +1,15 @@
 package org.poc.objs.sbom.service
 
-import org.poc.objs.core.domain.BoMEntity
-import org.poc.objs.core.domain.BoMGraph
-import org.poc.objs.core.domain.BoMSchema
-import org.poc.objs.core.domain.BoMCatalogSupport
-import org.poc.objs.core.domain.BoMSchemaCatalog
-import org.poc.objs.core.domain.BoMSchemaUsage
-import org.poc.objs.core.match.BoMObjExprMatcher
-import org.poc.objs.core.persistence.BoMGraphStore
-import org.poc.objs.core.persistence.BoMNamedGraphStore
-import org.poc.objs.core.validation.BoMValidationException
+import org.poc.objs.api.domain.Entity
+import org.poc.objs.api.domain.Graph
+import org.poc.objs.core.domain.Schema
+import org.poc.objs.core.domain.CatalogSupport
+import org.poc.objs.core.domain.SchemaCatalog
+import org.poc.objs.core.domain.SchemaUsage
+import org.poc.objs.core.match.ObjExprMatcher
+import org.poc.objs.core.persistence.GraphStore
+import org.poc.objs.core.persistence.NamedGraphStore
+import org.poc.objs.core.validation.ValidationException
 import org.poc.objs.sbom.annotations.SbomAnnotationKeys
 import org.poc.objs.sbom.domain.AssetDetailView
 import org.poc.objs.sbom.domain.AssetDuplicateGroup
@@ -36,11 +36,11 @@ import java.util.UUID
  */
 @Service
 class AssetInventoryService(
-    private val store: BoMGraphStore,
-    private val namedGraphs: BoMNamedGraphStore,
-    private val schemas: BoMSchemaCatalog,
+    private val store: GraphStore,
+    private val namedGraphs: NamedGraphStore,
+    private val schemas: SchemaCatalog,
     private val assetTypes: AssetTypeCatalogService,
-    private val catalog: BoMCatalogSupport,
+    private val catalog: CatalogSupport,
     private val applications: SbomApplicationRepository,
     private val versions: SbomApplicationVersionRepository,
     private val boms: SbomApplicationSbomRepository,
@@ -51,10 +51,10 @@ class AssetInventoryService(
         val knownSet = assetTypes.listEntityTypes().map { it.type }.toSet()
         if (knownSet.isEmpty()) return emptyList()
         return try {
-            store.selectFromPool(BoMObjExprMatcher(matcherExpr(request))).entities
+            store.selectFromPool(ObjExprMatcher(matcherExpr(request))).entities
                 .filter { it.type in knownSet }
                 .map(AssetViews::asset)
-        } catch (ex: BoMValidationException) {
+        } catch (ex: ValidationException) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, ex.message)
         }
     }
@@ -64,8 +64,8 @@ class AssetInventoryService(
         val expr = matcherExpr(request)
         val paged =
             try {
-                store.selectFromPool(BoMObjExprMatcher(expr), org.poc.objs.core.domain.BoMPageRequest.of(page, size))
-            } catch (ex: BoMValidationException) {
+                store.selectFromPool(ObjExprMatcher(expr), org.poc.objs.core.domain.PageRequest.of(page, size))
+            } catch (ex: ValidationException) {
                 throw ResponseStatusException(HttpStatus.BAD_REQUEST, ex.message)
             }
         val known = assetTypes.listEntityTypes().map { it.type }.toSet()
@@ -105,13 +105,13 @@ class AssetInventoryService(
             annotations[SbomAnnotationKeys.OWNER] = ownerName
         }
         val entity =
-            BoMEntity(
+            Entity(
                 type = type,
                 schemaVersion = request.schemaVersion?.trim()?.takeIf { it.isNotEmpty() } ?: detail.version,
                 payload = request.payload.toMutableMap(),
                 annotations = annotations,
             )
-        val result = store.write(BoMGraph(entities = mutableListOf(entity)))
+        val result = store.write(Graph(entities = mutableListOf(entity)))
         if (!result.isValid) {
             throw ResponseStatusException(
                 HttpStatus.BAD_REQUEST,
@@ -129,7 +129,7 @@ class AssetInventoryService(
                 ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Asset not found: $id")
         entity.payload.clear()
         entity.payload.putAll(request.payload)
-        val result = store.write(BoMGraph(entities = mutableListOf(entity)))
+        val result = store.write(Graph(entities = mutableListOf(entity)))
         if (!result.isValid) {
             throw ResponseStatusException(
                 HttpStatus.BAD_REQUEST,
@@ -254,7 +254,7 @@ class AssetInventoryService(
     }
 
     private fun incidentRelations(
-        edges: List<org.poc.objs.core.domain.BoMEdge>,
+        edges: List<org.poc.objs.api.domain.Edge>,
         assetId: UUID,
     ): List<AssetUsageRelation> =
         edges.mapNotNull { edge ->
@@ -277,12 +277,12 @@ class AssetInventoryService(
             }
         }
 
-    private fun resolveSchema(type: String, version: String?): BoMSchema? {
+    private fun resolveSchema(type: String, version: String?): Schema? {
         if (version != null) {
-            return schemas.get(type, version)?.takeIf { it.usage == BoMSchemaUsage.ENTITY }
+            return schemas.get(type, version)?.takeIf { it.usage == SchemaUsage.ENTITY }
         }
         return schemas.listByType(type)
-            .filter { it.usage == BoMSchemaUsage.ENTITY }
+            .filter { it.usage == SchemaUsage.ENTITY }
             .maxByOrNull { it.version }
     }
 

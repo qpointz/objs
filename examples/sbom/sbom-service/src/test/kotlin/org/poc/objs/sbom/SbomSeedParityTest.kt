@@ -2,8 +2,8 @@ package org.poc.objs.sbom
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import org.poc.objs.core.domain.InMemoryBoMAllowedEdgeCatalog
-import org.poc.objs.core.domain.InMemoryBoMSchemaCatalog
+import org.poc.objs.core.domain.InMemoryAllowedEdgeCatalog
+import org.poc.objs.core.domain.InMemorySchemaCatalog
 import org.poc.objs.core.seed.AllowedEdgeRuleSeedHandler
 import org.poc.objs.core.seed.ObjectSchemaSeedHandler
 import org.poc.objs.core.seed.SEED_KIND_ALLOWED_EDGE_RULE
@@ -15,12 +15,12 @@ import org.springframework.core.io.ClassPathResource
 class SbomSeedParityTest {
     @Test
     fun shouldMatchTypedPack_whenOntologyYamlImported() {
-        val expectedSchemas = InMemoryBoMSchemaCatalog()
-        val expectedRules = InMemoryBoMAllowedEdgeCatalog()
+        val expectedSchemas = InMemorySchemaCatalog()
+        val expectedRules = InMemoryAllowedEdgeCatalog()
         SbomRegistry.pack().registerInto(expectedSchemas, expectedRules)
 
-        val schemas = InMemoryBoMSchemaCatalog()
-        val rules = InMemoryBoMAllowedEdgeCatalog()
+        val schemas = InMemorySchemaCatalog()
+        val rules = InMemoryAllowedEdgeCatalog()
         val importer = SeedImporter(
             listOf(
                 ObjectSchemaSeedHandler(schemas),

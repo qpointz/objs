@@ -1,7 +1,7 @@
 package org.poc.objs.service.web
 
-import org.poc.objs.core.validation.BoMValidationIssue
-import org.poc.objs.core.validation.BoMValidationResult
+import org.poc.objs.core.validation.ValidationIssue
+import org.poc.objs.core.validation.ValidationResult
 import org.springframework.http.ResponseEntity
 
 /** Shared format query values for registry / graph multi-format I/O. */
@@ -15,8 +15,8 @@ object ObjsIoFormats {
 
     fun unknownFormat(format: String): ResponseEntity<Any> =
         ResponseEntity.badRequest().body(
-            BoMValidationResult.of(
-                BoMValidationIssue(
+            ValidationResult.of(
+                ValidationIssue(
                     code = "IO_FORMAT_UNSUPPORTED",
                     message = "Unsupported format='$format'",
                     path = "format",

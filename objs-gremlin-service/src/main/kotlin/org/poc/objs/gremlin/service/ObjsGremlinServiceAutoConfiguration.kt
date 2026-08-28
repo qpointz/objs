@@ -1,6 +1,6 @@
 package org.poc.objs.gremlin.service
 
-import org.poc.objs.gremlin.core.BoMGremlinEngine
+import org.poc.objs.gremlin.core.GremlinEngine
 import org.springframework.boot.autoconfigure.AutoConfiguration
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean
@@ -15,5 +15,5 @@ class ObjsGremlinServiceAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    fun bomGremlinEngine(): BoMGremlinEngine = BoMGremlinEngine()
+    fun bomGremlinEngine(): GremlinEngine = GremlinEngine()
 }

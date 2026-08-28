@@ -9,27 +9,27 @@ import java.util.NoSuchElementException;
 import java.util.UUID;
 import org.poc.objs.assetrepository.domain.CollectionEntity;
 import org.poc.objs.assetrepository.web.dto.ApiDtos;
-import org.poc.objs.core.domain.BoMCatalogSupport;
-import org.poc.objs.core.domain.BoMAllowedEdgeCatalog;
-import org.poc.objs.core.domain.BoMAllowedEdgeRule;
-import org.poc.objs.core.domain.BoMSchema;
-import org.poc.objs.core.domain.BoMSchemaCatalog;
-import org.poc.objs.core.domain.BoMSchemaUsage;
+import org.poc.objs.core.domain.CatalogSupport;
+import org.poc.objs.core.domain.AllowedEdgeCatalog;
+import org.poc.objs.api.domain.AllowedEdgeRule;
+import org.poc.objs.core.domain.Schema;
+import org.poc.objs.core.domain.SchemaCatalog;
+import org.poc.objs.core.domain.SchemaUsage;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class SchemaQueryService {
 
-    private final BoMSchemaCatalog schemas;
-    private final BoMAllowedEdgeCatalog edges;
-    private final BoMCatalogSupport catalog;
+    private final SchemaCatalog schemas;
+    private final AllowedEdgeCatalog edges;
+    private final CatalogSupport catalog;
     private final CollectionService collections;
 
     public SchemaQueryService(
-            BoMSchemaCatalog schemas,
-            BoMAllowedEdgeCatalog edges,
-            BoMCatalogSupport catalog,
+            SchemaCatalog schemas,
+            AllowedEdgeCatalog edges,
+            CatalogSupport catalog,
             CollectionService collections
     ) {
         this.schemas = schemas;
@@ -38,25 +38,25 @@ public class SchemaQueryService {
         this.collections = collections;
     }
 
-    public List<BoMSchema> list(String typeFilter) {
+    public List<Schema> list(String typeFilter) {
         if (typeFilter == null || typeFilter.isBlank()) {
             return schemas.all().stream()
-                    .sorted(Comparator.comparing(BoMSchema::getType).thenComparing(BoMSchema::getVersion))
+                    .sorted(Comparator.comparing(Schema::getType).thenComparing(Schema::getVersion))
                     .toList();
         }
         return listByType(typeFilter.trim());
     }
 
-    public List<BoMSchema> listByType(String type) {
-        List<BoMSchema> rows = schemas.listByType(type);
+    public List<Schema> listByType(String type) {
+        List<Schema> rows = schemas.listByType(type);
         if (rows.isEmpty()) {
             throw new NoSuchElementException("No schemas for type=" + type);
         }
-        return rows.stream().sorted(Comparator.comparing(BoMSchema::getVersion)).toList();
+        return rows.stream().sorted(Comparator.comparing(Schema::getVersion)).toList();
     }
 
-    public BoMSchema get(String type, String version) {
-        BoMSchema schema = schemas.get(type, version);
+    public Schema get(String type, String version) {
+        Schema schema = schemas.get(type, version);
         if (schema == null) {
             throw new NoSuchElementException("Schema not found: " + type + "@" + version);
         }
@@ -64,15 +64,15 @@ public class SchemaQueryService {
     }
 
     /** Latest (lexicographic last version) schema per accepted type on the collection. */
-    public List<BoMSchema> forCollection(UUID collectionId) {
+    public List<Schema> forCollection(UUID collectionId) {
         CollectionEntity collection = collections.require(collectionId);
-        List<BoMSchema> out = new ArrayList<>();
+        List<Schema> out = new ArrayList<>();
         for (String type : collection.acceptedTypes()) {
-            List<BoMSchema> versions = schemas.listByType(type);
+            List<Schema> versions = schemas.listByType(type);
             if (versions.isEmpty()) {
                 continue;
             }
-            BoMSchema latest = catalog.latestSchema(type);
+            Schema latest = catalog.latestSchema(type);
             if (latest != null) {
                 out.add(latest);
             }
@@ -85,9 +85,9 @@ public class SchemaQueryService {
      */
     @Transactional(readOnly = true)
     public List<ApiDtos.SchemaCatalogEntryDto> catalog() {
-        Map<String, List<BoMSchema>> byType = new LinkedHashMap<>();
+        Map<String, List<Schema>> byType = new LinkedHashMap<>();
         schemas.all().stream()
-                .sorted(Comparator.comparing(BoMSchema::getType).thenComparing(BoMSchema::getVersion))
+                .sorted(Comparator.comparing(Schema::getType).thenComparing(Schema::getVersion))
                 .forEach(s -> byType.computeIfAbsent(s.getType(), k -> new ArrayList<>()).add(s));
 
         Map<String, List<ApiDtos.CollectionRefDto>> usedIn = new LinkedHashMap<>();
@@ -99,9 +99,9 @@ public class SchemaQueryService {
         }
 
         List<ApiDtos.SchemaCatalogEntryDto> out = new ArrayList<>();
-        for (Map.Entry<String, List<BoMSchema>> e : byType.entrySet()) {
-            List<BoMSchema> versions = e.getValue();
-            BoMSchema latest = catalog.latestSchema(e.getKey());
+        for (Map.Entry<String, List<Schema>> e : byType.entrySet()) {
+            List<Schema> versions = e.getValue();
+            Schema latest = catalog.latestSchema(e.getKey());
             if (latest == null) {
                 latest = versions.get(versions.size() - 1);
             }
@@ -109,7 +109,7 @@ public class SchemaQueryService {
             out.add(new ApiDtos.SchemaCatalogEntryDto(
                     latest.getType(),
                     latest.getVersion(),
-                    versions.stream().map(BoMSchema::getVersion).toList(),
+                    versions.stream().map(Schema::getVersion).toList(),
                     node.getTitle(),
                     node.getDescription(),
                     latest.getUsage().name(),

@@ -36,15 +36,15 @@ class ObjsFlywayAutoConfigurationTest {
 
     @Test
     fun shouldApplyVendorSql_whenBootFlywayDisabled() {
-        val entityCount = jdbc.queryForObject("SELECT COUNT(*) FROM bom_entity", Int::class.java)
+        val entityCount = jdbc.queryForObject("SELECT COUNT(*) FROM objs_entity", Int::class.java)
         assertThat(entityCount).isZero()
 
-        assertThat(objsFlyway.flyway.info().current()?.version?.toString()).isEqualTo("5")
+        assertThat(objsFlyway.flyway.info().current()?.version?.toString()).isEqualTo("6")
         assertThat(objsFlyway.flyway.configuration.table).isEqualTo("flyway_schema_history_objs")
         val clocks = jdbc.queryForObject(
             """
             SELECT COUNT(*) FROM information_schema.columns
-            WHERE LOWER(table_name) = 'bom_entity'
+            WHERE LOWER(table_name) = 'objs_entity'
               AND LOWER(column_name) IN ('created_at', 'updated_at')
             """.trimIndent(),
             Int::class.java,
@@ -83,7 +83,7 @@ class ObjsFlywayIntoExistingAppSchemaTest {
 
         val jdbc = JdbcTemplate(ds)
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM app_existing", Int::class.java)).isZero()
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM bom_entity", Int::class.java)).isZero()
-        assertThat(flyway.info().current()?.version?.toString()).isEqualTo("5")
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM objs_entity", Int::class.java)).isZero()
+        assertThat(flyway.info().current()?.version?.toString()).isEqualTo("6")
     }
 }

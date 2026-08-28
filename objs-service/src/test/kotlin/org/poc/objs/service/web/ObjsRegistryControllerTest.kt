@@ -4,16 +4,16 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
-import org.poc.objs.core.domain.BoMAllowedEdgeRule
-import org.poc.objs.core.domain.BoMEdgeCardinality
-import org.poc.objs.core.domain.BoMPropertiesPolicy
-import org.poc.objs.core.domain.BoMSchema
-import org.poc.objs.core.domain.BoMSchemaDsl
-import org.poc.objs.core.domain.BoMSchemaUsage
+import org.poc.objs.api.domain.AllowedEdgeRule
+import org.poc.objs.api.domain.EdgeCardinality
+import org.poc.objs.api.domain.PropertiesPolicy
+import org.poc.objs.core.domain.Schema
+import org.poc.objs.core.domain.SchemaDsl
+import org.poc.objs.core.domain.SchemaUsage
 import org.poc.objs.core.domain.FullCatalogJsonSchemaExporter
-import org.poc.objs.core.domain.InMemoryBoMAllowedEdgeCatalog
-import org.poc.objs.core.domain.InMemoryBoMSchemaCatalog
-import org.poc.objs.core.persistence.BoMGraphStore
+import org.poc.objs.core.domain.InMemoryAllowedEdgeCatalog
+import org.poc.objs.core.domain.InMemorySchemaCatalog
+import org.poc.objs.core.persistence.GraphStore
 import org.poc.objs.core.seed.AllowedEdgeRuleSeedHandler
 import org.poc.objs.core.seed.CanonicalSeedSerializer
 import org.poc.objs.core.seed.GraphSeedHandler
@@ -39,13 +39,13 @@ import java.nio.charset.StandardCharsets
 class ObjsRegistryControllerTest {
 
     private lateinit var mockMvc: MockMvc
-    private lateinit var schemas: InMemoryBoMSchemaCatalog
-    private lateinit var edgeRules: InMemoryBoMAllowedEdgeCatalog
+    private lateinit var schemas: InMemorySchemaCatalog
+    private lateinit var edgeRules: InMemoryAllowedEdgeCatalog
 
     @BeforeEach
     fun setUp() {
-        schemas = InMemoryBoMSchemaCatalog()
-        edgeRules = InMemoryBoMAllowedEdgeCatalog()
+        schemas = InMemorySchemaCatalog()
+        edgeRules = InMemoryAllowedEdgeCatalog()
         val objectHandler = ObjectSchemaSeedHandler(schemas)
         val ruleHandler = AllowedEdgeRuleSeedHandler(edgeRules)
         val importer = SeedImporter(listOf(objectHandler, ruleHandler))
@@ -54,14 +54,14 @@ class ObjsRegistryControllerTest {
             edgeRules,
             objectHandler,
             ruleHandler,
-            GraphSeedHandler(mock(org.poc.objs.core.persistence.BoMNamedGraphStore::class.java)),
+            GraphSeedHandler(mock(org.poc.objs.core.persistence.NamedGraphStore::class.java)),
         )
         mockMvc = MockMvcBuilders
             .standaloneSetup(
                 ObjsRegistryController(
                     schemas,
                     edgeRules,
-                    org.poc.objs.core.domain.BoMCatalogSupport(schemas, edgeRules),
+                    org.poc.objs.core.domain.CatalogSupport(schemas, edgeRules),
                     importer,
                     serializer,
                     FullCatalogJsonSchemaExporter(schemas, edgeRules),
@@ -192,8 +192,8 @@ class ObjsRegistryControllerTest {
 
     @Test
     fun shouldCreateNextMajorVersion() {
-        schemas.register(BoMSchema("Person", "1", BoMSchemaDsl.obj("Person", "Person payload")))
-        schemas.register(BoMSchema("Person", "4", BoMSchemaDsl.obj("Person", "Person payload")))
+        schemas.register(Schema("Person", "1", SchemaDsl.obj("Person", "Person payload")))
+        schemas.register(Schema("Person", "4", SchemaDsl.obj("Person", "Person payload")))
 
         mockMvc.perform(
             post("/api/v1/objs/registry/schemas/Person/versions/next-major")
@@ -219,8 +219,8 @@ class ObjsRegistryControllerTest {
 
     @Test
     fun shouldCreateNextMajorAsSemver_whenExistingAreDotted() {
-        schemas.register(BoMSchema("Person", "1.0.0", BoMSchemaDsl.obj("Person", "Person payload")))
-        schemas.register(BoMSchema("Person", "4.2.1", BoMSchemaDsl.obj("Person", "Person payload")))
+        schemas.register(Schema("Person", "1.0.0", SchemaDsl.obj("Person", "Person payload")))
+        schemas.register(Schema("Person", "4.2.1", SchemaDsl.obj("Person", "Person payload")))
 
         mockMvc.perform(
             post("/api/v1/objs/registry/schemas/Person/versions/next-major")
@@ -245,19 +245,19 @@ class ObjsRegistryControllerTest {
     @Test
     fun shouldFilterSchemasByUsage() {
         schemas.register(
-            BoMSchema(
+            Schema(
                 "Person",
                 "1",
-                BoMSchemaDsl.obj("Person", "Person payload"),
-                usage = BoMSchemaUsage.ENTITY,
+                SchemaDsl.obj("Person", "Person payload"),
+                usage = SchemaUsage.ENTITY,
             ),
         )
         schemas.register(
-            BoMSchema(
+            Schema(
                 "LinkProps",
                 "1",
-                BoMSchemaDsl.obj("Link", "Link properties"),
-                usage = BoMSchemaUsage.EDGE_PROPERTIES,
+                SchemaDsl.obj("Link", "Link properties"),
+                usage = SchemaUsage.EDGE_PROPERTIES,
             ),
         )
 
@@ -273,9 +273,9 @@ class ObjsRegistryControllerTest {
 
     @Test
     fun shouldListIncomingAndOutgoingEdgesIncludingWildcards() {
-        edgeRules.register(BoMAllowedEdgeRule("Person", "knows", "Person", BoMPropertiesPolicy.NONE))
-        edgeRules.register(BoMAllowedEdgeRule("*", "depends_on", "Component", BoMPropertiesPolicy.NONE))
-        edgeRules.register(BoMAllowedEdgeRule("Product", "CONTAINS", "*", BoMPropertiesPolicy.NONE))
+        edgeRules.register(AllowedEdgeRule("Person", "knows", "Person", PropertiesPolicy.NONE))
+        edgeRules.register(AllowedEdgeRule("*", "depends_on", "Component", PropertiesPolicy.NONE))
+        edgeRules.register(AllowedEdgeRule("Product", "CONTAINS", "*", PropertiesPolicy.NONE))
 
         mockMvc.perform(get("/api/v1/objs/registry/types/Person/edges"))
             .andExpect(status().isOk)
@@ -292,27 +292,27 @@ class ObjsRegistryControllerTest {
     @Test
     fun shouldReplaceRelationsForEdgePropertySchema() {
         schemas.register(
-            BoMSchema(
+            Schema(
                 "Person",
                 "1",
-                BoMSchemaDsl.obj("Person", "Person payload"),
-                usage = BoMSchemaUsage.ENTITY,
+                SchemaDsl.obj("Person", "Person payload"),
+                usage = SchemaUsage.ENTITY,
             ),
         )
         schemas.register(
-            BoMSchema(
+            Schema(
                 "Organization",
                 "1",
-                BoMSchemaDsl.obj("Organization", "Organization payload"),
-                usage = BoMSchemaUsage.ENTITY,
+                SchemaDsl.obj("Organization", "Organization payload"),
+                usage = SchemaUsage.ENTITY,
             ),
         )
         schemas.register(
-            BoMSchema(
+            Schema(
                 "CanonicalEdge",
                 "1",
-                BoMSchemaDsl.obj("Canonical edge", "Relationship properties"),
-                usage = BoMSchemaUsage.EDGE_PROPERTIES,
+                SchemaDsl.obj("Canonical edge", "Relationship properties"),
+                usage = SchemaUsage.EDGE_PROPERTIES,
             ),
         )
 
@@ -361,11 +361,11 @@ class ObjsRegistryControllerTest {
     @Test
     fun shouldRejectUnknownEntityTypeInEdgeRelation() {
         schemas.register(
-            BoMSchema(
+            Schema(
                 "CanonicalEdge",
                 "1",
-                BoMSchemaDsl.obj("Canonical edge", "Relationship properties"),
-                usage = BoMSchemaUsage.EDGE_PROPERTIES,
+                SchemaDsl.obj("Canonical edge", "Relationship properties"),
+                usage = SchemaUsage.EDGE_PROPERTIES,
             ),
         )
 
@@ -399,7 +399,7 @@ class ObjsRegistryControllerTest {
 
     @Test
     fun shouldDeleteSchema() {
-        schemas.register(BoMSchema("Person", "1", BoMSchemaDsl.obj("Person", "Person payload")))
+        schemas.register(Schema("Person", "1", SchemaDsl.obj("Person", "Person payload")))
         mockMvc.perform(delete("/api/v1/objs/registry/schemas/Person/1"))
             .andExpect(status().isNoContent)
         mockMvc.perform(delete("/api/v1/objs/registry/schemas/Person/1"))
@@ -408,25 +408,25 @@ class ObjsRegistryControllerTest {
 
     @Test
     fun shouldDeleteSchemaType_andIncidentEdges() {
-        schemas.register(BoMSchema("Person", "1", BoMSchemaDsl.obj("Person", "Person payload")))
-        schemas.register(BoMSchema("Person", "2", BoMSchemaDsl.obj("Person", "Person payload v2")))
-        schemas.register(BoMSchema("Org", "1", BoMSchemaDsl.obj("Org", "Org payload")))
+        schemas.register(Schema("Person", "1", SchemaDsl.obj("Person", "Person payload")))
+        schemas.register(Schema("Person", "2", SchemaDsl.obj("Person", "Person payload v2")))
+        schemas.register(Schema("Org", "1", SchemaDsl.obj("Org", "Org payload")))
         edgeRules.register(
-            BoMAllowedEdgeRule(
+            AllowedEdgeRule(
                 sourceType = "Person",
                 role = "works_for",
                 targetType = "Org",
             ),
         )
         edgeRules.register(
-            BoMAllowedEdgeRule(
+            AllowedEdgeRule(
                 sourceType = "Org",
                 role = "employs",
                 targetType = "Person",
             ),
         )
         edgeRules.register(
-            BoMAllowedEdgeRule(
+            AllowedEdgeRule(
                 sourceType = "Org",
                 role = "owns",
                 targetType = "Org",
@@ -481,8 +481,8 @@ class ObjsRegistryControllerTest {
 
     @Test
     fun shouldListSchemasByType() {
-        schemas.register(BoMSchema("Person", "1", BoMSchemaDsl.obj("Person", "Person payload")))
-        schemas.register(BoMSchema("Person", "2", BoMSchemaDsl.obj("Person", "Person payload")))
+        schemas.register(Schema("Person", "1", SchemaDsl.obj("Person", "Person payload")))
+        schemas.register(Schema("Person", "2", SchemaDsl.obj("Person", "Person payload")))
         mockMvc.perform(get("/api/v1/objs/registry/schemas/Person"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.length()").value(2))
@@ -490,7 +490,7 @@ class ObjsRegistryControllerTest {
 
     @Test
     fun shouldExportCatalogSeeds() {
-        schemas.register(BoMSchema("Person", "1", BoMSchemaDsl.obj("Person", "Person payload")))
+        schemas.register(Schema("Person", "1", SchemaDsl.obj("Person", "Person payload")))
         mockMvc.perform(get("/api/v1/objs/registry/export").param("format", "seeds"))
             .andExpect(status().isOk)
             .andExpect(content().contentTypeCompatibleWith(MediaType.parseMediaType("application/yaml")))
@@ -499,7 +499,7 @@ class ObjsRegistryControllerTest {
 
     @Test
     fun shouldRefreshCatalogs() {
-        schemas.register(BoMSchema("Person", "1", BoMSchemaDsl.obj("Person", "Person payload")))
+        schemas.register(Schema("Person", "1", SchemaDsl.obj("Person", "Person payload")))
         mockMvc.perform(post("/api/v1/objs/registry/refresh"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.schemas").value(1))
@@ -551,7 +551,7 @@ class ObjsRegistryControllerTest {
 
     @Test
     fun shouldExportFullCatalogJsonSchema() {
-        schemas.register(BoMSchema("Person", "1", BoMSchemaDsl.obj("Person", "Person payload")))
+        schemas.register(Schema("Person", "1", SchemaDsl.obj("Person", "Person payload")))
         mockMvc.perform(get("/api/v1/objs/registry/export").param("format", "json-schema"))
             .andExpect(status().isOk)
             .andExpect(content().contentTypeCompatibleWith(MediaType.parseMediaType("application/schema+json")))
@@ -562,7 +562,7 @@ class ObjsRegistryControllerTest {
 
     @Test
     fun shouldExportFullCatalogJsonSchemaCodegen() {
-        schemas.register(BoMSchema("Person", "1", BoMSchemaDsl.obj("Person", "Person payload")))
+        schemas.register(Schema("Person", "1", SchemaDsl.obj("Person", "Person payload")))
         mockMvc.perform(get("/api/v1/objs/registry/export").param("format", "json-schema-codegen"))
             .andExpect(status().isOk)
             .andExpect(content().contentTypeCompatibleWith(MediaType.parseMediaType("application/schema+json")))
@@ -571,18 +571,20 @@ class ObjsRegistryControllerTest {
             .andExpect(jsonPath("$.title").value("ObjsCatalog"))
             .andExpect(jsonPath("$.properties.Person['\$ref']").value("#/\$defs/Person"))
             .andExpect(jsonPath("$.['\$defs'].Person.title").value("Person"))
+            .andExpect(jsonPath("$.['x-objs-relations']").isArray)
+            .andExpect(jsonPath("$.['x-objs-codegen'].mutations.graphMutation.definitionKey").value("GraphMutation"))
     }
 
     @Test
     fun shouldExportLinkedJsonSchema_whenIncludeEdgesLinked() {
-        schemas.register(BoMSchema("Database", "1", BoMSchemaDsl.obj("Database", "Database payload")))
-        schemas.register(BoMSchema("Dataset", "1", BoMSchemaDsl.obj("Dataset", "Dataset payload")))
+        schemas.register(Schema("Database", "1", SchemaDsl.obj("Database", "Database payload")))
+        schemas.register(Schema("Dataset", "1", SchemaDsl.obj("Dataset", "Dataset payload")))
         edgeRules.register(
-            BoMAllowedEdgeRule(
+            AllowedEdgeRule(
                 sourceType = "Database",
                 role = "CONTAINS",
                 targetType = "Dataset",
-                cardinality = BoMEdgeCardinality.ONE_TO_MANY,
+                cardinality = EdgeCardinality.ONE_TO_MANY,
             ),
         )
         mockMvc.perform(
@@ -601,7 +603,7 @@ class ObjsRegistryControllerTest {
 
     @Test
     fun shouldExportDraft07JsonSchema_withDefinitions() {
-        schemas.register(BoMSchema("Person", "1", BoMSchemaDsl.obj("Person", "Person payload")))
+        schemas.register(Schema("Person", "1", SchemaDsl.obj("Person", "Person payload")))
         mockMvc.perform(
             get("/api/v1/objs/registry/export")
                 .param("format", "json-schema")
@@ -616,7 +618,7 @@ class ObjsRegistryControllerTest {
 
     @Test
     fun shouldExportDraft07JsonSchemaCodegen() {
-        schemas.register(BoMSchema("Person", "1", BoMSchemaDsl.obj("Person", "Person payload")))
+        schemas.register(Schema("Person", "1", SchemaDsl.obj("Person", "Person payload")))
         mockMvc.perform(
             get("/api/v1/objs/registry/export")
                 .param("format", "json-schema-codegen")
@@ -626,6 +628,8 @@ class ObjsRegistryControllerTest {
             .andExpect(jsonPath("$.['x-objs-export']").value("full-catalog-codegen"))
             .andExpect(jsonPath("$.properties.Person['\$ref']").value("#/definitions/Person"))
             .andExpect(jsonPath("$.definitions.Person.title").value("Person"))
+            .andExpect(jsonPath("$.['x-objs-codegen'].language").value("java"))
+            .andExpect(jsonPath("$.['x-objs-codegen'].definitions[0].schemaVersion").value("1"))
     }
 
     @Test

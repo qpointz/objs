@@ -2,34 +2,34 @@ package org.poc.objs.sbom.domain
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import org.poc.objs.core.domain.BoMEdge
-import org.poc.objs.core.domain.BoMEntity
-import org.poc.objs.core.domain.BoMGraphContents
-import org.poc.objs.core.domain.BoMResolvedGraph
+import org.poc.objs.api.domain.Edge
+import org.poc.objs.api.domain.Entity
+import org.poc.objs.api.domain.GraphContents
+import org.poc.objs.core.domain.ResolvedGraph
 import java.util.UUID
 
-class BomUnionTest {
+class UnionTest {
     @Test
     fun shouldCollapseDuplicateMembershipAndEdges() {
         val a = UUID.randomUUID()
         val b = UUID.randomUUID()
-        val entityA = BoMEntity(id = a, type = "Component", schemaVersion = "1.0.0")
-        val entityB = BoMEntity(id = b, type = "Component", schemaVersion = "1.0.0")
-        val edge = BoMEdge(id = UUID.randomUUID(), source = a, target = b, role = "depends_on")
+        val entityA = Entity(id = a, type = "Component", schemaVersion = "1.0.0")
+        val entityB = Entity(id = b, type = "Component", schemaVersion = "1.0.0")
+        val edge = Edge(id = UUID.randomUUID(), source = a, target = b, role = "depends_on")
         val left =
-            BoMResolvedGraph(
+            ResolvedGraph(
                 id = UUID.randomUUID(),
                 annotations = emptyMap(),
-                contents = BoMGraphContents(entities = listOf(entityA, entityB), edges = listOf(edge)),
+                contents = GraphContents(entities = listOf(entityA, entityB), edges = listOf(edge)),
             )
         val right =
-            BoMResolvedGraph(
+            ResolvedGraph(
                 id = UUID.randomUUID(),
                 annotations = emptyMap(),
                 contents =
-                    BoMGraphContents(
+                    GraphContents(
                         entities = listOf(entityA),
-                        edges = listOf(BoMEdge(id = UUID.randomUUID(), source = a, target = b, role = "depends_on")),
+                        edges = listOf(Edge(id = UUID.randomUUID(), source = a, target = b, role = "depends_on")),
                     ),
             )
         val union = BomUnion.of(listOf(left, right))

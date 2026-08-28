@@ -1,7 +1,7 @@
 package org.poc.objs.sbom.web
 
-import org.poc.objs.core.domain.BoMAllowedEdgeCatalog
-import org.poc.objs.core.domain.BoMSchema
+import org.poc.objs.core.domain.AllowedEdgeCatalog
+import org.poc.objs.core.domain.Schema
 import org.poc.objs.sbom.domain.AssetRelationshipSpec
 import org.poc.objs.sbom.domain.AssetTypeDetail
 import org.poc.objs.sbom.domain.AssetTypeSummary
@@ -21,7 +21,7 @@ import org.springframework.web.server.ResponseStatusException
 
 /**
  * Product-language schema browse for Applications chrome (Journey 2 forms).
- * Backed by objs BoMSchemaCatalog — not foundation registry REST.
+ * Backed by objs SchemaCatalog — not foundation registry REST.
  */
 @RestController
 @RequestMapping("/api/v1/inventory")
@@ -29,7 +29,7 @@ class InventorySchemaController(
     private val assetTypes: AssetTypeCatalogService,
     private val schemaBrowse: SchemaBrowseService,
     private val sbom: SbomService,
-    private val edges: BoMAllowedEdgeCatalog,
+    private val edges: AllowedEdgeCatalog,
 ) {
     @GetMapping("/asset-types")
     fun listAssetTypes(): List<AssetTypeSummary> = assetTypes.listEntityTypes()
@@ -50,18 +50,18 @@ class InventorySchemaController(
         schemaBrowse.usedInForType(type)
 
     @GetMapping("/schemas")
-    fun listSchemas(@RequestParam(required = false) type: String?): List<BoMSchema> =
+    fun listSchemas(@RequestParam(required = false) type: String?): List<Schema> =
         schemaBrowse.list(type)
 
     @GetMapping("/schemas/{type}")
-    fun listSchemasByType(@PathVariable type: String): List<BoMSchema> =
+    fun listSchemasByType(@PathVariable type: String): List<Schema> =
         schemaBrowse.listByType(type)
 
     @GetMapping("/schemas/{type}/{version}")
     fun getSchema(
         @PathVariable type: String,
         @PathVariable version: String,
-    ): BoMSchema = schemaBrowse.get(type, version)
+    ): Schema = schemaBrowse.get(type, version)
 
     @GetMapping("/schema-catalog/{type}/allowed-edges")
     fun allowedEdgesForType(@PathVariable type: String) = schemaBrowse.allowedEdgesForType(type)

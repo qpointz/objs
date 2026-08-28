@@ -7,14 +7,14 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.servlet.http.HttpServletRequest
-import org.poc.objs.core.domain.BoMEntity
-import org.poc.objs.core.domain.BoMGraph
-import org.poc.objs.core.domain.BoMGraphContents
-import org.poc.objs.core.match.BoMMatcherDsl
-import org.poc.objs.core.match.BoMMatcherFormat
-import org.poc.objs.core.persistence.BoMGraphStore
-import org.poc.objs.core.validation.BoMValidationException
-import org.poc.objs.core.validation.BoMValidationResult
+import org.poc.objs.api.domain.Entity
+import org.poc.objs.api.domain.Graph
+import org.poc.objs.api.domain.GraphContents
+import org.poc.objs.core.match.MatcherDsl
+import org.poc.objs.core.match.MatcherFormat
+import org.poc.objs.core.persistence.GraphStore
+import org.poc.objs.core.validation.ValidationException
+import org.poc.objs.core.validation.ValidationResult
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
-import org.poc.objs.core.domain.BoMPageRequest
+import org.poc.objs.core.domain.PageRequest
 import java.nio.charset.StandardCharsets
 import java.util.UUID
 
@@ -40,8 +40,8 @@ import java.util.UUID
 @RequestMapping("/api/v1/objs/entities")
 @Tag(name = "entities")
 class ObjsEntitiesController(
-    private val store: BoMGraphStore,
-    private val matcherDsl: BoMMatcherDsl = BoMMatcherDsl.create(),
+    private val store: GraphStore,
+    private val matcherDsl: MatcherDsl = MatcherDsl.create(),
 ) {
     @Schema(description = "Pool entity write body")
     data class EntityWriteBody(
@@ -54,7 +54,7 @@ class ObjsEntitiesController(
 
     @GetMapping
     @Operation(summary = "List pool entities")
-    fun list(): List<BoMEntity> = store.listEntities()
+    fun list(): List<Entity> = store.listEntities()
 
     @PostMapping(
         "/query",
@@ -75,12 +75,12 @@ class ObjsEntitiesController(
         ApiResponse(
             responseCode = "200",
             description = "Matching pool entities (edges empty)",
-            content = [Content(schema = Schema(implementation = BoMGraphContents::class))],
+            content = [Content(schema = Schema(implementation = GraphContents::class))],
         ),
         ApiResponse(
             responseCode = "400",
             description = "Invalid matcher DSL or non-obj-expr stage",
-            content = [Content(schema = Schema(implementation = BoMValidationResult::class))],
+            content = [Content(schema = Schema(implementation = ValidationResult::class))],
         ),
     )
     fun query(
@@ -92,7 +92,7 @@ class ObjsEntitiesController(
         if (page == null && size == null) {
             return ResponseEntity.ok(store.selectFromPool(matcher))
         }
-        val paged = store.selectFromPool(matcher, BoMPageRequest.of(page, size))
+        val paged = store.selectFromPool(matcher, PageRequest.of(page, size))
         return ResponseEntity.ok(
             mapOf(
                 "entities" to paged.items,
@@ -110,17 +110,17 @@ class ObjsEntitiesController(
         ApiResponse(
             responseCode = "201",
             description = "Created pool entity (id assigned)",
-            content = [Content(schema = Schema(implementation = BoMEntity::class))],
+            content = [Content(schema = Schema(implementation = Entity::class))],
         ),
         ApiResponse(
             responseCode = "400",
             description = "Validation failed",
-            content = [Content(schema = Schema(implementation = BoMValidationResult::class))],
+            content = [Content(schema = Schema(implementation = ValidationResult::class))],
         ),
     )
     fun create(@RequestBody body: EntityWriteBody): ResponseEntity<Any> {
         val entity = body.toEntity()
-        val result = store.write(BoMGraph(entities = mutableListOf(entity)))
+        val result = store.write(Graph(entities = mutableListOf(entity)))
         if (!result.isValid) {
             return ResponseEntity.badRequest().body(result)
         }
@@ -129,7 +129,7 @@ class ObjsEntitiesController(
 
     @GetMapping("/{id}")
     @Operation(summary = "Fetch a pool entity by id")
-    fun get(@PathVariable id: UUID): ResponseEntity<BoMEntity> {
+    fun get(@PathVariable id: UUID): ResponseEntity<Entity> {
         val entity = store.getEntity(id) ?: return ResponseEntity.notFound().build()
         return ResponseEntity.ok(entity)
     }
@@ -153,7 +153,7 @@ class ObjsEntitiesController(
     ): ResponseEntity<Any> =
         try {
             ResponseEntity.ok(store.getEntityVersion(id, version))
-        } catch (ex: org.poc.objs.core.domain.BoMGraphException) {
+        } catch (ex: org.poc.objs.core.domain.GraphException) {
             ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 mapOf("error" to (ex.message ?: ex.code), "code" to ex.code),
             )
@@ -167,7 +167,7 @@ class ObjsEntitiesController(
         ApiResponse(
             responseCode = "400",
             description = "Validation failed",
-            content = [Content(schema = Schema(implementation = BoMValidationResult::class))],
+            content = [Content(schema = Schema(implementation = ValidationResult::class))],
         ),
     )
     fun update(
@@ -178,7 +178,7 @@ class ObjsEntitiesController(
             return ResponseEntity.notFound().build()
         }
         val entity = body.toEntity().also { it.id = id }
-        val result = store.write(BoMGraph(entities = mutableListOf(entity)))
+        val result = store.write(Graph(entities = mutableListOf(entity)))
         if (!result.isValid) {
             return ResponseEntity.badRequest().body(result)
         }
@@ -204,11 +204,11 @@ class ObjsEntitiesController(
         return ResponseEntity.noContent().build()
     }
 
-    @ExceptionHandler(BoMValidationException::class)
-    fun handleValidation(ex: BoMValidationException): ResponseEntity<BoMValidationResult> =
+    @ExceptionHandler(ValidationException::class)
+    fun handleValidation(ex: ValidationException): ResponseEntity<ValidationResult> =
         ResponseEntity.badRequest().body(ex.result)
 
-    private fun EntityWriteBody.toEntity() = BoMEntity(
+    private fun EntityWriteBody.toEntity() = Entity(
         id = id,
         type = type,
         schemaVersion = schemaVersion,
@@ -219,12 +219,12 @@ class ObjsEntitiesController(
     private fun readBody(request: HttpServletRequest): String =
         request.inputStream.readBytes().toString(StandardCharsets.UTF_8)
 
-    private fun resolveFormat(request: HttpServletRequest): BoMMatcherFormat {
+    private fun resolveFormat(request: HttpServletRequest): MatcherFormat {
         val subtype = request.contentType?.let { MediaType.parseMediaType(it) }?.subtype?.lowercase().orEmpty()
         return if (subtype.contains("yaml") || subtype.contains("yml")) {
-            BoMMatcherFormat.YAML
+            MatcherFormat.YAML
         } else {
-            BoMMatcherFormat.JSON
+            MatcherFormat.JSON
         }
     }
 }

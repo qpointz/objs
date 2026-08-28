@@ -7,18 +7,18 @@ import org.mockito.BDDMockito.given
 import org.mockito.BDDMockito.willThrow
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
-import org.poc.objs.core.domain.BoMEntity
-import org.poc.objs.core.domain.BoMResolvedGraph
-import org.poc.objs.core.domain.BoMGraphContents
-import org.poc.objs.core.domain.BoMGraphException
-import org.poc.objs.core.domain.BoMGraphHeader
-import org.poc.objs.core.domain.BoMGraphListItem
-import org.poc.objs.core.match.BoMMatcher
-import org.poc.objs.core.persistence.BoMGraphStore
-import org.poc.objs.core.persistence.BoMNamedGraphStore
-import org.poc.objs.core.validation.BoMValidationException
-import org.poc.objs.core.validation.BoMValidationIssue
-import org.poc.objs.core.validation.BoMValidationResult
+import org.poc.objs.api.domain.Entity
+import org.poc.objs.core.domain.ResolvedGraph
+import org.poc.objs.api.domain.GraphContents
+import org.poc.objs.core.domain.GraphException
+import org.poc.objs.core.domain.GraphHeader
+import org.poc.objs.core.domain.GraphListItem
+import org.poc.objs.core.match.Matcher
+import org.poc.objs.core.persistence.GraphStore
+import org.poc.objs.core.persistence.NamedGraphStore
+import org.poc.objs.core.validation.ValidationException
+import org.poc.objs.core.validation.ValidationIssue
+import org.poc.objs.core.validation.ValidationResult
 import org.springframework.http.MediaType
 import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter
 import org.springframework.test.web.servlet.MockMvc
@@ -36,8 +36,8 @@ import java.util.UUID
 class ObjsGraphsControllerTest {
 
     private lateinit var mockMvc: MockMvc
-    private lateinit var namedGraphs: BoMNamedGraphStore
-    private lateinit var graphStore: BoMGraphStore
+    private lateinit var namedGraphs: NamedGraphStore
+    private lateinit var graphStore: GraphStore
 
     @Suppress("UNCHECKED_CAST")
     private fun <T> anyObj(): T = org.mockito.ArgumentMatchers.any() as T
@@ -52,8 +52,8 @@ class ObjsGraphsControllerTest {
 
     @BeforeEach
     fun setUp() {
-        namedGraphs = mock(BoMNamedGraphStore::class.java)
-        graphStore = mock(BoMGraphStore::class.java)
+        namedGraphs = mock(NamedGraphStore::class.java)
+        graphStore = mock(GraphStore::class.java)
         mockMvc = MockMvcBuilders
             .standaloneSetup(ObjsGraphsController(namedGraphs, graphStore))
             .setMessageConverters(JacksonJsonHttpMessageConverter(JsonMapper.builder().findAndAddModules().build()))
@@ -63,7 +63,7 @@ class ObjsGraphsControllerTest {
     @Test
     fun shouldListGraphs() {
         val id = UUID.randomUUID()
-        given(namedGraphs.list()).willReturn(listOf(BoMGraphListItem(id, mapOf("p" to "1"), 2, 1)))
+        given(namedGraphs.list()).willReturn(listOf(GraphListItem(id, mapOf("p" to "1"), 2, 1)))
 
         mockMvc.perform(get("/api/v1/objs/graphs"))
             .andExpect(status().isOk)
@@ -75,7 +75,7 @@ class ObjsGraphsControllerTest {
     fun shouldSearchGraphs_returningItemsEnvelope() {
         val id = UUID.randomUUID()
         given(namedGraphs.search(eqObj("prod"), isNull(), eqObj(15)))
-            .willReturn(listOf(BoMGraphHeader(id, mapOf("env" to "prod"))))
+            .willReturn(listOf(GraphHeader(id, mapOf("env" to "prod"))))
 
         mockMvc.perform(get("/api/v1/objs/graphs/search").param("q", "prod").param("limit", "15"))
             .andExpect(status().isOk)
@@ -116,11 +116,11 @@ class ObjsGraphsControllerTest {
         val id = UUID.randomUUID()
         val entityId = UUID.randomUUID()
         given(namedGraphs.create(anyObj())).willReturn(
-            BoMResolvedGraph(
+            ResolvedGraph(
                 id = id,
                 annotations = mapOf("env" to "prod"),
-                contents = BoMGraphContents(
-                    entities = listOf(BoMEntity(id = entityId, type = "Person", schemaVersion = "1")),
+                contents = GraphContents(
+                    entities = listOf(Entity(id = entityId, type = "Person", schemaVersion = "1")),
                     edges = emptyList(),
                 ),
             ),
@@ -140,7 +140,7 @@ class ObjsGraphsControllerTest {
     fun shouldGetGraphById() {
         val id = UUID.randomUUID()
         given(namedGraphs.get(id)).willReturn(
-            BoMResolvedGraph(id, emptyMap(), BoMGraphContents(emptyList(), emptyList())),
+            ResolvedGraph(id, emptyMap(), GraphContents(emptyList(), emptyList())),
         )
         mockMvc.perform(get("/api/v1/objs/graphs/$id"))
             .andExpect(status().isOk)
@@ -160,7 +160,7 @@ class ObjsGraphsControllerTest {
         val id = UUID.randomUUID()
         given(namedGraphs.updateAnnotations(eqObj(id), eqObj(mapOf("env" to "prod"))))
             .willReturn(
-                BoMResolvedGraph(id, mapOf("env" to "prod"), BoMGraphContents(emptyList(), emptyList())),
+                ResolvedGraph(id, mapOf("env" to "prod"), GraphContents(emptyList(), emptyList())),
             )
 
         mockMvc.perform(
@@ -176,7 +176,7 @@ class ObjsGraphsControllerTest {
     @Test
     fun shouldReturn404_whenUpdatingAnnotationsOnMissingGraph() {
         val id = UUID.randomUUID()
-        willThrow(BoMGraphException("GRAPH_NOT_FOUND", "Subgraph not found: $id"))
+        willThrow(GraphException("GRAPH_NOT_FOUND", "Subgraph not found: $id"))
             .given(namedGraphs).updateAnnotations(eqObj(id), anyObj())
 
         mockMvc.perform(
@@ -191,9 +191,9 @@ class ObjsGraphsControllerTest {
     @Test
     fun shouldMutateGraph_withPatch_mergeMode() {
         val id = UUID.randomUUID()
-        given(namedGraphs.mutate(anyObj(), anyObj())).willReturn(BoMValidationResult.ok())
+        given(namedGraphs.mutate(anyObj(), anyObj())).willReturn(ValidationResult.ok())
         given(namedGraphs.get(id)).willReturn(
-            BoMResolvedGraph(id, mapOf("env" to "prod"), BoMGraphContents(emptyList(), emptyList())),
+            ResolvedGraph(id, mapOf("env" to "prod"), GraphContents(emptyList(), emptyList())),
         )
 
         mockMvc.perform(
@@ -210,9 +210,9 @@ class ObjsGraphsControllerTest {
     @Test
     fun shouldMutateGraph_withPut_replaceMode() {
         val id = UUID.randomUUID()
-        given(namedGraphs.mutate(anyObj(), anyObj())).willReturn(BoMValidationResult.ok())
+        given(namedGraphs.mutate(anyObj(), anyObj())).willReturn(ValidationResult.ok())
         given(namedGraphs.get(id)).willReturn(
-            BoMResolvedGraph(id, mapOf("env" to "prod"), BoMGraphContents(emptyList(), emptyList())),
+            ResolvedGraph(id, mapOf("env" to "prod"), GraphContents(emptyList(), emptyList())),
         )
 
         mockMvc.perform(
@@ -229,7 +229,7 @@ class ObjsGraphsControllerTest {
     fun shouldRejectMutate_whenInvalid() {
         val id = UUID.randomUUID()
         given(namedGraphs.mutate(anyObj(), anyObj())).willReturn(
-            BoMValidationResult.of(BoMValidationIssue("EDGE_ENDPOINT_NOT_MEMBER", "bad")),
+            ValidationResult.of(ValidationIssue("EDGE_ENDPOINT_NOT_MEMBER", "bad")),
         )
 
         mockMvc.perform(
@@ -244,7 +244,7 @@ class ObjsGraphsControllerTest {
     @Test
     fun shouldReturn404_whenMutatingMissingGraph() {
         val id = UUID.randomUUID()
-        willThrow(BoMGraphException("GRAPH_NOT_FOUND", "Graph not found: $id"))
+        willThrow(GraphException("GRAPH_NOT_FOUND", "Graph not found: $id"))
             .given(namedGraphs).mutate(anyObj(), anyObj())
 
         mockMvc.perform(
@@ -260,7 +260,7 @@ class ObjsGraphsControllerTest {
     fun shouldValidateGraphMutation() {
         val id = UUID.randomUUID()
         given(namedGraphs.validateMutate(anyObj(), anyObj())).willReturn(
-            BoMValidationResult.of(BoMValidationIssue("EDGE_ENDPOINT_NOT_MEMBER", "bad")),
+            ValidationResult.of(ValidationIssue("EDGE_ENDPOINT_NOT_MEMBER", "bad")),
         )
 
         mockMvc.perform(
@@ -283,7 +283,7 @@ class ObjsGraphsControllerTest {
     @Test
     fun shouldReturn404_whenDeletingMissingGraph() {
         val id = UUID.randomUUID()
-        willThrow(BoMGraphException("GRAPH_NOT_FOUND", "not found"))
+        willThrow(GraphException("GRAPH_NOT_FOUND", "not found"))
             .given(namedGraphs).delete(id)
 
         mockMvc.perform(delete("/api/v1/objs/graphs/$id"))
@@ -295,7 +295,7 @@ class ObjsGraphsControllerTest {
         val id = UUID.randomUUID()
         val entityId = UUID.randomUUID()
         given(namedGraphs.get(id)).willReturn(
-            BoMResolvedGraph(id, emptyMap(), BoMGraphContents(listOf(BoMEntity(id = entityId, type = "Person", schemaVersion = "1")), emptyList())),
+            ResolvedGraph(id, emptyMap(), GraphContents(listOf(Entity(id = entityId, type = "Person", schemaVersion = "1")), emptyList())),
         )
 
         mockMvc.perform(post("/api/v1/objs/graphs/$id/members/$entityId"))
@@ -308,7 +308,7 @@ class ObjsGraphsControllerTest {
     fun shouldReturn404_whenAttachingMissingEntity() {
         val id = UUID.randomUUID()
         val entityId = UUID.randomUUID()
-        willThrow(BoMGraphException("GRAPH_ENTITY_MISSING", "missing"))
+        willThrow(GraphException("GRAPH_ENTITY_MISSING", "missing"))
             .given(namedGraphs).attach(id, entityId)
 
         mockMvc.perform(post("/api/v1/objs/graphs/$id/members/$entityId"))
@@ -327,8 +327,8 @@ class ObjsGraphsControllerTest {
     @Test
     fun shouldQueryInGraph_withObjExpr() {
         val id = UUID.randomUUID()
-        given(graphStore.selectInGraph(eqObj(id), anyObj<BoMMatcher>())).willReturn(
-            BoMGraphContents(entities = emptyList(), edges = emptyList()),
+        given(graphStore.selectInGraph(eqObj(id), anyObj<Matcher>())).willReturn(
+            GraphContents(entities = emptyList(), edges = emptyList()),
         )
 
         mockMvc.perform(
@@ -343,8 +343,8 @@ class ObjsGraphsControllerTest {
     @Test
     fun shouldQueryInGraph_withChainedObjExpr() {
         val id = UUID.randomUUID()
-        given(graphStore.selectInGraph(eqObj(id), anyObj<BoMMatcher>())).willReturn(
-            BoMGraphContents(entities = emptyList(), edges = emptyList()),
+        given(graphStore.selectInGraph(eqObj(id), anyObj<Matcher>())).willReturn(
+            GraphContents(entities = emptyList(), edges = emptyList()),
         )
 
         mockMvc.perform(
@@ -358,10 +358,10 @@ class ObjsGraphsControllerTest {
     @Test
     fun shouldReturn404_whenQueryingMissingGraph() {
         val id = UUID.randomUUID()
-        given(graphStore.selectInGraph(eqObj(id), anyObj<BoMMatcher>())).willThrow(
-            BoMValidationException(
+        given(graphStore.selectInGraph(eqObj(id), anyObj<Matcher>())).willThrow(
+            ValidationException(
                 "graph",
-                BoMValidationResult.of(BoMValidationIssue("GRAPH_NOT_FOUND", "not found")),
+                ValidationResult.of(ValidationIssue("GRAPH_NOT_FOUND", "not found")),
             ),
         )
 
@@ -387,8 +387,8 @@ class ObjsGraphsControllerTest {
 
     @Test
     fun shouldQueryGraphs_withGraphExpr() {
-        given(graphStore.select(anyObj<BoMMatcher>())).willReturn(
-            BoMGraphContents(entities = emptyList(), edges = emptyList()),
+        given(graphStore.select(anyObj<Matcher>())).willReturn(
+            GraphContents(entities = emptyList(), edges = emptyList()),
         )
 
         mockMvc.perform(
@@ -401,10 +401,10 @@ class ObjsGraphsControllerTest {
 
     @Test
     fun shouldRejectQueryGraphs_whenBareObjExpr() {
-        given(graphStore.select(anyObj<BoMMatcher>())).willThrow(
-            BoMValidationException(
+        given(graphStore.select(anyObj<Matcher>())).willThrow(
+            ValidationException(
                 "matcher-dsl",
-                BoMValidationResult.of(BoMValidationIssue("MATCHER_GRAPH_SCOPE_REQUIRED", "no scope")),
+                ValidationResult.of(ValidationIssue("MATCHER_GRAPH_SCOPE_REQUIRED", "no scope")),
             ),
         )
 
@@ -422,7 +422,7 @@ class ObjsGraphsControllerTest {
         val sourceId = UUID.randomUUID()
         val cloneId = UUID.randomUUID()
         given(namedGraphs.clone(eqObj(sourceId), anyObj())).willReturn(
-            BoMResolvedGraph(cloneId, mapOf("decisionId" to "D-9"), BoMGraphContents(emptyList(), emptyList())),
+            ResolvedGraph(cloneId, mapOf("decisionId" to "D-9"), GraphContents(emptyList(), emptyList())),
         )
 
         mockMvc.perform(

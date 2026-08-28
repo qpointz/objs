@@ -1,22 +1,22 @@
 package org.poc.objs.core.typed
 
-import org.poc.objs.core.domain.BoMAllowedEdgeCatalog
-import org.poc.objs.core.domain.BoMAllowedEdgeRule
-import org.poc.objs.core.domain.BoMSchema
-import org.poc.objs.core.domain.BoMSchemaCatalog
-import org.poc.objs.core.domain.BoMSchemaField
-import org.poc.objs.core.domain.BoMSchemaNode
-import org.poc.objs.core.domain.BoMSchemaType
-import org.poc.objs.core.domain.BoMSchemaUsage
+import org.poc.objs.core.domain.AllowedEdgeCatalog
+import org.poc.objs.api.domain.AllowedEdgeRule
+import org.poc.objs.core.domain.Schema
+import org.poc.objs.core.domain.SchemaCatalog
+import org.poc.objs.core.domain.SchemaField
+import org.poc.objs.core.domain.SchemaNode
+import org.poc.objs.core.domain.SchemaType
+import org.poc.objs.core.domain.SchemaUsage
 
 /**
  * Bundle of schemas and allow-list rules for registration into in-memory catalogs.
  */
 data class RegistryPack(
-    val schemas: List<BoMSchema> = emptyList(),
-    val edgeRules: List<BoMAllowedEdgeRule> = emptyList(),
+    val schemas: List<Schema> = emptyList(),
+    val edgeRules: List<AllowedEdgeRule> = emptyList(),
 ) {
-    fun registerInto(schemasCatalog: BoMSchemaCatalog, edgesCatalog: BoMAllowedEdgeCatalog) {
+    fun registerInto(schemasCatalog: SchemaCatalog, edgesCatalog: AllowedEdgeCatalog) {
         schemas.forEach { schemasCatalog.register(it) }
         edgeRules.forEach { edgesCatalog.register(it) }
     }
@@ -32,14 +32,14 @@ data class RegistryPack(
             version: String,
             title: String = type,
             description: String = "$type payload",
-            fields: List<BoMSchemaField>,
-            usage: BoMSchemaUsage = BoMSchemaUsage.ENTITY,
+            fields: List<SchemaField>,
+            usage: SchemaUsage = SchemaUsage.ENTITY,
             attributes: Map<String, String> = emptyMap(),
-        ): BoMSchema = BoMSchema(
+        ): Schema = Schema(
             type = type,
             version = version,
-            contentSchema = BoMSchemaNode(
-                type = BoMSchemaType.OBJECT,
+            contentSchema = SchemaNode(
+                type = SchemaType.OBJECT,
                 title = title,
                 description = description,
                 fields = fields,
