@@ -10,3 +10,13 @@ delete_files:
   - .gitlab-ci.yml
   - AGENTS.md
   - VERSION
+# Literal replacements run after the built-in package/module transformations.
+# If omitted, all supported source-file extensions are searched.
+replace: []
+# Example:
+# replace:
+#   - old: "CUSTOM_EXPORT_MARKER"
+#     new: "platform"
+#     exts:
+#       - .kt
+#       - .kts

@@ -114,14 +114,35 @@ def project_path(module_hierarchy: str, module: str) -> str:
     return f"{module_hierarchy}:{module}" if module_hierarchy else f":{module}"
 
 
-def load_cleanup_manifest(path: Path) -> tuple[list[str], list[str]]:
+def load_cleanup_manifest(
+    path: Path,
+) -> tuple[list[str], list[str], list[dict[str, object]]]:
     if not path.is_file():
-        return [], []
+        return [], [], []
     with path.open("r", encoding="utf-8") as handle:
         data = yaml.safe_load(handle) or {}
     delete_dirs = list(data.get("delete_dirs") or [])
     delete_files = list(data.get("delete_files") or [])
-    return delete_dirs, delete_files
+    replacements = data.get("replace") or []
+    if not isinstance(replacements, list):
+        raise ValueError("cleanup.yml 'replace' must be a list")
+
+    custom_replacements: list[dict[str, object]] = []
+    for index, replacement in enumerate(replacements, start=1):
+        if not isinstance(replacement, dict):
+            raise ValueError(f"cleanup.yml replace item {index} must be a mapping")
+        old = replacement.get("old")
+        new = replacement.get("new")
+        exts = replacement.get("exts", REPLACE_EXTENSIONS)
+        if not isinstance(old, str) or not old:
+            raise ValueError(f"cleanup.yml replace item {index} requires non-empty string 'old'")
+        if not isinstance(new, str):
+            raise ValueError(f"cleanup.yml replace item {index} requires string 'new'")
+        if not isinstance(exts, list) or not all(isinstance(ext, str) for ext in exts):
+            raise ValueError(f"cleanup.yml replace item {index} requires string list 'exts'")
+        custom_replacements.append({"old": old, "new": new, "exts": exts})
+
+    return delete_dirs, delete_files, custom_replacements
 
 
 def build_replace_rules(
@@ -196,6 +217,7 @@ def build_actions(
     root_project_name: str,
     cleanup_dirs: list[str],
     cleanup_files: list[str],
+    custom_replacements: list[dict[str, object]],
 ) -> list[dict]:
     actions: list[dict] = []
 
@@ -244,6 +266,21 @@ def build_actions(
         }
     )
 
+    for replacement in custom_replacements:
+        actions.append(
+            {
+                "replace_in_files": {
+                    "exts": replacement["exts"],
+                    "replace": [
+                        {
+                            "old": replacement["old"],
+                            "new": replacement["new"],
+                        }
+                    ],
+                }
+            }
+        )
+
     orphan_dirs = [
         module
         for module in TOP_LEVEL_MODULES
@@ -280,7 +317,9 @@ def generate_config(
     hierarchy = validate_module_hierarchy(module_hierarchy or "")
     version = api_version or derive_api_version(target_package)
     root_name = root_project_name or prefix
-    cleanup_dirs, cleanup_files = load_cleanup_manifest(cleanup_config or Path())
+    cleanup_dirs, cleanup_files, custom_replacements = load_cleanup_manifest(
+        cleanup_config or Path()
+    )
 
     return {
         "dump": {
@@ -293,6 +332,7 @@ def generate_config(
                 root_project_name=root_name,
                 cleanup_dirs=cleanup_dirs,
                 cleanup_files=cleanup_files,
+                custom_replacements=custom_replacements,
             ),
         }
     }

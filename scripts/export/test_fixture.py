@@ -203,6 +203,17 @@ def main() -> int:
     with tempfile.TemporaryDirectory(prefix="bom-export-hierarchy-fixture-") as tmp:
         out_dir = Path(tmp) / "out"
         shutil.copytree(FIXTURE_SRC, out_dir)
+        cleanup_config = Path(tmp) / "cleanup.yml"
+        cleanup_config.write_text(
+            """
+replace:
+  - old: CUSTOM_EXPORT_MARKER
+    new: demo-target
+    exts:
+      - .kts
+""".lstrip(),
+            encoding="utf-8",
+        )
         run(
             [
                 sys.executable,
@@ -215,6 +226,8 @@ def main() -> int:
                 "demo",
                 "--module-hierarchy",
                 ":platform:objs",
+                "--cleanup-config",
+                str(cleanup_config),
             ]
         )
         run(
@@ -246,6 +259,9 @@ def main() -> int:
             return 1
         if "objs-core" in service_text:
             print("Source module name remained in parent-relative dependency", file=sys.stderr)
+            return 1
+        if "CUSTOM_EXPORT_MARKER" in service_text or "demo-target" not in service_text:
+            print("Custom cleanup replacement was not applied", file=sys.stderr)
             return 1
 
         print("Fixture self-check passed")

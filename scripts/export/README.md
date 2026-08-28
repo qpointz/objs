@@ -66,7 +66,7 @@ All Gradle modules (foundation, gremlin, workbench runner, SBOM + asset-reposito
    - `move_package` (copy-then-delete, deepest paths first)
    - `move_dir` (all modules from `settings.gradle.kts`)
    - `replace_in_files` (longest-first; SPI `.imports`, seeds, Flyway classpath paths, Gradle refs)
-   - optional `delete_dir` / `delete_file` from cleanup manifest
+   - optional literal `replace`, `delete_dir`, and `delete_file` actions from cleanup manifest
    - `delete_empty_folder`
 
 When `MODULE_HIERARCHY` is supplied, Gradle project paths are nested while the exported
@@ -84,7 +84,18 @@ delete_dirs:
   - deploy/local-dev
 delete_files:
   - AGENTS.md
+
+replace:
+  - old: "CUSTOM_EXPORT_MARKER"
+    new: "platform"
+    exts:
+      - .kt
+      - .kts
 ```
+
+`replace` entries perform literal, ordered replacements after the built-in transformations.
+Each entry requires a non-empty `old` string and a `new` string; `exts` is optional and
+defaults to the standard source-file extensions.
 
 Populate after your first dry-run (see story G-18).
 
