@@ -42,7 +42,6 @@ val schemaUrl: String =
 
 val catalogSchema = layout.projectDirectory.file("src/jsonschema/registry-catalog.codegen.schema.json")
 val generatedPojoDir = layout.buildDirectory.dir("generated/sources/jsonschema2pojo")
-val graphBuilderSchema = layout.projectDirectory.file("src/jsonschema/graph-builder.codegen.schema.json")
 val generatedObjsDir = layout.buildDirectory.dir("generated/sources/typed-bindings")
 
 /**
@@ -100,7 +99,7 @@ tasks.register<JavaExec>("generateObjsJava") {
     classpath = configurations.runtimeClasspath.get()
     mainClass = "org.poc.objs.codegen.java.JavaCodegenMain"
     args(
-        graphBuilderSchema.asFile.absolutePath,
+        catalogSchema.asFile.absolutePath,
         generatedObjsDir.get().asFile.absolutePath,
         "org.poc.objs.codegen.generated",
     )

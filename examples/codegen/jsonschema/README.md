@@ -13,8 +13,7 @@ already POJO-ready.
 
 | Path | Role |
 |------|------|
-| `src/jsonschema/registry-catalog.codegen.schema.json` | Committed snapshot (`format=json-schema-codegen`, default dialect) |
-| `src/jsonschema/graph-builder.codegen.schema.json` | Small Product → Component typed graph contract |
+| `src/jsonschema/registry-catalog.codegen.schema.json` | Committed snapshot and single input for POJO and typed binding generation |
 | `build/generated/sources/jsonschema2pojo/` | Generated Java under `org.poc.objs.codegen.generated` |
 | `build/generated/sources/typed-bindings/` | Generated mutation and read bindings |
 
@@ -53,8 +52,9 @@ Same edge options as `json-schema` (`includeEdges`, `includeEdgePropertySchemas`
 uses `$defs`. Adds a synthetic root (`ObjsCatalog`) that `$ref`s every catalog def and sets each
 def `title` to the def key so class names stay PascalCase.
 
-The test also demonstrates `GraphMutationBuilder`: pass generated `Product` and `Component` POJOs,
-call `containsComponent`, then construct a `GeneratedReadView` from the resulting graph.
+The committed catalog snapshot includes the Product → Component binding manifest used by the
+`GraphMutationBuilder` test: pass generated `Product` and `Component` POJOs, call
+`containsComponent`, then construct a `GeneratedReadView` from the resulting graph.
 
 The catalog's linked relation properties are read/navigation projections. They are not written as
 nested mutation payloads; graph-write code uses the generated builder's explicit edge methods.

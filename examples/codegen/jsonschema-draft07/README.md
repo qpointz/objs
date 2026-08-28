@@ -10,8 +10,7 @@ jsonschema2pojo / OpenAPI tooling.
 
 | Path | Role |
 |------|------|
-| `src/jsonschema/registry-catalog.codegen.draft07.schema.json` | Committed snapshot from a running registry |
-| `src/jsonschema/graph-builder.codegen.draft07.schema.json` | Small Product → Component typed graph contract |
+| `src/jsonschema/registry-catalog.codegen.draft07.schema.json` | Committed snapshot and single input for POJO and typed binding generation |
 | `build/generated/sources/jsonschema2pojo/` | Generated Java under `org.poc.objs.codegen.draft07.generated` |
 | `build/generated/sources/typed-bindings/` | Generated mutation and read bindings |
 
@@ -45,8 +44,9 @@ GET /api/v1/objs/registry/export?format=json-schema-codegen&dialect=draft-07
 Singular relation `$ref`s are wrapped in `allOf` so title / `x-objs-*` siblings stay meaningful
 under draft-07 `$ref` exclusivity.
 
-The test also demonstrates `GraphMutationBuilder`: pass generated `Product` and `Component` POJOs,
-call `containsComponent`, then construct a `GeneratedReadView` from the resulting graph.
+The committed catalog snapshot includes the Product → Component binding manifest used by the
+`GraphMutationBuilder` test: pass generated `Product` and `Component` POJOs, call
+`containsComponent`, then construct a `GeneratedReadView` from the resulting graph.
 
 The catalog's linked relation properties are read/navigation projections. They are not written as
 nested mutation payloads; graph-write code uses the generated builder's explicit edge methods.

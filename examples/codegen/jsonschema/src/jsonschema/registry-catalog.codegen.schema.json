@@ -1363,5 +1363,55 @@
       },
       "additionalProperties": true
     }
-  }
+  },
+
+  "x-objs-codegen": {
+    "version": 1,
+    "language": "java",
+    "definitions": [
+      {
+        "definitionKey": "Product",
+        "kind": "ENTITY",
+        "type": "Product",
+        "schemaVersion": "1.0.0",
+        "generated": true,
+        "skip": false,
+        "javaTypeName": "Product",
+        "interfaces": []
+      },
+      {
+        "definitionKey": "Component",
+        "kind": "ENTITY",
+        "type": "Component",
+        "schemaVersion": "1.0.0",
+        "generated": true,
+        "skip": false,
+        "javaTypeName": "Component",
+        "interfaces": []
+      }
+    ],
+    "diagnostics": []
+  },
+  "x-objs-relations": [
+    {
+      "sourceType": "Product",
+      "sourceDefinition": "Product",
+      "targetType": "Component",
+      "targetDefinition": "Component",
+      "role": "CONTAINS",
+      "propertiesPolicy": "NONE",
+      "emptyPropertiesAllowed": true,
+      "cardinality": "1:*",
+      "propertySchema": null,
+      "codegen": {
+        "skip": false,
+        "noInverse": false,
+        "outboundMethod": "containsComponent",
+        "inboundMethod": "containedByProduct",
+        "sourceStaticBinding": true,
+        "targetStaticBinding": true
+      }
+    }
+  ]
+
 }
