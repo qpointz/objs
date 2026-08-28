@@ -32,6 +32,7 @@ make export-verify OUT_DIR=/tmp/bom-export-test MODULE_PREFIX=demo
 | `TARGET_PACKAGE` | yes | — | e.g. `com.acme.platform` replaces `org.poc.objs` |
 | `OUT_DIR` | no | `../bom-export-<slug>` | Export destination (**must be outside repo**) |
 | `MODULE_PREFIX` | no | last segment of `TARGET_PACKAGE` | Module prefix (`platform-core`, `:platform-core`) |
+| `MODULE_HIERARCHY` | no | empty | Optional Gradle project path prefix, e.g. `:platform:objs`; physical module directories remain flat |
 | `API_VERSION` | no | reverse-domain `/v1` | Seed `apiVersion` (`platform.acme.com/v1`) |
 | `ROOT_PROJECT_NAME` | no | `MODULE_PREFIX` | `settings.gradle.kts` `rootProject.name` |
 | `CLEANUP_CONFIG` | no | `scripts/export/cleanup.yml` | Optional post-transform delete manifest |
@@ -67,6 +68,11 @@ All Gradle modules (foundation, gremlin, workbench runner, SBOM + asset-reposito
    - `replace_in_files` (longest-first; SPI `.imports`, seeds, Flyway classpath paths, Gradle refs)
    - optional `delete_dir` / `delete_file` from cleanup manifest
    - `delete_empty_folder`
+
+When `MODULE_HIERARCHY` is supplied, Gradle project paths are nested while the exported
+module directories remain at the export root. For example, `MODULE_HIERARCHY=:platform:objs`
+and `MODULE_PREFIX=platform` generates `:platform:objs:platform-core` mapped to
+`platform-core`.
 
 ## Optional cleanup manifest
 

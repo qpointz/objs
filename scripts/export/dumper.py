@@ -53,6 +53,11 @@ class Dumper:
         for old_path in sorted(matches, key=lambda p: len(p.parts), reverse=True):
             new_path = Path(str(old_path).replace(old_sp, new_sp, 1))
             print(f"Copy: {old_path} -> {new_path}")
+            if os.path.normcase(os.path.abspath(old_path)) == os.path.normcase(
+                os.path.abspath(new_path)
+            ):
+                print(f"==== Skipping same-path package move: {old_path}")
+                continue
             if new_path.exists():
                 shutil.rmtree(new_path)
             new_path.parent.mkdir(parents=True, exist_ok=True)
@@ -68,6 +73,9 @@ class Dumper:
         from_sp = os.path.join(self.root_dir, from_path)
         to_sp = os.path.join(self.root_dir, to_path)
         print(f"==== Moving directory {from_sp} to {to_sp}")
+        if os.path.normcase(os.path.abspath(from_sp)) == os.path.normcase(os.path.abspath(to_sp)):
+            print(f"==== Skipping same-path directory move: {from_sp}")
+            return
         if os.path.exists(from_sp):
             parent = os.path.dirname(to_sp)
             if parent:

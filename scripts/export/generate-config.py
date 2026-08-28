@@ -99,6 +99,21 @@ def validate_target_package(value: str) -> None:
         )
 
 
+def validate_module_hierarchy(value: str) -> str:
+    if value and not re.fullmatch(
+        r":[a-zA-Z][a-zA-Z0-9_-]*(?::[a-zA-Z][a-zA-Z0-9_-]*)*", value
+    ):
+        raise ValueError(
+            "MODULE_HIERARCHY must be a colon-separated Gradle path prefix "
+            f"(got {value!r}; expected e.g. ':platform:objs')"
+        )
+    return value
+
+
+def project_path(module_hierarchy: str, module: str) -> str:
+    return f"{module_hierarchy}:{module}" if module_hierarchy else f":{module}"
+
+
 def load_cleanup_manifest(path: Path) -> tuple[list[str], list[str]]:
     if not path.is_file():
         return [], []
@@ -113,6 +128,7 @@ def build_replace_rules(
     *,
     target_package: str,
     module_prefix: str,
+    module_hierarchy: str,
     api_version: str,
     root_project_name: str,
 ) -> list[dict[str, str]]:
@@ -128,10 +144,16 @@ def build_replace_rules(
 
     for project in sorted(GRADLE_PROJECTS, key=len, reverse=True):
         bare = project[1:]
-        add(project, f":{renamed_module(module_prefix, bare)}")
+        add(project, project_path(module_hierarchy, renamed_module(module_prefix, bare)))
 
-    add(":objs-sbom-example", f":{renamed_module(module_prefix, 'sbom-service')}")
-    add(":objs-app", f":{renamed_module(module_prefix, 'service-app')}")
+    add(
+        ":objs-sbom-example",
+        project_path(module_hierarchy, renamed_module(module_prefix, "sbom-service")),
+    )
+    add(
+        ":objs-app",
+        project_path(module_hierarchy, renamed_module(module_prefix, "service-app")),
+    )
 
     for rel_path, module in sorted(EXAMPLE_MODULES, key=lambda item: len(item[0]), reverse=True):
         add(rel_path, rel_path.rsplit("/", 1)[0] + "/" + renamed_module(module_prefix, module))
@@ -169,6 +191,7 @@ def build_actions(
     *,
     target_package: str,
     module_prefix: str,
+    module_hierarchy: str,
     api_version: str,
     root_project_name: str,
     cleanup_dirs: list[str],
@@ -181,22 +204,27 @@ def build_actions(
     )
 
     for module in TOP_LEVEL_MODULES:
-        actions.append(
-            {
-                "move_dir": {
-                    "from": module,
-                    "to": renamed_module(module_prefix, module),
+        target = renamed_module(module_prefix, module)
+        if module != target:
+            actions.append(
+                {
+                    "move_dir": {
+                        "from": module,
+                        "to": target,
+                    }
                 }
-            }
-        )
+            )
 
     for rel_path, module in EXAMPLE_MODULES:
         parent, _ = rel_path.rsplit("/", 1)
+        target = f"{parent}/{renamed_module(module_prefix, module)}"
+        if rel_path == target:
+            continue
         actions.append(
             {
                 "move_dir": {
                     "from": rel_path,
-                    "to": f"{parent}/{renamed_module(module_prefix, module)}",
+                    "to": target,
                 }
             }
         )
@@ -208,6 +236,7 @@ def build_actions(
                 "replace": build_replace_rules(
                     target_package=target_package,
                     module_prefix=module_prefix,
+                    module_hierarchy=module_hierarchy,
                     api_version=api_version,
                     root_project_name=root_project_name,
                 ),
@@ -215,7 +244,16 @@ def build_actions(
         }
     )
 
-    orphan_dirs = TOP_LEVEL_MODULES + [path for path, _ in EXAMPLE_MODULES]
+    orphan_dirs = [
+        module
+        for module in TOP_LEVEL_MODULES
+        if module != renamed_module(module_prefix, module)
+    ]
+    orphan_dirs.extend(
+        path
+        for path, module in EXAMPLE_MODULES
+        if path != f"{path.rsplit('/', 1)[0]}/{renamed_module(module_prefix, module)}"
+    )
     actions.append({"delete_dir": {"paths": orphan_dirs}})
 
     if cleanup_dirs:
@@ -232,12 +270,14 @@ def generate_config(
     out_dir: str,
     target_package: str,
     module_prefix: str | None = None,
+    module_hierarchy: str | None = None,
     api_version: str | None = None,
     root_project_name: str | None = None,
     cleanup_config: Path | None = None,
 ) -> dict:
     validate_target_package(target_package)
     prefix = module_prefix or derive_module_prefix(target_package)
+    hierarchy = validate_module_hierarchy(module_hierarchy or "")
     version = api_version or derive_api_version(target_package)
     root_name = root_project_name or prefix
     cleanup_dirs, cleanup_files = load_cleanup_manifest(cleanup_config or Path())
@@ -248,6 +288,7 @@ def generate_config(
             "actions": build_actions(
                 target_package=target_package,
                 module_prefix=prefix,
+                module_hierarchy=hierarchy,
                 api_version=version,
                 root_project_name=root_name,
                 cleanup_dirs=cleanup_dirs,
@@ -262,6 +303,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out-dir", required=True)
     parser.add_argument("--target-package", required=True)
     parser.add_argument("--module-prefix")
+    parser.add_argument("--module-hierarchy", default="")
     parser.add_argument("--api-version")
     parser.add_argument("--root-project-name")
     parser.add_argument("--cleanup-config")
@@ -276,6 +318,7 @@ def main(argv: list[str] | None = None) -> int:
             out_dir=args.out_dir,
             target_package=args.target_package,
             module_prefix=args.module_prefix,
+            module_hierarchy=args.module_hierarchy,
             api_version=args.api_version,
             root_project_name=args.root_project_name,
             cleanup_config=Path(args.cleanup_config) if args.cleanup_config else None,

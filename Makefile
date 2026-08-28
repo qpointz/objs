@@ -1,8 +1,9 @@
 # bom-poc source export — produces a renamed copy outside this repo.
-.PHONY: export export-verify export-clean check-export-tools check-out-dir test-export-fixture
+.PHONY: export export-verify export-clean check-export-tools check-out-dir check-module-hierarchy test-export-fixture
 
 SOURCE_PACKAGE ?= org.poc.objs
 CLEANUP_CONFIG ?= scripts/export/cleanup.yml
+MODULE_HIERARCHY ?=
 RSYNC_EXCLUDES := \
 	--exclude .git/ \
 	--exclude .gradle/ \
@@ -27,6 +28,7 @@ MODULE_PREFIX ?= $(lastword $(subst ., ,$(TARGET_PACKAGE)))
 ROOT_PROJECT_NAME ?= $(MODULE_PREFIX)
 API_VERSION ?= $(shell python3 -c 'p="$(TARGET_PACKAGE)".split("."); print(".".join(reversed(p))+"/v1")' 2>/dev/null)
 OUT_DIR ?= ../bom-export-$(subst .,-,$(TARGET_PACKAGE))
+CORE_PROJECT_PATH := $(MODULE_HIERARCHY):$(MODULE_PREFIX)-core
 
 check-export-tools:
 	@command -v rsync >/dev/null || (echo "rsync required" && exit 1)
@@ -45,7 +47,10 @@ check-out-dir:
 		--out-dir "$(OUT_DIR)" \
 		--source-repo "$(CURDIR)"
 
-export: check-export-tools check-out-dir
+check-module-hierarchy:
+	@python3 -c "import re, sys; h='$(MODULE_HIERARCHY)'; valid=not h or re.fullmatch(r':[a-zA-Z][a-zA-Z0-9_-]*(?::[a-zA-Z][a-zA-Z0-9_-]*)*', h); print('MODULE_HIERARCHY must be a colon-separated Gradle path prefix, e.g. :platform:objs', file=sys.stderr) if not valid else None; sys.exit(0 if valid else 1)"
+
+export: check-export-tools check-out-dir check-module-hierarchy
 	@if [ -z "$(TARGET_PACKAGE)" ]; then \
 		echo "TARGET_PACKAGE is required, e.g. make export TARGET_PACKAGE=com.acme.platform"; \
 		exit 1; \
@@ -68,6 +73,7 @@ export: check-export-tools check-out-dir
 		--out-dir "$(OUT_DIR)" \
 		--target-package "$(TARGET_PACKAGE)" \
 		--module-prefix "$(MODULE_PREFIX)" \
+		--module-hierarchy "$(MODULE_HIERARCHY)" \
 		--api-version "$(API_VERSION)" \
 		--root-project-name "$(ROOT_PROJECT_NAME)" \
 		--cleanup-config "$(CLEANUP_CONFIG)"
@@ -77,7 +83,7 @@ export: check-export-tools check-out-dir
 		--source-repo "$(CURDIR)"
 	@echo ""
 	@echo "Export complete: $(OUT_DIR)"
-	@echo "Verify: make export-verify OUT_DIR=$(OUT_DIR) MODULE_PREFIX=$(MODULE_PREFIX)"
+	@echo "Verify: make export-verify OUT_DIR=$(OUT_DIR) MODULE_PREFIX=$(MODULE_PREFIX) MODULE_HIERARCHY=$(MODULE_HIERARCHY)"
 	@echo "Build:  cd $(OUT_DIR) && ./gradlew clean build"
 
 export-clean: check-out-dir
@@ -88,7 +94,7 @@ export-clean: check-out-dir
 	echo "Removing export directory: $$OUT_ABS"; \
 	rm -rf "$$OUT_ABS"
 
-export-verify: check-export-tools
+export-verify: check-export-tools check-module-hierarchy
 	@if [ -z "$(OUT_DIR)" ]; then \
 		echo "OUT_DIR is required"; \
 		exit 1; \
@@ -104,10 +110,10 @@ export-verify: check-export-tools
 	@if rg 'objs\.poc\.org/v1' "$(OUT_DIR)" --glob '!docs/workitems/**' 2>/dev/null; then \
 		echo "FAIL: objs.poc.org/v1 leftover"; exit 1; \
 	else echo "OK: seed apiVersion"; fi
-	@if rg 'org\.poc\.objs|:objs-(core|service-ui|service-app|service|gremlin-core|gremlin-service)\b' "$(OUT_DIR)" --glob '!docs/workitems/**' 2>/dev/null; then \
+	@if [ "$(MODULE_PREFIX)" != "objs" ] && rg 'org\.poc\.objs|(^|[^[:alnum:]_-])objs-(core|service-ui|service-app|service|gremlin-core|gremlin-service)([^[:alnum:]_-]|$$)' "$(OUT_DIR)" --glob '!docs/workitems/**' 2>/dev/null; then \
 		echo "FAIL: leftover POC package or :objs- gradle refs"; exit 1; \
 	else echo "OK: POC identifiers"; fi
-	@if rg ':sbom-service[^-]|:sbom-service$$|:asset-repository-service[^-]|:asset-repository-service$$' "$(OUT_DIR)" 2>/dev/null; then \
+	@if [ "$(MODULE_PREFIX)" != "objs" ] && rg '(^|[^[:alnum:]_-])(sbom-service|asset-repository-service)([^[:alnum:]_-]|$$)' "$(OUT_DIR)" --glob '!**/README.md' 2>/dev/null; then \
 		echo "FAIL: unprefixed example module gradle refs"; exit 1; \
 	else echo "OK: example modules"; fi
 	@if rg 'docs/workitems/' "$(OUT_DIR)/docs/design" "$(OUT_DIR)/README.md" "$(OUT_DIR)/AGENTS.md" 2>/dev/null; then \
@@ -126,5 +132,5 @@ export-verify: check-export-tools
 	@echo "== Gradle build =="
 	cd "$(OUT_DIR)" && ./gradlew clean build
 	@echo "== Seed tests =="
-	cd "$(OUT_DIR)" && ./gradlew ":$(MODULE_PREFIX)-core:test" --tests '*SeedImporter*'
+	cd "$(OUT_DIR)" && ./gradlew "$(CORE_PROJECT_PATH):test" --tests '*SeedImporter*'
 	@echo "export-verify passed"

@@ -114,6 +114,140 @@ def main() -> int:
             print("SPI .imports replace failed in fixture", file=sys.stderr)
             return 1
 
+    with tempfile.TemporaryDirectory(prefix="bom-export-source-package-fixture-") as tmp:
+        out_dir = Path(tmp) / "out"
+        shutil.copytree(FIXTURE_SRC, out_dir)
+        run(
+            [
+                sys.executable,
+                str(GENERATE),
+                "--out-dir",
+                str(out_dir),
+                "--target-package",
+                "org.poc.objs",
+            ]
+        )
+        run(
+            [
+                sys.executable,
+                str(DUMPER),
+                "--root",
+                str(out_dir),
+                "--config",
+                str(out_dir / ".dumper.yml"),
+                "--source-repo",
+                str(REPO_ROOT),
+            ]
+        )
+
+        retained = (
+            out_dir
+            / "objs-core"
+            / "src"
+            / "main"
+            / "kotlin"
+            / "org"
+            / "poc"
+            / "objs"
+            / "core"
+            / "Sample.kt"
+        )
+        if not retained.is_file():
+            print(f"Source package was removed during no-op export: {retained}", file=sys.stderr)
+            return 1
+
+    with tempfile.TemporaryDirectory(prefix="bom-export-prefix-fixture-") as tmp:
+        out_dir = Path(tmp) / "out"
+        shutil.copytree(FIXTURE_SRC, out_dir)
+        run(
+            [
+                sys.executable,
+                str(GENERATE),
+                "--out-dir",
+                str(out_dir),
+                "--target-package",
+                "com.example.demo",
+                "--module-prefix",
+                "objs",
+            ]
+        )
+        run(
+            [
+                sys.executable,
+                str(DUMPER),
+                "--root",
+                str(out_dir),
+                "--config",
+                str(out_dir / ".dumper.yml"),
+                "--source-repo",
+                str(REPO_ROOT),
+            ]
+        )
+
+        retained = (
+            out_dir
+            / "objs-core"
+            / "src"
+            / "main"
+            / "kotlin"
+            / "com"
+            / "example"
+            / "demo"
+            / "core"
+            / "Sample.kt"
+        )
+        if not retained.is_file():
+            print(f"Explicit objs module prefix removed module: {retained}", file=sys.stderr)
+            return 1
+
+    with tempfile.TemporaryDirectory(prefix="bom-export-hierarchy-fixture-") as tmp:
+        out_dir = Path(tmp) / "out"
+        shutil.copytree(FIXTURE_SRC, out_dir)
+        run(
+            [
+                sys.executable,
+                str(GENERATE),
+                "--out-dir",
+                str(out_dir),
+                "--target-package",
+                "com.example.demo",
+                "--module-prefix",
+                "demo",
+                "--module-hierarchy",
+                ":platform:objs",
+            ]
+        )
+        run(
+            [
+                sys.executable,
+                str(DUMPER),
+                "--root",
+                str(out_dir),
+                "--config",
+                str(out_dir / ".dumper.yml"),
+                "--source-repo",
+                str(REPO_ROOT),
+            ]
+        )
+
+        settings = (out_dir / "settings.gradle.kts").read_text(encoding="utf-8")
+        expected_core_path = '":platform:objs:demo-core"'
+        if f"include({expected_core_path})" not in settings:
+            print("Module hierarchy missing from generated include", file=sys.stderr)
+            return 1
+        if f"project({expected_core_path}).projectDir = file(\"demo-core\")" not in settings:
+            print("Flat module directory mapping missing from generated settings", file=sys.stderr)
+            return 1
+
+        service_build = out_dir / "demo-service" / "build.gradle.kts"
+        service_text = service_build.read_text(encoding="utf-8")
+        if 'project.parent!!.project("demo-core")' not in service_text:
+            print("Parent-relative dependency was not renamed", file=sys.stderr)
+            return 1
+        if "objs-core" in service_text:
+            print("Source module name remained in parent-relative dependency", file=sys.stderr)
+            return 1
+
         print("Fixture self-check passed")
         return 0
 
