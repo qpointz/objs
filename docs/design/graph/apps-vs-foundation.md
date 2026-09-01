@@ -16,7 +16,9 @@ SBOM story tracker for the same gaps: [`FOUNDATION-BACKLOG.md`](../../workitems/
 | Layer | Owns |
 |-------|------|
 | **objs-core** | Entities, edges, named graphs + membership, schema/allow-list catalogs, persist gate, identity *projection*, matchers (`obj-expr`, `graphs-in`, …), Graph/ObjectSchema/AllowedEdge seeds, Gremlin materialize + eval |
-| **objs-gremlin-core** | Matcher → TinkerGraph → gremlin-lang |
+| **objs-gremlin-core** | Matcher → resolved fragment → TinkerGraph → gremlin-lang |
+| **objs-jgrapht-core** | Resolved fragment → JGraphT graph + SCC cycle analysis (JVM-only) |
+| **objs-jgrapht-service** | Optional REST capabilities + cycle endpoint (workbench runner only) |
 | **Example apps** | Product tables and meaning of graphs (SBOM apps/versions/fingerprints/portfolios; AR collections + write modes), product REST, ontology packs, reports |
 | **objs-service / objs-service-app** | Foundation *workbench* only — not an example dependency |
 
@@ -70,7 +72,10 @@ Lock for [`live-store-apis`](../../workitems/completed/20260819-live-store-apis/
 
 `GraphMergePolicy`: `nodeKey` / `edgeKey` detect overlap; `onDuplicateNode` / `onDuplicateEdge` choose the survivor. Default: node key = entity id; edge key = `(source, role, target)`; keep first in caller order; do not merge property maps. Empty `sourceIds` → `GRAPH_MERGE_EMPTY`; any missing source → `GRAPH_NOT_FOUND` and no new graph.
 
-Do **not** overload `copyGraph` with a collection of ids. Combined SBOM **GET** / multi-select stays ephemeral `BomUnion` (not persist). Fingerprint freeze is **C-18 `createDeepGraphVersion`**, not copy, merge, or clone.
+Do **not** overload `copyGraph` with a collection of ids. Combined SBOM **GET** / multi-select
+stays ephemeral via `BomUnion.of` → `DefaultGraphFragmentPolicy` on assembled
+`GraphContents` (see [`fragments-and-analysis.md`](fragments-and-analysis.md)); it is not
+persisted. Fingerprint freeze is **C-18 `createDeepGraphVersion`**, not copy, merge, or clone.
 
 **Not missing as foundation:** applications, portfolios, collections-as-product, CycloneDX, MI *report definitions*, uniqueness of “app in portfolio”. Those stay domain.
 

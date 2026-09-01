@@ -5,15 +5,23 @@
 **TinkerPop:** `4.0.0-beta.3` (JDK 21)
 
 Gremlin runs **behind** the BoM graph API: select a subgraph with the same matcher DSL as
-Explorer, materialize a **read-only** in-memory TinkerGraph, evaluate **gremlin-lang**, then
-project results back to `BoMGremlinResult` (optional Explorer-shaped `BoMSubgraph`).
+Explorer, resolve it through **`GraphFragmentPolicy`**, materialize a **read-only** in-memory
+TinkerGraph from the **`ResolvedGraphFragment`**, evaluate **gremlin-lang**, then project results
+back to `BoMGremlinResult` (optional Explorer-shaped `BoMSubgraph`).
 
 ```text
-matcher  →  subgraph1  →  envelope TinkerGraph  →  gremlin-lang  →  BoMGremlinResult
+matcher  →  GraphStore.select  →  GraphFragmentPolicy.resolve  →  subgraph1 (ResolvedGraphFragment)
               │                                                      │
-              └─ BoMGraphStore.selectSubgraph                        ├─ subgraph2 when graph-shaped
-                 (Explorer / Composer parity)                        └─ table / scalar / items otherwise
+              └─ BoMGraphStore parity                               ├─ envelope TinkerGraph
+                                                                     ├─ gremlin-lang
+                                                                     └─ BoMGremlinResult
+                                                                        ├─ subgraph2 when graph-shaped
+                                                                        └─ table / scalar / items otherwise
 ```
+
+JGraphT uses the **same resolved fragment** but builds an independent native graph (see
+[`fragments-and-analysis.md`](fragments-and-analysis.md)). Gremlin and JGraphT do not share native
+graph instances.
 
 Mutations on the snapshot are ephemeral and **never** written back to `BoMGraphStore`.
 There is no Gremlin Server process.
@@ -22,16 +30,20 @@ There is no Gremlin Server process.
 
 | Module | Role |
 |--------|------|
-| `:objs-gremlin-core` | Materializer, strategies, `BoMGremlinEngine`, result projection |
+| `:objs-gremlin-core` | Policy-aware materializer, strategies, `BoMGremlinEngine`, result projection |
 | `:objs-gremlin-service` | `POST /api/v1/objs/graph/traverse/gremlin`, OpenAPI tag `traverse` |
-| `:objs-service-app` | Depends on `:objs-gremlin-service` so Traverse/Query REST is on the classpath |
-| `:objs-service` UI | Query peer view; does **not** embed TinkerPop |
+| `:objs-jgrapht-core` | JGraphT materialization + cycle analysis from `ResolvedGraphFragment` (not used by Gremlin directly) |
+| `:objs-jgrapht-service` | Optional `GET/POST /graph/algorithms/*` (OpenAPI tag `graph-algorithms`) |
+| `:objs-service-app` | Depends on `:objs-gremlin-service` and `:objs-jgrapht-service` for workbench |
+| `:objs-service` UI | Query + Explorer; capability DTOs only — no TinkerPop or JGraphT |
 
 Foundation modules (`:objs-core`, `:objs-service`) stay free of TinkerPop dependencies.
 
 ## Materialization strategies
 
-`BoMGremlinMaterializationStrategy` maps a `BoMSubgraph` to a TinkerGraph.
+`BoMGremlinMaterializationStrategy` maps a **`ResolvedGraphFragment`** to a TinkerGraph. The engine
+resolves store-selected `GraphContents` through the configured **`GraphFragmentPolicy`** (default:
+`DefaultGraphFragmentPolicy`) before materialization.
 
 | Strategy | Behaviour | Status |
 |----------|-----------|--------|
@@ -71,11 +83,12 @@ Workbench Query editor uses **Groovy** highlighting for familiarity; the wire pr
 ## Engine API
 
 ```text
-BoMGremlinEngine.eval(subgraph, script, bindings?, strategy?, options?)
+BoMGremlinEngine.eval(subgraph: ResolvedGraphFragment, script, bindings?, strategy?, options?)
 BoMGremlinEngine.selectAndEval(store, matcher, script, bindings?, strategy?, options?)
 ```
 
-`selectAndEval` is the product path: matcher → induced subgraph1 → materialize → eval.
+`selectAndEval` is the product path: matcher → induced contents → **policy resolve** → subgraph1 →
+materialize → eval.
 
 ## Result model (`BoMGremlinResult`)
 
@@ -148,8 +161,11 @@ workbench), then Query / traverse REST with a matcher such as `{ "anno": { "app"
 
 Ready-to-run scripts (Product↔Database, Service/Policy tables, paths): [`gremlin-examples.md`](gremlin-examples.md).
 
+Cycle region analysis (REST + Explorer): [`cycle-analysis-examples.md`](cycle-analysis-examples.md).
+
 ## Related
 
+- Fragment policy + JGraphT: [`fragments-and-analysis.md`](fragments-and-analysis.md)
 - Example scripts: [`gremlin-examples.md`](gremlin-examples.md)
 - Matchers / induced subgraphs: [`annotations-and-matchers.md`](annotations-and-matchers.md)
 - Story: [`../../workitems/completed/20260806-gremlin-subgraph-traversal/STORY.md`](../../workitems/completed/20260806-gremlin-subgraph-traversal/STORY.md)

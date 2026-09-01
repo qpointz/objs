@@ -1,6 +1,8 @@
 # REST API
 
-**Modules:** `:objs-service` (foundation controllers) · `:objs-gremlin-service` (traverse) · `:objs-service-app` (workbench runner + Swagger UI)  
+**Modules:** `:objs-service` (foundation controllers) · `:objs-gremlin-service` (traverse) ·
+`:objs-jgrapht-service` (optional graph algorithms) · `:objs-service-app` (workbench runner +
+Swagger UI)  
 **Base path:** `/api/v1/objs`  
 **Auth:** none (G-R15)  
 **OpenAPI:** springdoc-openapi **3.0.3** — UI via `:objs-service-app:run` (`/swagger-ui.html`, `/v3/api-docs`, groups `graph` / `registry` / `traverse` / …)
@@ -35,6 +37,8 @@ graph-local edges, resolve, query, clone, and graph versions. See [`../graph/mod
 | `GET` | `/graphs/{id}/versions` | List deep versions newest first (`version DESC`); empty if never snapshotted | `:objs-service` |
 | `GET` | `/graphs/{id}/versions/{version}` | Reconstruct pinned graph (read-only; slower OK). Works after HEAD delete | `:objs-service` |
 | `POST` | `/graph/traverse/gremlin` | Matcher + gremlin-lang script → `BoMGremlinResult` (OpenAPI tag **`traverse`**); matcher DSL scoping rules as above | `:objs-gremlin-service` |
+| `GET` | `/graph/algorithms/capabilities` | Supported analysis algorithms and materialization modes (OpenAPI tag **`graph-algorithms`**) | `:objs-jgrapht-service` |
+| `POST` | `/graph/algorithms/cycles` | Directed SCC cycle-region analysis for matcher-selected fragment (`materialization`: **`GENERIC`** default) | `:objs-jgrapht-service` |
 
 **Fail closed:** bare `obj-expr` on `/graphs/query` with no stage-0 `all` / `graph-expr` → `400`
 (lock G-G16). Pool-wide `obj-expr` (orphans included) uses `POST /entities/query` instead.
@@ -107,6 +111,8 @@ Use `format=json-schema-codegen` when feeding jsonschema2pojo or similar generat
 - Catalog persistence / seeds: [`docs/workitems/completed/20260729-graph-config-seeds/`](../../workitems/completed/20260729-graph-config-seeds/STORY.md)
 - Allowed-edge cardinality: [`docs/design/graph/model.md`](../graph/model.md)
 - Gremlin traverse: [`docs/design/graph/gremlin.md`](../graph/gremlin.md)
+- Graph fragments + algorithms: [`docs/design/graph/fragments-and-analysis.md`](../graph/fragments-and-analysis.md)
+- Cycle analysis examples: [`docs/design/graph/cycle-analysis-examples.md`](../graph/cycle-analysis-examples.md)
 - Registry/graph I/O formats: backlog **C-7**
 - Catalog persistence: backlog **C-3** / **C-4** (done); cardinality **C-6**
 - Pool/graph inversion, minimal matchers: backlog **C-13** — [`docs/workitems/in-progress/graphs-from-objects/STORY.md`](../../workitems/in-progress/graphs-from-objects/STORY.md) (Stages 1–4 landed; Stage 5 cleanup remaining)

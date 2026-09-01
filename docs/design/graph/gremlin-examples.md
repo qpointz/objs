@@ -162,3 +162,8 @@ Workbench: `/workbench/query` — same matcher + script; **Structured** for grap
 | `DEPENDS_ON` | Component → Component |
 
 Full allow-list: [`../sbom/canonical-spec.md`](../sbom/canonical-spec.md).
+
+## Related
+
+- Cycle analysis (same matcher scopes): [`cycle-analysis-examples.md`](cycle-analysis-examples.md)
+- Gremlin engine: [`gremlin.md`](gremlin.md)

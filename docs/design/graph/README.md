@@ -17,7 +17,9 @@ Objs is an **entity store**: independent informational **entities** linked by **
 | [seeds.md](seeds.md) | Multi-document YAML seeds (`ObjectSchema`, `AllowedEdgeRule`, `Graph`); generation checklist |
 | [json-schema-to-seeds.md](json-schema-to-seeds.md) | Practical guide: JSON Schema → objs YAML seeds; Python nano-framework |
 | [annotations-and-matchers.md](annotations-and-matchers.md) | Annotations, matchers (`all` / `graph-expr` / `obj-expr` / chained), graph selection |
-| [gremlin.md](gremlin.md) | Matcher → TinkerGraph → gremlin-lang → `BoMGremlinResult` |
+| [gremlin.md](gremlin.md) | Matcher → resolved fragment → TinkerGraph → gremlin-lang → `BoMGremlinResult` |
+| [fragments-and-analysis.md](fragments-and-analysis.md) | `GraphFragment` policy, JGraphT modules, optional cycle REST, workbench boundary |
+| [cycle-analysis-examples.md](cycle-analysis-examples.md) | Cycle analysis REST, workbench demo, sample responses |
 | [gremlin-examples.md](gremlin-examples.md) | Sample gremlin-lang scripts (vertices, tables, SBOM roles) |
 | [validation.md](validation.md) | Persist gate, batch two-stage validation, create/update by id |
 | [persistence.md](persistence.md) | PostgreSQL, JSONB, two Flyway lines, H2 tests |

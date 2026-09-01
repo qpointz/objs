@@ -115,8 +115,9 @@ Explorer is **read-only** for the shared graph context.
 
 1. Row 1 — **Explorer** title + `GraphContextBar` (Open ▾ Graph | Matcher | All; version pin in graph
    mode)
-2. Row 2 — type **pills** (click to dim non-matching nodes; × clears); **Open in Composer** (graph
-   context) or **New graph from selection** (matcher/all); **Apply layout ▾**
+2. Row 2 — type **pills** (click to dim non-matching nodes; × clears); **Analyze cycles** when the
+   optional algorithm service is present (violet highlight on cycle regions; × clears); **Open in
+   Composer** (graph context) or **New graph from selection** (matcher/all); **Apply layout ▾**
 3. Row 3 — canvas (disabled above ~300 nodes) + splitter + **object inspect** pane
 
 **Type pills** — filter highlight on canvas; non-selected types render dimmed (pills stay full

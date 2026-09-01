@@ -95,7 +95,17 @@ at the object-store boundary.
 ## Read model
 
 `GeneratedReadView.from(graph, mapper)` wraps an in-memory `TypedGraphView` and supplies exact
-`(type, schemaVersion)` payload bindings. It never loads from or writes to an object store.
+`(type, schemaVersion)` payload bindings. Overloads accept any **`GraphFragment`** or
+**`ResolvedGraphFragment`** (including policy-resolved builder output) without requiring a mutable
+`Graph` instance:
+
+```java
+GeneratedReadView view = GeneratedReadView.from(
+    DefaultGraphFragmentPolicy.INSTANCE.resolve(graphContents),
+    mapper);
+```
+
+It never loads from or writes to an object store.
 
 ```java
 GeneratedReadView view = GeneratedReadView.from(graph, mapper);
