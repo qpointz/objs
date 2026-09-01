@@ -20,97 +20,78 @@ Live GET never joins `*_version`. Default persist is in-place HEAD (`ExplicitOnl
 
 ## Diagram
 
-SQL column `type` is drawn as `obj_type` (`type` breaks Mermaid ER).
+SQL column `type` on instance tables is drawn as `obj_type` (`type` breaks Mermaid ER syntax).
+JSON columns are `jsonb` on PostgreSQL and `json` on H2.
+
+**Physical FKs only** in the diagram. Catalog tables (`objs_entity_schema`, `objs_edge_schema`) and
+`objs_seed_ledger` have **no** foreign keys to pool/graph instance rows; allow-list and validation are
+application-level.
 
 ```mermaid
 erDiagram
   direction LR
 
-  objs_entity_schema ||--o{ objs_entity : "HEAD schema"
-  objs_entity_schema ||--o{ objs_entity_version : "history schema"
-  objs_entity_schema ||--o{ objs_edge_schema : "optional props schema"
-  objs_edge_schema }o--o{ objs_graph_edge : "allow-list HEAD"
-  objs_edge_schema }o--o{ objs_graph_edge_version : "allow-list history"
-
   objs_entity ||--o{ objs_entity_version : "head_and_history"
-  objs_entity ||--o{ objs_graph_entity : "live member"
-  objs_entity ||--o{ objs_graph_edge : "live endpoint"
-  objs_entity_version ||--o{ objs_graph_version_member : "pinned entity version"
+  objs_entity ||--o{ objs_graph_entity : "live_member"
+  objs_entity ||--o{ objs_graph_edge : "live_endpoint"
 
   objs_graph ||--o{ objs_graph_version : "head_and_history"
   objs_graph ||--o{ objs_graph_entity : "members"
   objs_graph ||--o{ objs_graph_edge : "owns"
 
-  objs_graph_version ||--o{ objs_graph_version_member : "deep members"
-  objs_graph_version ||--o{ objs_graph_version_edge : "deep edges"
+  objs_graph_version ||--o{ objs_graph_version_member : "deep_members"
+  objs_graph_version ||--o{ objs_graph_version_edge : "deep_edges"
 
   objs_graph_edge ||--o{ objs_graph_edge_version : "head_and_history"
-  objs_graph_edge_version ||--o{ objs_graph_version_edge : "pinned edge version"
+  objs_graph_edge_version ||--o{ objs_graph_version_edge : "pinned_edge_version"
+  objs_entity_version ||--o{ objs_graph_version_member : "pinned_entity_version"
 
   objs_entity {
     uuid id PK
     bigint head_version FK
-    string obj_type
-    string schema_version
-    string payload
-    string annotations
-    datetime created_at
-    datetime updated_at
+    varchar obj_type
+    varchar schema_version
+    jsonb payload
+    jsonb annotations
+    timestamp created_at
+    timestamp updated_at
   }
 
   objs_entity_version {
     uuid entity_id PK
     bigint version PK
-    string obj_type
-    string schema_version
-    string payload
-    string annotations
-    datetime created_at
-    datetime updated_at
-    datetime head_deleted_at
+    varchar obj_type
+    varchar schema_version
+    jsonb payload
+    jsonb annotations
+    timestamp created_at
+    timestamp updated_at
+    timestamp head_deleted_at
   }
 
   objs_graph {
     uuid id PK
     bigint head_version FK
-    string annotations
-    datetime created_at
-    datetime updated_at
+    jsonb annotations
+    timestamp created_at
+    timestamp updated_at
   }
 
   objs_graph_version {
     uuid graph_id PK
     bigint version PK
-    string graph_annotations
-    string annotations
-    datetime created_at
-    datetime updated_at
-    datetime head_deleted_at
-  }
-
-  objs_graph_version_member {
-    uuid graph_id PK
-    bigint graph_version PK
-    uuid entity_id PK
-    bigint entity_version FK
-    datetime created_at
-    datetime updated_at
-  }
-
-  objs_graph_version_edge {
-    uuid graph_id PK
-    bigint graph_version PK
-    uuid edge_id PK
-    bigint edge_version FK
-    datetime created_at
-    datetime updated_at
+    jsonb graph_annotations
+    jsonb annotations
+    timestamp created_at
+    timestamp updated_at
+    timestamp head_deleted_at
   }
 
   objs_graph_entity {
     uuid graph_id PK
     uuid entity_id PK
-    datetime created_at
-    datetime updated_at
+    timestamp created_at
+    timestamp updated_at
   }
 
   objs_graph_edge {
@@ -119,12 +100,12 @@ erDiagram
     bigint head_version FK
     uuid source_id
     uuid target_id
-    string role
-    string obj_type
-    string schema_version
-    string properties
-    datetime created_at
-    datetime updated_at
+    varchar role
+    varchar obj_type
+    varchar schema_version
+    jsonb properties
+    timestamp created_at
+    timestamp updated_at
   }
 
   objs_graph_edge_version {
@@ -133,15 +114,82 @@ erDiagram
     uuid graph_id
     uuid source_id
     uuid target_id
-    string role
-    string obj_type
-    string schema_version
-    string properties
-    datetime created_at
-    datetime updated_at
-    datetime head_deleted_at
+    varchar role
+    varchar obj_type
+    varchar schema_version
+    jsonb properties
+    timestamp created_at
+    timestamp updated_at
+    timestamp head_deleted_at
+  }
+
+  objs_graph_version_member {
+    uuid graph_id PK
+    bigint graph_version PK
+    uuid entity_id PK
+    bigint entity_version FK
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  objs_graph_version_edge {
+    uuid graph_id PK
+    bigint graph_version PK
+    uuid edge_id PK
+    bigint edge_version FK
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  objs_entity_schema {
+    varchar obj_type PK
+    varchar version PK
+    jsonb definition_doc
+    varchar usage
+    jsonb tags
+    jsonb attributes
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  objs_edge_schema {
+    varchar source_type PK
+    varchar role PK
+    varchar target_type PK
+    varchar properties_policy
+    boolean empty_properties_allowed
+    varchar properties_schema_type
+    varchar properties_schema_version
+    varchar cardinality
+    text description
+    varchar source_verb
+    varchar target_verb
+    jsonb tags
+    jsonb attributes
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  objs_seed_ledger {
+    varchar seed_key PK
+    varchar last_success_fingerprint
+    timestamp last_success_at
+    varchar last_attempt_fingerprint
+    varchar last_attempt_status
+    timestamp last_attempt_at
+    text last_error
+    timestamp created_at
+    timestamp updated_at
   }
 ```
+
+### Logical catalog links (not persisted as FKs)
+
+| Catalog row | Governs (runtime) |
+|-------------|-------------------|
+| `objs_entity_schema (type, version)` | `objs_entity` / `objs_entity_version` `obj_type` + `schema_version` |
+| `objs_edge_schema (source_type, role, target_type)` | Allowed live/history edges; optional `properties_schema_*` for `objs_graph_edge.properties` |
+| `objs_seed_ledger.seed_key` | Idempotent seed import bookkeeping only |
 
 ## HEAD vs history vs pins
 
@@ -159,23 +207,34 @@ Version parent ids have **no** FK back to HEAD. After DELETE HEAD, reconstruct s
 
 V4 drops `objs_graph_edge` FKs to `objs_entity` (source/target) so deleting HEAD entities does not `RESTRICT` on live edges; pins remain on `*_version`.
 
+Nullable columns (no `NOT NULL` in DDL): `objs_entity.head_version`, `objs_graph.head_version`,
+`objs_graph_edge.head_version`, `objs_graph_edge.type`, `objs_graph_edge.schema_version`,
+`objs_graph_edge.properties`, matching columns on `*_version` history rows, `head_deleted_at` on
+history tables, and most `objs_seed_ledger` attempt/success fields except `last_attempt_status`,
+`last_attempt_at`, and clocks.
+
 ## Clocks
 
 Every `objs_*` table has `created_at` / `updated_at` `TIMESTAMP NOT NULL`. Persist owns values; client JSON is ignored. Version-row `updated_at` equals `created_at` (append-only). Graph HEAD `updated_at` also bumps on live membership/edge change.
 
 ## Indexes
 
-- `objs_entity (type, schema_version)`
-- `objs_graph_entity (entity_id)`
+- `objs_entity (type, schema_version)` — `idx_objs_entity_type_schema_version`
+- `objs_graph_entity (entity_id)` — `idx_objs_graph_entity_entity`
 - `objs_graph_edge (graph_id)`, `(source_id)`, `(target_id)`, `(role)`, `(graph_id, source_id)`, `(graph_id, target_id)`
+- `objs_graph_version_member (entity_id)` — `idx_objs_graph_version_member_entity_id` (V5)
 - PostgreSQL GIN `jsonb_path_ops` on `objs_entity.annotations` and `objs_graph.annotations`
-- `objs_seed_ledger (last_attempt_status)`
+- `objs_seed_ledger (last_attempt_status)` — `idx_objs_seed_ledger_status`
 
-## Catalog / seed (unchanged shape)
+## Catalog / seed
 
-`objs_entity_schema` PK `(type, version)`; V2 adds `tags`, `attributes`.
-`objs_edge_schema` PK `(source_type, role, target_type)`; V2 adds description, verbs, tags, attributes.
-`objs_seed_ledger` PK `seed_key`.
+| Table | PK | Notable columns |
+|-------|-----|-----------------|
+| `objs_entity_schema` | `(type, version)` | `definition_doc`, `usage`, `tags`, `attributes` (V2), clocks |
+| `objs_edge_schema` | `(source_type, role, target_type)` | `properties_policy`, `empty_properties_allowed`, `properties_schema_type/version`, `cardinality`, `description`, `source_verb`, `target_verb`, `tags`, `attributes` (V2), clocks |
+| `objs_seed_ledger` | `seed_key` | success/attempt fingerprints and timestamps, `last_attempt_status`, `last_error`, clocks |
+
+JPA: `SchemaCatalogRecord`, `AllowedEdgeRuleRecord`, `SeedLedgerRecord` in `objs-core` persistence package.
 
 ## Versioning SPI
 
