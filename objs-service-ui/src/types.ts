@@ -254,3 +254,49 @@ export type SeedImportResult = {
   documents: SeedDocumentResult[]
   warnings: string[]
 }
+
+/** `GET /api/v1/objs/graph/algorithms/capabilities` */
+export type GraphAlgorithmCapabilities = {
+  algorithms: GraphAlgorithmCapability[]
+}
+
+export type GraphAlgorithmCapability = {
+  id: string
+  materializationModes: string[]
+}
+
+/** `POST /api/v1/objs/graph/algorithms/cycles` request */
+export type GraphCycleAnalysisRequest = {
+  matcher: unknown
+  graphId?: string
+  graphVersion?: number
+  algorithm?: string
+  materialization?: string
+}
+
+/** Directed SCC cycle-region analysis result */
+export type GraphCycleAnalysis = {
+  algorithm: string
+  components: GraphCycleComponent[]
+  stats: GraphAnalysisStats
+  diagnostics?: GraphFragmentDiagnostic[]
+}
+
+export type GraphCycleComponent = {
+  id: string
+  entityIds: string[]
+  edgeIds: string[]
+}
+
+export type GraphAnalysisStats = {
+  entityCount: number
+  edgeCount: number
+  cyclicComponentCount: number
+}
+
+export type GraphFragmentDiagnostic = {
+  code: string
+  message: string
+  entityId?: string | null
+  edgeId?: string | null
+}

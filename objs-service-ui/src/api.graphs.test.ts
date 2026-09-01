@@ -39,7 +39,7 @@ describe('execMatcher (WI-005 graph-scoped routing)', () => {
     await execMatcher('obj-expr', body, null)
 
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/v1/objs/entities/query',
+      '/api/v1/objs/entities/query?page=1&size=100',
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify(body),

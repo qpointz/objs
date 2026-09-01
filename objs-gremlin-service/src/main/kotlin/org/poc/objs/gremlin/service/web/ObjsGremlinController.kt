@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
+import org.poc.objs.api.domain.DefaultGraphFragmentPolicy
 import org.poc.objs.core.domain.GraphException
 import org.poc.objs.core.match.MatcherDsl
 import org.poc.objs.core.persistence.GraphStore
@@ -69,7 +70,7 @@ class ObjsGremlinController(
                             store.selectInGraph(body.graphId, matcher)
                         }
                     engine.eval(
-                        subgraph = subgraph,
+                        subgraph = DefaultGraphFragmentPolicy.resolve(subgraph),
                         script = body.script,
                         bindings = body.bindings,
                         strategy = body.strategy ?: EnvelopeMaterializationStrategy.NAME,

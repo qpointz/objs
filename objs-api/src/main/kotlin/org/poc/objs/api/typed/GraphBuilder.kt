@@ -2,7 +2,11 @@ package org.poc.objs.api.typed
 
 import org.poc.objs.api.domain.Edge
 import org.poc.objs.api.domain.Entity
+import org.poc.objs.api.domain.DefaultGraphFragmentPolicy
 import org.poc.objs.api.domain.Graph
+import org.poc.objs.api.domain.GraphFragment
+import org.poc.objs.api.domain.GraphFragmentPolicy
+import org.poc.objs.api.domain.ResolvedGraphFragment
 import java.util.UUID
 
 /** Handle to an entity added to a [GraphBuilder]. */
@@ -77,4 +81,12 @@ class GraphBuilder(
         entities = entities.values.toMutableList(),
         edges = edges.values.toMutableList(),
     )
+
+    /** Exposes the assembled typed values at the shared fragment boundary. */
+    fun buildFragment(): GraphFragment = build()
+
+    /** Resolves the complete typed fragment after all [NodeRef] endpoints have been captured. */
+    @JvmOverloads
+    fun buildResolved(policy: GraphFragmentPolicy = DefaultGraphFragmentPolicy): ResolvedGraphFragment =
+        policy.resolve(build())
 }

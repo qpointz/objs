@@ -1,7 +1,7 @@
 package org.poc.objs.sbom.service
 
 import org.poc.objs.api.domain.Edge
-import org.poc.objs.api.domain.GraphContents
+import org.poc.objs.api.domain.ResolvedGraphFragment
 import org.poc.objs.core.domain.GraphSpec
 import org.poc.objs.core.domain.ResolvedGraph
 import org.poc.objs.api.domain.graphMutation
@@ -19,12 +19,17 @@ class BomGraphSupport(
     fun load(graphIds: List<UUID>): List<ResolvedGraph> =
         graphIds.mapNotNull { namedGraphs.get(it) }
 
-    fun union(graphIds: List<UUID>): GraphContents = BomUnion.of(load(graphIds))
+    fun union(graphIds: List<UUID>): ResolvedGraphFragment {
+        val resolved = BomUnion.of(load(graphIds))
+        rejectErrors(resolved)
+        return resolved
+    }
 
     fun copy(sourceGraphId: UUID, annotations: Map<String, String>): UUID =
         namedGraphs.copyGraph(sourceGraphId, annotations).id
 
-    fun materialize(contents: GraphContents, annotations: Map<String, String>): UUID {
+    fun materialize(contents: ResolvedGraphFragment, annotations: Map<String, String>): UUID {
+        rejectErrors(contents)
         val graph =
             namedGraphs.create(
                 GraphSpec(
@@ -58,5 +63,14 @@ class BomGraphSupport(
             }
         }
         return graph.id
+    }
+
+    private fun rejectErrors(fragment: ResolvedGraphFragment) {
+        if (fragment.hasErrors()) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                fragment.diagnostics.joinToString("; ") { it.message },
+            )
+        }
     }
 }

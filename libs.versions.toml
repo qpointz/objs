@@ -10,6 +10,7 @@ testcontainers = "1.21.1"
 springDoc = "3.0.3"
 commonsJexl = "3.5.0"
 tinkerpop = "4.0.0-beta.3"
+jgrapht = "1.5.3"
 postgresql = "42.7.7"
 nodeGradle = "7.0.2"
 
@@ -49,6 +50,7 @@ kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref =
 gremlin-core = { module = "org.apache.tinkerpop:gremlin-core", version.ref = "tinkerpop" }
 tinkergraph-gremlin = { module = "org.apache.tinkerpop:tinkergraph-gremlin", version.ref = "tinkerpop" }
 gremlin-language = { module = "org.apache.tinkerpop:gremlin-language", version.ref = "tinkerpop" }
+jgrapht-core = { module = "org.jgrapht:jgrapht-core", version.ref = "jgrapht" }
 
 [bundles]
 jackson = ["jackson-databind", "jackson-dataformat-yaml", "jackson-module-kotlin"]

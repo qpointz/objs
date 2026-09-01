@@ -3,6 +3,7 @@ package org.poc.objs.gremlin.core
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
+import org.poc.objs.api.domain.DefaultGraphFragmentPolicy
 import org.poc.objs.api.domain.Edge
 import org.poc.objs.api.domain.Entity
 import org.poc.objs.api.domain.GraphContents
@@ -16,7 +17,10 @@ class GremlinEngineTest {
     private val b = UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
     private val e = UUID.fromString("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee")
 
-    private fun sampleSubgraph(): GraphContents =
+    private fun sampleSubgraph() =
+        DefaultGraphFragmentPolicy.resolve(sampleContents())
+
+    private fun sampleContents(): GraphContents =
         GraphContents(
             entities = listOf(
                 Entity(
@@ -109,7 +113,10 @@ class GremlinEngineTest {
     fun shouldNotReuseClosedGraph_whenSameScriptRepeated() {
         val first = engine.eval(sampleSubgraph(), "g.V()")
         assertThat(first.items).hasSize(2)
-        val empty = engine.eval(GraphContents(entities = emptyList(), edges = emptyList()), "g.V()")
+        val empty = engine.eval(
+            DefaultGraphFragmentPolicy.resolve(GraphContents(entities = emptyList(), edges = emptyList())),
+            "g.V()",
+        )
         assertThat(empty.items).isEmpty()
         val again = engine.eval(sampleSubgraph(), "g.V()")
         assertThat(again.items).hasSize(2)

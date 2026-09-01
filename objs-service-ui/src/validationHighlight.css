@@ -14,3 +14,7 @@
   animation: objs-validation-blink 1s ease-in-out infinite;
   border-color: #fa5252 !important;
 }
+
+.objs-analysis-highlight {
+  border-color: #7950f2 !important;
+}

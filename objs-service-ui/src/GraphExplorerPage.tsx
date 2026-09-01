@@ -28,6 +28,8 @@ import {
   type GraphNodePositions,
 } from './GraphCanvas'
 import {
+  analyzeCycles,
+  fetchGraphAlgorithmCapabilities,
   getGraph,
   getGraphVersion,
   graphContentsFromGraphView,
@@ -43,6 +45,8 @@ import type {
   BoMGraphContents,
   BoMGraphResponse,
   BoMSchema,
+  GraphCycleAnalysis,
+  GraphAlgorithmCapabilities,
   GraphLink,
   GraphNode,
   GraphSelection,
@@ -51,6 +55,11 @@ import { applyTypeHighlightDimming, toggleTypeInSet } from './typeHighlightDimmi
 import { clamp, maxSidePaneWidth } from './sidePaneSplit'
 import { newGraphQueryId, useGraphSelectionHistory } from './useGraphSelectionHistory'
 import { VIEW_ACTION_BUTTON_SIZE } from './viewActionButtons'
+import {
+  cycleAnalysisHighlights,
+  supportsGenericCycleAnalysis,
+} from './analysisHighlight'
+import { matcherFromGraphContext } from './queryGraphContext'
 
 const GRAPH_SESSION_STORAGE_KEY = 'objs.ui.graphExplorer.session'
 const SIDE_PANE_WIDTH_KEY = 'objs.ui.explorer.sidePaneWidth'
@@ -188,6 +197,13 @@ export function GraphExplorerPage() {
   const [highlightedTypes, setHighlightedTypes] = useState<Set<string>>(() => new Set())
   const [schemas, setSchemas] = useState<BoMSchema[]>([])
   const [sideWidth, setSideWidth] = useState(loadSideWidth)
+  const [algorithmCapabilities, setAlgorithmCapabilities] = useState<GraphAlgorithmCapabilities | null>(
+    null,
+  )
+  const [cycleAnalysis, setCycleAnalysis] = useState<GraphCycleAnalysis | null>(null)
+  const [cycleAnalysisLoading, setCycleAnalysisLoading] = useState(false)
+  const [cycleAnalysisError, setCycleAnalysisError] = useState<string | null>(null)
+  const [cycleAnalysisMessage, setCycleAnalysisMessage] = useState<string | null>(null)
   const splitHostRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<{ startX: number; startWidth: number } | null>(null)
 
@@ -252,6 +268,36 @@ export function GraphExplorerPage() {
       cancelled = true
     }
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    fetchGraphAlgorithmCapabilities()
+      .then((caps) => {
+        if (!cancelled) setAlgorithmCapabilities(caps)
+      })
+      .catch(() => {
+        if (!cancelled) setAlgorithmCapabilities(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const clearCycleAnalysis = useCallback(() => {
+    setCycleAnalysis(null)
+    setCycleAnalysisError(null)
+    setCycleAnalysisMessage(null)
+  }, [])
+
+  useEffect(() => {
+    clearCycleAnalysis()
+  }, [
+    clearCycleAnalysis,
+    context.kind,
+    context.graphId,
+    context.graphVersion,
+    context.matcherBody,
+  ])
 
   useEffect(() => {
     // Keep canvas in sync with shared graph context. Never leave a previous graph
@@ -402,11 +448,61 @@ export function GraphExplorerPage() {
     return displayGraph.nodes.filter((n) => highlightedTypes.has(n.type)).map((n) => n.id)
   }, [highlightedTypes, displayGraph.nodes])
 
+  const cycleHighlights = useMemo(
+    () => (cycleAnalysis ? cycleAnalysisHighlights(cycleAnalysis) : { nodeIds: [], edgeIds: [] }),
+    [cycleAnalysis],
+  )
+
   const canvasNonEmpty = nodes.length > 0 || links.length > 0
+
+  const cycleAnalysisAvailable = supportsGenericCycleAnalysis(algorithmCapabilities)
+  const canAnalyzeCycles =
+    cycleAnalysisAvailable &&
+    canvasNonEmpty &&
+    !canvasOverCap &&
+    context.kind !== 'empty'
 
   const clearTypeHighlight = useCallback(() => {
     setHighlightedTypes((prev) => (prev.size === 0 ? prev : new Set()))
   }, [])
+
+  async function onAnalyzeCycles() {
+    setCycleAnalysisError(null)
+    setCycleAnalysisMessage(null)
+    setCycleAnalysisLoading(true)
+    try {
+      let matcherBody: unknown
+      try {
+        matcherBody = matcherFromGraphContext(context)
+      } catch (e) {
+        setCycleAnalysisError(e instanceof Error ? e.message : String(e))
+        return
+      }
+      const result = await analyzeCycles({
+        matcher: matcherBody,
+        materialization: 'GENERIC',
+        ...(context.kind === 'graph' && context.graphId
+          ? {
+              graphId: context.graphId,
+              ...(context.graphVersion != null ? { graphVersion: context.graphVersion } : {}),
+            }
+          : {}),
+      })
+      setCycleAnalysis(result)
+      if (result.components.length === 0) {
+        setCycleAnalysisMessage('No directed cycle regions found.')
+      } else {
+        setCycleAnalysisMessage(
+          `${result.stats.cyclicComponentCount} cycle region(s); ${result.stats.entityCount} entities and ${result.stats.edgeCount} edges highlighted.`,
+        )
+      }
+    } catch (e) {
+      setCycleAnalysis(null)
+      setCycleAnalysisError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setCycleAnalysisLoading(false)
+    }
+  }
 
   const handleSelect = useCallback(
     (next: GraphSelection | null) => {
@@ -480,6 +576,7 @@ export function GraphExplorerPage() {
       setNodes(graph.nodes)
       setLinks(graph.links)
       setHighlightedTypes(new Set())
+      clearCycleAnalysis()
       clearStoredGraphSession()
       persistSession(graph.nodes, graph.links, layout, qid)
       setCanvasEpoch((n) => n + 1)
@@ -517,6 +614,7 @@ export function GraphExplorerPage() {
     setNodes(graph.nodes)
     setLinks(graph.links)
     setHighlightedTypes(new Set())
+    clearCycleAnalysis()
     clearStoredGraphSession()
     const qid = beginQueryResult()
     persistSession(graph.nodes, graph.links, layout, qid)
@@ -619,6 +717,32 @@ export function GraphExplorerPage() {
           )}
         </Group>
         <Group gap={6} wrap="nowrap" data-tour="explorer-view-actions" style={{ flexShrink: 0 }}>
+          {canAnalyzeCycles && (
+            <>
+              <Button
+                size={VIEW_ACTION_BUTTON_SIZE}
+                variant="light"
+                color="violet"
+                loading={cycleAnalysisLoading}
+                onClick={onAnalyzeCycles}
+              >
+                Analyze cycles
+              </Button>
+              {cycleAnalysis != null && (
+                <Tooltip label="Clear cycle analysis highlight" withArrow>
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color="violet"
+                    aria-label="Clear cycle analysis highlight"
+                    onClick={clearCycleAnalysis}
+                  >
+                    <IconX size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
+            </>
+          )}
           {exploreMode === 'graph' ? (
             <Button
               size={VIEW_ACTION_BUTTON_SIZE}
@@ -694,6 +818,18 @@ export function GraphExplorerPage() {
         </Alert>
       )}
 
+      {cycleAnalysisError && (
+        <Alert color="red" title="Cycle analysis failed" onClose={() => setCycleAnalysisError(null)} withCloseButton>
+          {cycleAnalysisError}
+        </Alert>
+      )}
+
+      {cycleAnalysisMessage && !cycleAnalysisError && (
+        <Alert color="violet" title="Cycle analysis" onClose={() => setCycleAnalysisMessage(null)} withCloseButton>
+          {cycleAnalysisMessage}
+        </Alert>
+      )}
+
       <Group
         ref={splitHostRef}
         align="stretch"
@@ -747,6 +883,8 @@ export function GraphExplorerPage() {
               autoLayoutOnDataChange={false}
               onPositionsChange={onPositionsChange}
               highlightedNodeIds={typeHighlightNodeIds}
+              analysisHighlightedNodeIds={cycleHighlights.nodeIds}
+              analysisHighlightedEdgeIds={cycleHighlights.edgeIds}
             />
           ) : null}
           <GraphGoToContextMenu

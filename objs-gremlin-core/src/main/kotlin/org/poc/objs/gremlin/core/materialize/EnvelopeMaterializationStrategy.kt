@@ -6,7 +6,8 @@ import org.apache.tinkerpop.gremlin.structure.T
 import org.apache.tinkerpop.gremlin.structure.Vertex
 import org.apache.tinkerpop.gremlin.tinkergraph.structure.AbstractTinkerGraph
 import org.apache.tinkerpop.gremlin.tinkergraph.structure.TinkerGraph
-import org.poc.objs.api.domain.GraphContents
+import org.poc.objs.api.domain.ResolvedGraphFragment
+import org.poc.objs.api.domain.ResolvedGraphMaterialization
 import java.util.UUID
 
 /**
@@ -17,11 +18,12 @@ import java.util.UUID
 class EnvelopeMaterializationStrategy : GremlinMaterializationStrategy {
     override val name: String = NAME
 
-    override fun materialize(subgraph: GraphContents): Graph {
+    override fun materialize(fragment: ResolvedGraphFragment): Graph {
+        ResolvedGraphMaterialization.requireMaterializable(fragment)
         val graph = TinkerGraph.open(uuidConfig())
         val vertices = LinkedHashMap<UUID, Vertex>()
 
-        for (entity in subgraph.entities) {
+        for (entity in fragment.entities) {
             val id = entity.id
                 ?: throw IllegalArgumentException("Entity type=${entity.type} has null id; cannot materialize")
             val vertex = graph.addVertex(
@@ -34,7 +36,7 @@ class EnvelopeMaterializationStrategy : GremlinMaterializationStrategy {
             vertices[id] = vertex
         }
 
-        for (edge in subgraph.edges) {
+        for (edge in fragment.edges) {
             val id = edge.id
                 ?: throw IllegalArgumentException("Edge role=${edge.role} has null id; cannot materialize")
             val out = vertices[edge.source]

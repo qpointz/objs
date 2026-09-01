@@ -1,10 +1,10 @@
 package org.poc.objs.gremlin.core.materialize
 
 import org.apache.tinkerpop.gremlin.structure.Graph
-import org.poc.objs.api.domain.GraphContents
+import org.poc.objs.api.domain.ResolvedGraphFragment
 
 /**
- * Pluggable mapping from a BoM subgraph to an in-memory TinkerPop [Graph].
+ * Pluggable mapping from a resolved graph fragment to an in-memory TinkerPop [Graph].
  *
  * v1 implements [EnvelopeMaterializationStrategy] only. Future strategies
  * (documented, not implemented): `flatten`, `nested-vertices`.
@@ -12,5 +12,5 @@ import org.poc.objs.api.domain.GraphContents
 interface GremlinMaterializationStrategy {
     val name: String
 
-    fun materialize(subgraph: GraphContents): Graph
+    fun materialize(fragment: ResolvedGraphFragment): Graph
 }

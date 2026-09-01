@@ -2,7 +2,8 @@ package org.poc.objs.gremlin.core
 
 import org.apache.tinkerpop.gremlin.jsr223.GremlinLangScriptEngine
 import org.apache.tinkerpop.gremlin.process.traversal.Traversal
-import org.poc.objs.api.domain.GraphContents
+import org.poc.objs.api.domain.DefaultGraphFragmentPolicy
+import org.poc.objs.api.domain.ResolvedGraphFragment
 import org.poc.objs.core.match.Matcher
 import org.poc.objs.core.persistence.GraphStore
 import org.poc.objs.gremlin.core.materialize.GremlinMaterializer
@@ -31,7 +32,7 @@ class GremlinEngine(
         options: GremlinTraversalOptions? = null,
     ): GremlinResult =
         eval(
-            subgraph = store.select(matcher),
+            subgraph = DefaultGraphFragmentPolicy.resolve(store.select(matcher)),
             script = script,
             bindings = bindings,
             strategy = strategy,
@@ -39,7 +40,7 @@ class GremlinEngine(
         )
 
     fun eval(
-        subgraph: GraphContents,
+        subgraph: ResolvedGraphFragment,
         script: String,
         bindings: Map<String, Any?>? = null,
         strategy: String = EnvelopeMaterializationStrategy.NAME,
@@ -74,7 +75,8 @@ class GremlinEngine(
         }
 
         val items = GremlinResultProjector.projectItems(raw)
-        val subgraph2 = GremlinResultProjector.buildSubgraph2(items, subgraph)
+        val inputContents = subgraph.asGraphContents()
+        val subgraph2 = GremlinResultProjector.buildSubgraph2(items, inputContents)
         val table = GremlinResultProjector.buildTable(items)
         val scalar = when {
             items.size == 1 && items[0] is GremlinItem.Scalar ->

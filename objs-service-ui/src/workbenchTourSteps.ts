@@ -48,7 +48,7 @@ export const WORKBENCH_TOUR_STEPS: WorkbenchTourStep[] = [
   {
     id: 'explorer-view-actions',
     title: 'Explorer actions',
-    body: 'Type pills filter the canvas; clear with ×. Graph mode: Open in Composer. Matcher/All: New graph from selection. Apply layout ▾ when the canvas has nodes. Graph view disables above ~300 nodes.',
+    body: 'Type pills filter the canvas; clear with ×. When the algorithm service is present: Analyze cycles highlights directed SCC regions (violet). Graph mode: Open in Composer. Matcher/All: New graph from selection. Apply layout ▾ when the canvas has nodes. Graph view disables above ~300 nodes.',
     selector: '[data-tour="explorer-view-actions"]',
     route: '/explorer',
   },

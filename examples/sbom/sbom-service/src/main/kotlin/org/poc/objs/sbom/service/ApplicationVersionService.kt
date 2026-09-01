@@ -3,7 +3,7 @@ package org.poc.objs.sbom.service
 import org.poc.objs.api.domain.Edge
 import org.poc.objs.api.domain.Entity
 import org.poc.objs.api.domain.Graph
-import org.poc.objs.api.domain.GraphContents
+import org.poc.objs.api.domain.ResolvedGraphFragment
 import org.poc.objs.core.domain.GraphException
 import org.poc.objs.core.domain.GraphSpec
 import org.poc.objs.api.domain.MutationMode
@@ -643,7 +643,13 @@ class ApplicationVersionService(
         }
     }
 
-    private fun materialize(contents: GraphContents, annotations: Map<String, String>): UUID {
+    private fun materialize(contents: ResolvedGraphFragment, annotations: Map<String, String>): UUID {
+        if (contents.hasErrors()) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                contents.diagnostics.joinToString("; ") { it.message },
+            )
+        }
         val graph =
             namedGraphs.create(
                 GraphSpec(

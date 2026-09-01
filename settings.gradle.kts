@@ -7,6 +7,8 @@ include(":objs-service")
 include(":objs-service-ui")
 include(":objs-gremlin-core")
 include(":objs-gremlin-service")
+include(":objs-jgrapht-core")
+include(":objs-jgrapht-service")
 include(":objs-service-app")
 
 include(":sbom-service")

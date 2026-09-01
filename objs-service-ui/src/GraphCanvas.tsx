@@ -43,6 +43,10 @@ type Props = {
   autoLayoutOnDataChange?: boolean
   /** Extra node ids to highlight (e.g. connect pair). Merged with selection. */
   highlightedNodeIds?: string[]
+  /** Cycle-analysis node ids — violet emphasis, independent from selection and type filter. */
+  analysisHighlightedNodeIds?: string[]
+  /** Cycle-analysis edge ids — violet emphasis, independent from selection. */
+  analysisHighlightedEdgeIds?: string[]
   /** Fired after drag or layout with current canvas coordinates (for session restore). */
   onPositionsChange?: (positions: GraphNodePositions) => void
   onNodeContextMenu?: (event: ReactMouseEvent, node: GraphNode) => void
@@ -76,6 +80,7 @@ const NODE_SEP = 72
 const RANK_SEP = 96
 const EDGE_COLOR = '#495057'
 const EDGE_SELECTED = '#228be6'
+const EDGE_ANALYSIS = '#7950f2'
 const nodeTypes = { entityCard: EntityCardNode }
 
 type EdgeData = { edge: GraphLink }
@@ -157,6 +162,7 @@ function styleForDraftEdge(
   selected: boolean,
   dimmed = false,
   validationError = false,
+  analysisHighlight = false,
 ): Pick<Edge<EdgeData>, 'style' | 'labelStyle' | 'markerEnd' | 'animated'> {
   const deleted = draftStatus === 'deleted'
   const modified = draftStatus === 'modified'
@@ -165,19 +171,21 @@ function styleForDraftEdge(
     ? '#fa5252'
     : selected
       ? EDGE_SELECTED
-      : deleted
-        ? '#fa5252'
-        : modified
-          ? '#fd7e14'
-          : isNew
-            ? '#40c057'
-            : EDGE_COLOR
+      : analysisHighlight
+        ? EDGE_ANALYSIS
+        : deleted
+          ? '#fa5252'
+          : modified
+            ? '#fd7e14'
+            : isNew
+              ? '#40c057'
+              : EDGE_COLOR
   return {
-    animated: selected || validationError,
+    animated: selected || validationError || analysisHighlight,
     style: {
       ...edgeStyle(selected),
       stroke,
-      strokeWidth: selected || validationError ? 4 : deleted || modified || isNew ? 3 : 2,
+      strokeWidth: selected || validationError || analysisHighlight ? 4 : deleted || modified || isNew ? 3 : 2,
       strokeDasharray: deleted ? '6 4' : undefined,
       opacity: dimmed ? 0.25 : deleted ? 0.7 : 1,
     },
@@ -187,9 +195,11 @@ function styleForDraftEdge(
         ? '#fa5252'
         : selected
           ? EDGE_SELECTED
-          : deleted
-            ? '#fa5252'
-            : '#212529',
+          : analysisHighlight
+            ? EDGE_ANALYSIS
+            : deleted
+              ? '#fa5252'
+              : '#212529',
       fontWeight: 700,
       textDecoration: deleted ? 'line-through' : undefined,
       opacity: dimmed ? 0.25 : 1,
@@ -197,8 +207,8 @@ function styleForDraftEdge(
     markerEnd: {
       type: MarkerType.ArrowClosed,
       color: stroke,
-      width: selected || validationError ? 18 : 16,
-      height: selected || validationError ? 18 : 16,
+      width: selected || validationError || analysisHighlight ? 18 : 16,
+      height: selected || validationError || analysisHighlight ? 18 : 16,
     },
   }
 }
@@ -303,6 +313,8 @@ function GraphCanvasInner(
     layout,
     autoLayoutOnDataChange = true,
     highlightedNodeIds,
+    analysisHighlightedNodeIds,
+    analysisHighlightedEdgeIds,
     onPositionsChange,
     onNodeContextMenu,
     onEdgeContextMenu,
@@ -394,15 +406,18 @@ function GraphCanvasInner(
       ...(highlightedNodeIds ?? []),
       ...(selectedFromFocus ? [selectedFromFocus] : []),
     ])
+    const analysisNodeIdSet = new Set(analysisHighlightedNodeIds ?? [])
     const selectedEdgeId = selection?.kind === 'edge' ? selection.edge.id : null
+    const analysisEdgeIdSet = new Set(analysisHighlightedEdgeIds ?? [])
 
     setNodes((curr) =>
       curr.map((n) => {
         const selected = selectedIds.has(n.id)
+        const analysisHighlight = analysisNodeIdSet.has(n.id)
         return {
           ...n,
           selected,
-          data: { ...n.data, selected },
+          data: { ...n.data, selected, analysisHighlight },
         }
       }),
     )
@@ -410,6 +425,7 @@ function GraphCanvasInner(
       withClosestHandles(
         curr.map((e) => {
           const selected = e.id === selectedEdgeId
+          const analysisHighlight = analysisEdgeIdSet.has(e.id)
           const draftStatus = (e.data as EdgeData | undefined)?.edge?.draftStatus
           const dimmed = (e.data as EdgeData | undefined)?.edge?.dimmed === true
           const validationError = (e.data as EdgeData | undefined)?.edge?.validationError === true
@@ -417,13 +433,20 @@ function GraphCanvasInner(
             ...e,
             selected,
             data: e.data,
-            ...styleForDraftEdge(draftStatus, selected, dimmed, validationError),
+            ...styleForDraftEdge(draftStatus, selected, dimmed, validationError, analysisHighlight),
           }
         }),
         nodesRef.current,
       ),
     )
-  }, [selection, highlightedNodeIds, setNodes, setEdges])
+  }, [
+    selection,
+    highlightedNodeIds,
+    analysisHighlightedNodeIds,
+    analysisHighlightedEdgeIds,
+    setNodes,
+    setEdges,
+  ])
 
   const applyLayout = useCallback(
     (nextLayout: GraphLayout = layout) => {

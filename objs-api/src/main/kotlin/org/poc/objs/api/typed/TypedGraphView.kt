@@ -4,6 +4,7 @@ import org.poc.objs.api.AmbiguousRelationException
 import org.poc.objs.api.domain.Edge
 import org.poc.objs.api.domain.Entity
 import org.poc.objs.api.domain.Graph
+import org.poc.objs.api.domain.GraphFragment
 import java.util.UUID
 import java.util.stream.Stream
 
@@ -126,17 +127,17 @@ class ReadNode internal constructor(
  * mutates the supplied graph.
  */
 class TypedGraphView private constructor(
-    graph: Graph,
+    fragment: GraphFragment,
     private val bindings: TypedEntityBindingRegistry?,
     private val mapper: PayloadMapper?,
 ) {
-    private val entities: List<Entity> = graph.entities.map {
+    private val entities: List<Entity> = fragment.entities.map {
         it.copy(
             payload = it.payload.toMutableMap(),
             annotations = it.annotations.toMutableMap(),
         )
     }
-    private val edges: List<Edge> = graph.edges.map {
+    private val edges: List<Edge> = fragment.edges.map {
         it.copy(properties = it.properties?.toMutableMap())
     }
     private val nodesById = linkedMapOf<UUID, ReadNode>()
@@ -197,7 +198,18 @@ class TypedGraphView private constructor(
 
     companion object {
         @JvmStatic
-        fun from(graph: Graph): TypedGraphView = TypedGraphView(graph, null, null)
+        fun from(fragment: GraphFragment): TypedGraphView = TypedGraphView(fragment, null, null)
+
+        @JvmStatic
+        fun from(graph: Graph): TypedGraphView = from(graph as GraphFragment)
+
+        @JvmStatic
+        @JvmOverloads
+        fun from(
+            fragment: GraphFragment,
+            bindings: TypedEntityBindingRegistry?,
+            mapper: PayloadMapper? = null,
+        ): TypedGraphView = TypedGraphView(fragment, bindings, mapper)
 
         @JvmStatic
         @JvmOverloads
@@ -205,6 +217,6 @@ class TypedGraphView private constructor(
             graph: Graph,
             bindings: TypedEntityBindingRegistry?,
             mapper: PayloadMapper? = null,
-        ): TypedGraphView = TypedGraphView(graph, bindings, mapper)
+        ): TypedGraphView = from(graph as GraphFragment, bindings, mapper)
     }
 }

@@ -1,7 +1,7 @@
 package org.poc.objs.gremlin.core.materialize
 
 import org.apache.tinkerpop.gremlin.structure.Graph
-import org.poc.objs.api.domain.GraphContents
+import org.poc.objs.api.domain.ResolvedGraphFragment
 
 /**
  * Resolves a [GremlinMaterializationStrategy] by name and materializes a subgraph.
@@ -14,13 +14,13 @@ class GremlinMaterializer(
         strategies.associateBy { it.name }
 
     fun materialize(
-        subgraph: GraphContents,
+        fragment: ResolvedGraphFragment,
         strategy: String = EnvelopeMaterializationStrategy.NAME,
     ): Graph {
         val impl = byName[strategy]
             ?: throw IllegalArgumentException(
                 "Unknown materialization strategy '$strategy'; known=${byName.keys.sorted()}",
             )
-        return impl.materialize(subgraph)
+        return impl.materialize(fragment)
     }
 }

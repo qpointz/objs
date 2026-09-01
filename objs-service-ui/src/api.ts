@@ -8,6 +8,9 @@ import type {
   BoMGraphSearchResponse,
   BoMGraphVersionSummary,
   EdgeRelationRequest,
+  GraphAlgorithmCapabilities,
+  GraphCycleAnalysis,
+  GraphCycleAnalysisRequest,
   GraphLink,
   GraphNode,
   GraphValidationResult,
@@ -162,6 +165,29 @@ export async function traverseGremlin(body: TraverseGremlinRequest): Promise<BoM
     body: JSON.stringify(body),
   })
   return parseResponse<BoMGremlinResult>(res)
+}
+
+/**
+ * Optional JGraphT algorithm service. Returns null when the module is absent (404) or the
+ * request fails at the network layer — the workbench stays usable without algorithms.
+ */
+export async function fetchGraphAlgorithmCapabilities(): Promise<GraphAlgorithmCapabilities | null> {
+  try {
+    const res = await fetch('/api/v1/objs/graph/algorithms/capabilities')
+    if (res.status === 404) return null
+    return await parseResponse<GraphAlgorithmCapabilities>(res)
+  } catch {
+    return null
+  }
+}
+
+export async function analyzeCycles(body: GraphCycleAnalysisRequest): Promise<GraphCycleAnalysis> {
+  const res = await fetch('/api/v1/objs/graph/algorithms/cycles', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  return parseResponse<GraphCycleAnalysis>(res)
 }
 
 /**

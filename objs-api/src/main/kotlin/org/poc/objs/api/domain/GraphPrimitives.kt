@@ -42,9 +42,9 @@ data class Edge @JvmOverloads constructor(
 
 /** In-memory bag of entities and edges used by the SDK and write API. */
 data class Graph(
-    val entities: MutableList<Entity> = mutableListOf(),
-    val edges: MutableList<Edge> = mutableListOf(),
-) {
+    override val entities: MutableList<Entity> = mutableListOf(),
+    override val edges: MutableList<Edge> = mutableListOf(),
+) : GraphFragment {
     fun entityById(id: UUID): Entity? = entities.find { it.id == id }
 }
 
@@ -84,6 +84,9 @@ data class GraphMutation @JvmOverloads constructor(
 ) {
     fun graph(): Graph = Graph(entities.set, edges.set)
 
+    /** Exposes the set portion at the shared fragment boundary without cloning it. */
+    fun fragment(): GraphFragment = graph()
+
     fun hasUnsets(): Boolean = entities.unset.isNotEmpty() || edges.unset.isNotEmpty()
 
     fun hasSets(): Boolean = entities.set.isNotEmpty() || edges.set.isNotEmpty()
@@ -101,6 +104,6 @@ data class GraphMutation @JvmOverloads constructor(
 
 /** Result of annotation-based subgraph selection. */
 data class GraphContents(
-    val entities: List<Entity>,
-    val edges: List<Edge>,
-)
+    override val entities: List<Entity>,
+    override val edges: List<Edge>,
+) : GraphFragment

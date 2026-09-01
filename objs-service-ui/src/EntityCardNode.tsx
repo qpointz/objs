@@ -9,6 +9,8 @@ import './validationHighlight.css'
 export type EntityCardData = {
   entity: GraphNode
   selected: boolean
+  /** Directed cycle analysis emphasis — independent from selection and draft state. */
+  analysisHighlight?: boolean
 }
 
 /** Visual density for card vs inspector panel. */
@@ -497,7 +499,7 @@ export function EntityPayloadView({
 }
 
 function EntityCardNodeComponent({ data }: NodeProps) {
-  const { entity, selected } = data as EntityCardData
+  const { entity, selected, analysisHighlight = false } = data as EntityCardData
   const deleted = entity.draftStatus === 'deleted'
   const dimmed = entity.dimmed === true
   const validationError = entity.validationError === true
@@ -507,11 +509,19 @@ function EntityCardNodeComponent({ data }: NodeProps) {
       ? '#fa5252'
       : selected
         ? '#228be6'
-        : entity.color
+        : analysisHighlight
+          ? '#7950f2'
+          : entity.color
 
   return (
     <div
-      className={validationError ? 'objs-validation-error' : undefined}
+      className={
+        validationError
+          ? 'objs-validation-error'
+          : analysisHighlight && !selected
+            ? 'objs-analysis-highlight'
+            : undefined
+      }
       style={{
         width: 180,
         border: `3px solid ${borderColor}`,
@@ -522,10 +532,12 @@ function EntityCardNodeComponent({ data }: NodeProps) {
         opacity: dimmed ? 0.25 : deleted ? 0.72 : 1,
         boxShadow: selected && !validationError
           ? '0 0 0 3px rgba(34, 139, 230, 0.35)'
-          : validationError
-            ? undefined
-            : '0 1px 3px rgba(0,0,0,0.12)',
-        outline: selected && !validationError ? '1px solid #228be6' : 'none',
+          : analysisHighlight && !selected && !validationError
+            ? '0 0 0 3px rgba(121, 80, 242, 0.35)'
+            : validationError
+              ? undefined
+              : '0 1px 3px rgba(0,0,0,0.12)',
+        outline: selected && !validationError ? '1px solid #228be6' : analysisHighlight && !selected && !validationError ? '1px solid #7950f2' : 'none',
       }}
     >
       <Handle type="target" id="top-target" position={Position.Top} isConnectable={false} style={HANDLE_STYLE} />

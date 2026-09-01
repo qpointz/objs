@@ -5,13 +5,14 @@ plugins {
 }
 
 description =
-    "Workbench-only runnable: objs-service + objs-service-ui + gremlin REST. " +
+    "Workbench-only runnable: objs-service + objs-service-ui + gremlin REST + graph algorithms. " +
         "Must not depend on examples or other concrete product modules."
 
 dependencies {
     implementation(platform(libs.boot.dependencies))
     implementation(project(":objs-service"))
     implementation(project(":objs-gremlin-service"))
+    implementation(project(":objs-jgrapht-service"))
     implementation(libs.kotlin.reflect)
     runtimeOnly(project(":objs-service-ui"))
     runtimeOnly(libs.h2.database)

@@ -3,6 +3,7 @@ package org.poc.objs.gremlin.core.materialize
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
+import org.poc.objs.api.domain.DefaultGraphFragmentPolicy
 import org.poc.objs.api.domain.Edge
 import org.poc.objs.api.domain.Entity
 import org.poc.objs.api.domain.GraphContents
@@ -17,7 +18,8 @@ class EnvelopeMaterializationStrategyTest {
         val a = UUID.fromString("11111111-1111-1111-1111-111111111111")
         val b = UUID.fromString("22222222-2222-2222-2222-222222222222")
         val e = UUID.fromString("33333333-3333-3333-3333-333333333333")
-        val subgraph = GraphContents(
+        val subgraph = DefaultGraphFragmentPolicy.resolve(
+            GraphContents(
             entities = listOf(
                 Entity(
                     id = a,
@@ -47,6 +49,7 @@ class EnvelopeMaterializationStrategyTest {
                     properties = mutableMapOf("scope" to "runtime"),
                 ),
             ),
+        ),
         )
 
         val graph = materializer.materialize(subgraph)
@@ -79,9 +82,11 @@ class EnvelopeMaterializationStrategyTest {
     fun shouldDefaultToEnvelope_whenStrategyOmitted() {
         val id = UUID.randomUUID()
         val graph = materializer.materialize(
-            GraphContents(
-                entities = listOf(Entity(id = id, type = "X", schemaVersion = "1")),
-                edges = emptyList(),
+            DefaultGraphFragmentPolicy.resolve(
+                GraphContents(
+                    entities = listOf(Entity(id = id, type = "X", schemaVersion = "1")),
+                    edges = emptyList(),
+                ),
             ),
         )
         assertThat(graph.vertices(id).hasNext()).isTrue()
@@ -91,7 +96,9 @@ class EnvelopeMaterializationStrategyTest {
     fun shouldFail_whenUnknownStrategy() {
         assertThatThrownBy {
             materializer.materialize(
-                GraphContents(entities = emptyList(), edges = emptyList()),
+                DefaultGraphFragmentPolicy.resolve(
+                    GraphContents(entities = emptyList(), edges = emptyList()),
+                ),
                 strategy = "flatten",
             )
         }.isInstanceOf(IllegalArgumentException::class.java)
@@ -102,9 +109,11 @@ class EnvelopeMaterializationStrategyTest {
     fun shouldFail_whenEntityIdNull() {
         assertThatThrownBy {
             materializer.materialize(
-                GraphContents(
-                    entities = listOf(Entity(type = "X", schemaVersion = "1")),
-                    edges = emptyList(),
+                DefaultGraphFragmentPolicy.resolve(
+                    GraphContents(
+                        entities = listOf(Entity(type = "X", schemaVersion = "1")),
+                        edges = emptyList(),
+                    ),
                 ),
             )
         }.isInstanceOf(IllegalArgumentException::class.java)

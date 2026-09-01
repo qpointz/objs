@@ -8,6 +8,7 @@ plugins {
 description = "Objs Gremlin core: BoM subgraph materialization and gremlin-lang evaluation."
 
 dependencies {
+    api(project(":objs-api"))
     api(project(":objs-core"))
     api(libs.gremlin.core)
     api(libs.tinkergraph.gremlin)

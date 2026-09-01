@@ -15,10 +15,13 @@ import org.poc.objs.assetrepository.web.dto.ApiDtos;
 import org.poc.objs.core.domain.CatalogSupport;
 import org.poc.objs.api.domain.Edge;
 import org.poc.objs.api.domain.Entity;
+import org.poc.objs.api.domain.DefaultGraphFragmentPolicy;
+import org.poc.objs.api.domain.GraphFragmentDiagnosticSeverity;
 import org.poc.objs.api.domain.GraphContents;
 import org.poc.objs.api.domain.EdgeMutation;
 import org.poc.objs.api.domain.EntityMutation;
 import org.poc.objs.api.domain.GraphMutation;
+import org.poc.objs.api.domain.ResolvedGraphFragment;
 import org.poc.objs.core.domain.IdentityProjection;
 import org.poc.objs.core.domain.Schema;
 import org.poc.objs.core.domain.SchemaCatalog;
@@ -156,9 +159,48 @@ public class ObjectWriteService {
             }
         }
 
+        resolveComposition(batch);
         persist(collection, batch);
         emitEvents(collection, batch);
         return batch.getObjects().stream().map(p -> toDto(p.entity())).toList();
+    }
+
+    private void resolveComposition(WriteBatch batch) {
+        List<Entity> entities = batch.getObjects().stream().map(WriteBatch.PendingObject::entity).toList();
+        ResolvedGraphFragment resolved = DefaultGraphFragmentPolicy.INSTANCE.resolve(
+                new GraphContents(entities, batch.getEdges()));
+        if (resolved.hasErrors()) {
+            List<String> messages = resolved.getDiagnostics().stream()
+                    .filter(diagnostic -> diagnostic.getSeverity() == GraphFragmentDiagnosticSeverity.ERROR)
+                    .map(org.poc.objs.api.domain.GraphFragmentDiagnostic::getMessage)
+                    .toList();
+            throw new IllegalArgumentException(
+                    messages.isEmpty() ? "Invalid graph composition" : String.join("; ", messages));
+        }
+
+        Map<UUID, Entity> resolvedById = new LinkedHashMap<>();
+        for (Entity entity : resolved.getEntities()) {
+            if (entity.getId() != null) {
+                resolvedById.put(entity.getId(), entity);
+            }
+        }
+        Map<UUID, WriteBatch.PendingObject> pendingById = new LinkedHashMap<>();
+        for (WriteBatch.PendingObject pending : batch.getObjects()) {
+            if (pending.entity().getId() != null) {
+                pendingById.putIfAbsent(pending.entity().getId(), pending);
+            }
+        }
+        batch.getObjects().clear();
+        for (WriteBatch.PendingObject original : pendingById.values()) {
+            UUID id = original.entity().getId();
+            Entity entity = resolvedById.get(id);
+            if (entity == null) {
+                throw new IllegalArgumentException("Resolved composition entity is not writable");
+            }
+            batch.getObjects().add(new WriteBatch.PendingObject(entity, original.op()));
+        }
+        batch.getEdges().clear();
+        batch.getEdges().addAll(resolved.getEdges());
     }
 
     @Transactional

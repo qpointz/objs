@@ -1,7 +1,8 @@
 package org.poc.objs.sbom.service
 
 import org.poc.objs.api.domain.Entity
-import org.poc.objs.api.domain.GraphContents
+import org.poc.objs.api.domain.GraphFragment
+import org.poc.objs.api.domain.ResolvedGraphFragment
 import org.poc.objs.core.persistence.NamedGraphStore
 import org.poc.objs.sbom.domain.BomUnion
 import org.poc.objs.sbom.persistence.SbomApplicationRepository
@@ -54,7 +55,7 @@ class CycloneDxExportService(
     }
 
     private fun exportContents(
-        contents: GraphContents,
+        contents: GraphFragment,
         applicationName: String,
         versionLabel: String,
     ): Map<String, Any?> {
@@ -140,12 +141,19 @@ class CycloneDxExportService(
         return out
     }
 
-    private fun unionOf(versionId: UUID): GraphContents {
+    private fun unionOf(versionId: UUID): ResolvedGraphFragment {
         val graphIds = boms.findByVersionIdOrderBySortOrderAscIdAsc(versionId).map { it.graphId }
         if (graphIds.isEmpty()) {
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Version has no BOM")
         }
-        return BomUnion.of(graphIds.mapNotNull { namedGraphs.get(it) })
+        val resolved = BomUnion.of(graphIds.mapNotNull { namedGraphs.get(it) })
+        if (resolved.hasErrors()) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                resolved.diagnostics.joinToString("; ") { it.message },
+            )
+        }
+        return resolved
     }
 
     private fun requireApp(id: UUID) =

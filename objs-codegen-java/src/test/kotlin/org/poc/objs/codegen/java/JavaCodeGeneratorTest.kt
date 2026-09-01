@@ -7,6 +7,8 @@ import org.junit.jupiter.api.io.TempDir
 import org.poc.objs.api.domain.Edge
 import org.poc.objs.api.domain.Entity
 import org.poc.objs.api.domain.Graph
+import org.poc.objs.api.domain.GraphFragment
+import org.poc.objs.api.domain.DefaultGraphFragmentPolicy
 import org.poc.objs.api.domain.MutationMode
 import org.poc.objs.api.typed.PayloadMapper
 import tools.jackson.databind.json.JsonMapper
@@ -150,7 +152,17 @@ class JavaCodeGeneratorTest {
             val readView = readViewClass
                 .getMethod("from", Graph::class.java, PayloadMapper::class.java)
                 .invoke(readViewClass, graph, PayloadMapper(JsonMapper.builder().build()))
+            val resolvedReadView = readViewClass
+                .getMethod("from", GraphFragment::class.java, PayloadMapper::class.java)
+                .invoke(
+                    readViewClass,
+                    DefaultGraphFragmentPolicy.resolve(graph),
+                    PayloadMapper(JsonMapper.builder().build()),
+                )
             val products = readViewClass.getMethod("products").invoke(readView)
+            val resolvedProducts = readViewClass.getMethod("products").invoke(resolvedReadView)
+            assertThat(resolvedProducts.javaClass.getMethod("getSize").invoke(resolvedProducts))
+                .isEqualTo(products.javaClass.getMethod("getSize").invoke(products))
             val firstProduct = products.javaClass.getMethod("get", Int::class.java).invoke(products, 0)
             val related = firstProduct.javaClass.getMethod("getRelateds").invoke(firstProduct)
             assertThat(products.javaClass.getMethod("getSize").invoke(products)).isEqualTo(2)

@@ -492,6 +492,8 @@ class JavaCodeGenerator(
             import java.util.UUID;
             import org.poc.objs.api.domain.Entity;
             import org.poc.objs.api.domain.Graph;
+            import org.poc.objs.api.domain.GraphFragment;
+            import org.poc.objs.api.domain.ResolvedGraphFragment;
             import org.poc.objs.api.typed.PayloadMapper;
             import org.poc.objs.api.typed.ReadNode;
             import org.poc.objs.api.typed.RelationEdgeView;
@@ -517,8 +519,27 @@ class JavaCodeGenerator(
                     return new GeneratedReadView(TypedGraphView.from(graph));
                 }
 
+                public static GeneratedReadView from(GraphFragment fragment) {
+                    return new GeneratedReadView(TypedGraphView.from(fragment));
+                }
+
+                public static GeneratedReadView from(ResolvedGraphFragment fragment) {
+                    return new GeneratedReadView(TypedGraphView.from(fragment));
+                }
+
                 public static GeneratedReadView from(Graph graph, PayloadMapper mapper) {
                     return new GeneratedReadView(TypedGraphView.from(graph, BINDINGS, mapper));
+                }
+
+                public static GeneratedReadView from(GraphFragment fragment, PayloadMapper mapper) {
+                    return new GeneratedReadView(TypedGraphView.from(fragment, BINDINGS, mapper));
+                }
+
+                public static GeneratedReadView from(
+                    ResolvedGraphFragment fragment,
+                    PayloadMapper mapper
+                ) {
+                    return new GeneratedReadView(TypedGraphView.from(fragment, BINDINGS, mapper));
                 }
 
                 public static GeneratedReadView from(
@@ -527,6 +548,22 @@ class JavaCodeGenerator(
                     PayloadMapper mapper
                 ) {
                     return new GeneratedReadView(TypedGraphView.from(graph, bindings, mapper));
+                }
+
+                public static GeneratedReadView from(
+                    GraphFragment fragment,
+                    TypedEntityBindingRegistry bindings,
+                    PayloadMapper mapper
+                ) {
+                    return new GeneratedReadView(TypedGraphView.from(fragment, bindings, mapper));
+                }
+
+                public static GeneratedReadView from(
+                    ResolvedGraphFragment fragment,
+                    TypedEntityBindingRegistry bindings,
+                    PayloadMapper mapper
+                ) {
+                    return new GeneratedReadView(TypedGraphView.from(fragment, bindings, mapper));
                 }
 
                 public TypedGraphView raw() {

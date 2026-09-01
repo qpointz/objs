@@ -10,7 +10,7 @@ import java.util.UUID
 
 class UnionTest {
     @Test
-    fun shouldCollapseDuplicateMembershipAndEdges() {
+    fun shouldResolveDuplicateMembershipWithoutTopologyKeyEdgeDeduplication() {
         val a = UUID.randomUUID()
         val b = UUID.randomUUID()
         val entityA = Entity(id = a, type = "Component", schemaVersion = "1.0.0")
@@ -33,8 +33,10 @@ class UnionTest {
                     ),
             )
         val union = BomUnion.of(listOf(left, right))
-        assertThat(union.entities.map { it.id }).containsExactly(a, b)
-        assertThat(union.edges).hasSize(1)
+        assertThat(union.entities.map { it.id })
+            .containsExactlyElementsOf(listOf(a, b).sortedBy { it.toString() })
+        assertThat(union.edges).hasSize(2)
+        assertThat(union.diagnostics).isEmpty()
     }
 
     @Test
