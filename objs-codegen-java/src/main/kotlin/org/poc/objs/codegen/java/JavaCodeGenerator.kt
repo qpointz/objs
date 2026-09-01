@@ -582,7 +582,7 @@ class JavaCodeGenerator(
         ): String {
             val targetNode = "${target.definitionKey}ReadNode"
             val prefix = "get${capitalizeJava(method)}"
-            val collectionMethod = if (method.endsWith("s")) prefix else "${prefix}s"
+            val collectionMethod = if (method.endsWith("s")) "${prefix}es" else "${prefix}s"
             val edgeMethod = "${prefix}Edges"
             val directionEnum = "RelationDirection.$direction"
             val targetFactory = lowerCamel(target.definitionKey)

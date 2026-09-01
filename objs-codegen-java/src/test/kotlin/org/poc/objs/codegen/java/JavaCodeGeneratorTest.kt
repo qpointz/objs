@@ -219,6 +219,36 @@ class JavaCodeGeneratorTest {
     }
 
     @Test
+    fun shouldPluralizeSingularRelationNamesEndingInS() {
+        val document = document().toMutableMap()
+        document["x-objs-relations"] = listOf(
+            mapOf(
+                "sourceType" to "Product",
+                "role" to "STATUS",
+                "targetType" to "Product",
+                "sourceDefinition" to "Product",
+                "targetDefinition" to "Product",
+                "cardinality" to "1:1",
+                "codegen" to mapOf(
+                    "outboundMethod" to "status",
+                    "inboundMethod" to "statusFromProduct",
+                    "sourceStaticBinding" to true,
+                    "targetStaticBinding" to true,
+                ),
+            ),
+        )
+
+        val output = tempDirectory.resolve("generated")
+        JavaCodeGenerator().generate(document, output, "com.example.generated")
+        val readNode = Files.readString(output.resolve("com/example/generated/ProductReadNode.java"))
+
+        assertThat(readNode)
+            .contains("public ProductReadNode getStatus()")
+            .contains("public TypedCollection<ProductReadNode> getStatuses()")
+            .doesNotContain("public TypedCollection<ProductReadNode> getStatus()")
+    }
+
+    @Test
     fun shouldApplyInheritanceMetadata_andPreserveDiagnostics() {
         val document = document().toMutableMap()
         @Suppress("UNCHECKED_CAST")
