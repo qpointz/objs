@@ -52,6 +52,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | U-5 | Objects top-level view + shelf → New graph in Composer | feature | done | [`completed/20260813-objects-shelf/`](completed/20260813-objects-shelf/STORY.md) |
 | U-6 | Workbench UI Gradle build via node-gradle plugin (`:objs-service-ui`) | improvement | done | [`completed/20260813-ui-gradle-node/`](completed/20260813-ui-gradle-node/STORY.md) |
 | U-7 | Workbench UX: shared graph context (Explorer/Objects/Query) + chrome | improvement | done | [`completed/20260822-workbench-ux/`](completed/20260822-workbench-ux/STORY.md) |
+| U-8 | Workbench cosmetic polish (loading feedback + visual polish) | improvement | in-progress | [`in-progress/workbench-cosmetic/`](in-progress/workbench-cosmetic/STORY.md) |
 
 ---
 

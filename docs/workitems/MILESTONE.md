@@ -53,3 +53,4 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 ### Planned
 
 - [`store-text-search`](planned/store-text-search/STORY.md) — FB-3 contains/`q`; design first (C-20). Does not block C-18.
+- [`workbench-cosmetic`](in-progress/workbench-cosmetic/STORY.md) — Workbench cosmetic polish; Objects load splash first (U-8).
