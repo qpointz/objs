@@ -141,6 +141,29 @@ class ObjsEntitiesController(
         @RequestParam(defaultValue = "5") recent: Int,
     ) = store.entityVersionStats(id, recent)
 
+    @GetMapping("/{id}/graphs")
+    @Operation(
+        summary = "Live graphs containing this entity (HEAD membership only)",
+        description = "Ignores deep-version pins. [total] is unfiltered live count; [items] may be " +
+            "filtered by q (open-graph text match) and limited. Sorted by graph updatedAt desc.",
+    )
+    fun listLiveGraphs(
+        @PathVariable id: UUID,
+        @RequestParam(required = false) q: String?,
+        @RequestParam(required = false) limit: Int?,
+    ): ResponseEntity<Any> {
+        if (store.getEntity(id) == null) {
+            return ResponseEntity.notFound().build()
+        }
+        val result = store.listLiveGraphHeadersForEntity(id, q, limit)
+        return ResponseEntity.ok(
+            mapOf(
+                "items" to result.items,
+                "total" to result.total,
+            ),
+        )
+    }
+
     @GetMapping("/{id}/versions")
     @Operation(summary = "List entity deep-capture versions, newest first")
     fun listVersions(@PathVariable id: UUID) = store.listEntityVersions(id)

@@ -500,6 +500,15 @@ class GraphStore(
     @Transactional(readOnly = true)
     fun getEntityVersion(entityId: UUID, version: Long) = namedGraphs.getEntityVersion(entityId, version)
 
+    /** Live HEAD graphs containing [entityId] (no pins). See [NamedGraphStore.listLiveGraphHeadersForEntity]. */
+    @Transactional(readOnly = true)
+    @JvmOverloads
+    fun listLiveGraphHeadersForEntity(
+        entityId: UUID,
+        q: String? = null,
+        limit: Int? = null,
+    ) = namedGraphs.listLiveGraphHeadersForEntity(entityId, q, limit)
+
     @Transactional(readOnly = true)
     fun listEdgeVersions(edgeId: UUID) = namedGraphs.listEdgeVersions(edgeId)
 

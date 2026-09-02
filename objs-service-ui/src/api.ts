@@ -340,6 +340,18 @@ export async function entityVersionStats(
   return parseResponse(res)
 }
 
+export async function listEntityGraphs(
+  id: string,
+  params: { q?: string; limit?: number } = {},
+): Promise<import('./types').BoMEntityGraphsResponse> {
+  const qs = new URLSearchParams()
+  if (params.q?.trim()) qs.set('q', params.q.trim())
+  if (params.limit != null) qs.set('limit', String(params.limit))
+  const suffix = qs.toString() ? `?${qs}` : ''
+  const res = await fetch(`/api/v1/objs/entities/${encodeURIComponent(id)}/graphs${suffix}`)
+  return parseResponse(res)
+}
+
 export async function getEntityVersion(
   id: string,
   version: number,

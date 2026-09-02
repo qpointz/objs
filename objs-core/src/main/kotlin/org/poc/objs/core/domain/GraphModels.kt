@@ -13,6 +13,15 @@ data class GraphHeader @JvmOverloads constructor(
     val updatedAt: Instant? = null,
 )
 
+/**
+ * Live (HEAD) graphs containing an entity. [total] is the unfiltered live membership count;
+ * [items] may be filtered (`q`) and/or limited.
+ */
+data class EntityLiveGraphs(
+    val items: List<GraphHeader>,
+    val total: Int,
+)
+
 /** Create/replace membership spec for a soft-link subgraph. */
 data class GraphSpec(
     val id: UUID? = null,

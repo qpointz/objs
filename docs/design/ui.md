@@ -124,7 +124,8 @@ Explorer is **read-only** for the shared graph context.
 opacity).
 
 **Inspect** — node, edge, or empty canvas (graph header in graph mode). Sectioned **Object viewer**
-(Node / Payload / Annotations / Versions). Schema links open in a **new tab**. Node color from
+(Node / Payload / Annotations / Versions; entities also **Graphs** for live HEAD membership when
+used). Schema links open in a **new tab**. Node color from
 `attributes.color` on the type schema.
 
 **Handoffs**

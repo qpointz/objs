@@ -8,9 +8,12 @@ import {
   getGraph,
   getGraphVersion,
   listEdgeVersions,
+  listEntityGraphs,
   listEntityVersions,
   listGraphVersions,
 } from './api'
+import { useGraphContext } from './GraphContextProvider'
+import { ObjectGraphBrowser } from './ObjectGraphBrowser'
 import { ObjectViewer } from './ObjectViewer'
 import { ObjectVersionBrowser } from './ObjectVersionBrowser'
 import {
@@ -27,6 +30,7 @@ import {
 import type {
   BoMEdge,
   BoMEntity,
+  BoMGraphHeader,
   BoMGraphVersionSummary,
   GraphSelection,
   PayloadFieldKind,
@@ -58,7 +62,7 @@ function payloadName(payload: Record<string, unknown> | undefined): string | nul
 }
 
 /**
- * Explorer inspect pane: Object viewer + optional inline version browser (Note 5).
+ * Explorer inspect pane: Object viewer + optional inline version / graphs browser (Note 5 / U-8).
  */
 export function ObjectInspectPane({
   selection,
@@ -69,7 +73,8 @@ export function ObjectInspectPane({
   onClearSelection,
   endpointLabel,
 }: Props) {
-  const [browserOpen, setBrowserOpen] = useState(false)
+  const { setGraph, context } = useGraphContext()
+  const [rightPane, setRightPane] = useState<'versions' | 'graphs' | null>(null)
   const [statsRecent, setStatsRecent] = useState<ObjectVersionRow[]>([])
   const [statsTotal, setStatsTotal] = useState(0)
   const [statsLoading, setStatsLoading] = useState(false)
@@ -77,6 +82,10 @@ export function ObjectInspectPane({
   const [browserRows, setBrowserRows] = useState<ObjectVersionRow[]>([])
   const [browserLoading, setBrowserLoading] = useState(false)
   const [browserError, setBrowserError] = useState<string | null>(null)
+  const [graphsRows, setGraphsRows] = useState<BoMGraphHeader[]>([])
+  const [graphsTotal, setGraphsTotal] = useState(0)
+  const [graphsLoading, setGraphsLoading] = useState(false)
+  const [graphsError, setGraphsError] = useState<string | null>(null)
   const [inspectEntity, setInspectEntity] = useState<BoMEntity | null>(null)
   const [inspectEdge, setInspectEdge] = useState<BoMEdge | null>(null)
   const [inspectGraph, setInspectGraph] = useState<{
@@ -94,7 +103,7 @@ export function ObjectInspectPane({
           : 'empty'
 
   useEffect(() => {
-    setBrowserOpen(false)
+    setRightPane(null)
     setInspectEntity(null)
     setInspectEdge(null)
     setInspectGraph(null)
@@ -103,6 +112,9 @@ export function ObjectInspectPane({
     setStatsError(null)
     setBrowserRows([])
     setBrowserError(null)
+    setGraphsRows([])
+    setGraphsTotal(0)
+    setGraphsError(null)
   }, [subjectKey])
 
   useEffect(() => {
@@ -193,7 +205,39 @@ export function ObjectInspectPane({
   }, [selection, graphContext])
 
   useEffect(() => {
-    if (!browserOpen) return
+    if (selection?.kind !== 'node') {
+      setGraphsRows([])
+      setGraphsTotal(0)
+      setGraphsLoading(false)
+      setGraphsError(null)
+      return
+    }
+    let cancelled = false
+    setGraphsLoading(true)
+    setGraphsError(null)
+    listEntityGraphs(selection.node.id)
+      .then((res) => {
+        if (cancelled) return
+        setGraphsTotal(res.total)
+        setGraphsRows(res.items)
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          setGraphsTotal(0)
+          setGraphsRows([])
+          setGraphsError(e instanceof Error ? e.message : String(e))
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setGraphsLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [selection])
+
+  useEffect(() => {
+    if (rightPane !== 'versions') return
     let cancelled = false
     setBrowserLoading(true)
     setBrowserError(null)
@@ -227,11 +271,26 @@ export function ObjectInspectPane({
     return () => {
       cancelled = true
     }
-  }, [browserOpen, selection, graphContext])
+  }, [rightPane, selection, graphContext])
+
+  const openSharedGraph = useCallback(
+    async (graphId: string) => {
+      try {
+        const resolved = await getGraph(graphId)
+        setGraph(graphId, resolved.annotations ?? {}, {
+          nodeCount: resolved.graph?.entities?.length ?? 0,
+          edgeCount: resolved.graph?.edges?.length ?? 0,
+        })
+      } catch {
+        // leave previous context
+      }
+    },
+    [setGraph],
+  )
 
   const openVersion = useCallback(
     async (version: number | null) => {
-      setBrowserOpen(true)
+      setRightPane('versions')
       try {
         if (selection?.kind === 'node') {
           if (version == null) {
@@ -261,11 +320,7 @@ export function ObjectInspectPane({
         }
         if (graphContext) {
           if (version == null) {
-            const pack = await getGraph(graphContext.graphId)
-            setInspectGraph({
-              version: null,
-              annotations: pack.annotations ?? {},
-            })
+            setInspectGraph(null)
             setInspectEntity(null)
             setInspectEdge(null)
             return
@@ -293,6 +348,20 @@ export function ObjectInspectPane({
     )
   }
 
+  const paneOpen = rightPane != null
+  const graphsPreview = graphsRows.slice(0, OBJECT_VERSION_PREVIEW_N)
+  const graphsProps =
+    selection?.kind === 'node' && !paneOpen
+      ? {
+          loading: graphsLoading,
+          total: graphsTotal,
+          recent: graphsPreview,
+          error: graphsError,
+          onOpenBrowser: () => setRightPane('graphs'),
+          onSelectGraph: (graphId: string) => void openSharedGraph(graphId),
+        }
+      : null
+
   const viewer = (() => {
     if (selection?.kind === 'node') {
       const live = selection.node
@@ -302,7 +371,7 @@ export function ObjectInspectPane({
       const id = entity?.id ?? live.id
       const payload = entity?.payload ?? live.payload ?? {}
       const annotations = entity?.annotations ?? live.annotations ?? {}
-          const title = objectDisplayTitle(payloadName(payload), type, id)
+      const title = objectDisplayTitle(payloadName(payload), type, id)
       const fieldKinds =
         live.payloadFieldKinds ?? fieldKindsByTypeVersion.get(`${type}@${schemaVersion}`)
       return (
@@ -320,20 +389,22 @@ export function ObjectInspectPane({
           annotations={annotations}
           fieldKinds={fieldKinds}
           showAnnotations
-          showVersions={!browserOpen}
+          showVersions={!paneOpen}
           versions={
-            !browserOpen
+            !paneOpen
               ? {
                   headVersion: live.headVersion,
                   loading: statsLoading,
                   total: statsTotal,
                   recent: statsRecent,
                   error: statsError,
-                  onOpenBrowser: () => setBrowserOpen(true),
+                  onOpenBrowser: () => setRightPane('versions'),
                   onSelectVersion: (v) => void openVersion(v),
                 }
               : null
           }
+          showGraphs={!paneOpen}
+          graphs={graphsProps}
         />
       )
     }
@@ -376,16 +447,16 @@ export function ObjectInspectPane({
             onTarget: () => onSelectNode(target),
           }}
           showAnnotations={false}
-          showVersions={!browserOpen}
+          showVersions={!paneOpen}
           versions={
-            !browserOpen
+            !paneOpen
               ? {
                   headVersion: live.headVersion,
                   loading: statsLoading,
                   total: statsTotal,
                   recent: statsRecent,
                   error: statsError,
-                  onOpenBrowser: () => setBrowserOpen(true),
+                  onOpenBrowser: () => setRightPane('versions'),
                   onSelectVersion: (v) => void openVersion(v),
                 }
               : null
@@ -416,16 +487,16 @@ export function ObjectInspectPane({
         }}
         annotations={ann}
         showAnnotations
-        showVersions={!browserOpen}
+        showVersions={!paneOpen}
         versions={
-          !browserOpen
+          !paneOpen
             ? {
                 headVersion: g.graphVersion,
                 loading: statsLoading,
                 total: statsTotal,
                 recent: statsRecent,
                 error: statsError,
-                onOpenBrowser: () => setBrowserOpen(true),
+                onOpenBrowser: () => setRightPane('versions'),
                 onSelectVersion: (v) => void openVersion(v),
               }
             : null
@@ -443,7 +514,7 @@ export function ObjectInspectPane({
           ? inspectGraph.version
           : undefined
 
-  if (browserOpen) {
+  if (rightPane === 'versions') {
     return (
       <Group align="stretch" wrap="nowrap" gap="sm" style={{ flex: 1, minHeight: 0, height: '100%' }}>
         <ScrollArea style={{ flex: 1, minHeight: 0 }} offsetScrollbars type="auto">
@@ -476,7 +547,7 @@ export function ObjectInspectPane({
             selectedVersion={selectedVersion}
             onSelect={(v) => void openVersion(v)}
             onClose={() => {
-              setBrowserOpen(false)
+              setRightPane(null)
               setInspectEntity(null)
               setInspectEdge(null)
               setInspectGraph(null)
@@ -487,8 +558,40 @@ export function ObjectInspectPane({
     )
   }
 
+  if (rightPane === 'graphs') {
+    return (
+      <Group align="stretch" wrap="nowrap" gap="sm" style={{ flex: 1, minHeight: 0, height: '100%' }}>
+        <ScrollArea style={{ flex: 1, minHeight: 0 }} offsetScrollbars type="auto">
+          <Stack gap="xs">{viewer}</Stack>
+        </ScrollArea>
+        <Box
+          style={{
+            width: '42%',
+            minWidth: 160,
+            maxWidth: 280,
+            flexShrink: 0,
+            borderLeft: '1px solid var(--mantine-color-default-border)',
+            paddingLeft: 8,
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <ObjectGraphBrowser
+            rows={graphsRows}
+            loading={graphsLoading}
+            error={graphsError}
+            selectedGraphId={context.kind === 'graph' ? context.graphId : null}
+            onSelect={(graphId) => void openSharedGraph(graphId)}
+            onClose={() => setRightPane(null)}
+          />
+        </Box>
+      </Group>
+    )
+  }
+
   return (
-    <ScrollArea style={{ flex: 1, minHeight: 0 }} offsetScrollbars type="auto">
+    <ScrollArea style={{ flex: 1, minHeight: 0, height: '100%' }} offsetScrollbars type="auto">
       {viewer}
     </ScrollArea>
   )

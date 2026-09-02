@@ -56,10 +56,18 @@ export type BoMInstanceVersionStats = {
   recent: BoMInstanceVersionSummary[]
 }
 
-/** Header-only row from open-graph search (`GET …/graphs/search`). */
+/** Header-only row from open-graph search (`GET …/graphs/search`) or entity live-graphs. */
 export type BoMGraphHeader = {
   id: string
   annotations: Record<string, string>
+  createdAt?: string
+  updatedAt?: string
+}
+
+/** `GET /api/v1/objs/entities/{id}/graphs` — live HEAD membership only. */
+export type BoMEntityGraphsResponse = {
+  items: BoMGraphHeader[]
+  total: number
 }
 
 /** `GET /api/v1/objs/graphs/search` envelope (G-U10; additive fields ignored by UI). */

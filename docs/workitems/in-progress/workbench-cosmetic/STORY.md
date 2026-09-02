@@ -13,7 +13,7 @@
 
 ## Goal
 
-Polish workbench (`:objs-service-ui`) **cosmetics and in-progress feedback** where functionality is already good. No feature redesign; no SBOM / asset-repository UX.
+Polish workbench (`:objs-service-ui`) **cosmetics and in-progress feedback** where functionality is already good, plus small inspect enhancements listed by the user. No SBOM / asset-repository UX.
 
 **Intake:** Further cosmetic issues are appended as new WIs on this branch as the user lists them.
 
@@ -21,10 +21,11 @@ Polish workbench (`:objs-service-ui`) **cosmetics and in-progress feedback** whe
 
 | Topic | Lock |
 |-------|------|
-| Module | `:objs-service-ui` (+ `:objs-service-app` only if runner wiring needed) |
-| Behavior | Keep existing APIs and flows; change only presentation / loading feedback |
+| Module | `:objs-service-ui` (+ thin `:objs-core` / `:objs-service` when workbench needs a new read API) |
+| Behavior | Prefer presentation / loading feedback; WI-002 adds live graph-membership inspect only |
 | Loading splash | Match Explorer overlay pattern (`Loader` + dimmed label on body wash) |
-| Tour / `ui.md` | Update only when chrome copy or documented empty/loading states change |
+| Graphs usage (WI-002) | Live HEAD membership only; ignore pins; Versions-style chrome; click → shared context Latest |
+| Tour / `ui.md` | Update only when chrome copy or documented empty/loading/inspect states change |
 
 ## Stages
 
@@ -32,16 +33,18 @@ Polish workbench (`:objs-service-ui`) **cosmetics and in-progress feedback** whe
 |-------|-----|-------|-------|
 | 0 — Scaffold | WI-000 | done | Branch + folder + backlog |
 | 1 — Objects splash | WI-001 | done | Results pane load overlay |
+| 2 — Object Graphs | WI-002 | done | Live graphs containing entity |
 | *n* — Further cosmetics | (TBD) | as listed | Append WIs when user defines more issues |
 
 ## Work Items
 
 - [x] WI-000 — Story scaffold — examples: **—** (`WI-000-story-scaffold.md`)
 - [x] WI-001 — Objects results loading splash — examples: **workbench** (`WI-001-objects-load-splash.md`)
+- [x] WI-002 — Object detail Graphs usage — examples: **workbench** (`WI-002-object-graphs-usage.md`)
 
 ## Out of scope
 
-- Functional changes to matcher, shelf, inspect, query semantics
+- Pin / deep-version graph membership in object inspect
 - SBOM / asset-repository product UX
 - Wholesale theme rebrand
 - Shared loading-architecture rewrite (React Query / Suspense)
@@ -49,9 +52,10 @@ Polish workbench (`:objs-service-ui`) **cosmetics and in-progress feedback** whe
 
 ## Acceptance
 
-- [ ] Objects view shows a clear in-progress splash while search runs and the results pane would otherwise be blank
-- [ ] Empty context and “No entities matched” still behave as today when not busy
-- [ ] Each completed WI is `[x]`, committed, and pushed per RULES
+- [x] Objects view shows a clear in-progress splash while search runs and the results pane would otherwise be blank
+- [x] Empty context and “No entities matched” still behave as today when not busy
+- [x] Entity inspect shows Graphs section when used in live graphs; hidden when unused
+- [x] Each completed WI is `[x]`, committed, and pushed per RULES
 - [ ] Story stays open until the user asks to close it
 
 ## Process notes

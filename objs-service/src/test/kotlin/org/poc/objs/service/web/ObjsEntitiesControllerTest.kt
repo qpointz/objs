@@ -6,6 +6,8 @@ import org.mockito.BDDMockito.given
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
 import org.poc.objs.api.domain.Entity
+import org.poc.objs.core.domain.EntityLiveGraphs
+import org.poc.objs.core.domain.GraphHeader
 import org.poc.objs.core.persistence.GraphStore
 import org.poc.objs.core.validation.ValidationIssue
 import org.poc.objs.core.validation.ValidationResult
@@ -118,6 +120,49 @@ class ObjsEntitiesControllerTest {
         val id = UUID.randomUUID()
         given(store.getEntity(id)).willReturn(null)
         mockMvc.perform(get("/api/v1/objs/entities/$id"))
+            .andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun shouldListLiveGraphsForEntity() {
+        val id = UUID.randomUUID()
+        val graphId = UUID.randomUUID()
+        given(store.getEntity(id)).willReturn(Entity(id = id, type = "Person", schemaVersion = "1"))
+        given(store.listLiveGraphHeadersForEntity(id, null, null)).willReturn(
+            EntityLiveGraphs(
+                items = listOf(GraphHeader(id = graphId, annotations = mapOf("env" to "prod"))),
+                total = 1,
+            ),
+        )
+
+        mockMvc.perform(get("/api/v1/objs/entities/$id/graphs"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.total").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(graphId.toString()))
+            .andExpect(jsonPath("$.items[0].annotations.env").value("prod"))
+    }
+
+    @Test
+    fun shouldListLiveGraphsForEntity_withQAndLimit() {
+        val id = UUID.randomUUID()
+        given(store.getEntity(id)).willReturn(Entity(id = id, type = "Person", schemaVersion = "1"))
+        given(store.listLiveGraphHeadersForEntity(id, "prod", 5)).willReturn(
+            EntityLiveGraphs(items = emptyList(), total = 2),
+        )
+
+        mockMvc.perform(get("/api/v1/objs/entities/$id/graphs").param("q", "prod").param("limit", "5"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.total").value(2))
+            .andExpect(jsonPath("$.items").isEmpty)
+
+        verify(store).listLiveGraphHeadersForEntity(id, "prod", 5)
+    }
+
+    @Test
+    fun shouldReturn404_whenListingGraphsForMissingEntity() {
+        val id = UUID.randomUUID()
+        given(store.getEntity(id)).willReturn(null)
+        mockMvc.perform(get("/api/v1/objs/entities/$id/graphs"))
             .andExpect(status().isNotFound)
     }
 

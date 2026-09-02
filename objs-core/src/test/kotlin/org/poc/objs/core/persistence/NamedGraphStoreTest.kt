@@ -728,6 +728,31 @@ class NamedGraphStoreTest {
         assertThat(membershipRepository.findByEntityId(a)).isEmpty()
         assertThat(namedGraphs.listGraphIdsForEntity(a)).containsExactly(graph.id)
         assertThat(namedGraphs.listGraphIdsForEntity(b)).containsExactly(graph.id)
+        assertThat(namedGraphs.listLiveGraphHeadersForEntity(a).total).isZero()
+        assertThat(namedGraphs.listLiveGraphHeadersForEntity(a).items).isEmpty()
+        assertThat(namedGraphs.listLiveGraphHeadersForEntity(b).total).isEqualTo(1)
+    }
+
+    @Test
+    fun shouldListLiveGraphHeadersForEntity_sortedFilteredAndLimited() {
+        val older = namedGraphs.create(GraphSpec(annotations = mapOf("env" to "prod"), entityIds = setOf(a)))
+        Thread.sleep(5)
+        val newer = namedGraphs.create(GraphSpec(annotations = mapOf("env" to "dev"), entityIds = setOf(a)))
+        namedGraphs.create(GraphSpec(annotations = mapOf("env" to "stage"), entityIds = setOf(b)))
+
+        val all = namedGraphs.listLiveGraphHeadersForEntity(a)
+        assertThat(all.total).isEqualTo(2)
+        assertThat(all.items.map { it.id }).containsExactly(newer.id, older.id)
+
+        val limited = namedGraphs.listLiveGraphHeadersForEntity(a, limit = 1)
+        assertThat(limited.total).isEqualTo(2)
+        assertThat(limited.items.map { it.id }).containsExactly(newer.id)
+
+        val filtered = namedGraphs.listLiveGraphHeadersForEntity(a, q = "prod")
+        assertThat(filtered.total).isEqualTo(2)
+        assertThat(filtered.items.map { it.id }).containsExactly(older.id)
+
+        assertThat(namedGraphs.listLiveGraphHeadersForEntity(UUID.randomUUID()).total).isZero()
     }
 
     @Test

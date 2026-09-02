@@ -4,6 +4,7 @@ import { IconCheck, IconCopy, IconX } from '@tabler/icons-react'
 import { Link } from 'react-router-dom'
 import { schemaDetailPath } from './api'
 import { EntityPayloadView } from './EntityCardNode'
+import { ObjectGraphRowContent } from './ObjectGraphRowContent'
 import { ObjectViewerSection } from './ObjectViewerSection'
 import { ObjectVersionRowContent } from './ObjectVersionRowContent'
 import {
@@ -11,7 +12,7 @@ import {
   OBJECT_VERSION_PREVIEW_N,
 } from './objectViewerTitle'
 import type { ObjectVersionRow } from './objectVersionRows'
-import type { PayloadFieldKind } from './types'
+import type { BoMGraphHeader, PayloadFieldKind } from './types'
 import { objectViewerKvGridStyle } from './objectViewerLayout'
 
 /** Field / annotation keys — smaller than section labels; shared column with payload. */
@@ -75,6 +76,28 @@ function VersionPreviewRow({
   )
 }
 
+function GraphPreviewRow({
+  header,
+  onClick,
+}: {
+  header: BoMGraphHeader
+  onClick: () => void
+}) {
+  return (
+    <Anchor
+      component="button"
+      type="button"
+      underline="never"
+      c="inherit"
+      onClick={onClick}
+      style={{ display: 'block', width: '100%', textAlign: 'left' }}
+      data-tour="object-graph-preview-row"
+    >
+      <ObjectGraphRowContent header={header} density="preview" />
+    </Anchor>
+  )
+}
+
 export type ObjectViewerRelation = {
   sourceLabel: string
   targetLabel: string
@@ -94,6 +117,15 @@ export type ObjectViewerVersionsProps = {
   error?: string | null
   onOpenBrowser: () => void
   onSelectVersion: (version: number | null) => void
+}
+
+export type ObjectViewerGraphsProps = {
+  loading?: boolean
+  total?: number
+  recent?: BoMGraphHeader[]
+  error?: string | null
+  onOpenBrowser: () => void
+  onSelectGraph: (graphId: string) => void
 }
 
 export type ObjectViewerProps = {
@@ -118,6 +150,9 @@ export type ObjectViewerProps = {
   /** When false, Versions section omitted (e.g. historical inspect). */
   showVersions?: boolean
   versions?: ObjectViewerVersionsProps | null
+  /** Live graphs containing this entity (entity inspect only). */
+  showGraphs?: boolean
+  graphs?: ObjectViewerGraphsProps | null
 }
 
 /**
@@ -139,6 +174,8 @@ export function ObjectViewer({
   showAnnotations = true,
   showVersions = true,
   versions,
+  showGraphs = false,
+  graphs,
 }: ObjectViewerProps) {
   const [copied, setCopied] = useState(false)
 
@@ -177,6 +214,12 @@ export function ObjectViewer({
     showVersions &&
     versions != null &&
     (versions.loading === true || versionsTotal > 0 || (versions.error != null && versions.error !== ''))
+
+  const graphsTotal = graphs?.total ?? 0
+  const showGraphsSection =
+    showGraphs &&
+    graphs != null &&
+    (graphs.loading === true || graphsTotal > 0 || (graphs.error != null && graphs.error !== ''))
 
   return (
     <Stack gap="xs" data-tour="object-viewer">
@@ -316,6 +359,51 @@ export function ObjectViewer({
                       key={row.version}
                       row={row}
                       onClick={() => versions.onSelectVersion(row.version)}
+                    />
+                  ))}
+                </Stack>
+              </>
+            )}
+          </Stack>
+        </ObjectViewerSection>
+      )}
+
+      {showGraphsSection && graphs && (
+        <ObjectViewerSection label="Graphs">
+          <Stack gap={8}>
+            {graphs.loading ? (
+              <Stack gap={6}>
+                <Skeleton height={14} width="40%" />
+                <Skeleton height={36} />
+                <Skeleton height={36} />
+              </Stack>
+            ) : graphs.error ? (
+              <Text size="xs" c="red">
+                {graphs.error}
+              </Text>
+            ) : (
+              <>
+                <MetaRow label="count">
+                  <Group gap="sm" wrap="nowrap" align="center" justify="space-between">
+                    <Text size="sm">{graphs.total ?? 0}</Text>
+                    <Anchor
+                      component="button"
+                      type="button"
+                      size="sm"
+                      onClick={graphs.onOpenBrowser}
+                      data-tour="object-graphs-link"
+                      style={{ flexShrink: 0 }}
+                    >
+                      Graphs {'>>'}
+                    </Anchor>
+                  </Group>
+                </MetaRow>
+                <Stack gap={8}>
+                  {(graphs.recent ?? []).slice(0, OBJECT_VERSION_PREVIEW_N).map((header) => (
+                    <GraphPreviewRow
+                      key={header.id}
+                      header={header}
+                      onClick={() => graphs.onSelectGraph(header.id)}
                     />
                   ))}
                 </Stack>

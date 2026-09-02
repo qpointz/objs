@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.poc.objs.api.domain.Edge
 import org.poc.objs.api.domain.Entity
 import org.poc.objs.api.domain.Graph
+import org.poc.objs.core.domain.EntityLiveGraphs
 import org.poc.objs.core.domain.GraphHeader
 import org.poc.objs.api.domain.GraphMutation
 import org.poc.objs.api.domain.MutationMode
@@ -365,6 +366,42 @@ class NamedGraphStore(
         val live = membershipRepository.findByEntityId(entityId).map { it.graphId }
         val pinned = versionMemberRepository.findDistinctGraphIdsByEntityId(entityId)
         return (live + pinned).distinct().sortedBy { it.toString() }
+    }
+
+    /**
+     * Live HEAD membership only (ignores deep-version pins). Headers sorted by [GraphHeader.updatedAt]
+     * desc (then createdAt, then id). Optional [q] uses [matchesSearchText]; [limit] caps [EntityLiveGraphs.items].
+     * [EntityLiveGraphs.total] is always the unfiltered live count.
+     */
+    @Transactional(readOnly = true)
+    @JvmOverloads
+    fun listLiveGraphHeadersForEntity(
+        entityId: UUID,
+        q: String? = null,
+        limit: Int? = null,
+    ): EntityLiveGraphs {
+        val graphIds = membershipRepository.findByEntityId(entityId).map { it.graphId }.distinct()
+        val total = graphIds.size
+        if (graphIds.isEmpty()) {
+            return EntityLiveGraphs(items = emptyList(), total = 0)
+        }
+        val query = q?.trim().orEmpty()
+        val sorted = graphRepository.findAllById(graphIds)
+            .asSequence()
+            .map { it.toHeader() }
+            .filter { query.isEmpty() || matchesSearchText(it, query) }
+            .sortedWith(
+                compareByDescending<GraphHeader> { it.updatedAt ?: java.time.Instant.EPOCH }
+                    .thenByDescending { it.createdAt ?: java.time.Instant.EPOCH }
+                    .thenBy { it.id.toString() },
+            )
+        val items =
+            if (limit != null && limit > 0) {
+                sorted.take(limit).toList()
+            } else {
+                sorted.toList()
+            }
+        return EntityLiveGraphs(items = items, total = total)
     }
 
     /**
