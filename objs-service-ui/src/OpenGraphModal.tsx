@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import {
   Alert,
   Box,
-  Button,
   Group,
   Loader,
   Modal,
@@ -15,7 +14,7 @@ import {
 } from '@mantine/core'
 import { useDebouncedValue } from '@mantine/hooks'
 import { IconAffiliate, IconCode, IconSearch } from '@tabler/icons-react'
-import { getGraph, searchGraphs } from './api'
+import { getGraph, listRecentGraphHeaders, searchGraphs } from './api'
 import { GRAPH_HEADER_COMPACT_ROW_HEIGHT, GraphHeaderReadout } from './GraphHeaderReadout'
 import type { BoMGraphHeader, BoMGraphResponse } from './types'
 
@@ -36,7 +35,7 @@ const HIT_PAD = 6
 const RESULTS_PANE_HEIGHT =
   SEARCH_LIMIT * GRAPH_HEADER_COMPACT_ROW_HEIGHT + (SEARCH_LIMIT - 1) * HIT_GAP + HIT_PAD * 2
 
-/** Shared "Open graph…" dialog (WI-007 / G-U10): debounced search, never lists the full catalog. */
+/** Shared "Open graph…" dialog: recent when empty; search / graph-expr when filled (Note2). */
 export function OpenGraphModal({ opened, onClose, onOpen }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -61,21 +60,22 @@ export function OpenGraphModal({ opened, onClose, onOpen }: Props) {
     if (!opened) return
     const trimmedQ = tab === 'search' ? debouncedQ.trim() : ''
     const trimmedExpr = tab === 'expression' ? debouncedExpr.trim() : ''
-    if (!trimmedQ && !trimmedExpr) {
-      setItems([])
-      setSearching(false)
-      return
-    }
     let cancelled = false
     setSearching(true)
     setError(null)
-    void searchGraphs({
-      q: trimmedQ || undefined,
-      expr: trimmedExpr || undefined,
-      limit: SEARCH_LIMIT,
-    })
-      .then((res) => {
-        if (!cancelled) setItems(res.items)
+
+    const load =
+      !trimmedQ && !trimmedExpr
+        ? listRecentGraphHeaders(SEARCH_LIMIT)
+        : searchGraphs({
+            q: trimmedQ || undefined,
+            expr: trimmedExpr || undefined,
+            limit: SEARCH_LIMIT,
+          }).then((res) => res.items)
+
+    void load
+      .then((rows) => {
+        if (!cancelled) setItems(rows)
       })
       .catch((e: unknown) => {
         if (!cancelled) {
@@ -86,6 +86,7 @@ export function OpenGraphModal({ opened, onClose, onOpen }: Props) {
       .finally(() => {
         if (!cancelled) setSearching(false)
       })
+
     return () => {
       cancelled = true
     }
@@ -105,7 +106,7 @@ export function OpenGraphModal({ opened, onClose, onOpen }: Props) {
     }
   }
 
-  const hasCriteria =
+  const hasFilter =
     (tab === 'search' && q.trim().length > 0) ||
     (tab === 'expression' && expr.trim().length > 0)
 
@@ -113,7 +114,7 @@ export function OpenGraphModal({ opened, onClose, onOpen }: Props) {
     <Modal
       opened={opened}
       onClose={onClose}
-      size="xl"
+      size="960px"
       radius="md"
       padding="md"
       title={
@@ -140,7 +141,7 @@ export function OpenGraphModal({ opened, onClose, onOpen }: Props) {
               Open graph
             </Title>
             <Text size="xs" c="dimmed">
-              Search or graph-expr — empty never lists the catalog
+              Recent graphs when empty; search or graph-expr to filter
             </Text>
           </Stack>
         </Group>
@@ -216,44 +217,29 @@ export function OpenGraphModal({ opened, onClose, onOpen }: Props) {
             flexDirection: 'column',
           }}
         >
-          {!hasCriteria && (
-            <Stack align="center" justify="center" gap={4} style={{ flex: 1 }} px="md">
-              <IconAffiliate
-                size={22}
-                stroke={1.4}
-                color="var(--mantine-color-dimmed)"
-                aria-hidden
-              />
-              <Text size="sm" c="dimmed" ta="center">
-                Type to search…
-              </Text>
-              <Text size="xs" c="dimmed" ta="center" maw={280}>
-                Compact hit rows — scroll if there are many matches.
-              </Text>
-            </Stack>
-          )}
-
-          {hasCriteria && searching && (
+          {searching && (
             <Stack align="center" justify="center" gap="xs" style={{ flex: 1 }}>
               <Loader size="sm" />
               <Text size="sm" c="dimmed">
-                Searching…
+                {hasFilter ? 'Searching…' : 'Loading recent graphs…'}
               </Text>
             </Stack>
           )}
 
-          {hasCriteria && !searching && items.length === 0 && !error && (
+          {!searching && items.length === 0 && !error && (
             <Stack align="center" justify="center" gap={4} style={{ flex: 1 }} px="md">
               <Text size="sm" c="dimmed">
-                No matching graphs.
+                {hasFilter ? 'No matching graphs.' : 'No graphs yet.'}
               </Text>
-              <Text size="xs" c="dimmed">
-                Try a shorter UUID prefix or a different annotation fragment.
-              </Text>
+              {hasFilter && (
+                <Text size="xs" c="dimmed">
+                  Try a shorter UUID prefix or a different annotation fragment.
+                </Text>
+              )}
             </Stack>
           )}
 
-          {items.length > 0 && (
+          {!searching && items.length > 0 && (
             <Stack
               gap={HIT_GAP}
               p={HIT_PAD}
@@ -275,19 +261,6 @@ export function OpenGraphModal({ opened, onClose, onOpen }: Props) {
                   onClick={() => {
                     if (!busy) void onOpenRow(item.id)
                   }}
-                  action={
-                    <Button
-                      size="xs"
-                      variant="filled"
-                      loading={busy}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        void onOpenRow(item.id)
-                      }}
-                    >
-                      Open
-                    </Button>
-                  }
                 />
               ))}
             </Stack>

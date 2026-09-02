@@ -41,41 +41,94 @@ describe('OpenGraphModal (WI-007 smoke)', () => {
     vi.restoreAllMocks()
   })
 
-  it('shows type-to-search and does not fetch until there is a query', async () => {
-    const fetchMock = vi.fn()
-    vi.stubGlobal('fetch', fetchMock)
-
-    renderModal()
-
-    expect(screen.getByText(/Type to search/i)).toBeTruthy()
-    expect(fetchMock).not.toHaveBeenCalled()
-  })
-
-  it('debounced search calls /graphs/search and lists hits', async () => {
-    const user = userEvent.setup()
+  it('loads recent graphs when search is empty', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({
-        items: [{ id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', annotations: { env: 'prod' } }],
-      }),
+      json: async () => [
+        {
+          id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+          annotations: { env: 'dev' },
+          entityCount: 1,
+          edgeCount: 0,
+          updatedAt: '2026-09-02T10:00:00Z',
+        },
+        {
+          id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+          annotations: { env: 'prod' },
+          entityCount: 2,
+          edgeCount: 1,
+          updatedAt: '2026-09-01T10:00:00Z',
+        },
+      ],
     })
     vi.stubGlobal('fetch', fetchMock)
 
     renderModal()
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/api/v1/objs/graphs')
+    })
+
+    expect(await screen.findByText(/bbbbbbbb/)).toBeTruthy()
+    expect(screen.queryByText(/Type to search/i)).toBeNull()
+  })
+
+  it('debounced search calls /graphs/search and opens on row click', async () => {
+    const user = userEvent.setup()
+    const onOpen = vi.fn()
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [],
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          items: [{ id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', annotations: { env: 'prod' } }],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+          annotations: { env: 'prod' },
+          graph: { entities: [], edges: [] },
+        }),
+      })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      createElement(
+        MantineProvider,
+        null,
+        createElement(OpenGraphModal, {
+          opened: true,
+          onClose: () => {},
+          onOpen,
+        }),
+      ),
+    )
+
     await user.type(screen.getByPlaceholderText(/prod, a1b2c3d4/i), 'prod')
 
     await waitFor(
       () => {
-        expect(fetchMock).toHaveBeenCalled()
-        const url = String(fetchMock.mock.calls[0][0])
-        expect(url).toContain('/api/v1/objs/graphs/search?')
-        expect(url).toContain('q=prod')
-        expect(url).not.toBe('/api/v1/objs/graphs')
+        const searchCall = fetchMock.mock.calls.find((c) =>
+          String(c[0]).includes('/api/v1/objs/graphs/search?'),
+        )
+        expect(searchCall).toBeTruthy()
+        expect(String(searchCall![0])).toContain('q=prod')
       },
       { timeout: 2000 },
     )
 
-    expect(await screen.findByRole('button', { name: 'Open' })).toBeTruthy()
-    expect(screen.getByText(/aaaaaaaa/)).toBeTruthy()
+    const row = await screen.findByRole('button', { name: /aaaaaaaa/i })
+    await user.click(row)
+
+    await waitFor(() => {
+      expect(onOpen).toHaveBeenCalled()
+    })
   })
 })

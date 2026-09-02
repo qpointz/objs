@@ -118,6 +118,7 @@ export function GraphHeaderReadout({
   onClick,
 }: Props) {
   const [copied, setCopied] = useState(false)
+  const [hovered, setHovered] = useState(false)
   const entries = Object.entries(annotations ?? {})
   const accent = colorForType(graphId)
   const compact = density === 'compact'
@@ -154,17 +155,23 @@ export function GraphHeaderReadout({
         textAlign: 'left',
         borderRadius: compact ? 8 : 12,
         overflow: 'hidden',
-        border: `1px solid color-mix(in srgb, ${accent} 35%, var(--mantine-color-default-border))`,
-        background: `linear-gradient(
+        border: compact
+          ? '1px solid var(--mantine-color-default-border)'
+          : `1px solid color-mix(in srgb, ${accent} 35%, var(--mantine-color-default-border))`,
+        background: compact
+          ? hovered && onClick
+            ? 'var(--mantine-color-default-hover)'
+            : 'var(--mantine-color-body)'
+          : `linear-gradient(
           135deg,
           color-mix(in srgb, ${accent} 10%, var(--mantine-color-body)) 0%,
           var(--mantine-color-body) 48%
         )`,
-        boxShadow: interactive
+        boxShadow: interactive && !compact
           ? '0 1px 0 color-mix(in srgb, var(--mantine-color-default-border) 80%, transparent)'
           : undefined,
         cursor: onClick ? 'pointer' : undefined,
-        transition: onClick ? 'border-color 120ms ease' : undefined,
+        transition: onClick ? 'background-color 120ms ease' : undefined,
       }}
       onClick={onClick}
       role={onClick ? 'button' : undefined}
@@ -179,34 +186,24 @@ export function GraphHeaderReadout({
             }
           : undefined
       }
-      onMouseEnter={
-        onClick
-          ? (e) => {
-              e.currentTarget.style.borderColor = accent
-            }
-          : undefined
-      }
-      onMouseLeave={
-        onClick
-          ? (e) => {
-              e.currentTarget.style.borderColor = `color-mix(in srgb, ${accent} 35%, var(--mantine-color-default-border))`
-            }
-          : undefined
-      }
+      onMouseEnter={onClick ? () => setHovered(true) : undefined}
+      onMouseLeave={onClick ? () => setHovered(false) : undefined}
     >
-      <Box
-        aria-hidden
-        style={{
-          width: compact ? 3 : 5,
-          flexShrink: 0,
-          background: `linear-gradient(180deg, ${accent}, color-mix(in srgb, ${accent} 45%, #111))`,
-        }}
-      />
+      {!compact && (
+        <Box
+          aria-hidden
+          style={{
+            width: 5,
+            flexShrink: 0,
+            background: `linear-gradient(180deg, ${accent}, color-mix(in srgb, ${accent} 45%, #111))`,
+          }}
+        />
+      )}
       <Group
         gap={compact ? 8 : 'sm'}
         wrap="nowrap"
         align="center"
-        px={compact ? 'xs' : 'sm'}
+        px="sm"
         py={compact ? 0 : 'sm'}
         style={{ flex: 1, minWidth: 0, height: compact ? '100%' : undefined }}
       >
@@ -219,9 +216,13 @@ export function GraphHeaderReadout({
             flexShrink: 0,
             display: 'grid',
             placeItems: 'center',
-            background: `color-mix(in srgb, ${accent} 18%, var(--mantine-color-body))`,
-            border: `1px solid color-mix(in srgb, ${accent} 40%, transparent)`,
-            color: accent,
+            background: compact
+              ? 'color-mix(in srgb, var(--mantine-color-default-hover) 80%, var(--mantine-color-body))'
+              : `color-mix(in srgb, ${accent} 18%, var(--mantine-color-body))`,
+            border: compact
+              ? '1px solid var(--mantine-color-default-border)'
+              : `1px solid color-mix(in srgb, ${accent} 40%, transparent)`,
+            color: compact ? 'var(--mantine-color-dimmed)' : accent,
           }}
         >
           <IconAffiliate size={compact ? 14 : 18} stroke={1.6} />
@@ -257,16 +258,11 @@ export function GraphHeaderReadout({
                 </ActionIcon>
               </Tooltip>
             </Group>
-            <Box
-              style={{
-                flex: 1,
-                minWidth: 0,
-                overflow: 'hidden',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                flexWrap: 'nowrap',
-              }}
+            <Group
+              gap={6}
+              wrap="nowrap"
+              align="center"
+              style={{ flex: 1, minWidth: 0 }}
               title={
                 entries.length > 0
                   ? entries.map(([k, v]) => `${k}=${v}`).join(' · ')
@@ -279,19 +275,31 @@ export function GraphHeaderReadout({
                 </Text>
               ) : (
                 <>
-                  {visiblePills.map(([k, v]) => (
-                    <span key={k} style={{ flexShrink: 0 }}>
-                      <AnnotationSplitPill k={k} v={v} size="panel" />
-                    </span>
-                  ))}
+                  <Box
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      overflow: 'hidden',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      flexWrap: 'nowrap',
+                    }}
+                  >
+                    {visiblePills.map(([k, v]) => (
+                      <span key={k} style={{ flexShrink: 0 }}>
+                        <AnnotationSplitPill k={k} v={v} size="bar" />
+                      </span>
+                    ))}
+                  </Box>
                   {overflowCount > 0 && (
-                    <Text size="sm" c="dimmed" fw={700} style={{ flexShrink: 0 }}>
+                    <Text size="xs" c="dimmed" fw={700} style={{ flexShrink: 0, lineHeight: 1 }}>
                       +{overflowCount}
                     </Text>
                   )}
                 </>
               )}
-            </Box>
+            </Group>
             {action ? <Box style={{ flexShrink: 0 }}>{action}</Box> : null}
           </>
         ) : (

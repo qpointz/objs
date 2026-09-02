@@ -81,6 +81,8 @@ export type BoMGraphListItem = {
   annotations: Record<string, string>
   entityCount: number
   edgeCount: number
+  createdAt?: string
+  updatedAt?: string
 }
 
 export type GraphNode = {

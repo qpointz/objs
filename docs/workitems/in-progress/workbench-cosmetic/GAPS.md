@@ -5,6 +5,7 @@
 | G-WC-objload | Objects results blank while `searchBusy` | **resolved** | Explorer-style overlay on results pane while busy (WI-001). |
 | G-WC-objgraphs | Entity inspect: live graphs containing object | **resolved** | Versions-style Graphs section; HEAD only; WI-002. |
 | G-WC-intake | Further cosmetic issues | **open** | Append WIs as user lists them; do not invent scope. |
+| G-WC-opengraph | Open graph dialog polish | **resolved** | Note2: recent when empty; neutral rows; click-to-open; bar pills. |
 
 ## Detail
 

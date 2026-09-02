@@ -3,6 +3,7 @@ import type {
   BoMSchemaUsage,
   BoMGraphContents,
   BoMAllowedEdgeRule,
+  BoMGraphHeader,
   BoMGraphListItem,
   BoMGraphResponse,
   BoMGraphSearchResponse,
@@ -197,6 +198,25 @@ export async function analyzeCycles(body: GraphCycleAnalysisRequest): Promise<Gr
 export async function listGraphs(): Promise<BoMGraphListItem[]> {
   const res = await fetch('/api/v1/objs/graphs')
   return parseResponse<BoMGraphListItem[]>(res)
+}
+
+/** Most recently updated graph headers for Open-graph default list (Note2). */
+export async function listRecentGraphHeaders(limit = 15): Promise<BoMGraphHeader[]> {
+  const rows = await listGraphs()
+  return rows
+    .slice()
+    .sort((a, b) => {
+      const ta = a.updatedAt ?? a.createdAt ?? ''
+      const tb = b.updatedAt ?? b.createdAt ?? ''
+      return tb.localeCompare(ta)
+    })
+    .slice(0, limit)
+    .map(({ id, annotations, createdAt, updatedAt }) => ({
+      id,
+      annotations,
+      createdAt,
+      updatedAt,
+    }))
 }
 
 /** Build `GET /api/v1/objs/graphs/search` query string (G-U10). */
