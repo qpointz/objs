@@ -1,7 +1,7 @@
 # Object store: foundation vs example apps
 
 **Status:** design note (2026-08-16), from SBOM inventory + asset repository  
-**Shipped:** [C-17 `live-store-apis`](../../workitems/completed/20260819-live-store-apis/STORY.md), [C-18 versions](../../workitems/completed/20260819-versions-and-snapshots/STORY.md) (clocks + HEAD/history + Snapshot freeze; `clone()` kept), [C-19 after versions](../../workitems/completed/20260822-foundation-after-versions/STORY.md) (pin reverse + `>` / prefix pushdown). Text `q`: [C-20 `store-text-search`](../../workitems/planned/store-text-search/STORY.md). Sequence: [`SEQUENCE.md`](../../workitems/SEQUENCE.md).  
+**Shipped:** [C-17 `live-store-apis`](../../workitems/completed/20260819-live-store-apis/STORY.md), [C-18 versions](../../workitems/completed/20260819-versions-and-snapshots/STORY.md) (clocks + HEAD/history + Snapshot freeze; `clone()` kept), [C-19 after versions](../../workitems/completed/20260822-foundation-after-versions/STORY.md) (pin reverse + `>` / prefix pushdown). Text `q`: [C-20 `store-text-search`](../../workitems/planned/store-text-search/STORY.md). Policy evaluation (planned): [C-24 `objs-policy`](../../workitems/planned/objs-policy/STORY.md), [`docs/design/policy/`](../policy/). Sequence: [`SEQUENCE.md`](../../workitems/SEQUENCE.md).  
 **Audience:** objs-core / graph APIs  
 **Not this doc:** product journeys, workbench REST (`objs-service`), Gradle/UI packaging (appendix only)
 
@@ -19,7 +19,8 @@ SBOM story tracker for the same gaps: [`FOUNDATION-BACKLOG.md`](../../workitems/
 | **objs-gremlin-core** | Matcher → resolved fragment → TinkerGraph → gremlin-lang |
 | **objs-jgrapht-core** | Resolved fragment → JGraphT graph + SCC cycle analysis (JVM-only) |
 | **objs-jgrapht-service** | Optional REST capabilities + cycle endpoint (workbench runner only) |
-| **Example apps** | Product tables and meaning of graphs (SBOM apps/versions/fingerprints/portfolios; AR collections + write modes), product REST, ontology packs, reports |
+| **objs-policy-*** (planned C-24) | Policy + **suite** artefacts + repository; enrich → applicability → evaluate (Drools first); **folder roll-up**; unified result — **not** product regulations or suite content |
+| **Example apps** | Product tables and meaning of graphs (SBOM apps/versions/fingerprints/portfolios; AR collections + write modes), product REST, ontology packs, reports; **concrete policies, suite trees, product applicability** when using objs-policy |
 | **objs-service / objs-service-app** | Foundation *workbench* only — not an example dependency |
 
 A third example should be mostly **domain table + routes + seeds**, not another copy of pool/graph query glue.

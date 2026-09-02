@@ -25,6 +25,7 @@ Objs is an **entity store**: independent informational **entities** linked by **
 | [persistence.md](persistence.md) | PostgreSQL, JSONB, two Flyway lines, H2 tests |
 | [database-model.md](database-model.md) | As-built `bom_*` schema (C-18 HEAD + history) |
 | [apps-vs-foundation.md](apps-vs-foundation.md) | Store vs example apps: missing graph APIs, lift candidates, duplicates |
+| [../policy/overview.md](../policy/overview.md) | **Planned (C-24):** detailed policy design draft (suites, applicability, findings, seeds) |
 
 ## Core ideas (summary)
 

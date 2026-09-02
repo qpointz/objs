@@ -15,14 +15,14 @@ Each YAML document:
 
 ```yaml
 apiVersion: objs.poc.org/v1
-kind: ObjectSchema | AllowedEdgeRule | Graph | *(application-defined)*
+kind: ObjectSchema | AllowedEdgeRule | Graph | *(application-defined)* | *(planned: Policy / PolicySuite — C-24)*
 # kind-specific fields follow directly at the document root
 ```
 
 | Field | Required | Notes |
 |-------|----------|--------|
 | `apiVersion` | **yes** | Only `objs.poc.org/v1` is accepted |
-| `kind` | **yes** | Built-in: `ObjectSchema`, `AllowedEdgeRule`, `Graph`. Applications register more via `SeedDocumentHandler` beans. |
+| `kind` | **yes** | Built-in: `ObjectSchema`, `AllowedEdgeRule`, `Graph`. Applications register more via `SeedDocumentHandler` beans. **Planned (C-24):** policy seed kinds — see [`docs/design/policy/`](../policy/) and [`objs-policy` GAPS](../../workitems/planned/objs-policy/GAPS.md) `G-P34seed`… |
 | other root keys | kind-specific | Flat at document root — no Kubernetes-style `metadata` / `spec` |
 
 Seed documents deliberately follow Mill's flat format. `apiVersion` and `kind` are the only
