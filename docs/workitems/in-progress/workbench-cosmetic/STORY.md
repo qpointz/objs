@@ -24,7 +24,7 @@ Polish workbench (`:objs-service-ui`) **cosmetics and in-progress feedback** whe
 | Module | `:objs-service-ui` (+ thin `:objs-core` / `:objs-service` when workbench needs a new read API) |
 | Behavior | Prefer presentation / loading feedback; WI-002 adds live graph-membership inspect only |
 | Loading splash | Match Explorer overlay pattern (`Loader` + dimmed label on body wash) |
-| Graphs usage (WI-002) | Live HEAD membership only; ignore pins; Versions-style chrome; click → shared context Latest |
+| Graphs usage (WI-002) | Live HEAD membership only; ignore pins; Versions-style chrome; ⋮ **Open in Explorer** / **Edit in Composer** (rows not clickable) |
 | Tour / `ui.md` | Update only when chrome copy or documented empty/loading/inspect states change |
 
 ## Stages

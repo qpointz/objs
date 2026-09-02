@@ -20,6 +20,6 @@
 
 **Need:** Show which live graphs contain the inspected entity (Versions-like chrome).
 
-**Locks:** HEAD / live membership only (ignore pins); section only when `total > 0`; preview 5 most recent by graph `updatedAt`; expand with debounced incremental search (no From/To); click → shared graph context Latest.
+**Locks:** HEAD / live membership only (ignore pins); section only when `total > 0`; preview 5 most recent by graph `updatedAt`; expand with debounced search; per-row ⋮ Open/Edit (no row select; Graphs pane has no header graph id/⋮ — Note1).
 
 **Resolution:** WI-002. **Done.**

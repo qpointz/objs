@@ -78,23 +78,25 @@ function VersionPreviewRow({
 
 function GraphPreviewRow({
   header,
-  onClick,
+  onOpenAsContext,
+  onOpenInExplorer,
+  onEditInComposer,
 }: {
   header: BoMGraphHeader
-  onClick: () => void
+  onOpenAsContext: (graphId: string) => void
+  onOpenInExplorer: (graphId: string) => void
+  onEditInComposer: (graphId: string) => void
 }) {
   return (
-    <Anchor
-      component="button"
-      type="button"
-      underline="never"
-      c="inherit"
-      onClick={onClick}
-      style={{ display: 'block', width: '100%', textAlign: 'left' }}
-      data-tour="object-graph-preview-row"
-    >
-      <ObjectGraphRowContent header={header} density="preview" />
-    </Anchor>
+    <div data-tour="object-graph-preview-row" style={{ width: '100%' }}>
+      <ObjectGraphRowContent
+        header={header}
+        density="preview"
+        onOpenAsContext={onOpenAsContext}
+        onOpenInExplorer={onOpenInExplorer}
+        onEditInComposer={onEditInComposer}
+      />
+    </div>
   )
 }
 
@@ -125,7 +127,9 @@ export type ObjectViewerGraphsProps = {
   recent?: BoMGraphHeader[]
   error?: string | null
   onOpenBrowser: () => void
-  onSelectGraph: (graphId: string) => void
+  onOpenAsContext: (graphId: string) => void
+  onOpenInExplorer: (graphId: string) => void
+  onEditInComposer: (graphId: string) => void
 }
 
 export type ObjectViewerProps = {
@@ -403,7 +407,9 @@ export function ObjectViewer({
                     <GraphPreviewRow
                       key={header.id}
                       header={header}
-                      onClick={() => graphs.onSelectGraph(header.id)}
+                      onOpenAsContext={graphs.onOpenAsContext}
+                      onOpenInExplorer={graphs.onOpenInExplorer}
+                      onEditInComposer={graphs.onEditInComposer}
                     />
                   ))}
                 </Stack>

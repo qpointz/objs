@@ -15,7 +15,7 @@ import {
   Title,
 } from '@mantine/core'
 import { IconTrash } from '@tabler/icons-react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { listSchemas, queryAddObjects } from './api'
 import { GraphContextBar } from './GraphContextBar'
 import { useGraphContext } from './GraphContextProvider'
@@ -83,6 +83,7 @@ function formatObjectsStats(resultsCount: number, stats: QueryExecStats): string
 
 export function ObjectsPage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { context } = useGraphContext()
   const formRef = useRef<MatcherQueryFormHandle>(null)
   const shelf = useObjectShelf()
@@ -97,6 +98,7 @@ export function ObjectsPage() {
   const [sideWidth, setSideWidth] = useState(loadSideWidth)
   const splitHostRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<{ startX: number; startWidth: number } | null>(null)
+  const prevContextKeyRef = useRef<string | null>(null)
   const contextKey =
     context.kind === 'graph'
       ? `graph:${context.graphId}:${context.graphVersion ?? 'latest'}`
@@ -122,10 +124,8 @@ export function ObjectsPage() {
       if (context.kind === 'empty') {
         throw new Error('Open a graph or matcher as graph context before searching Objects')
       }
-      const body = formRef.current?.build()
-      if (body === undefined) {
-        throw new Error('Matcher form is not ready')
-      }
+      // Matcher form unmounts while the object inspect pane is open — match-all in that case.
+      const body = formRef.current != null ? formRef.current.build() : null
       const scoped = scopeObjectsSearch(body, context)
       setSearchBusy(true)
       const started = performance.now()
@@ -148,19 +148,54 @@ export function ObjectsPage() {
   }
 
   useEffect(() => {
+    const prev = prevContextKeyRef.current
+    prevContextKeyRef.current = contextKey
+
     if (context.kind === 'empty') {
       setResults([])
       setStats(null)
       setSearchError(null)
       setInspectSelection(null)
+      setSearchParams({}, { replace: true })
       return
     }
-    setInspectSelection(null)
     setSelectedIds(new Set())
+    if (prev != null && prev !== contextKey) {
+      setSearchParams((params) => {
+        const next = new URLSearchParams(params)
+        next.delete('inspect')
+        return next
+      }, { replace: true })
+      setInspectSelection(null)
+    } else if (prev === null) {
+      setInspectSelection(null)
+    }
     void runSearch()
     // Re-list when shared context changes; Search button re-runs with current filter.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contextKey])
+
+  useEffect(() => {
+    const id = searchParams.get('inspect')
+    if (!id || searchBusy) return
+
+    const entity = results.find((e) => e.id === id)
+    if (entity) {
+      setInspectSelection((prev) => {
+        if (prev?.kind === 'node' && prev.node.id === id) return prev
+        return { kind: 'node', node: entityToGraphNode(entity) }
+      })
+      return
+    }
+    if (results.length > 0 || stats != null) {
+      setSearchParams((params) => {
+        const next = new URLSearchParams(params)
+        next.delete('inspect')
+        return next
+      }, { replace: true })
+      setInspectSelection(null)
+    }
+  }, [searchParams, results, searchBusy, stats, setSearchParams])
 
   function onNewGraphFromShelf() {
     if (shelf.entities.length === 0) return
@@ -169,6 +204,16 @@ export function ObjectsPage() {
 
   function openEntityInspect(entity: BoMEntity) {
     setInspectSelection({ kind: 'node', node: entityToGraphNode(entity) })
+    setSearchParams({ inspect: entity.id }, { replace: true })
+  }
+
+  function clearEntityInspect() {
+    setInspectSelection(null)
+    setSearchParams((params) => {
+      const next = new URLSearchParams(params)
+      next.delete('inspect')
+      return next
+    }, { replace: true })
   }
 
   function endpointLabel(nodeId: string): string {
@@ -419,7 +464,7 @@ export function ObjectsPage() {
                 const entity = results.find((e) => e.id === id)
                 if (entity) openEntityInspect(entity)
               }}
-              onClearSelection={() => setInspectSelection(null)}
+              onClearSelection={clearEntityInspect}
               endpointLabel={endpointLabel}
             />
           ) : (

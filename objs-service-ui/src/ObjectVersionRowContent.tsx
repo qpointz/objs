@@ -44,7 +44,7 @@ export function ObjectVersionRowContent({ row, selected, density = 'preview' }: 
       {ann.length > 0 && (
         <Group gap={4} wrap="wrap">
           {ann.map(([k, v]) => (
-            <AnnotationSplitPill key={k} k={k} v={v} size="card" />
+            <AnnotationSplitPill key={k} k={k} v={v} size="bar" />
           ))}
         </Group>
       )}

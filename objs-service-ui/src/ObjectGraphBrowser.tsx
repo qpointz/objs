@@ -1,13 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import {
-  ActionIcon,
-  Group,
-  ScrollArea,
-  Stack,
-  Text,
-  TextInput,
-  UnstyledButton,
-} from '@mantine/core'
+import { ActionIcon, Box, Group, ScrollArea, Stack, Text, TextInput } from '@mantine/core'
 import { useDebouncedValue } from '@mantine/hooks'
 import { IconX } from '@tabler/icons-react'
 import { ObjectGraphRowContent } from './ObjectGraphRowContent'
@@ -31,21 +23,23 @@ type Props = {
   rows: BoMGraphHeader[]
   loading?: boolean
   error?: string | null
-  /** Current shared-context graph id, if any. */
-  selectedGraphId?: string | null
-  onSelect: (graphId: string) => void
+  onOpenAsContext: (graphId: string) => void
+  onOpenInExplorer: (graphId: string) => void
+  onEditInComposer: (graphId: string) => void
   onClose: () => void
 }
 
 /**
- * Inline live-graphs list (right of object viewer) — search like Open graph, no date range.
+ * Graphs list pane (Note1): search + rows only. No pane-level graph id/⋮, no row selection —
+ * left viewer stays on the object; per-row ⋮ for Open / Open in Explorer / Edit.
  */
 export function ObjectGraphBrowser({
   rows,
   loading,
   error,
-  selectedGraphId,
-  onSelect,
+  onOpenAsContext,
+  onOpenInExplorer,
+  onEditInComposer,
   onClose,
 }: Props) {
   const [query, setQuery] = useState('')
@@ -98,25 +92,26 @@ export function ObjectGraphBrowser({
               {rows.length === 0 ? 'No graphs' : 'No matching graphs'}
             </Text>
           )}
-          {filtered.map((header) => {
-            const current = selectedGraphId != null && selectedGraphId === header.id
-            return (
-              <UnstyledButton
-                key={header.id}
-                onClick={() => onSelect(header.id)}
-                data-tour="object-graph-browser-row"
-                style={{
-                  display: 'block',
-                  width: '100%',
-                  padding: '6px 8px',
-                  borderRadius: 4,
-                  background: current ? 'var(--mantine-color-blue-light)' : undefined,
-                }}
-              >
-                <ObjectGraphRowContent header={header} selected={current} density="browser" />
-              </UnstyledButton>
-            )
-          })}
+          {filtered.map((header) => (
+            <Box
+              key={header.id}
+              data-tour="object-graph-browser-row"
+              style={{
+                display: 'block',
+                width: '100%',
+                padding: '6px 8px',
+                borderRadius: 4,
+              }}
+            >
+              <ObjectGraphRowContent
+                header={header}
+                density="browser"
+                onOpenAsContext={onOpenAsContext}
+                onOpenInExplorer={onOpenInExplorer}
+                onEditInComposer={onEditInComposer}
+              />
+            </Box>
+          ))}
         </Stack>
       </ScrollArea>
     </Stack>

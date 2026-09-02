@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Box, Group, ScrollArea, Stack, Text } from '@mantine/core'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   edgeVersionStats,
   entityVersionStats,
@@ -73,7 +74,10 @@ export function ObjectInspectPane({
   onClearSelection,
   endpointLabel,
 }: Props) {
-  const { setGraph, context } = useGraphContext()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [, setSearchParams] = useSearchParams()
+  const { setGraph } = useGraphContext()
   const [rightPane, setRightPane] = useState<'versions' | 'graphs' | null>(null)
   const [statsRecent, setStatsRecent] = useState<ObjectVersionRow[]>([])
   const [statsTotal, setStatsTotal] = useState(0)
@@ -273,8 +277,15 @@ export function ObjectInspectPane({
     }
   }, [rightPane, selection, graphContext])
 
-  const openSharedGraph = useCallback(
+  const persistObjectsInspectUrl = useCallback(() => {
+    if (selection?.kind !== 'node') return
+    if (!location.pathname.endsWith('/objects')) return
+    setSearchParams({ inspect: selection.node.id }, { replace: true })
+  }, [location.pathname, selection, setSearchParams])
+
+  const openAsGraphContext = useCallback(
     async (graphId: string) => {
+      persistObjectsInspectUrl()
       try {
         const resolved = await getGraph(graphId)
         setGraph(graphId, resolved.annotations ?? {}, {
@@ -285,7 +296,32 @@ export function ObjectInspectPane({
         // leave previous context
       }
     },
-    [setGraph],
+    [persistObjectsInspectUrl, setGraph],
+  )
+
+  const openInExplorer = useCallback(
+    async (graphId: string) => {
+      persistObjectsInspectUrl()
+      try {
+        const resolved = await getGraph(graphId)
+        setGraph(graphId, resolved.annotations ?? {}, {
+          nodeCount: resolved.graph?.entities?.length ?? 0,
+          edgeCount: resolved.graph?.edges?.length ?? 0,
+        })
+        navigate('/explorer')
+      } catch {
+        // leave previous context / page
+      }
+    },
+    [navigate, persistObjectsInspectUrl, setGraph],
+  )
+
+  const editInComposer = useCallback(
+    (graphId: string) => {
+      persistObjectsInspectUrl()
+      navigate('/composer', { state: { graphId } })
+    },
+    [navigate, persistObjectsInspectUrl],
   )
 
   const openVersion = useCallback(
@@ -358,7 +394,9 @@ export function ObjectInspectPane({
           recent: graphsPreview,
           error: graphsError,
           onOpenBrowser: () => setRightPane('graphs'),
-          onSelectGraph: (graphId: string) => void openSharedGraph(graphId),
+          onOpenAsContext: (graphId: string) => void openAsGraphContext(graphId),
+          onOpenInExplorer: (graphId: string) => void openInExplorer(graphId),
+          onEditInComposer: editInComposer,
         }
       : null
 
@@ -581,8 +619,9 @@ export function ObjectInspectPane({
             rows={graphsRows}
             loading={graphsLoading}
             error={graphsError}
-            selectedGraphId={context.kind === 'graph' ? context.graphId : null}
-            onSelect={(graphId) => void openSharedGraph(graphId)}
+            onOpenAsContext={(graphId) => void openAsGraphContext(graphId)}
+            onOpenInExplorer={(graphId) => void openInExplorer(graphId)}
+            onEditInComposer={editInComposer}
             onClose={() => setRightPane(null)}
           />
         </Box>
