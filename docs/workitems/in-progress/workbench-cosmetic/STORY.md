@@ -31,13 +31,13 @@ Polish workbench (`:objs-service-ui`) **cosmetics and in-progress feedback** whe
 | Stage | WIs | Ready | Notes |
 |-------|-----|-------|-------|
 | 0 — Scaffold | WI-000 | done | Branch + folder + backlog |
-| 1 — Objects splash | WI-001 | ready | Results pane load overlay |
+| 1 — Objects splash | WI-001 | done | Results pane load overlay |
 | *n* — Further cosmetics | (TBD) | as listed | Append WIs when user defines more issues |
 
 ## Work Items
 
 - [x] WI-000 — Story scaffold — examples: **—** (`WI-000-story-scaffold.md`)
-- [ ] WI-001 — Objects results loading splash — examples: **workbench** (`WI-001-objects-load-splash.md`)
+- [x] WI-001 — Objects results loading splash — examples: **workbench** (`WI-001-objects-load-splash.md`)
 
 ## Out of scope
 

@@ -6,6 +6,7 @@ import {
   Box,
   Button,
   Group,
+  Loader,
   Paper,
   ScrollArea,
   Stack,
@@ -304,7 +305,30 @@ export function ObjectsPage() {
         wrap="nowrap"
         style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}
       >
-        <Stack gap="xs" style={{ flex: 1, minWidth: 0, minHeight: 0 }} data-tour="objects-results">
+        <Stack
+          gap="xs"
+          style={{ flex: 1, minWidth: 0, minHeight: 280, position: 'relative' }}
+          data-tour="objects-results"
+        >
+          {searchBusy && (
+            <Stack
+              align="center"
+              justify="center"
+              gap="sm"
+              data-tour="objects-results-loading"
+              style={{
+                position: 'absolute',
+                inset: 0,
+                zIndex: 5,
+                background: 'color-mix(in srgb, var(--mantine-color-body) 82%, transparent)',
+              }}
+            >
+              <Loader size="md" />
+              <Text size="sm" c="dimmed">
+                Loading objects…
+              </Text>
+            </Stack>
+          )}
           {searchError && (
             <Alert color="red" p="xs" title="Search error" withCloseButton onClose={() => setSearchError(null)}>
               {searchError}

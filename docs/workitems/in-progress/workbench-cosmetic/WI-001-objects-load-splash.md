@@ -2,10 +2,10 @@
 
 **Story:** [`STORY.md`](STORY.md)  
 **Stage:** 1 — Objects splash  
-**Status:** planned  
+**Status:** done  
 **Depends on:** WI-000  
 **Examples:** **workbench**  
-**Gap:** [`G-WC-objload`](GAPS.md)
+**Gap:** [`G-WC-objload`](GAPS.md) (resolved)
 
 ## Goal
 
@@ -13,11 +13,11 @@ Show an Explorer-style **loading splash** in the Objects results content area wh
 
 ## Deliverables
 
-- [ ] `ObjectsPage` results stack (`data-tour="objects-results"`): `position: relative`, enough min-height for a centered overlay
-- [ ] While `searchBusy`: absolute overlay with Mantine `Loader` + “Loading objects…” (match Explorer body-wash style)
-- [ ] Empty-context prompt and “No entities matched” only when `!searchBusy`
-- [ ] Re-search with prior rows: overlay on top of the table
-- [ ] Mark `G-WC-objload` resolved in `GAPS.md`; tracker `[x]` in `STORY.md`
+- [x] `ObjectsPage` results stack (`data-tour="objects-results"`): `position: relative`, `minHeight: 280` for a centered overlay
+- [x] While `searchBusy`: absolute overlay (`data-tour="objects-results-loading"`) with Mantine `Loader` + “Loading objects…”
+- [x] Empty-context prompt and “No entities matched” only when `!searchBusy`
+- [x] Re-search with prior rows: overlay on top of the table
+- [x] Mark `G-WC-objload` resolved in `GAPS.md`; tracker `[x]` in `STORY.md`
 
 ## Out of scope
 
@@ -27,6 +27,6 @@ Show an Explorer-style **loading splash** in the Objects results content area wh
 
 ## Acceptance
 
-- [ ] Throttled network + bound context: splash appears immediately on open, then results or empty message
-- [ ] Empty context: open-graph prompt; no splash
-- [ ] Manual Search with existing rows: splash overlays table until replace
+- [x] Throttled network + bound context: splash appears while `searchBusy`, then results or empty message
+- [x] Empty context: open-graph prompt; no splash
+- [x] Manual Search with existing rows: splash overlays table until replace
