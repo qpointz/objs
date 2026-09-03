@@ -1,7 +1,7 @@
 # objs-api / objs-persistence / objs-autoconfigure
 
 **Modules:** `:objs-api` · `:objs-persistence` · `:objs-autoconfigure` (Boot adapter)  
-**Story:** [C-25 objs-core-spring-split](../../workitems/in-progress/objs-core-spring-split/STORY.md) · [GAPS](../../workitems/in-progress/objs-core-spring-split/GAPS.md) · [spring-split.md](spring-split.md) · [persistence-backends.md](persistence-backends.md)
+**Story:** [C-25 objs-core-spring-split](../../workitems/completed/20260903-objs-core-spring-split/STORY.md) · [GAPS](../../workitems/completed/20260903-objs-core-spring-split/GAPS.md) · [spring-split.md](spring-split.md) · [persistence-backends.md](persistence-backends.md)
 
 ## Role
 

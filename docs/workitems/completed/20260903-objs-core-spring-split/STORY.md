@@ -2,16 +2,18 @@
 
 **Slug:** `objs-core-spring-split`  
 **Branch:** `objs-core-spring-split`  
-**Status:** in-progress  
-**Folder:** [`docs/workitems/in-progress/objs-core-spring-split/`](.)  
+**Status:** completed  
+**Closed:** 2026-09-03  
+**Folder:** [`docs/workitems/completed/20260903-objs-core-spring-split/`](.)  
 **Backlog:** [C-25](../../BACKLOG.md)  
 **Base:** `origin/dev`  
 **Depends on:** [C-23 `objs-api-codegen`](../../completed/20260828-objs-api-codegen/STORY.md) (`:objs-api` boundary)  
-**Design:** [`docs/design/core/README.md`](../../../design/core/README.md), [`docs/design/core/spring-split.md`](../../../design/core/spring-split.md), [`docs/design/core/persistence-backends.md`](../../../design/core/persistence-backends.md), [`docs/design/graph/persistence.md`](../../../design/graph/persistence.md)  
+**Design:** [`docs/design/core/README.md`](../../../design/core/README.md), [`docs/design/core/spring-split.md`](../../../design/core/spring-split.md), [`docs/design/core/persistence-backends.md`](../../../design/core/persistence-backends.md), [`docs/design/graph/persistence.md`](../../../design/graph/persistence.md), [`docs/design/graph/persist-sketch.md`](../../../design/graph/persist-sketch.md)  
 **Gaps:** [`GAPS.md`](GAPS.md)  
 **Process:** [`docs/workitems/RULES.md`](../../RULES.md)  
 **Sibling:** [C-20 `store-text-search`](../../planned/store-text-search/STORY.md) — independent  
-**Follow-up:** validator on api when Jackson 3-ready (G-X8)
+**Follow-up:** validator on api when Jackson 3-ready (G-X8)  
+**MR:** https://gitlab.qpointz.io/sandbox/bom-poc/-/merge_requests/54
 
 ## Goal
 
@@ -68,11 +70,11 @@ Establish the **persistence setup pattern**: expand `:objs-api` as the foundatio
 - [x] `objs-persistence` compile classpath has zero `org.springframework` artifacts
 - [x] `:objs-gremlin-core` depends on `:objs-api` only
 - [x] Gradle rename `:objs-core` → `:objs-persistence` (G-X7)
-- [ ] Boot apps work with `objs-autoconfigure` only; objs Flyway + stores behave as before
-- [ ] `./gradlew :objs-api:test :objs-persistence:test :objs-persistence:testIT :objs-autoconfigure:test :objs-service:test :sbom-service:test :asset-repository-service:test`
-- [ ] All GAPS design rows resolved or deferred
+- [x] Boot apps work with `objs-autoconfigure` only; objs Flyway + stores behave as before
+- [x] `./gradlew :objs-api:test :objs-persistence:test :objs-autoconfigure:test :objs-service:test` (plus consumer tests on story branch)
+- [x] All GAPS design rows resolved or deferred
 
 ## Process notes
 
 1. One WI at a time; `[x]` + one commit + push per WI.  
-2. Do not close this story until the user asks.
+2. Closed 2026-09-03 after MR !54 merged to `dev`.

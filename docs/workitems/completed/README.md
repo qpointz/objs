@@ -10,6 +10,7 @@ docs/workitems/completed/YYYYMMDD-<story-slug>/
 
 ## Index (optional, newest first)
 
+- [`20260903-objs-core-spring-split`](20260903-objs-core-spring-split/STORY.md) — Spring-free persistence + autoconfigure; expand objs-api; rename objs-persistence (C-25)
 - [`20260903-workbench-cosmetic`](20260903-workbench-cosmetic/STORY.md) — Workbench cosmetic polish: Objects splash, inspect Graphs, open-graph dialog (U-8)
 - [`20260903-graph-frontend-jgrapht`](20260903-graph-frontend-jgrapht/STORY.md) — Graph fragments, JGraphT analysis, workbench cycles
 - [`20260828-objs-api-codegen`](20260828-objs-api-codegen/STORY.md) — Spring-free API and schema-driven Java graph codegen (C-23)

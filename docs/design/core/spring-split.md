@@ -1,6 +1,6 @@
 # objs-core layering: Spring-free SDK vs store vs Boot
 
-**Status:** **normative for C-25** — story [`objs-core-spring-split`](../../workitems/in-progress/objs-core-spring-split/STORY.md) (backlog **C-25**). Design GAPS locked in story [`GAPS.md`](../../workitems/in-progress/objs-core-spring-split/GAPS.md).  
+**Status:** **normative for C-25** — story [`objs-core-spring-split`](../../workitems/completed/20260903-objs-core-spring-split/STORY.md) (backlog **C-25**). Design GAPS locked in story [`GAPS.md`](../../workitems/completed/20260903-objs-core-spring-split/GAPS.md).  
 **Modules (C-25 target):** `:objs-api` · `:objs-persistence` · `:objs-autoconfigure`
 **Parent:** [`README.md`](README.md)
 **Related:** [`persistence-backends.md`](persistence-backends.md), [`../graph/persistence.md`](../graph/persistence.md), [`../graph/gremlin.md`](../graph/gremlin.md), [`../platform/overview.md`](../platform/overview.md)
