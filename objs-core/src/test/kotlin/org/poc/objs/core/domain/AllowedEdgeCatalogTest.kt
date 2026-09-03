@@ -1,11 +1,11 @@
-package org.poc.objs.core.domain
+package org.poc.objs.api.domain
 
 import org.poc.objs.api.domain.*
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.poc.objs.core.validation.EntityTypeLookup
+import org.poc.objs.api.validation.EntityTypeLookup
 import org.poc.objs.core.validation.Validator
 import java.util.UUID
 

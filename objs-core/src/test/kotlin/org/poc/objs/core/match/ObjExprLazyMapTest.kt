@@ -1,5 +1,9 @@
 ﻿package org.poc.objs.core.match
 
+import org.poc.objs.api.match.EntityMatchCandidate
+import org.poc.objs.api.match.EntityDomainCandidate
+import org.poc.objs.api.match.ObjExprMatcher
+
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.poc.objs.api.domain.Entity

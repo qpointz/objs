@@ -8,7 +8,8 @@ plugins {
 description = "Objs schema-agnostic Kotlin/JVM API."
 
 dependencies {
-    api(libs.jackson.databind)
+    api(libs.bundles.jackson)
+    api(libs.commons.jexl)
 }
 
 kotlin {
