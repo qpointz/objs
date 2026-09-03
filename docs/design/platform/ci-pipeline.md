@@ -82,7 +82,14 @@ No Gradle files are owned by this pipeline.
 | Unit | `./gradlew test :objs-persistence:testITClasses` |
 | Integration | `./gradlew testIT` |
 
-`testIT` uses Testcontainers PostgreSQL. The integration job may attach Docker-in-Docker; if the runner already exposes Docker, that service can be dropped later.
+`testIT` against PostgreSQL:
+
+| Environment | How Postgres is provided |
+|-------------|--------------------------|
+| CI (`integration.yml`) | GitLab service `postgres:17-alpine`; JDBC via `OBJS_IT_JDBC_URL` / `USER` / `PASSWORD` |
+| Local | Testcontainers `postgres:17-alpine` when those env vars are unset |
+
+The fixture (`ObjsPostgresPersistenceFixture`) chooses env JDBC when set; otherwise starts a container. No Docker-in-Docker on the integration job.
 
 ## Reserved Docker publish (not implemented)
 

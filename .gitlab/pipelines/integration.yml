@@ -8,19 +8,34 @@ workflow:
 stages:
   - integration
 
-# Testcontainers needs a Docker daemon. Drop this service if the runner already exposes Docker.
+# Postgres service for IT (OBJS_IT_JDBC_*). Local/dev still uses Testcontainers when env is unset.
 core:integration:
   stage: integration
   extends: .gradle-job
   services:
-    - name: docker:27-dind
-      alias: docker
-      command: ["--tls=false"]
+    - name: postgres:17-alpine
+      alias: postgres
   variables:
-    DOCKER_HOST: tcp://docker:2375
-    DOCKER_TLS_CERTDIR: ""
-    TESTCONTAINERS_RYUK_DISABLED: "true"
+    POSTGRES_DB: objs
+    POSTGRES_USER: objs
+    POSTGRES_PASSWORD: objs
+    OBJS_IT_JDBC_URL: jdbc:postgresql://postgres:5432/objs
+    OBJS_IT_JDBC_USER: objs
+    OBJS_IT_JDBC_PASSWORD: objs
   script:
+    - |
+      echo "Waiting for Postgres..."
+      for i in $(seq 1 30); do
+        if bash -c 'echo >/dev/tcp/postgres/5432' >/dev/null 2>&1; then
+          echo "Postgres is up"
+          break
+        fi
+        if [ "$i" -eq 30 ]; then
+          echo "Postgres did not become ready in time"
+          exit 1
+        fi
+        sleep 1
+      done
     - cd "${CI_PROJECT_DIR}"
     - ./gradlew --no-daemon ${GRADLE_CONTINUE_PARAM} --console plain testIT
   artifacts:
