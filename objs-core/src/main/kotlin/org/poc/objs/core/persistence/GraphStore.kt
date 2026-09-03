@@ -1,38 +1,36 @@
 package org.poc.objs.core.persistence
 
-import jakarta.persistence.EntityManager
 import org.poc.objs.api.domain.Edge
 import org.poc.objs.api.domain.Entity
 import org.poc.objs.api.domain.Graph
 import org.poc.objs.api.domain.GraphMutation
 import org.poc.objs.api.domain.GraphContents
 import org.poc.objs.api.domain.graphMutation
-import org.poc.objs.core.domain.CatalogSupport
-import org.poc.objs.core.domain.DuplicateGroup
-import org.poc.objs.core.domain.IdentityProjection
-import org.poc.objs.core.domain.PageRequest
-import org.poc.objs.core.domain.SchemaCatalog
-import org.poc.objs.core.domain.SchemaUsage
-import org.poc.objs.core.domain.PagedEntities
-import org.poc.objs.core.match.AllGraphsMatcher
-import org.poc.objs.core.match.ChainedMatcher
-import org.poc.objs.core.match.EntityDomainCandidate
-import org.poc.objs.core.match.GraphExprMatcher
-import org.poc.objs.core.match.GraphIdsMatcher
-import org.poc.objs.core.match.Matcher
-import org.poc.objs.core.match.ObjExprMatcher
-import org.poc.objs.core.validation.EntityTypeLookup
-import org.poc.objs.core.validation.PersistGate
-import org.poc.objs.core.validation.ValidationException
-import org.poc.objs.core.validation.ValidationIssue
-import org.poc.objs.core.validation.ValidationResult
+import org.poc.objs.api.domain.CatalogSupport
+import org.poc.objs.api.domain.DuplicateGroup
+import org.poc.objs.api.domain.IdentityProjection
+import org.poc.objs.api.domain.PageRequest
+import org.poc.objs.api.domain.SchemaCatalog
+import org.poc.objs.api.domain.SchemaUsage
+import org.poc.objs.api.domain.PagedEntities
+import org.poc.objs.api.match.AllGraphsMatcher
+import org.poc.objs.api.match.ChainedMatcher
+import org.poc.objs.api.match.EntityDomainCandidate
+import org.poc.objs.api.match.GraphExprMatcher
+import org.poc.objs.api.match.GraphIdsMatcher
+import org.poc.objs.api.match.Matcher
+import org.poc.objs.api.match.ObjExprMatcher
+import org.poc.objs.api.validation.EntityTypeLookup
+import org.poc.objs.api.validation.PersistGate
+import org.poc.objs.api.validation.ValidationException
+import org.poc.objs.api.validation.ValidationIssue
+import org.poc.objs.api.validation.ValidationResult
 import org.poc.objs.core.validation.Validator
-import org.poc.objs.core.versioning.VersioningStrategy
-import org.poc.objs.core.versioning.VersionedKind
-import org.poc.objs.core.versioning.VersioningContext
-import org.poc.objs.core.versioning.VersioningOp
-import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
+import org.poc.objs.api.versioning.VersioningStrategy
+import org.poc.objs.api.versioning.VersionedKind
+import org.poc.objs.api.versioning.VersioningContext
+import org.poc.objs.api.versioning.VersioningOp
+import org.poc.objs.core.persistence.tx.UnitOfWork
 import java.util.UUID
 
 /**
@@ -42,34 +40,31 @@ import java.util.UUID
  * (or any matcher whose first stage is not `all` / `graph-expr`) is rejected — see [select].
  * Pool-wide object search (orphans included) uses [selectFromPool] instead.
  */
-@Service
 class GraphStore(
-    private val entityRepository: EntityRepository,
-    private val edgeRepository: EdgeRepository,
+    private val entityDao: EntityDao,
+    private val edgeDao: EdgeDao,
     private val validator: Validator,
-    private val entityManager: EntityManager,
     private val namedGraphs: NamedGraphStore,
     private val poolReader: PoolEntityReader,
     private val schemas: SchemaCatalog,
     private val catalog: CatalogSupport,
     private val versioning: VersioningStrategy,
-) {
+    private val uow: UnitOfWork,
+) : org.poc.objs.api.store.GraphStore {
     private fun gate(): PersistGate = PersistGate(
         validator = validator,
-        storeLookup = EntityTypeLookup { id -> entityRepository.findById(id).map { it.type }.orElse(null) },
-        existsEntity = { id -> entityRepository.existsById(id) },
-        existsEdge = { id -> edgeRepository.existsById(id) },
+        storeLookup = EntityTypeLookup { id -> entityDao.findById(id)?.type },
+        existsEntity = { id -> entityDao.existsById(id) },
+        existsEdge = { id -> edgeDao.existsById(id) },
     )
 
     /**
      * Batch upsert. On success, [graph] is mutated in place with all entity/edge ids assigned (G-R5).
      */
-    @Transactional
     fun write(graph: Graph): ValidationResult =
         mutate(GraphMutation.of(graph))
 
     /** Dry-run write validation (may assign temporary ids on [graph] via the persist gate). */
-    @Transactional(readOnly = true)
     fun validate(graph: Graph): ValidationResult =
         validateMutation(GraphMutation.of(graph))
 
@@ -79,23 +74,21 @@ class GraphStore(
      *
      * Same id in unset and set: set wins in the final store state.
      */
-    @Transactional
-    fun mutate(mutation: GraphMutation): ValidationResult {
+    fun mutate(mutation: GraphMutation): ValidationResult = uow.write {
         val result = validateMutation(mutation)
         if (!result.isValid) {
-            return result
+            return@write result
         }
         applyDeletes(mutation)
         applyUpserts(mutation.graph())
-        return ValidationResult.ok()
+        ValidationResult.ok()
     }
 
     /**
      * Dry-run mutation validation (may assign temporary ids on set entities/edges).
      * Edge endpoint lookup ignores entities scheduled for unset unless also set.
      */
-    @Transactional(readOnly = true)
-    fun validateMutation(mutation: GraphMutation): ValidationResult {
+    fun validateMutation(mutation: GraphMutation): ValidationResult = uow.read {
         val g = gate()
         val issues = mutableListOf<ValidationIssue>()
         for (id in mutation.edges.unset.distinct()) {
@@ -105,15 +98,15 @@ class GraphStore(
             issues.addAll(g.validateDeleteEntity(id).issues)
         }
         if (issues.isNotEmpty()) {
-            return ValidationResult.of(issues)
+            return@read ValidationResult.of(issues)
         }
         if (!mutation.hasSets()) {
-            return ValidationResult.ok()
+            return@read ValidationResult.ok()
         }
         val graph = mutation.graph()
         val stage1 = validator.validateEntities(graph.entities)
         if (!stage1.isValid) {
-            return stage1
+            return@read stage1
         }
         g.prepareIds(graph)
         val unsetEntities = mutation.entities.unset.toSet()
@@ -121,19 +114,19 @@ class GraphStore(
             if (id in unsetEntities) {
                 null
             } else {
-                entityRepository.findById(id).map { it.type }.orElse(null)
+                entityDao.findById(id)?.type
             }
         }
         val lookup = validator.combinedLookup(graph.entities, projectedStore)
         val edgeResult = validator.validateEdges(graph.edges, lookup)
         if (!edgeResult.isValid) {
-            return edgeResult
+            return@read edgeResult
         }
         val identityIssues = mutableListOf<ValidationIssue>()
         graph.entities.forEachIndexed { index, entity ->
             val id = entity.id ?: return@forEachIndexed
             if (id in unsetEntities) return@forEachIndexed
-            val stored = entityRepository.findById(id).orElse(null)?.toDomain() ?: return@forEachIndexed
+            val stored = entityDao.findById(id)?.toDomain() ?: return@forEachIndexed
             identityIssues += validator.validateEntityIdentifierImmutability(
                 stored,
                 entity,
@@ -142,32 +135,29 @@ class GraphStore(
         }
         graph.edges.forEachIndexed { index, edge ->
             val id = edge.id ?: return@forEachIndexed
-            val stored = edgeRepository.findById(id).orElse(null)?.toDomain() ?: return@forEachIndexed
+            val stored = edgeDao.findById(id)?.toDomain() ?: return@forEachIndexed
             identityIssues += validator.validateEdgeIdentifierImmutability(
                 stored,
                 edge,
                 path = "edges.set[$index]",
             )
         }
-        return if (identityIssues.isEmpty()) {
+        return@read if (identityIssues.isEmpty()) {
             ValidationResult.ok()
         } else {
             ValidationResult.of(identityIssues)
         }
     }
 
-    @Transactional
     fun deleteEntity(id: UUID): ValidationResult =
         mutate(graphMutation { entities { unset(id) } })
 
-    @Transactional
     fun deleteEdge(id: UUID): ValidationResult =
         mutate(graphMutation { edges { unset(id) } })
 
     /**
      * All-or-nothing batch delete (G-R3/G-R4). Thin shim over [mutate].
      */
-    @Transactional
     fun delete(
         entityIds: Collection<UUID> = emptyList(),
         edgeIds: Collection<UUID> = emptyList(),
@@ -191,18 +181,18 @@ class GraphStore(
     private fun applyDeletes(mutation: GraphMutation) {
         val touchedGraphs = linkedSetOf<UUID>()
         for (id in mutation.edges.unset.distinct()) {
-            val edge = edgeRepository.findById(id).orElse(null) ?: continue
+            val edge = edgeDao.findById(id) ?: continue
             touchedGraphs += edge.graphId
-            edgeRepository.delete(edge)
+            edgeDao.delete(edge)
         }
-        val entityIds = mutation.entities.unset.distinct().filter { entityRepository.existsById(it) }
+        val entityIds = mutation.entities.unset.distinct().filter { entityDao.existsById(it) }
         if (entityIds.isNotEmpty()) {
-            edgeRepository.findBySourceIdInOrTargetIdIn(entityIds, entityIds)
+            edgeDao.findBySourceIdInOrTargetIdIn(entityIds, entityIds)
                 .forEach { edge ->
                     touchedGraphs += edge.graphId
-                    edgeRepository.delete(edge)
+                    edgeDao.delete(edge)
                 }
-            entityIds.forEach { entityRepository.deleteById(it) }
+            entityIds.forEach { entityDao.deleteById(it) }
         }
         touchedGraphs.forEach { namedGraphs.touch(it) }
     }
@@ -211,7 +201,7 @@ class GraphStore(
         upsertEntities(graph.entities)
         for (edge in graph.edges) {
             val id = requireNotNull(edge.id)
-            val existing = edgeRepository.findById(id).orElse(null)
+            val existing = edgeDao.findById(id)
             val now = java.time.Instant.now()
             val record = existing ?: EdgeRecord(id = id, createdAt = now, updatedAt = now)
             record.graphId = edge.graphId ?: existing?.graphId
@@ -223,7 +213,7 @@ class GraphStore(
             record.schemaVersion = edge.schemaVersion
             record.properties = edge.properties?.toMutableMap()
             record.updatedAt = now
-            edgeRepository.save(record)
+            edgeDao.save(record)
             versioning.shouldCapture(
                 VersioningContext(
                     graphId = record.graphId,
@@ -237,20 +227,17 @@ class GraphStore(
         }
     }
 
-    @Transactional(readOnly = true)
-    fun loadAll(): Graph {
-        val entities = entityRepository.findAll().map { it.toDomain() }.toMutableList()
-        val edges = edgeRepository.findAll().map { it.toDomain() }.toMutableList()
-        return Graph(entities, edges)
+    fun loadAll(): Graph = uow.read {
+        val entities = entityDao.findAll().map { it.toDomain() }.toMutableList()
+        val edges = edgeDao.findAll().map { it.toDomain() }.toMutableList()
+        Graph(entities, edges)
     }
 
     /** Fetch a single pool entity, or null if it does not exist (WI-004: `GET /entities/{id}`). */
-    @Transactional(readOnly = true)
-    fun getEntity(id: UUID): Entity? = entityRepository.findById(id).map { it.toDomain() }.orElse(null)
+    fun getEntity(id: UUID): Entity? = uow.read { entityDao.findById(id)?.toDomain() }
 
     /** List all pool entities, ungrouped by graph membership (WI-004: `GET /entities`). */
-    @Transactional(readOnly = true)
-    fun listEntities(): List<Entity> = entityRepository.findAll().map { it.toDomain() }
+    fun listEntities(): List<Entity> = uow.read { entityDao.findAll().map { it.toDomain() } }
 
     /**
      * Filter the entity **pool** with `obj-expr` (or a chain of `obj-expr` stages).
@@ -259,9 +246,8 @@ class GraphStore(
      *
      * Rejects stage-0 `all` / `graph-expr` (use [select] / [selectInGraph] for those).
      */
-    @Transactional(readOnly = true)
-    fun selectFromPool(matcher: Matcher): GraphContents {
-        entityManager.flush()
+    fun selectFromPool(matcher: Matcher): GraphContents = uow.read {
+        uow.entityManager().flush()
         val stages = flattenStages(matcher)
         if (stages.isEmpty()) {
             throw ValidationException(
@@ -291,19 +277,18 @@ class GraphStore(
             }
         }
         val entities = poolReader.selectEntities(matcher).map { it.toDomain() }
-        return GraphContents(entities = entities, edges = emptyList())
+        GraphContents(entities = entities, edges = emptyList())
     }
 
     /**
      * Paged pool select (G-A6). Order is `type`, then `id`. Total is the full match count
      * (after slow-path filter when the matcher does not fully push down).
      */
-    @Transactional(readOnly = true)
-    fun selectFromPool(matcher: Matcher, page: PageRequest): PagedEntities {
+    fun selectFromPool(matcher: Matcher, page: PageRequest): PagedEntities = uow.read {
         val all = selectFromPool(matcher).entities.sortedWith(compareBy({ it.type }, { it.id.toString() }))
         val from = page.offset.coerceAtMost(all.size)
         val to = (from + page.size).coerceAtMost(all.size)
-        return PagedEntities(
+        PagedEntities(
             items = all.subList(from, to),
             total = all.size.toLong(),
             page = page.page,
@@ -312,20 +297,19 @@ class GraphStore(
     }
 
     /** Pool-wide `type → count` (G-A7). */
-    @Transactional(readOnly = true)
-    fun countByType(): Map<String, Long> =
-        entityRepository.countGroupedByType().associate { it.getType() to it.getCnt() }
+    fun countByType(): Map<String, Long> = uow.read {
+        entityDao.countGroupedByType().associate { it.type to it.cnt }
+    }
 
     /** Member counts by type for [graphId] (G-A7). */
-    @Transactional(readOnly = true)
-    fun countByType(graphId: UUID): Map<String, Long> =
-        entityRepository.countGroupedByTypeInGraph(graphId).associate { it.getType() to it.getCnt() }
+    fun countByType(graphId: UUID): Map<String, Long> = uow.read {
+        entityDao.countGroupedByTypeInGraph(graphId).associate { it.type to it.cnt }
+    }
 
     /**
      * Pool entities of [type] whose [IdentityProjection] equals [identityMap].
      * Empty or all-unset identity → empty (G-A13). Scan-by-type then group (G-A4).
      */
-    @Transactional(readOnly = true)
     fun findEntitiesByIdentity(
         type: String,
         identityMap: Map<String, @JvmSuppressWildcards Any?>,
@@ -340,8 +324,7 @@ class GraphStore(
     /**
      * Identity clusters of [type] with more than one pool entity. Empty identity omitted (G-A13).
      */
-    @Transactional(readOnly = true)
-    fun findDuplicateGroups(type: String): List<DuplicateGroup> {
+    fun findDuplicateGroups(type: String): List<DuplicateGroup> = uow.read {
         val groups = linkedMapOf<String, MutableList<Entity>>()
         val identities = linkedMapOf<String, Map<String, Any?>>()
         for (entity in entitiesOfType(type)) {
@@ -351,7 +334,7 @@ class GraphStore(
             groups.getOrPut(key) { mutableListOf() }.add(entity)
             identities.putIfAbsent(key, identity)
         }
-        return groups.entries
+        groups.entries
             .filter { it.value.size > 1 }
             .map { (key, members) ->
                 DuplicateGroup(type = type, identity = identities.getValue(key), entities = members)
@@ -377,11 +360,10 @@ class GraphStore(
      * Entity-only pool upsert (no edges, no membership). Shared by [applyUpserts] and
      * [NamedGraphStore.mutate]'s graph-scoped `entities.set` step.
      */
-    @Transactional
-    fun upsertEntities(entities: Collection<Entity>) {
+    fun upsertEntities(entities: Collection<Entity>) = uow.write {
         for (entity in entities) {
             val id = requireNotNull(entity.id)
-            val existing = entityRepository.findById(id).orElse(null)
+            val existing = entityDao.findById(id)
             val now = java.time.Instant.now()
             val record = existing ?: EntityRecord(id = id, createdAt = now, updatedAt = now)
             record.type = entity.type
@@ -389,7 +371,7 @@ class GraphStore(
             record.payload = entity.payload.toMutableMap()
             record.annotations = entity.annotations.toMutableMap()
             record.updatedAt = now
-            entityRepository.save(record)
+            entityDao.save(record)
             versioning.shouldCapture(
                 VersioningContext(
                     graphId = null,
@@ -413,10 +395,9 @@ class GraphStore(
      * graph id should use [selectInGraph], or start their chain with `all` / `graph-expr` /
      * `graphs-in`.
      */
-    @Transactional(readOnly = true)
-    fun select(matcher: Matcher): GraphContents {
-        // JDBC/JPA reads share the Spring transaction connection; flush pending writes first.
-        entityManager.flush()
+    override fun select(matcher: Matcher): GraphContents = uow.read {
+        // Flush pending writes so JDBC/JPA reads see uncommitted work in the same UnitOfWork.
+        uow.entityManager().flush()
         val stages = flattenStages(matcher)
         val first = stages.first()
         if (first !is GraphExprMatcher &&
@@ -436,7 +417,7 @@ class GraphStore(
                 ),
             )
         }
-        return selectAcrossGraphs(stages)
+        selectAcrossGraphs(stages)
     }
 
     /**
@@ -444,9 +425,8 @@ class GraphStore(
      * chain of `obj-expr` stages). The graph is fixed by [graphId], so unscoped matchers are safe
      * here — this is the graph-scoped counterpart to [select]'s `graph-expr` requirement.
      */
-    @Transactional(readOnly = true)
-    fun selectInGraph(graphId: UUID, matcher: Matcher): GraphContents {
-        entityManager.flush()
+    override fun selectInGraph(graphId: UUID, matcher: Matcher): GraphContents = uow.read {
+        uow.entityManager().flush()
         val resolved = namedGraphs.get(graphId)
             ?: throw ValidationException(
                 "graph",
@@ -464,15 +444,14 @@ class GraphStore(
         }
         val selectedIds = entities.mapNotNullTo(linkedSetOf()) { it.id }
         val edges = resolved.contents.edges.filter { it.source in selectedIds && it.target in selectedIds }
-        return GraphContents(entities = entities, edges = edges)
+        GraphContents(entities = entities, edges = edges)
     }
 
     /**
      * Same as [selectInGraph] but against a reconstructed deep graph version (Note 2 pin).
      */
-    @Transactional(readOnly = true)
-    fun selectInGraphVersion(graphId: UUID, version: Long, matcher: Matcher): GraphContents {
-        entityManager.flush()
+    override fun selectInGraphVersion(graphId: UUID, version: Long, matcher: Matcher): GraphContents = uow.read {
+        uow.entityManager().flush()
         val resolved = namedGraphs.getGraphVersion(graphId, version)
         val stages = flattenStages(matcher)
         var entities = resolved.contents.entities
@@ -484,39 +463,36 @@ class GraphStore(
         }
         val selectedIds = entities.mapNotNullTo(linkedSetOf()) { it.id }
         val edges = resolved.contents.edges.filter { it.source in selectedIds && it.target in selectedIds }
-        return GraphContents(entities = entities, edges = edges)
+        GraphContents(entities = entities, edges = edges)
     }
 
     /** Reconstruct a deep graph version (contents only). */
-    @Transactional(readOnly = true)
-    fun loadGraphVersion(graphId: UUID, version: Long) = namedGraphs.getGraphVersion(graphId, version)
+    fun loadGraphVersion(graphId: UUID, version: Long) = uow.read {
+        namedGraphs.getGraphVersion(graphId, version)
+    }
 
-    @Transactional(readOnly = true)
-    fun listEntityVersions(entityId: UUID) = namedGraphs.listEntityVersions(entityId)
+    fun listEntityVersions(entityId: UUID) = uow.read { namedGraphs.listEntityVersions(entityId) }
 
-    @Transactional(readOnly = true)
-    fun entityVersionStats(entityId: UUID, recent: Int = 5) = namedGraphs.entityVersionStats(entityId, recent)
+    fun entityVersionStats(entityId: UUID, recent: Int = 5) =
+        uow.read { namedGraphs.entityVersionStats(entityId, recent) }
 
-    @Transactional(readOnly = true)
-    fun getEntityVersion(entityId: UUID, version: Long) = namedGraphs.getEntityVersion(entityId, version)
+    fun getEntityVersion(entityId: UUID, version: Long) =
+        uow.read { namedGraphs.getEntityVersion(entityId, version) }
 
     /** Live HEAD graphs containing [entityId] (no pins). See [NamedGraphStore.listLiveGraphHeadersForEntity]. */
-    @Transactional(readOnly = true)
-    @JvmOverloads
     fun listLiveGraphHeadersForEntity(
         entityId: UUID,
         q: String? = null,
         limit: Int? = null,
-    ) = namedGraphs.listLiveGraphHeadersForEntity(entityId, q, limit)
+    ) = uow.read { namedGraphs.listLiveGraphHeadersForEntity(entityId, q, limit) }
 
-    @Transactional(readOnly = true)
-    fun listEdgeVersions(edgeId: UUID) = namedGraphs.listEdgeVersions(edgeId)
+    fun listEdgeVersions(edgeId: UUID) = uow.read { namedGraphs.listEdgeVersions(edgeId) }
 
-    @Transactional(readOnly = true)
-    fun edgeVersionStats(edgeId: UUID, recent: Int = 5) = namedGraphs.edgeVersionStats(edgeId, recent)
+    fun edgeVersionStats(edgeId: UUID, recent: Int = 5) =
+        uow.read { namedGraphs.edgeVersionStats(edgeId, recent) }
 
-    @Transactional(readOnly = true)
-    fun getEdgeVersion(edgeId: UUID, version: Long) = namedGraphs.getEdgeVersion(edgeId, version)
+    fun getEdgeVersion(edgeId: UUID, version: Long) =
+        uow.read { namedGraphs.getEdgeVersion(edgeId, version) }
 
     /**
      * Union of stored members/edges of every graph selected by stage-0 `all`, `graph-expr`,

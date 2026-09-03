@@ -1,13 +1,13 @@
 package org.poc.objs.core.seed
 
-import org.poc.objs.core.domain.CatalogMetadata
-import org.poc.objs.core.domain.AllowedEdgeCatalog
+import org.poc.objs.api.seed.*
+
+import org.poc.objs.api.domain.CatalogMetadata
+import org.poc.objs.api.domain.AllowedEdgeCatalog
 import org.poc.objs.api.domain.AllowedEdgeRule
 import org.poc.objs.api.domain.EdgeCardinality
 import org.poc.objs.api.domain.PropertiesPolicy
-import org.springframework.stereotype.Component
 
-@Component
 class AllowedEdgeRuleSeedHandler(
     private val edgeRules: AllowedEdgeCatalog,
 ) : SeedDocumentHandler {

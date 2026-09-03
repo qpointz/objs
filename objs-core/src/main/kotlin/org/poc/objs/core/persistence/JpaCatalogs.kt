@@ -2,21 +2,19 @@ package org.poc.objs.core.persistence
 
 import com.github.benmanes.caffeine.cache.Caffeine
 import com.github.benmanes.caffeine.cache.Ticker
-import org.poc.objs.core.domain.CatalogMetadata
-import org.poc.objs.core.domain.AllowedEdgeCatalog
+import org.poc.objs.api.domain.CatalogMetadata
+import org.poc.objs.api.domain.AllowedEdgeCatalog
 import org.poc.objs.api.domain.AllowedEdgeRule
-import org.poc.objs.core.domain.Schema
-import org.poc.objs.core.domain.SchemaCatalog
-import org.poc.objs.core.domain.SchemaKey
-import org.poc.objs.core.domain.SchemaNode
-import org.poc.objs.core.domain.SchemaNormalizer
-import org.poc.objs.core.domain.SchemaUsage
-import org.poc.objs.core.domain.InMemoryAllowedEdgeCatalog
-import org.poc.objs.core.domain.InMemorySchemaCatalog
-import org.poc.objs.core.typed.PayloadMapper
-import org.springframework.transaction.annotation.Transactional
-import org.springframework.transaction.support.TransactionSynchronization
-import org.springframework.transaction.support.TransactionSynchronizationManager
+import org.poc.objs.api.domain.Schema
+import org.poc.objs.api.domain.SchemaCatalog
+import org.poc.objs.api.domain.SchemaKey
+import org.poc.objs.api.domain.SchemaNode
+import org.poc.objs.api.domain.SchemaNormalizer
+import org.poc.objs.api.domain.SchemaUsage
+import org.poc.objs.api.domain.InMemoryAllowedEdgeCatalog
+import org.poc.objs.api.domain.InMemorySchemaCatalog
+import org.poc.objs.core.persistence.tx.UnitOfWork
+import org.poc.objs.core.typed.DefaultPayloadMapper
 import java.time.Duration
 import java.time.Instant
 import java.util.concurrent.TimeUnit
@@ -31,7 +29,8 @@ import java.util.concurrent.TimeUnit
  * import keeps write-through visibility. On transaction rollback the snapshot is rehydrated.
  */
 open class JpaSchemaCatalog(
-    private val repository: SchemaCatalogRepository,
+    private val dao: SchemaCatalogDao,
+    private val uow: UnitOfWork,
     private val properties: ObjsCatalogProperties = ObjsCatalogProperties(),
     private val ticker: Ticker = Ticker.systemTicker(),
 ) : SchemaCatalog {
@@ -42,35 +41,36 @@ open class JpaSchemaCatalog(
 
     /** Load all persisted schemas into the snapshot. Call at startup, on refresh, and after TX rollback. */
     open fun hydrate() {
-        synchronized(lock) {
-            hydrateUnlocked()
+        uow.read {
+            synchronized(lock) {
+                hydrateUnlocked()
+            }
         }
     }
 
     override fun refreshFromStore() = hydrate()
 
-    @Transactional
     override fun register(schema: Schema) {
-        val normalized = SchemaNormalizer.normalizeStrict(schema)
-        val now = Instant.now()
-        val id = SchemaCatalogId(normalized.type, normalized.version)
-        synchronized(lock) {
-            val record = repository.findById(id).orElseGet {
-                SchemaCatalogRecord(
+        uow.write {
+            val normalized = SchemaNormalizer.normalizeStrict(schema)
+            val now = Instant.now()
+            val id = SchemaCatalogId(normalized.type, normalized.version)
+            synchronized(lock) {
+                val record = dao.findById(id) ?: SchemaCatalogRecord(
                     type = normalized.type,
                     version = normalized.version,
                     createdAt = now,
                 )
+                record.definitionDoc = DefaultPayloadMapper.toMap(normalized.contentSchema)
+                record.usage = normalized.usage.name
+                record.tags = normalized.tags.toMutableList()
+                record.attributes = normalized.attributes.toMutableMap()
+                record.updatedAt = now
+                dao.save(record)
+                cache.register(normalized)
+                markFresh()
+                registerRollbackRehydration()
             }
-            record.definitionDoc = PayloadMapper.toMap(normalized.contentSchema)
-            record.usage = normalized.usage.name
-            record.tags = normalized.tags.toMutableList()
-            record.attributes = normalized.attributes.toMutableMap()
-            record.updatedAt = now
-            repository.save(record)
-            cache.register(normalized)
-            markFresh()
-            registerRollbackRehydration()
         }
     }
 
@@ -104,35 +104,39 @@ open class JpaSchemaCatalog(
         return cache.types()
     }
 
-    @Transactional
     override fun remove(type: String, version: String): Boolean {
         val id = SchemaCatalogId(type, version)
-        synchronized(lock) {
-            if (!repository.existsById(id)) return false
-            repository.deleteById(id)
-            cache.remove(type, version)
-            markFresh()
-            registerRollbackRehydration()
-            return true
+        return uow.write {
+            synchronized(lock) {
+                if (!dao.existsById(id)) return@write false
+                dao.deleteById(id)
+                cache.remove(type, version)
+                markFresh()
+                registerRollbackRehydration()
+                true
+            }
         }
     }
 
-    @Transactional
     override fun clear() {
-        synchronized(lock) {
-            repository.deleteAll()
-            cache.clear()
-            markFresh()
-            registerRollbackRehydration()
+        uow.write {
+            synchronized(lock) {
+                dao.deleteAll()
+                cache.clear()
+                markFresh()
+                registerRollbackRehydration()
+            }
         }
     }
 
     private fun ensureFresh() {
-        if (TransactionSynchronizationManager.isActualTransactionActive()) return
+        if (uow.isActive()) return
         if (isTtlDisabled(properties.cacheTtl)) return
         freshness.get(FRESHNESS_KEY) {
-            synchronized(lock) {
-                hydrateUnlocked()
+            uow.read {
+                synchronized(lock) {
+                    hydrateUnlocked()
+                }
             }
             true
         }
@@ -140,7 +144,7 @@ open class JpaSchemaCatalog(
 
     private fun hydrateUnlocked() {
         cache.clear()
-        repository.findAll().forEach { record ->
+        dao.findAll().forEach { record ->
             cache.register(record.toDomain())
         }
         markFresh()
@@ -153,7 +157,7 @@ open class JpaSchemaCatalog(
     }
 
     private fun registerRollbackRehydration() {
-        registerCatalogRollbackRehydration { hydrate() }
+        registerCatalogRollbackRehydration(uow) { hydrate() }
     }
 }
 
@@ -161,7 +165,8 @@ open class JpaSchemaCatalog(
  * PostgreSQL-authoritative [AllowedEdgeCatalog] with write-through snapshot + Caffeine TTL.
  */
 open class JpaAllowedEdgeCatalog(
-    private val repository: AllowedEdgeRuleRepository,
+    private val dao: AllowedEdgeRuleDao,
+    private val uow: UnitOfWork,
     private val properties: ObjsCatalogProperties = ObjsCatalogProperties(),
     private val ticker: Ticker = Ticker.systemTicker(),
 ) : AllowedEdgeCatalog {
@@ -172,41 +177,42 @@ open class JpaAllowedEdgeCatalog(
 
     /** Load all persisted rules into the snapshot. Call at startup, on refresh, and after TX rollback. */
     open fun hydrate() {
-        synchronized(lock) {
-            hydrateUnlocked()
+        uow.read {
+            synchronized(lock) {
+                hydrateUnlocked()
+            }
         }
     }
 
     override fun refreshFromStore() = hydrate()
 
-    @Transactional
     override fun register(rule: AllowedEdgeRule) {
-        val now = Instant.now()
-        val id = AllowedEdgeRuleId(rule.sourceType, rule.role, rule.targetType)
-        synchronized(lock) {
-            val record = repository.findById(id).orElseGet {
-                AllowedEdgeRuleRecord(
+        uow.write {
+            val now = Instant.now()
+            val id = AllowedEdgeRuleId(rule.sourceType, rule.role, rule.targetType)
+            synchronized(lock) {
+                val record = dao.findById(id) ?: AllowedEdgeRuleRecord(
                     sourceType = rule.sourceType,
                     role = rule.role,
                     targetType = rule.targetType,
                     createdAt = now,
                 )
+                record.propertiesPolicy = rule.propertiesPolicy
+                record.emptyPropertiesAllowed = rule.emptyPropertiesAllowed
+                record.propertiesSchemaType = rule.propertiesSchemaType
+                record.propertiesSchemaVersion = rule.propertiesSchemaVersion
+                record.cardinality = rule.cardinality
+                record.description = CatalogMetadata.optionalText(rule.description)
+                record.sourceVerb = CatalogMetadata.optionalText(rule.sourceVerb)
+                record.targetVerb = CatalogMetadata.optionalText(rule.targetVerb)
+                record.tags = CatalogMetadata.tags(rule.tags).toMutableList()
+                record.attributes = CatalogMetadata.attributes(rule.attributes).toMutableMap()
+                record.updatedAt = now
+                dao.save(record)
+                cache.register(record.toDomain())
+                markFresh()
+                registerRollbackRehydration()
             }
-            record.propertiesPolicy = rule.propertiesPolicy
-            record.emptyPropertiesAllowed = rule.emptyPropertiesAllowed
-            record.propertiesSchemaType = rule.propertiesSchemaType
-            record.propertiesSchemaVersion = rule.propertiesSchemaVersion
-            record.cardinality = rule.cardinality
-            record.description = CatalogMetadata.optionalText(rule.description)
-            record.sourceVerb = CatalogMetadata.optionalText(rule.sourceVerb)
-            record.targetVerb = CatalogMetadata.optionalText(rule.targetVerb)
-            record.tags = CatalogMetadata.tags(rule.tags).toMutableList()
-            record.attributes = CatalogMetadata.attributes(rule.attributes).toMutableMap()
-            record.updatedAt = now
-            repository.save(record)
-            cache.register(record.toDomain())
-            markFresh()
-            registerRollbackRehydration()
         }
     }
 
@@ -220,35 +226,39 @@ open class JpaAllowedEdgeCatalog(
         return cache.all()
     }
 
-    @Transactional
     override fun remove(sourceType: String, role: String, targetType: String): Boolean {
         val id = AllowedEdgeRuleId(sourceType, role, targetType)
-        synchronized(lock) {
-            if (!repository.existsById(id)) return false
-            repository.deleteById(id)
-            cache.remove(sourceType, role, targetType)
-            markFresh()
-            registerRollbackRehydration()
-            return true
+        return uow.write {
+            synchronized(lock) {
+                if (!dao.existsById(id)) return@write false
+                dao.deleteById(id)
+                cache.remove(sourceType, role, targetType)
+                markFresh()
+                registerRollbackRehydration()
+                true
+            }
         }
     }
 
-    @Transactional
     override fun clear() {
-        synchronized(lock) {
-            repository.deleteAll()
-            cache.clear()
-            markFresh()
-            registerRollbackRehydration()
+        uow.write {
+            synchronized(lock) {
+                dao.deleteAll()
+                cache.clear()
+                markFresh()
+                registerRollbackRehydration()
+            }
         }
     }
 
     private fun ensureFresh() {
-        if (TransactionSynchronizationManager.isActualTransactionActive()) return
+        if (uow.isActive()) return
         if (isTtlDisabled(properties.cacheTtl)) return
         freshness.get(FRESHNESS_KEY) {
-            synchronized(lock) {
-                hydrateUnlocked()
+            uow.read {
+                synchronized(lock) {
+                    hydrateUnlocked()
+                }
             }
             true
         }
@@ -256,7 +266,7 @@ open class JpaAllowedEdgeCatalog(
 
     private fun hydrateUnlocked() {
         cache.clear()
-        repository.findAll().forEach { record ->
+        dao.findAll().forEach { record ->
             cache.register(record.toDomain())
         }
         markFresh()
@@ -269,7 +279,7 @@ open class JpaAllowedEdgeCatalog(
     }
 
     private fun registerRollbackRehydration() {
-        registerCatalogRollbackRehydration { hydrate() }
+        registerCatalogRollbackRehydration(uow) { hydrate() }
     }
 }
 
@@ -286,17 +296,9 @@ private fun buildFreshnessCache(ttl: Duration, ticker: Ticker) =
         )
         .build<Boolean, Boolean>()
 
-private fun registerCatalogRollbackRehydration(hydrate: () -> Unit) {
-    if (!TransactionSynchronizationManager.isSynchronizationActive()) return
-    TransactionSynchronizationManager.registerSynchronization(
-        object : TransactionSynchronization {
-            override fun afterCompletion(status: Int) {
-                if (status == TransactionSynchronization.STATUS_ROLLED_BACK) {
-                    hydrate()
-                }
-            }
-        },
-    )
+private fun registerCatalogRollbackRehydration(uow: UnitOfWork, hydrate: () -> Unit) {
+    if (!uow.isActive()) return
+    uow.afterRollback(hydrate)
 }
 
 // ── Record ↔ Domain mappers ──
@@ -304,7 +306,7 @@ private fun registerCatalogRollbackRehydration(hydrate: () -> Unit) {
 fun SchemaCatalogRecord.toDomain() = Schema(
     type = type,
     version = version,
-    contentSchema = PayloadMapper.fromMap(definitionDoc, SchemaNode::class.java),
+    contentSchema = DefaultPayloadMapper.fromMap(definitionDoc, SchemaNode::class.java),
     usage = if (usage.isBlank()) SchemaUsage.ENTITY else SchemaUsage.valueOf(usage),
     tags = CatalogMetadata.tags(tags),
     attributes = CatalogMetadata.attributes(attributes),

@@ -1,19 +1,19 @@
 package org.poc.objs.core.seed
 
-import org.poc.objs.core.domain.AllowedEdgeCatalog
+import org.poc.objs.api.seed.*
+
+import org.poc.objs.api.domain.AllowedEdgeCatalog
 import org.poc.objs.api.domain.AllowedEdgeRule
 import org.poc.objs.api.domain.Edge
 import org.poc.objs.api.domain.Entity
-import org.poc.objs.core.domain.Schema
-import org.poc.objs.core.domain.SchemaCatalog
-import org.springframework.stereotype.Service
+import org.poc.objs.api.domain.Schema
+import org.poc.objs.api.domain.SchemaCatalog
 import java.util.UUID
 
 /**
  * Canonical multi-document YAML serializer for seed kinds.
  * Kind exporters remain extensible; graph export requires an explicit name + key maps.
  */
-@Service
 class CanonicalSeedSerializer(
     private val schemas: SchemaCatalog,
     private val edgeRules: AllowedEdgeCatalog,

@@ -1,6 +1,6 @@
 package org.poc.objs.core.persistence
 
-import org.poc.objs.core.typed.PayloadMapper
+import org.poc.objs.core.typed.DefaultPayloadMapper
 import tools.jackson.core.type.TypeReference
 
 /**
@@ -35,7 +35,7 @@ class LazyJsonMap<V>(
             return false
         }
         parseCount++
-        val tree = PayloadMapper.mapper.readTree(rawJson)
+        val tree = DefaultPayloadMapper.mapper.readTree(rawJson)
         return expected.all { (key, value) ->
             val node = tree.get(key) ?: return@all false
             node.isValueNode && node.asString() == value
@@ -79,12 +79,12 @@ class LazyJsonMap<V>(
 
         fun annotations(rawJson: String?): LazyJsonMap<String> =
             LazyJsonMap(rawJson) { json ->
-                PayloadMapper.mapper.readValue(json, stringMapType)
+                DefaultPayloadMapper.mapper.readValue(json, stringMapType)
             }
 
         fun payload(rawJson: String?): LazyJsonMap<Any?> =
             LazyJsonMap(rawJson) { json ->
-                PayloadMapper.mapper.readValue(json, anyMapType)
+                DefaultPayloadMapper.mapper.readValue(json, anyMapType)
             }
 
         fun properties(rawJson: String?): LazyJsonMap<Any?>? =

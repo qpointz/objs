@@ -1,9 +1,8 @@
 package org.poc.objs.core.seed
 
+import org.poc.objs.api.seed.*
+
 import org.slf4j.LoggerFactory
-import org.springframework.core.io.Resource
-import org.springframework.core.io.ResourceLoader
-import org.springframework.stereotype.Service
 
 data class SeedStartupResourceResult(
     val seedKey: String,
@@ -23,10 +22,9 @@ data class SeedStartupResult(
 /**
  * Loads ordered seed resources at startup using the shared [SeedImporter] and durable ledger.
  */
-@Service
 class SeedStartupLoader(
     private val properties: SeedProperties,
-    private val resourceLoader: ResourceLoader,
+    private val resourceResolver: SeedResourceResolver,
     private val importer: SeedImporter,
     private val ledger: SeedLedger,
 ) {
@@ -63,8 +61,8 @@ class SeedStartupLoader(
     }
 
     private fun loadOne(seedKey: String, location: String): SeedStartupResourceResult {
-        val resource = resourceLoader.getResource(location)
-        if (!resource.exists()) {
+        val stream = resourceResolver.open(location)
+        if (stream == null) {
             val error = "Seed resource not found: $location"
             ledger.recordFailure(seedKey, "missing", error)
             return SeedStartupResourceResult(
@@ -76,7 +74,7 @@ class SeedStartupLoader(
             )
         }
 
-        val bytes = readBytes(resource)
+        val bytes = stream.use { it.readBytes() }
         val fingerprint = SeedResourceIdentity.fingerprint(bytes)
         if (ledger.shouldSkip(seedKey, fingerprint)) {
             log.info("Skipping unchanged seed resource {} ({})", seedKey, fingerprint)
@@ -132,9 +130,6 @@ class SeedStartupLoader(
             )
         }
     }
-
-    private fun readBytes(resource: Resource): ByteArray =
-        resource.inputStream.use { it.readBytes() }
 }
 
 class SeedStartupException(

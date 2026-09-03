@@ -1,25 +1,23 @@
 package org.poc.objs.core.persistence
 
-import org.poc.objs.core.match.CandidateSource
-import org.poc.objs.core.match.ChainedMatcher
-import org.poc.objs.core.match.EntityCandidateBackend
-import org.poc.objs.core.match.EntityColumnProjection
-import org.poc.objs.core.match.EntityMatchCandidate
-import org.poc.objs.core.match.EntitySelectionPlan
-import org.poc.objs.core.match.Matcher
-import org.poc.objs.core.match.ObjExprPushdown
-import org.poc.objs.core.typed.PayloadMapper
-import org.poc.objs.core.validation.ValidationException
-import org.poc.objs.core.validation.ValidationIssue
-import org.poc.objs.core.validation.ValidationResult
-import org.springframework.jdbc.datasource.DataSourceUtils
-import org.springframework.stereotype.Component
+import org.poc.objs.api.match.CandidateSource
+import org.poc.objs.api.match.ChainedMatcher
+import org.poc.objs.api.match.EntityCandidateBackend
+import org.poc.objs.api.match.EntityColumnProjection
+import org.poc.objs.api.match.EntityMatchCandidate
+import org.poc.objs.api.match.EntitySelectionPlan
+import org.poc.objs.api.match.Matcher
+import org.poc.objs.api.match.ObjExprPushdown
+import org.poc.objs.api.validation.ValidationException
+import org.poc.objs.api.validation.ValidationIssue
+import org.poc.objs.api.validation.ValidationResult
+import org.poc.objs.core.persistence.tx.UnitOfWork
+import org.poc.objs.core.typed.DefaultPayloadMapper
 import java.sql.Connection
 import java.sql.PreparedStatement
 import java.sql.ResultSet
 import java.util.UUID
 import java.util.concurrent.TimeUnit
-import javax.sql.DataSource
 
 /**
  * Fetch-sized JDBC reader over the entity **pool** (`objs_entity`).
@@ -28,20 +26,19 @@ import javax.sql.DataSource
  * pushdown uses column predicates (`type = ?`, …) and Postgres `annotations`/`payload` `@>`;
  * otherwise local JEXL over a scan. Does **not** load edges (edges are graph-local).
  */
-@Component
 class PoolEntityReader(
-    private val dataSource: DataSource,
+    private val uow: UnitOfWork,
 ) {
-    private val postgres = lazy(LazyThreadSafetyMode.PUBLICATION) {
-        val connection = DataSourceUtils.getConnection(dataSource)
-        try {
-            connection.metaData.databaseProductName.equals("PostgreSQL", ignoreCase = true)
-        } finally {
-            DataSourceUtils.releaseConnection(connection, dataSource)
+    private var postgres: Boolean? = null
+
+    private fun isPostgresBackend(): Boolean {
+        if (postgres == null) {
+            postgres = uow.connection().metaData.databaseProductName.equals("PostgreSQL", ignoreCase = true)
         }
+        return postgres!!
     }
 
-    val isPostgres: Boolean get() = postgres.value
+    val isPostgres: Boolean get() = isPostgresBackend()
 
     @Volatile
     private var activeProjection: EntityColumnProjection =
@@ -84,7 +81,7 @@ class PoolEntityReader(
         projection: EntityColumnProjection,
         consumer: (EntityMatchCandidate) -> Unit,
     ) {
-        connection.prepareStatement(entitySelectSql(projection, postgresCast = isPostgres)).use { statement ->
+        connection.prepareStatement(entitySelectSql(projection, postgresCast = isPostgresBackend())).use { statement ->
             configureFetch(statement)
             statement.executeQuery().use { rs ->
                 while (rs.next()) {
@@ -103,27 +100,23 @@ class PoolEntityReader(
         projection: EntityColumnProjection,
     ): List<EntityMatchCandidate> {
         val entities = mutableListOf<EntityMatchCandidate>()
-        val connection = DataSourceUtils.getConnection(dataSource)
-        try {
-            for (chunk in ids.distinct().chunked(IN_CHUNK_SIZE)) {
-                val placeholders = chunk.joinToString(",") { "?" }
-                connection.prepareStatement(
-                    """
-                    ${entitySelectSql(projection, postgresCast = isPostgres)}
-                    WHERE id IN ($placeholders)
-                    """.trimIndent(),
-                ).use { statement ->
-                    statement.fetchSize = FETCH_SIZE
-                    chunk.forEachIndexed { index, id -> statement.setObject(index + 1, id) }
-                    statement.executeQuery().use { rs ->
-                        while (rs.next()) {
-                            entities += readEntity(rs, projection)
-                        }
+        val connection = uow.connection()
+        for (chunk in ids.distinct().chunked(IN_CHUNK_SIZE)) {
+            val placeholders = chunk.joinToString(",") { "?" }
+            connection.prepareStatement(
+                """
+                ${entitySelectSql(projection, postgresCast = isPostgresBackend())}
+                WHERE id IN ($placeholders)
+                """.trimIndent(),
+            ).use { statement ->
+                statement.fetchSize = FETCH_SIZE
+                chunk.forEachIndexed { index, id -> statement.setObject(index + 1, id) }
+                statement.executeQuery().use { rs ->
+                    while (rs.next()) {
+                        entities += readEntity(rs, projection)
                     }
                 }
             }
-        } finally {
-            DataSourceUtils.releaseConnection(connection, dataSource)
         }
         return entities
     }
@@ -165,7 +158,7 @@ class PoolEntityReader(
             }
             if (group.annotationEquals.isNotEmpty()) {
                 where += "annotations @> CAST(? AS jsonb)"
-                params += PayloadMapper.mapper.writeValueAsString(group.annotationEquals)
+                params += DefaultPayloadMapper.mapper.writeValueAsString(group.annotationEquals)
             }
             for ((key, value) in group.annotationNotEquals) {
                 where += "(annotations ->> ?) IS DISTINCT FROM ?"
@@ -174,7 +167,7 @@ class PoolEntityReader(
             }
             if (group.payloadEquals.isNotEmpty()) {
                 where += "payload @> CAST(? AS jsonb)"
-                params += PayloadMapper.mapper.writeValueAsString(group.payloadEquals)
+                params += DefaultPayloadMapper.mapper.writeValueAsString(group.payloadEquals)
             }
             for ((key, value) in group.payloadNotEquals) {
                 where += "${payloadTextExpr()} IS DISTINCT FROM ?"
@@ -210,32 +203,28 @@ class PoolEntityReader(
             groupSql += "(${where.joinToString(" AND ")})"
         }
         require(groupSql.isNotEmpty()) { "obj-expr pushdown WHERE must not be empty" }
-        val connection = DataSourceUtils.getConnection(dataSource)
-        try {
-            val entities = mutableListOf<EntityMatchCandidate>()
-            connection.prepareStatement(
-                """
-                ${entitySelectSql(projection, postgresCast = isPostgres)}
-                WHERE ${groupSql.joinToString(" OR ")}
-                """.trimIndent(),
-            ).use { statement ->
-                statement.fetchSize = FETCH_SIZE
-                params.forEachIndexed { index, value ->
-                    when (value) {
-                        is UUID -> statement.setObject(index + 1, value)
-                        else -> statement.setString(index + 1, value as String)
-                    }
-                }
-                statement.executeQuery().use { rs ->
-                    while (rs.next()) {
-                        entities += readEntity(rs, projection)
-                    }
+        val connection = uow.connection()
+        val entities = mutableListOf<EntityMatchCandidate>()
+        connection.prepareStatement(
+            """
+            ${entitySelectSql(projection, postgresCast = isPostgresBackend())}
+            WHERE ${groupSql.joinToString(" OR ")}
+            """.trimIndent(),
+        ).use { statement ->
+            statement.fetchSize = FETCH_SIZE
+            params.forEachIndexed { index, value ->
+                when (value) {
+                    is UUID -> statement.setObject(index + 1, value)
+                    else -> statement.setString(index + 1, value as String)
                 }
             }
-            return entities
-        } finally {
-            DataSourceUtils.releaseConnection(connection, dataSource)
+            statement.executeQuery().use { rs ->
+                while (rs.next()) {
+                    entities += readEntity(rs, projection)
+                }
+            }
         }
+        return entities
     }
 
     private fun payloadTextExpr(): String = "(payload ->> ?)"
@@ -293,14 +282,9 @@ class PoolEntityReader(
         override fun allEntitiesSource(): CandidateSource =
             CandidateSource { checkBudget ->
                 val selected = mutableListOf<EntityMatchCandidate>()
-                val connection = DataSourceUtils.getConnection(dataSource)
-                try {
-                    scanEntities(connection, activeProjection) { candidate ->
-                        checkBudget()
-                        selected += candidate
-                    }
-                } finally {
-                    DataSourceUtils.releaseConnection(connection, dataSource)
+                scanEntities(uow.connection(), activeProjection) { candidate ->
+                    checkBudget()
+                    selected += candidate
                 }
                 selected
             }

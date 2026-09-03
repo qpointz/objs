@@ -3,40 +3,37 @@ package org.poc.objs.core.persistence
 import org.poc.objs.api.domain.Edge
 import org.poc.objs.api.domain.Entity
 import org.poc.objs.api.domain.GraphContents
-import org.poc.objs.core.domain.GraphException
-import org.poc.objs.core.domain.GraphVersionSummary
-import org.poc.objs.core.domain.InstanceVersionStats
-import org.poc.objs.core.domain.InstanceVersionSummary
-import org.poc.objs.core.domain.ResolvedGraph
-import org.springframework.data.domain.PageRequest
-import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
+import org.poc.objs.api.domain.GraphException
+import org.poc.objs.api.domain.GraphVersionSummary
+import org.poc.objs.api.domain.InstanceVersionStats
+import org.poc.objs.api.domain.InstanceVersionSummary
+import org.poc.objs.api.domain.ResolvedGraph
+import org.poc.objs.core.persistence.tx.UnitOfWork
 import java.time.Instant
 import java.util.UUID
 import kotlin.math.max
 
-@Service
 class DeepGraphVersionService(
-    private val graphRepository: GraphRepository,
-    private val membershipRepository: GraphMembershipRepository,
-    private val entityRepository: EntityRepository,
-    private val edgeRepository: EdgeRepository,
-    private val entityVersions: EntityVersionRepository,
-    private val graphVersions: GraphVersionRepository,
-    private val edgeVersions: EdgeVersionRepository,
-    private val versionMembers: GraphVersionMemberRepository,
-    private val versionEdges: GraphVersionEdgeRepository,
+    private val graphDao: GraphDao,
+    private val membershipDao: GraphMembershipDao,
+    private val entityDao: EntityDao,
+    private val edgeDao: EdgeDao,
+    private val entityVersions: EntityVersionDao,
+    private val graphVersions: GraphVersionDao,
+    private val edgeVersions: EdgeVersionDao,
+    private val versionMembers: GraphVersionMemberDao,
+    private val versionEdges: GraphVersionEdgeDao,
+    private val uow: UnitOfWork,
 ) {
-    @Transactional
     fun createDeepGraphVersion(
         graphId: UUID,
         versionAnnotations: Map<String, String> = emptyMap(),
-    ): GraphVersionSummary {
-        val header = graphRepository.findById(graphId).orElse(null)
+    ): GraphVersionSummary = uow.write {
+        val header = graphDao.findById(graphId)
             ?: throw GraphException(code = "GRAPH_NOT_FOUND", message = "Graph not found: $graphId")
-        val memberIds = membershipRepository.findByGraphId(graphId).map { it.entityId }
-        val entityRows = if (memberIds.isEmpty()) emptyList() else entityRepository.findAllById(memberIds)
-        val edgeRows = edgeRepository.findByGraphId(graphId)
+        val memberIds = membershipDao.findByGraphId(graphId).map { it.entityId }
+        val entityRows = if (memberIds.isEmpty()) emptyList() else entityDao.findAllById(memberIds)
+        val edgeRows = edgeDao.findByGraphId(graphId)
         val now = Instant.now()
         val graphVersion = nextVersion(header.headVersion)
         graphVersions.save(
@@ -50,14 +47,14 @@ class DeepGraphVersionService(
             ),
         )
         header.headVersion = graphVersion
-        graphRepository.save(header)
+        graphDao.save(header)
 
         for (row in entityRows) {
             val id = row.id
             val version = nextVersion(row.headVersion)
             entityVersions.save(copyEntityVersion(row, version, now))
             row.headVersion = version
-            entityRepository.save(row)
+            entityDao.save(row)
             versionMembers.save(
                 GraphVersionMemberRecord(
                     graphId = graphId,
@@ -75,7 +72,7 @@ class DeepGraphVersionService(
             val version = nextVersion(row.headVersion)
             edgeVersions.save(copyEdgeVersion(row, version, now))
             row.headVersion = version
-            edgeRepository.save(row)
+            edgeDao.save(row)
             versionEdges.save(
                 GraphVersionEdgeRecord(
                     graphId = graphId,
@@ -87,7 +84,7 @@ class DeepGraphVersionService(
                 ),
             )
         }
-        return GraphVersionSummary(
+        GraphVersionSummary(
             graphId = graphId,
             version = graphVersion,
             createdAt = now,
@@ -95,8 +92,7 @@ class DeepGraphVersionService(
         )
     }
 
-    @Transactional(readOnly = true)
-    fun listGraphVersions(graphId: UUID): List<GraphVersionSummary> =
+    fun listGraphVersions(graphId: UUID): List<GraphVersionSummary> = uow.read {
         graphVersions.findByGraphIdOrderByVersionDesc(graphId).map {
             GraphVersionSummary(
                 graphId = it.graphId,
@@ -105,9 +101,9 @@ class DeepGraphVersionService(
                 annotations = it.annotations.toMap(),
             )
         }
+    }
 
-    @Transactional(readOnly = true)
-    fun getGraphVersion(graphId: UUID, version: Long): ResolvedGraph {
+    fun getGraphVersion(graphId: UUID, version: Long): ResolvedGraph = uow.read {
         val header = graphVersions.findByGraphIdAndVersion(graphId, version)
             ?: throw GraphException(
                 code = "GRAPH_VERSION_NOT_FOUND",
@@ -150,7 +146,7 @@ class DeepGraphVersionService(
                 headVersion = pin.edgeVersion,
             )
         }
-        return ResolvedGraph(
+        ResolvedGraph(
             id = graphId,
             annotations = header.graphAnnotations.toMap(),
             contents = GraphContents(entities = entities, edges = edges),
@@ -159,26 +155,24 @@ class DeepGraphVersionService(
         )
     }
 
-    @Transactional(readOnly = true)
-    fun listEntityVersions(entityId: UUID): List<InstanceVersionSummary> =
+    fun listEntityVersions(entityId: UUID): List<InstanceVersionSummary> = uow.read {
         entityVersions.findByEntityIdOrderByVersionDesc(entityId).map { it.toEntitySummary() }
-
-    @Transactional(readOnly = true)
-    fun entityVersionStats(entityId: UUID, recent: Int = 5): InstanceVersionStats {
-        val n = recent.coerceIn(1, 50)
-        val total = entityVersions.countByEntityId(entityId)
-        val rows = entityVersions.findByEntityIdOrderByVersionDesc(entityId, PageRequest.of(0, n))
-        return InstanceVersionStats(total = total, recent = rows.map { it.toEntitySummary() })
     }
 
-    @Transactional(readOnly = true)
-    fun getEntityVersion(entityId: UUID, version: Long): Entity {
+    fun entityVersionStats(entityId: UUID, recent: Int = 5): InstanceVersionStats = uow.read {
+        val n = recent.coerceIn(1, 50)
+        val total = entityVersions.countByEntityId(entityId)
+        val rows = entityVersions.findByEntityIdOrderByVersionDesc(entityId, n)
+        InstanceVersionStats(total = total, recent = rows.map { it.toEntitySummary() })
+    }
+
+    fun getEntityVersion(entityId: UUID, version: Long): Entity = uow.read {
         val row = entityVersions.findByEntityIdAndVersion(entityId, version)
             ?: throw GraphException(
                 code = "ENTITY_VERSION_NOT_FOUND",
                 message = "Entity version not found: $entityId@$version",
             )
-        return Entity(
+        Entity(
             id = row.entityId,
             type = row.type,
             schemaVersion = row.schemaVersion,
@@ -190,26 +184,24 @@ class DeepGraphVersionService(
         )
     }
 
-    @Transactional(readOnly = true)
-    fun listEdgeVersions(edgeId: UUID): List<InstanceVersionSummary> =
+    fun listEdgeVersions(edgeId: UUID): List<InstanceVersionSummary> = uow.read {
         edgeVersions.findByEdgeIdOrderByVersionDesc(edgeId).map { it.toEdgeSummary() }
-
-    @Transactional(readOnly = true)
-    fun edgeVersionStats(edgeId: UUID, recent: Int = 5): InstanceVersionStats {
-        val n = recent.coerceIn(1, 50)
-        val total = edgeVersions.countByEdgeId(edgeId)
-        val rows = edgeVersions.findByEdgeIdOrderByVersionDesc(edgeId, PageRequest.of(0, n))
-        return InstanceVersionStats(total = total, recent = rows.map { it.toEdgeSummary() })
     }
 
-    @Transactional(readOnly = true)
-    fun getEdgeVersion(edgeId: UUID, version: Long): Edge {
+    fun edgeVersionStats(edgeId: UUID, recent: Int = 5): InstanceVersionStats = uow.read {
+        val n = recent.coerceIn(1, 50)
+        val total = edgeVersions.countByEdgeId(edgeId)
+        val rows = edgeVersions.findByEdgeIdOrderByVersionDesc(edgeId, n)
+        InstanceVersionStats(total = total, recent = rows.map { it.toEdgeSummary() })
+    }
+
+    fun getEdgeVersion(edgeId: UUID, version: Long): Edge = uow.read {
         val row = edgeVersions.findByEdgeIdAndVersion(edgeId, version)
             ?: throw GraphException(
                 code = "EDGE_VERSION_NOT_FOUND",
                 message = "Edge version not found: $edgeId@$version",
             )
-        return Edge(
+        Edge(
             id = row.edgeId,
             graphId = row.graphId,
             source = row.sourceId,

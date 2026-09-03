@@ -1,8 +1,9 @@
 package org.poc.objs.core.seed
 
-import org.poc.objs.core.validation.ValidationIssue
-import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
+import org.poc.objs.api.seed.*
+
+import org.poc.objs.api.validation.ValidationIssue
+import org.poc.objs.core.persistence.tx.UnitOfWork
 import java.io.InputStream
 
 /**
@@ -10,37 +11,34 @@ import java.io.InputStream
  *
  * Parses and validates all documents first, then applies in [SeedDocumentHandler.applyOrder]
  * (then document index). Built-in order: ObjectSchema → AllowedEdgeRule → Graph.
- * Additional Spring [SeedDocumentHandler] beans register new kinds.
+ * Additional [SeedDocumentHandler] implementations register new kinds.
  * Any failure rolls back the entire resource transaction.
  */
-@Service
 class SeedImporter(
     handlers: List<SeedDocumentHandler>,
+    private val uow: UnitOfWork,
 ) {
     private val handlersByKind: Map<String, SeedDocumentHandler> = run {
         val grouped = handlers.groupBy { it.kind }
         val duplicates = grouped.filter { it.value.size > 1 }.keys
         require(duplicates.isEmpty()) {
-            "Duplicate SeedDocumentHandler beans for kind(s): ${duplicates.sorted().joinToString()}"
+            "Duplicate SeedDocumentHandler implementations for kind(s): ${duplicates.sorted().joinToString()}"
         }
         grouped.mapValues { (_, list) -> list.single() }
     }
 
-    @Transactional
     fun importYaml(yaml: String, allowedKinds: Set<String>? = null): SeedImportResult =
         importDocuments(SeedYaml.parseDocuments(yaml), allowedKinds)
 
-    @Transactional
     fun importYaml(stream: InputStream, allowedKinds: Set<String>? = null): SeedImportResult =
         importYaml(stream.bufferedReader().use { it.readText() }, allowedKinds)
 
-    @Transactional
     fun importDocuments(
         rawDocuments: List<SeedRawDocument>,
         allowedKinds: Set<String>? = null,
-    ): SeedImportResult {
+    ): SeedImportResult = uow.write {
         if (rawDocuments.isEmpty()) {
-            return SeedImportResult(warnings = listOf("No YAML documents found"))
+            return@write SeedImportResult(warnings = listOf("No YAML documents found"))
         }
 
         val parsed = mutableListOf<Pair<SeedDocumentHandler, ParsedSeedDocument>>()
@@ -167,7 +165,7 @@ class SeedImporter(
             }
         }
 
-        return SeedImportResult(documents = applied.sortedBy { it.index })
+        SeedImportResult(documents = applied.sortedBy { it.index })
     }
 
     private fun validateEnvelope(doc: SeedRawDocument): SeedDocumentResult? {

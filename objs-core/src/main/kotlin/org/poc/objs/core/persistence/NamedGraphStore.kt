@@ -5,58 +5,61 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.poc.objs.api.domain.Edge
 import org.poc.objs.api.domain.Entity
 import org.poc.objs.api.domain.Graph
-import org.poc.objs.core.domain.EntityLiveGraphs
-import org.poc.objs.core.domain.GraphHeader
+import org.poc.objs.api.domain.EntityLiveGraphs
+import org.poc.objs.api.domain.GraphHeader
 import org.poc.objs.api.domain.GraphMutation
 import org.poc.objs.api.domain.MutationMode
-import org.poc.objs.core.domain.ResolvedGraph
+import org.poc.objs.api.domain.ResolvedGraph
 import org.poc.objs.api.domain.GraphContents
-import org.poc.objs.core.domain.GraphException
-import org.poc.objs.core.domain.FirstSeenGraphMergePolicy
-import org.poc.objs.core.domain.GraphMergePolicy
-import org.poc.objs.core.domain.GraphListItem
-import org.poc.objs.core.domain.GraphSpec
-import org.poc.objs.core.domain.PageRequest
-import org.poc.objs.core.domain.PagedEntities
-import org.poc.objs.core.match.GraphExprMatcher
-import org.poc.objs.core.match.GraphExprPushdown
-import org.poc.objs.core.validation.EntityTypeLookup
-import org.poc.objs.core.validation.PersistGate
-import org.poc.objs.core.validation.ValidationIssue
-import org.poc.objs.core.validation.ValidationResult
+import org.poc.objs.api.domain.GraphException
+import org.poc.objs.api.domain.FirstSeenGraphMergePolicy
+import org.poc.objs.api.domain.GraphMergePolicy
+import org.poc.objs.api.domain.GraphListItem
+import org.poc.objs.api.domain.GraphSpec
+import org.poc.objs.api.domain.PageRequest
+import org.poc.objs.api.domain.PagedEntities
+import org.poc.objs.api.match.GraphExprMatcher
+import org.poc.objs.api.match.GraphExprPushdown
+import org.poc.objs.api.validation.EntityTypeLookup
+import org.poc.objs.api.validation.PersistGate
+import org.poc.objs.api.validation.ValidationIssue
+import org.poc.objs.api.validation.ValidationResult
+import org.poc.objs.core.persistence.tx.UnitOfWork
 import org.poc.objs.core.validation.Validator
-import org.springframework.context.annotation.Lazy
-import org.springframework.jdbc.core.JdbcTemplate
-import org.springframework.jdbc.core.RowMapper
-import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
+import java.sql.ResultSet
 import java.util.UUID
-import javax.sql.DataSource
 
 /**
  * Graph store: entity membership is M2M (`objs_graph_entity`); edges are graph-owned via
  * `objs_graph_edge.graph_id` (C-13 — no more `bom_subgraph_edges` M2M).
  */
-@Service
 class NamedGraphStore(
-    private val graphRepository: GraphRepository,
-    private val membershipRepository: GraphMembershipRepository,
-    private val entityRepository: EntityRepository,
-    private val edgeRepository: EdgeRepository,
+    private val graphDao: GraphDao,
+    private val membershipDao: GraphMembershipDao,
+    private val entityDao: EntityDao,
+    private val edgeDao: EdgeDao,
     private val validator: Validator,
-    private val dataSource: DataSource,
-    @Lazy private val graphStore: GraphStore,
     private val deepVersions: DeepGraphVersionService,
-    private val versionMemberRepository: GraphVersionMemberRepository,
+    private val versionMemberDao: GraphVersionMemberDao,
+    private val uow: UnitOfWork,
 ) {
-    private val jdbc = JdbcTemplate(dataSource)
-    private val objectMapper = ObjectMapper()
-    private val postgres: Boolean by lazy {
-        dataSource.connection.use { connection ->
-            connection.metaData.databaseProductName.equals("PostgreSQL", ignoreCase = true)
-        }
+    private lateinit var graphStore: GraphStore
+
+    fun attachGraphStore(store: GraphStore) {
+        graphStore = store
     }
-    private val headerRowMapper = RowMapper { rs, _ ->
+
+    private val objectMapper = ObjectMapper()
+    private var postgres: Boolean? = null
+
+    private fun isPostgres(): Boolean {
+        if (postgres == null) {
+            postgres = uow.connection().metaData.databaseProductName.equals("PostgreSQL", ignoreCase = true)
+        }
+        return postgres!!
+    }
+
+    private fun readHeader(rs: ResultSet): GraphHeader {
         val annotationsJson = rs.getString("annotations")
         val annotations: Map<String, String> =
             if (annotationsJson.isNullOrBlank()) {
@@ -64,7 +67,7 @@ class NamedGraphStore(
             } else {
                 objectMapper.readValue(annotationsJson, ANNOTATIONS_TYPE)
             }
-        GraphHeader(
+        return GraphHeader(
             id = rs.getObject("id", UUID::class.java),
             annotations = annotations,
             createdAt = rs.getTimestamp("created_at")?.toInstant(),
@@ -74,47 +77,44 @@ class NamedGraphStore(
 
     private fun gate(): PersistGate = PersistGate(
         validator = validator,
-        storeLookup = EntityTypeLookup { id -> entityRepository.findById(id).map { it.type }.orElse(null) },
-        existsEntity = { id -> entityRepository.existsById(id) },
-        existsEdge = { id -> edgeRepository.existsById(id) },
+        storeLookup = EntityTypeLookup { id -> entityDao.findById(id)?.type },
+        existsEntity = { id -> entityDao.existsById(id) },
+        existsEdge = { id -> edgeDao.existsById(id) },
     )
 
-    @Transactional
-    fun create(spec: GraphSpec): ResolvedGraph {
+    fun create(spec: GraphSpec): ResolvedGraph = uow.write {
         val id = spec.id ?: UUID.randomUUID()
-        if (graphRepository.existsById(id)) {
+        if (graphDao.existsById(id)) {
             throw GraphException(
                 code = "GRAPH_ID_CONFLICT",
                 message = "Subgraph already exists: $id",
             )
         }
         validateMembership(spec.entityIds, spec.edgeIds)
-        graphRepository.save(
+        graphDao.save(
             GraphRecord(
                 id = id,
                 annotations = spec.annotations.toMutableMap(),
             ),
         )
         replaceMembership(id, spec.entityIds, spec.edgeIds)
-        return requireNotNull(get(id))
+        requireNotNull(get(id))
     }
 
-    @Transactional
-    fun updateAnnotations(id: UUID, annotations: Map<String, String>): ResolvedGraph {
-        val existing = graphRepository.findById(id).orElse(null)
+    fun updateAnnotations(id: UUID, annotations: Map<String, String>): ResolvedGraph = uow.write {
+        val existing = graphDao.findById(id)
             ?: throw GraphException(
                 code = "GRAPH_NOT_FOUND",
                 message = "Subgraph not found: $id",
             )
         existing.annotations = annotations.toMutableMap()
         existing.updatedAt = java.time.Instant.now()
-        graphRepository.save(existing)
-        return requireNotNull(get(id))
+        graphDao.save(existing)
+        requireNotNull(get(id))
     }
 
-    @Transactional
-    fun replace(id: UUID, spec: GraphSpec): ResolvedGraph {
-        val existing = graphRepository.findById(id).orElse(null)
+    fun replace(id: UUID, spec: GraphSpec): ResolvedGraph = uow.write {
+        val existing = graphDao.findById(id)
             ?: throw GraphException(
                 code = "GRAPH_NOT_FOUND",
                 message = "Subgraph not found: $id",
@@ -122,41 +122,39 @@ class NamedGraphStore(
         validateMembership(spec.entityIds, spec.edgeIds)
         existing.annotations = spec.annotations.toMutableMap()
         existing.updatedAt = java.time.Instant.now()
-        graphRepository.save(existing)
-        membershipRepository.deleteByGraphId(id)
+        graphDao.save(existing)
+        membershipDao.deleteByGraphId(id)
         replaceMembership(id, spec.entityIds, spec.edgeIds)
-        return requireNotNull(get(id))
+        requireNotNull(get(id))
     }
 
-    @Transactional
-    fun delete(id: UUID) {
-        if (!graphRepository.existsById(id)) {
+    fun delete(id: UUID) = uow.write {
+        if (!graphDao.existsById(id)) {
             throw GraphException(
                 code = "GRAPH_NOT_FOUND",
                 message = "Subgraph not found: $id",
             )
         }
-        graphRepository.deleteById(id)
+        graphDao.deleteById(id)
     }
 
-    @Transactional(readOnly = true)
-    fun get(id: UUID): ResolvedGraph? {
-        val header = graphRepository.findById(id).orElse(null) ?: return null
-        return resolve(header)
+    fun get(id: UUID): ResolvedGraph? = uow.read {
+        val header = graphDao.findById(id) ?: return@read null
+        resolve(header)
     }
 
-    @Transactional(readOnly = true)
-    fun list(): List<GraphListItem> =
-        graphRepository.findAll().map { header ->
+    fun list(): List<GraphListItem> = uow.read {
+        graphDao.findAll().map { header ->
             GraphListItem(
                 id = header.id,
                 annotations = header.annotations.toMap(),
-                entityCount = membershipRepository.countByGraphId(header.id),
-                edgeCount = edgeRepository.countByGraphId(header.id),
+                entityCount = membershipDao.countByGraphId(header.id),
+                edgeCount = edgeDao.countByGraphId(header.id),
                 createdAt = header.createdAt,
                 updatedAt = header.updatedAt,
             )
         }
+    }
 
     /**
      * G-U10 / WI-007 open-graph search over headers (no FTS). Empty [q] without [expr] returns
@@ -166,12 +164,12 @@ class NamedGraphStore(
      * When [expr] lowers to equality/`&&` over `id` / `a.*` and the backend is PostgreSQL,
      * candidates are loaded via PK / `annotations @>` (GIN) instead of scanning all headers.
      */
-    @Transactional(readOnly = true)
-    fun search(q: String? = null, expr: String? = null, limit: Int = DEFAULT_SEARCH_LIMIT): List<GraphHeader> {
+    fun search(q: String? = null, expr: String? = null, limit: Int = DEFAULT_SEARCH_LIMIT): List<GraphHeader> =
+        uow.read {
         val query = q?.trim().orEmpty()
         val expression = expr?.trim().orEmpty()
         if (query.isEmpty() && expression.isEmpty()) {
-            return emptyList()
+            return@read emptyList()
         }
         val capped = when {
             limit < 1 -> DEFAULT_SEARCH_LIMIT
@@ -180,7 +178,7 @@ class NamedGraphStore(
         val matcher = if (expression.isNotEmpty()) GraphExprMatcher(expression) else null
         val sqlLimit = if (query.isEmpty()) capped else null
         val candidates = headersForSearch(matcher, sqlLimit)
-        return candidates
+        candidates
             .asSequence()
             .filter { header ->
                 val qOk = query.isEmpty() || matchesSearchText(header, query)
@@ -196,26 +194,26 @@ class NamedGraphStore(
      * Headers matching [matcher]. Uses Postgres annotation/id pushdown when the expression
      * lowers; otherwise scans headers and evaluates [GraphExprMatcher.matchesHeader].
      */
-    @Transactional(readOnly = true)
-    fun matchingHeaders(matcher: GraphExprMatcher): List<GraphHeader> {
+    fun matchingHeaders(matcher: GraphExprMatcher): List<GraphHeader> = uow.read {
         val pushdown = matcher.pushdown
-        if (pushdown != null && postgres) {
-            return findHeadersByPushdown(pushdown, limit = null)
+        if (pushdown != null && isPostgres()) {
+            findHeadersByPushdown(pushdown, limit = null)
+        } else {
+            graphDao.findAll()
+                .asSequence()
+                .map { it.toHeader() }
+                .filter { matcher.matchesHeader(it.id, it.annotations) }
+                .sortedBy { it.id }
+                .toList()
         }
-        return graphRepository.findAll()
-            .asSequence()
-            .map { it.toHeader() }
-            .filter { matcher.matchesHeader(it.id, it.annotations) }
-            .sortedBy { it.id }
-            .toList()
     }
 
     private fun headersForSearch(matcher: GraphExprMatcher?, sqlLimit: Int?): List<GraphHeader> {
         val pushdown = matcher?.pushdown
-        if (pushdown != null && postgres) {
+        if (pushdown != null && isPostgres()) {
             return findHeadersByPushdown(pushdown, sqlLimit)
         }
-        return graphRepository.findAll().map { it.toHeader() }
+        return graphDao.findAll().map { it.toHeader() }
     }
 
     private fun findHeadersByPushdown(pushdown: GraphExprPushdown, limit: Int?): List<GraphHeader> {
@@ -256,14 +254,29 @@ class NamedGraphStore(
             sql.append(" LIMIT ?")
             args += limit
         }
-        return jdbc.query(sql.toString(), headerRowMapper, *args.toTypedArray())
+        val connection = uow.connection()
+        return connection.prepareStatement(sql.toString()).use { statement ->
+            args.forEachIndexed { index, arg ->
+                when (arg) {
+                    is UUID -> statement.setObject(index + 1, arg)
+                    is Int -> statement.setInt(index + 1, arg)
+                    else -> statement.setString(index + 1, arg as String)
+                }
+            }
+            statement.executeQuery().use { rs ->
+                val results = mutableListOf<GraphHeader>()
+                while (rs.next()) {
+                    results += readHeader(rs)
+                }
+                results
+            }
+        }
     }
 
     /**
      * Hard materialization: clone members (new ids) into a brand-new graph, stamp [annotations]
      * on clones and the new header. Source graph is unchanged (G-S13–G-S15).
      */
-    @Transactional
     private fun snapshot(sourceId: UUID, annotations: Map<String, String>): ResolvedGraph {
         val source = get(sourceId)
             ?: throw GraphException(
@@ -300,7 +313,7 @@ class NamedGraphStore(
             )
         }
         // Header must exist before edges referencing it via graph_id (NOT NULL FK) are written.
-        graphRepository.save(GraphRecord(id = newGraphId, annotations = annotations.toMutableMap()))
+        graphDao.save(GraphRecord(id = newGraphId, annotations = annotations.toMutableMap()))
         val writeResult = graphStore.write(
             Graph(
                 entities = newEntities.toMutableList(),
@@ -314,7 +327,7 @@ class NamedGraphStore(
             )
         }
         if (newEntities.isNotEmpty()) {
-            membershipRepository.saveAll(
+            membershipDao.saveAll(
                 newEntities.map { GraphMembershipRecord(graphId = newGraphId, entityId = requireNotNull(it.id)) },
             )
         }
@@ -325,47 +338,35 @@ class NamedGraphStore(
      * Story vocabulary alias for [snapshot]: clone [sourceId] into a brand-new, independent graph
      * (new entity/edge ids, no parent FK — snapshot hierarchy is an application concern, not objs).
      */
-    @Transactional
     fun clone(sourceId: UUID, annotations: Map<String, String> = emptyMap()): ResolvedGraph =
-        snapshot(sourceId, annotations)
+        uow.write { snapshot(sourceId, annotations) }
 
-    @Transactional
-    @JvmOverloads
     fun createDeepGraphVersion(
         graphId: UUID,
         versionAnnotations: Map<String, String> = emptyMap(),
-    ) = deepVersions.createDeepGraphVersion(graphId, versionAnnotations)
+    ) = uow.write { deepVersions.createDeepGraphVersion(graphId, versionAnnotations) }
 
-    @Transactional(readOnly = true)
     fun listGraphVersions(graphId: UUID) = deepVersions.listGraphVersions(graphId)
 
-    @Transactional(readOnly = true)
     fun getGraphVersion(graphId: UUID, version: Long) = deepVersions.getGraphVersion(graphId, version)
 
-    @Transactional(readOnly = true)
     fun listEntityVersions(entityId: UUID) = deepVersions.listEntityVersions(entityId)
 
-    @Transactional(readOnly = true)
     fun entityVersionStats(entityId: UUID, recent: Int = 5) = deepVersions.entityVersionStats(entityId, recent)
 
-    @Transactional(readOnly = true)
     fun getEntityVersion(entityId: UUID, version: Long) = deepVersions.getEntityVersion(entityId, version)
 
-    @Transactional(readOnly = true)
     fun listEdgeVersions(edgeId: UUID) = deepVersions.listEdgeVersions(edgeId)
 
-    @Transactional(readOnly = true)
     fun edgeVersionStats(edgeId: UUID, recent: Int = 5) = deepVersions.edgeVersionStats(edgeId, recent)
 
-    @Transactional(readOnly = true)
     fun getEdgeVersion(edgeId: UUID, version: Long) = deepVersions.getEdgeVersion(edgeId, version)
 
     /** Graphs with live membership or a deep-version pin for [entityId] (G-A5 + C-19). Empty for orphans. */
-    @Transactional(readOnly = true)
-    fun listGraphIdsForEntity(entityId: UUID): List<UUID> {
-        val live = membershipRepository.findByEntityId(entityId).map { it.graphId }
-        val pinned = versionMemberRepository.findDistinctGraphIdsByEntityId(entityId)
-        return (live + pinned).distinct().sortedBy { it.toString() }
+    fun listGraphIdsForEntity(entityId: UUID): List<UUID> = uow.read {
+        val live = membershipDao.findByEntityId(entityId).map { it.graphId }
+        val pinned = versionMemberDao.findDistinctGraphIdsByEntityId(entityId)
+        (live + pinned).distinct().sortedBy { it.toString() }
     }
 
     /**
@@ -373,20 +374,18 @@ class NamedGraphStore(
      * desc (then createdAt, then id). Optional [q] uses [matchesSearchText]; [limit] caps [EntityLiveGraphs.items].
      * [EntityLiveGraphs.total] is always the unfiltered live count.
      */
-    @Transactional(readOnly = true)
-    @JvmOverloads
     fun listLiveGraphHeadersForEntity(
         entityId: UUID,
         q: String? = null,
         limit: Int? = null,
-    ): EntityLiveGraphs {
-        val graphIds = membershipRepository.findByEntityId(entityId).map { it.graphId }.distinct()
+    ): EntityLiveGraphs = uow.read {
+        val graphIds = membershipDao.findByEntityId(entityId).map { it.graphId }.distinct()
         val total = graphIds.size
         if (graphIds.isEmpty()) {
-            return EntityLiveGraphs(items = emptyList(), total = 0)
+            return@read EntityLiveGraphs(items = emptyList(), total = 0)
         }
         val query = q?.trim().orEmpty()
-        val sorted = graphRepository.findAllById(graphIds)
+        val sorted = graphDao.findAllById(graphIds)
             .asSequence()
             .map { it.toHeader() }
             .filter { query.isEmpty() || matchesSearchText(it, query) }
@@ -401,44 +400,40 @@ class NamedGraphStore(
             } else {
                 sorted.toList()
             }
-        return EntityLiveGraphs(items = items, total = total)
+        EntityLiveGraphs(items = items, total = total)
     }
 
     /**
      * Graph-local edges incident to [entityId] (G-A14). Optional [graphId] restricts to one graph.
      */
-    @Transactional(readOnly = true)
-    @JvmOverloads
-    fun listIncidentEdges(entityId: UUID, graphId: UUID? = null): List<Edge> {
+    fun listIncidentEdges(entityId: UUID, graphId: UUID? = null): List<Edge> = uow.read {
         val rows =
             if (graphId == null) {
-                edgeRepository.findIncident(entityId)
+                edgeDao.findIncident(entityId)
             } else {
-                edgeRepository.findIncidentInGraph(entityId, graphId)
+                edgeDao.findIncidentInGraph(entityId, graphId)
             }
-        return rows.map { it.toDomain() }
+        rows.map { it.toDomain() }
     }
 
     /** Member entity ids of [graphId] (membership table only). */
-    @Transactional(readOnly = true)
-    fun listEntityIdsInGraph(graphId: UUID): List<UUID> =
-        membershipRepository.findByGraphId(graphId).map { it.entityId }
+    fun listEntityIdsInGraph(graphId: UUID): List<UUID> = uow.read {
+        membershipDao.findByGraphId(graphId).map { it.entityId }
+    }
 
     /** Pool entities that are members of [graphId], ordered by type then id. */
-    @Transactional(readOnly = true)
-    fun listMembers(graphId: UUID): List<Entity> {
-        val ids = listEntityIdsInGraph(graphId)
-        if (ids.isEmpty()) return emptyList()
-        return entityRepository.findAllById(ids).map { it.toDomain() }
+    fun listMembers(graphId: UUID): List<Entity> = uow.read {
+        val ids = membershipDao.findByGraphId(graphId).map { it.entityId }
+        if (ids.isEmpty()) return@read emptyList()
+        entityDao.findAllById(ids).map { it.toDomain() }
             .sortedWith(compareBy({ it.type }, { it.id.toString() }))
     }
 
-    @Transactional(readOnly = true)
-    fun listMembers(graphId: UUID, page: PageRequest): PagedEntities {
+    fun listMembers(graphId: UUID, page: PageRequest): PagedEntities = uow.read {
         val all = listMembers(graphId)
         val from = page.offset.coerceAtMost(all.size)
         val to = (from + page.size).coerceAtMost(all.size)
-        return PagedEntities(
+        PagedEntities(
             items = all.subList(from, to),
             total = all.size.toLong(),
             page = page.page,
@@ -450,9 +445,7 @@ class NamedGraphStore(
      * Live membership copy: new graph id, **same** pool entity ids, graph-local edges copied
      * with new ids. Does not insert pool entities (unlike [clone]).
      */
-    @Transactional
-    @JvmOverloads
-    fun copyGraph(sourceId: UUID, annotations: Map<String, String> = emptyMap()): ResolvedGraph {
+    fun copyGraph(sourceId: UUID, annotations: Map<String, String> = emptyMap()): ResolvedGraph = uow.write {
         val source = get(sourceId)
             ?: throw GraphException(
                 code = "GRAPH_NOT_FOUND",
@@ -460,19 +453,17 @@ class NamedGraphStore(
             )
         val entityIds = source.contents.entities.mapNotNull { it.id }
         val edges = source.contents.edges.map { copyEdgeWithoutId(it) }
-        return persistLiveGraph(annotations, entityIds, edges)
+        persistLiveGraph(annotations, entityIds, edges)
     }
 
     /**
      * Persist-union of [sourceIds] in caller order. Default policy is [FirstSeenGraphMergePolicy].
      */
-    @Transactional
-    @JvmOverloads
     fun mergeGraph(
         sourceIds: Collection<UUID>,
         annotations: Map<String, String> = emptyMap(),
         policy: GraphMergePolicy = FirstSeenGraphMergePolicy(),
-    ): ResolvedGraph {
+    ): ResolvedGraph = uow.write {
         if (sourceIds.isEmpty()) {
             throw GraphException(
                 code = "GRAPH_MERGE_EMPTY",
@@ -501,7 +492,7 @@ class NamedGraphStore(
                 edges[key] = if (existing == null) edge else policy.onDuplicateEdge(existing, edge)
             }
         }
-        return persistLiveGraph(
+        persistLiveGraph(
             annotations,
             nodes.values.mapNotNull { it.id },
             edges.values.map { copyEdgeWithoutId(it) },
@@ -567,13 +558,12 @@ class NamedGraphStore(
     /**
      * Attach an existing pool entity to [graphId] (membership row only; idempotent).
      */
-    @Transactional
-    fun attach(graphId: UUID, entityId: UUID) {
+    fun attach(graphId: UUID, entityId: UUID) = uow.write {
         requireGraphExists(graphId)
-        if (!entityRepository.existsById(entityId)) {
+        if (!entityDao.existsById(entityId)) {
             throw GraphException(code = "GRAPH_ENTITY_MISSING", message = "Entity not found: $entityId")
         }
-        membershipRepository.save(GraphMembershipRecord(graphId = graphId, entityId = entityId))
+        membershipDao.save(GraphMembershipRecord(graphId = graphId, entityId = entityId))
         touch(graphId)
     }
 
@@ -581,13 +571,12 @@ class NamedGraphStore(
      * Detach [entityId] from [graphId] (membership row only; pool entity kept) and drop this
      * graph's edges incident to it (edges cannot survive without a member endpoint).
      */
-    @Transactional
-    fun detach(graphId: UUID, entityId: UUID) {
+    fun detach(graphId: UUID, entityId: UUID) = uow.write {
         requireGraphExists(graphId)
-        membershipRepository.deleteByGraphIdAndEntityId(graphId, entityId)
-        edgeRepository.findByGraphId(graphId)
+        membershipDao.deleteByGraphIdAndEntityId(graphId, entityId)
+        edgeDao.findByGraphId(graphId)
             .filter { it.sourceId == entityId || it.targetId == entityId }
-            .forEach { edgeRepository.delete(it) }
+            .forEach { edgeDao.delete(it) }
         touch(graphId)
     }
 
@@ -599,11 +588,10 @@ class NamedGraphStore(
      * REPLACE: [entities.set]/[edges.set] are the full desired membership + edges; prune extras;
      * non-empty unset → [REPLACE_UNSET_NOT_ALLOWED].
      */
-    @Transactional
-    fun mutate(graphId: UUID, mutation: GraphMutation): ValidationResult {
+    fun mutate(graphId: UUID, mutation: GraphMutation): ValidationResult = uow.write {
         val result = validateMutate(graphId, mutation)
         if (!result.isValid) {
-            return result
+            return@write result
         }
         when (mutation.mode) {
             MutationMode.MERGE -> {
@@ -615,20 +603,19 @@ class NamedGraphStore(
             }
         }
         touch(graphId)
-        return ValidationResult.ok()
+        ValidationResult.ok()
     }
 
     /**
      * Dry-run validation for [mutate]: same checks, no persistence. May assign ids to set
      * entities/edges (via [PersistGate.prepareIds]) and stamps [graphId] onto set edges.
      */
-    @Transactional(readOnly = true)
-    fun validateMutate(graphId: UUID, mutation: GraphMutation): ValidationResult {
+    fun validateMutate(graphId: UUID, mutation: GraphMutation): ValidationResult = uow.read {
         requireGraphExists(graphId)
         mutation.edges.set.forEach { it.graphId = graphId }
 
         if (mutation.mode == MutationMode.REPLACE && mutation.hasUnsets()) {
-            return ValidationResult.of(
+            return@read ValidationResult.of(
                 ValidationIssue(
                     code = "REPLACE_UNSET_NOT_ALLOWED",
                     message = "REPLACE mutate rejects non-empty entities.unset / edges.unset; send the desired set only",
@@ -646,31 +633,31 @@ class NamedGraphStore(
                 issues.addAll(g.validateDeleteEntity(id).issues)
             }
             if (issues.isNotEmpty()) {
-                return ValidationResult.of(issues)
+                return@read ValidationResult.of(issues)
             }
         }
 
         if (!mutation.hasSets()) {
             // MERGE no-op or REPLACE clear — both valid once unset/reject checks passed
-            return ValidationResult.ok()
+            return@read ValidationResult.ok()
         }
 
         val graph = mutation.graph()
         val stage1 = validator.validateEntities(graph.entities)
         if (!stage1.isValid) {
-            return stage1
+            return@read stage1
         }
         g.prepareIds(graph)
 
         val unsetEntityIds =
             if (mutation.mode == MutationMode.MERGE) mutation.entities.unset.toSet() else emptySet()
         val projectedStore = EntityTypeLookup { id ->
-            if (id in unsetEntityIds) null else entityRepository.findById(id).map { it.type }.orElse(null)
+            if (id in unsetEntityIds) null else entityDao.findById(id)?.type
         }
         val lookup = validator.combinedLookup(graph.entities, projectedStore)
         val edgeIssues = validator.validateEdges(graph.edges, lookup).issues.toMutableList()
 
-        val currentMembers = membershipRepository.findByGraphId(graphId).mapTo(hashSetOf()) { it.entityId }
+        val currentMembers = membershipDao.findByGraphId(graphId).mapTo(hashSetOf()) { it.entityId }
         val projectedMembers =
             when (mutation.mode) {
                 MutationMode.MERGE -> (currentMembers - unsetEntityIds) + graph.entities.mapNotNull { it.id }
@@ -693,13 +680,13 @@ class NamedGraphStore(
             }
         }
         if (edgeIssues.isNotEmpty()) {
-            return ValidationResult(edgeIssues)
+            return@read ValidationResult(edgeIssues)
         }
         val identityIssues = mutableListOf<ValidationIssue>()
         graph.entities.forEachIndexed { index, entity ->
             val id = entity.id ?: return@forEachIndexed
             if (id in unsetEntityIds) return@forEachIndexed
-            val stored = entityRepository.findById(id).orElse(null)?.toDomain() ?: return@forEachIndexed
+            val stored = entityDao.findById(id)?.toDomain() ?: return@forEachIndexed
             identityIssues += validator.validateEntityIdentifierImmutability(
                 stored,
                 entity,
@@ -708,21 +695,21 @@ class NamedGraphStore(
         }
         graph.edges.forEachIndexed { index, edge ->
             val id = edge.id ?: return@forEachIndexed
-            val stored = edgeRepository.findById(id).orElse(null)?.toDomain() ?: return@forEachIndexed
+            val stored = edgeDao.findById(id)?.toDomain() ?: return@forEachIndexed
             identityIssues += validator.validateEdgeIdentifierImmutability(
                 stored,
                 edge,
                 path = "edges.set[$index]",
             )
         }
-        return ValidationResult(identityIssues)
+        ValidationResult(identityIssues)
     }
 
     private fun applyGraphSets(graphId: UUID, mutation: GraphMutation) {
         if (mutation.entities.set.isNotEmpty()) {
             graphStore.upsertEntities(mutation.entities.set)
             mutation.entities.set.forEach { entity ->
-                membershipRepository.save(
+                membershipDao.save(
                     GraphMembershipRecord(graphId = graphId, entityId = requireNotNull(entity.id)),
                 )
             }
@@ -734,17 +721,17 @@ class NamedGraphStore(
         val desiredEntityIds = mutation.entities.set.mapNotNull { it.id }.toSet()
         val desiredEdgeIds = mutation.edges.set.mapNotNull { it.id }.toSet()
 
-        val currentEdgeIds = edgeRepository.findByGraphId(graphId).mapNotNull { it.id }
+        val currentEdgeIds = edgeDao.findByGraphId(graphId).mapNotNull { it.id }
         for (id in currentEdgeIds) {
             if (id !in desiredEdgeIds) {
-                edgeRepository.deleteById(id)
+                edgeDao.deleteById(id)
             }
         }
 
-        val currentMembers = membershipRepository.findByGraphId(graphId).map { it.entityId }
+        val currentMembers = membershipDao.findByGraphId(graphId).map { it.entityId }
         for (entityId in currentMembers) {
             if (entityId !in desiredEntityIds) {
-                membershipRepository.deleteByGraphIdAndEntityId(graphId, entityId)
+                membershipDao.deleteByGraphIdAndEntityId(graphId, entityId)
             }
         }
 
@@ -752,10 +739,10 @@ class NamedGraphStore(
     }
 
     private fun applyGraphDeletes(graphId: UUID, mutation: GraphMutation) {
-        val graphEdgeIds = edgeRepository.findByGraphId(graphId).mapNotNullTo(hashSetOf()) { it.id }
+        val graphEdgeIds = edgeDao.findByGraphId(graphId).mapNotNullTo(hashSetOf()) { it.id }
         for (id in mutation.edges.unset.distinct()) {
             if (id in graphEdgeIds) {
-                edgeRepository.deleteById(id)
+                edgeDao.deleteById(id)
             }
         }
         val entityIds = mutation.entities.unset.distinct()
@@ -763,16 +750,16 @@ class NamedGraphStore(
             return
         }
         val idSet = entityIds.toSet()
-        edgeRepository.findByGraphId(graphId)
+        edgeDao.findByGraphId(graphId)
             .filter { it.sourceId in idSet || it.targetId in idSet }
-            .forEach { edgeRepository.delete(it) }
-        entityIds.forEach { id -> membershipRepository.deleteByGraphIdAndEntityId(graphId, id) }
+            .forEach { edgeDao.delete(it) }
+        entityIds.forEach { id -> membershipDao.deleteByGraphIdAndEntityId(graphId, id) }
     }
 
     private fun applyGraphEdgeUpserts(graphId: UUID, edges: List<Edge>) {
         for (edge in edges) {
             val id = requireNotNull(edge.id)
-            val existing = edgeRepository.findById(id).orElse(null)
+            val existing = edgeDao.findById(id)
             val now = java.time.Instant.now()
             val record = existing ?: EdgeRecord(id = id, createdAt = now, updatedAt = now)
             record.graphId = graphId
@@ -783,12 +770,12 @@ class NamedGraphStore(
             record.schemaVersion = edge.schemaVersion
             record.properties = edge.properties?.toMutableMap()
             record.updatedAt = now
-            edgeRepository.save(record)
+            edgeDao.save(record)
         }
     }
 
     private fun requireGraphExists(graphId: UUID) {
-        if (!graphRepository.existsById(graphId)) {
+        if (!graphDao.existsById(graphId)) {
             throw GraphException(code = "GRAPH_NOT_FOUND", message = "Graph not found: $graphId")
         }
     }
@@ -822,27 +809,28 @@ class NamedGraphStore(
      */
     private fun replaceMembership(graphId: UUID, entityIds: Set<UUID>, edgeIds: Set<UUID>) {
         if (entityIds.isNotEmpty()) {
-            membershipRepository.saveAll(
+            membershipDao.saveAll(
                 entityIds.map { GraphMembershipRecord(graphId = graphId, entityId = it) },
             )
         }
-        val currentEdgeIds = edgeRepository.findByGraphId(graphId).mapNotNullTo(linkedSetOf()) { it.id }
+        val currentEdgeIds = edgeDao.findByGraphId(graphId).mapNotNullTo(linkedSetOf()) { it.id }
         val toRemove = currentEdgeIds - edgeIds
         if (toRemove.isNotEmpty()) {
-            edgeRepository.deleteAllById(toRemove)
+            edgeDao.deleteAllById(toRemove)
         }
         for (edgeId in edgeIds) {
-            val edge = edgeRepository.findById(edgeId).orElseThrow {
-                GraphException(code = "GRAPH_EDGE_MISSING", message = "Edge not found: $edgeId")
-            }
+            val edge = edgeDao.findById(edgeId) ?: throw GraphException(
+                code = "GRAPH_EDGE_MISSING",
+                message = "Edge not found: $edgeId",
+            )
             edge.graphId = graphId
-            edgeRepository.save(edge)
+            edgeDao.save(edge)
         }
     }
 
     private fun validateMembership(entityIds: Set<UUID>, edgeIds: Set<UUID>) {
         for (entityId in entityIds) {
-            if (!entityRepository.existsById(entityId)) {
+            if (!entityDao.existsById(entityId)) {
                 throw GraphException(
                     code = "GRAPH_ENTITY_MISSING",
                     message = "Entity not found: $entityId",
@@ -850,7 +838,7 @@ class NamedGraphStore(
             }
         }
         for (edgeId in edgeIds) {
-            val edge = edgeRepository.findById(edgeId).orElse(null)
+            val edge = edgeDao.findById(edgeId)
                 ?: throw GraphException(
                     code = "GRAPH_EDGE_MISSING",
                     message = "Edge not found: $edgeId",
@@ -865,13 +853,13 @@ class NamedGraphStore(
     }
 
     private fun resolve(header: GraphRecord): ResolvedGraph {
-        val entityIds = membershipRepository.findByGraphId(header.id).map { it.entityId }
+        val entityIds = membershipDao.findByGraphId(header.id).map { it.entityId }
         val entities = if (entityIds.isEmpty()) {
             emptyList()
         } else {
-            entityRepository.findAllById(entityIds).map { it.toDomain() }
+            entityDao.findAllById(entityIds).map { it.toDomain() }
         }
-        val edges = edgeRepository.findByGraphId(header.id).map { it.toDomain() }
+        val edges = edgeDao.findByGraphId(header.id).map { it.toDomain() }
         return ResolvedGraph(
             id = header.id,
             annotations = header.annotations.toMap(),
@@ -882,11 +870,10 @@ class NamedGraphStore(
     }
 
     /** Bump graph HEAD `updated_at`. No-op if the header is gone. */
-    @Transactional
-    fun touch(graphId: UUID) {
-        val header = graphRepository.findById(graphId).orElse(null) ?: return
+    fun touch(graphId: UUID) = uow.write {
+        val header = graphDao.findById(graphId) ?: return@write
         header.updatedAt = java.time.Instant.now()
-        graphRepository.save(header)
+        graphDao.save(header)
     }
 
     private fun GraphRecord.toHeader() = GraphHeader(

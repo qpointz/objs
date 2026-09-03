@@ -1,15 +1,15 @@
 package org.poc.objs.core.seed
 
-import org.poc.objs.core.domain.Schema
-import org.poc.objs.core.domain.SchemaCatalog
-import org.poc.objs.core.domain.SchemaDefinitionException
-import org.poc.objs.core.domain.SchemaNode
-import org.poc.objs.core.domain.SchemaNormalizer
-import org.poc.objs.core.domain.SchemaUsage
-import org.poc.objs.core.typed.PayloadMapper
-import org.springframework.stereotype.Component
+import org.poc.objs.api.seed.*
 
-@Component
+import org.poc.objs.api.domain.Schema
+import org.poc.objs.api.domain.SchemaCatalog
+import org.poc.objs.api.domain.SchemaDefinitionException
+import org.poc.objs.api.domain.SchemaNode
+import org.poc.objs.api.domain.SchemaNormalizer
+import org.poc.objs.api.domain.SchemaUsage
+import org.poc.objs.core.typed.DefaultPayloadMapper
+
 class ObjectSchemaSeedHandler(
     private val schemas: SchemaCatalog,
 ) : SeedDocumentHandler {
@@ -32,7 +32,7 @@ class ObjectSchemaSeedHandler(
                 "contentSchema must be an object",
             )
         val contentSchema = try {
-            PayloadMapper.fromMap(contentMap, SchemaNode::class.java)
+            DefaultPayloadMapper.fromMap(contentMap, SchemaNode::class.java)
         } catch (ex: Exception) {
             throw SeedDocumentParseException(
                 document.index,
@@ -85,7 +85,7 @@ class ObjectSchemaSeedHandler(
         }
         emitSeedTags(document, schema.tags)
         emitSeedAttributes(document, schema.attributes)
-        document["contentSchema"] = PayloadMapper.toMap(schema.contentSchema)
+        document["contentSchema"] = DefaultPayloadMapper.toMap(schema.contentSchema)
         return document
     }
 

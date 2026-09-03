@@ -1,12 +1,13 @@
 package org.poc.objs.core.seed
 
+import org.poc.objs.api.seed.*
+
 import org.poc.objs.api.domain.Edge
 import org.poc.objs.api.domain.Entity
 import org.poc.objs.api.domain.Graph
 import org.poc.objs.api.domain.GraphMutation
-import org.poc.objs.core.domain.GraphSpec
+import org.poc.objs.api.domain.GraphSpec
 import org.poc.objs.core.persistence.NamedGraphStore
-import org.springframework.stereotype.Component
 import java.util.UUID
 
 data class SeedGraphPayload(
@@ -25,7 +26,6 @@ data class SeedGraphPayload(
  * document fields: `id` (graph UUID), `annotations` (header annotations). When `id` is omitted,
  * a stable UUIDv3 is derived from `graph-seed:<name>`.
  */
-@Component
 class GraphSeedHandler(
     private val namedGraphs: NamedGraphStore,
 ) : SeedDocumentHandler {

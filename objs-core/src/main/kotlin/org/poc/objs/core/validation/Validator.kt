@@ -3,25 +3,19 @@ package org.poc.objs.core.validation
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.networknt.schema.JsonSchemaFactory
 import com.networknt.schema.SpecVersion
-import org.poc.objs.core.domain.AllowedEdgeCatalog
+import org.poc.objs.api.domain.AllowedEdgeCatalog
 import org.poc.objs.api.domain.AllowedEdgeRule
 import org.poc.objs.api.domain.Edge
 import org.poc.objs.api.domain.Entity
 import org.poc.objs.api.domain.Graph
-import org.poc.objs.core.domain.IdentityProjection
+import org.poc.objs.api.domain.IdentityProjection
 import org.poc.objs.api.domain.PropertiesPolicy
-import org.poc.objs.core.domain.SchemaCatalog
+import org.poc.objs.api.domain.SchemaCatalog
+import org.poc.objs.api.validation.EntityTypeLookup
+import org.poc.objs.api.validation.PersistValidator
+import org.poc.objs.api.validation.ValidationIssue
+import org.poc.objs.api.validation.ValidationResult
 import java.util.UUID
-
-/**
- * Resolves entity types for edge endpoints from the write payload and/or an existing store.
- */
-fun interface EntityTypeLookup {
-    /**
-     * @return entity type string, or null if the id is unknown
-     */
-    fun typeOf(id: UUID): String?
-}
 
 /**
  * JSON Schema + allow-list validation (audit and persist stages).
@@ -30,11 +24,11 @@ class Validator(
     private val schemas: SchemaCatalog,
     private val allowedEdges: AllowedEdgeCatalog,
     private val objectMapper: ObjectMapper = ObjectMapper(),
-) {
+) : PersistValidator {
     private val schemaFactory = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012)
 
     /** Stage 1 — validate entity payloads only. */
-    fun validateEntities(entities: Collection<Entity>): ValidationResult {
+    override fun validateEntities(entities: Collection<Entity>): ValidationResult {
         val issues = mutableListOf<ValidationIssue>()
         entities.forEachIndexed { index, entity ->
             issues += validateEntity(entity, path = "entities[$index]")
@@ -61,7 +55,7 @@ class Validator(
      * Stage 2 — validate edges using [typeLookup] for source/target types
      * (payload entities ∪ persisted store).
      */
-    fun validateEdges(
+    override fun validateEdges(
         edges: Collection<Edge>,
         typeLookup: EntityTypeLookup,
     ): ValidationResult {
@@ -197,7 +191,7 @@ class Validator(
         return EntityTypeLookup { id -> map[id] }
     }
 
-    fun combinedLookup(
+    override fun combinedLookup(
         payloadEntities: Collection<Entity>,
         storeLookup: EntityTypeLookup,
     ): EntityTypeLookup {

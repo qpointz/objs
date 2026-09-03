@@ -1,17 +1,18 @@
 package org.poc.objs.core.persistence
 
-import org.springframework.boot.jdbc.DatabaseDriver
-
 /**
- * Maps a JDBC URL to Spring Boot Flyway `{vendor}` ([DatabaseDriver.id]).
+ * Maps a JDBC URL to Flyway `{vendor}` id (`postgresql`, `h2`, …).
  */
 object ObjsFlywayVendor {
     fun idFromJdbcUrl(jdbcUrl: String): String {
-        val driver = DatabaseDriver.fromJdbcUrl(jdbcUrl)
-        require(driver != DatabaseDriver.UNKNOWN) {
-            "Unsupported JDBC URL for objs Flyway: $jdbcUrl (need a Spring DatabaseDriver id such as postgresql or h2)"
+        val normalized = jdbcUrl.lowercase()
+        return when {
+            normalized.startsWith("jdbc:postgresql:") -> "postgresql"
+            normalized.startsWith("jdbc:h2:") -> "h2"
+            else -> throw IllegalArgumentException(
+                "Unsupported JDBC URL for objs Flyway: $jdbcUrl (need postgresql or h2)",
+            )
         }
-        return driver.id
     }
 
     fun resolveLocations(jdbcUrl: String, pattern: String): String =

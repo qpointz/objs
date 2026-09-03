@@ -3,23 +3,21 @@ import org.gradle.api.plugins.jvm.JvmTestSuite
 plugins {
     `java-library`
     alias(libs.plugins.kotlin.jvm)
-    alias(libs.plugins.kotlin.spring)
     alias(libs.plugins.kotlin.jpa)
 }
 
-description = "Objs core: entity SDK, validation, and JPA persistence (Kotlin)."
+description = "Objs core: Spring-free JPA persistence, catalogs, seed apply, validation (Kotlin)."
 
 dependencies {
     api(project(":objs-api"))
-    api(platform(libs.boot.dependencies))
-    api(libs.boot.starter)
-    api(libs.boot.starter.data.jpa)
-    api(libs.boot.starter.flyway)
     api(libs.bundles.jackson)
     api(libs.kotlin.reflect)
+    api(libs.jakarta.persistence.api)
+    implementation(libs.hibernate.core)
+    implementation(libs.flyway.core)
     implementation(libs.json.schema.validator)
-    implementation(libs.commons.jexl)
     implementation(libs.caffeine)
+    implementation(libs.slf4j.api)
 }
 
 kotlin {
@@ -36,9 +34,11 @@ testing {
                 useJUnitJupiter()
                 dependencies {
                     implementation(project())
-                    implementation(libs.boot.starter.test)
-                    implementation(libs.boot.starter.data.jpa.test)
+                    implementation(libs.junit.jupiter.api)
+                    implementation(libs.assertj.core)
+                    runtimeOnly(libs.junit.jupiter.engine)
                     runtimeOnly(libs.h2.database)
+                    implementation("org.mockito:mockito-core:5.20.0")
                 }
             }
         }
@@ -46,8 +46,9 @@ testing {
         register<JvmTestSuite>("testIT") {
             dependencies {
                 implementation(project())
-                implementation(libs.boot.starter.test)
-                implementation(libs.boot.starter.data.jpa.test)
+                implementation(libs.junit.jupiter.api)
+                implementation(libs.assertj.core)
+                runtimeOnly(libs.junit.jupiter.engine)
                 runtimeOnly(libs.postgresql)
                 runtimeOnly(libs.flyway.postgresql)
                 implementation(libs.testcontainers.junit.jupiter)
@@ -55,4 +56,14 @@ testing {
             }
         }
     }
+}
+
+sourceSets.named("testIT") {
+    val test = sourceSets.getByName("test")
+    compileClasspath += test.output
+    runtimeClasspath += test.output + test.runtimeClasspath
+}
+
+tasks.named("compileTestITKotlin") {
+    dependsOn("compileTestKotlin")
 }
