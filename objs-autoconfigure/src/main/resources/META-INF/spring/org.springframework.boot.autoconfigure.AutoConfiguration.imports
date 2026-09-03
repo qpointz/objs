@@ -1,0 +1,2 @@
+org.poc.objs.autoconfigure.ObjsFlywayAutoConfiguration
+org.poc.objs.autoconfigure.ObjsCoreAutoConfiguration

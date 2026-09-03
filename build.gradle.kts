@@ -56,7 +56,9 @@ tasks.register("test") {
     description = "Runs all test tasks across leaf modules"
     group = "verification"
     dependsOn(
+        ":objs-api:test",
         ":objs-core:test",
+        ":objs-autoconfigure:test",
         ":objs-service:test",
         ":sbom-service:test",
         ":objs-gremlin-core:test",
