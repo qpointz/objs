@@ -1,62 +1,25 @@
 package org.poc.objs.core.seed
 
+import org.poc.objs.api.seed.SeedResourceIdentity
+import org.poc.objs.api.seed.SeedResourceResolver
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.poc.objs.core.domain.SchemaCatalog
-import org.poc.objs.core.persistence.GraphStore
-import org.poc.objs.core.persistence.SeedLedgerRepository
-import org.poc.objs.core.persistence.ObjsCoreAutoConfiguration
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.SpringBootConfiguration
-import org.springframework.boot.autoconfigure.ImportAutoConfiguration
-import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
-import org.springframework.context.annotation.Import
-import org.springframework.core.io.DefaultResourceLoader
-import org.springframework.test.context.TestPropertySource
-import org.springframework.transaction.annotation.Propagation
-import org.springframework.transaction.annotation.Transactional
+import org.poc.objs.core.persistence.ObjsPersistenceFixture
+import java.net.URI
 import java.nio.file.Files
+import java.nio.file.Paths
 
-@DataJpaTest
-@ImportAutoConfiguration(ObjsCoreAutoConfiguration::class)
-@Import(GraphStore::class)
-@TestPropertySource(
-    properties = [
-        "spring.datasource.url=jdbc:h2:mem:objs-seed-startup;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",
-        "spring.datasource.username=sa",
-        "spring.datasource.password=",
-        "spring.datasource.driver-class-name=org.h2.Driver",
-        "spring.jpa.hibernate.ddl-auto=validate",
-        "spring.flyway.enabled=false",
-        "objs.seeds.enabled=false",
-    ],
-)
-class SeedStartupLoaderIT {
-    @SpringBootConfiguration
-    class TestApp
-
-    @Autowired
-    lateinit var importer: SeedImporter
-
-    @Autowired
-    lateinit var ledger: SeedLedger
-
-    @Autowired
-    lateinit var ledgerRepo: SeedLedgerRepository
-
-    @Autowired
-    lateinit var schemas: SchemaCatalog
+class SeedStartupLoaderIT : ObjsPersistenceFixture() {
 
     @BeforeEach
     fun clear() {
         schemas.clear()
-        ledgerRepo.deleteAll()
+        uow.write { ledgerRepo.deleteAll() }
     }
 
     @Test
-    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     fun shouldSkipUnchangedAndReimportChangedBytes() {
         val file = Files.createTempFile("seed-", ".yaml")
         Files.writeString(file, validSchemaYaml("Person", "Person payload"))
@@ -66,7 +29,7 @@ class SeedStartupLoaderIT {
             onFailure = SeedFailureMode.FAIL_FAST,
             resources = mutableListOf(location),
         )
-        val loader = SeedStartupLoader(props, DefaultResourceLoader(), importer, ledger)
+        val loader = SeedStartupLoader(props, fileResolver(), importer, ledger)
 
         val first = loader.loadConfiguredResources()
         assertThat(first.resources.single().status).isEqualTo(SeedLedgerStatus.SUCCESS)
@@ -85,7 +48,6 @@ class SeedStartupLoaderIT {
     }
 
     @Test
-    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     fun shouldContinueAfterFailure_whenConfigured() {
         val good = Files.createTempFile("seed-good-", ".yaml")
         val bad = Files.createTempFile("seed-bad-", ".yaml")
@@ -111,7 +73,7 @@ class SeedStartupLoaderIT {
             onFailure = SeedFailureMode.CONTINUE,
             resources = mutableListOf(badLocation, goodLocation),
         )
-        val loader = SeedStartupLoader(props, DefaultResourceLoader(), importer, ledger)
+        val loader = SeedStartupLoader(props, fileResolver(), importer, ledger)
         val result = loader.loadConfiguredResources()
         assertThat(result.resources.map { it.status }).containsExactly(
             SeedLedgerStatus.FAILED,
@@ -127,7 +89,6 @@ class SeedStartupLoaderIT {
     }
 
     @Test
-    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     fun shouldFailFastAndPreservePriorSuccessFingerprint() {
         val file = Files.createTempFile("seed-ff-", ".yaml")
         Files.writeString(file, validSchemaYaml("Thing", "ok"))
@@ -138,7 +99,7 @@ class SeedStartupLoaderIT {
             onFailure = SeedFailureMode.FAIL_FAST,
             resources = mutableListOf(location),
         )
-        val loader = SeedStartupLoader(props, DefaultResourceLoader(), importer, ledger)
+        val loader = SeedStartupLoader(props, fileResolver(), importer, ledger)
         loader.loadConfiguredResources()
         val successFp = ledger.find(seedKey)!!.lastSuccessFingerprint
 
@@ -182,4 +143,9 @@ class SeedStartupLoaderIT {
                 title: Name
                 description: Name
     """.trimIndent()
+
+    private fun fileResolver(): SeedResourceResolver = SeedResourceResolver { location ->
+        val path = Paths.get(URI.create(location))
+        if (!Files.exists(path)) null else Files.newInputStream(path)
+    }
 }

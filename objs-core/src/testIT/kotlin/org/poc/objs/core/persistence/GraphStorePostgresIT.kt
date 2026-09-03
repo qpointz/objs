@@ -3,76 +3,21 @@ package org.poc.objs.core.persistence
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.poc.objs.core.domain.AllowedEdgeCatalog
 import org.poc.objs.api.domain.AllowedEdgeRule
 import org.poc.objs.api.domain.Edge
 import org.poc.objs.api.domain.Entity
 import org.poc.objs.api.domain.Graph
-import org.poc.objs.core.domain.GraphSpec
+import org.poc.objs.api.domain.GraphSpec
 import org.poc.objs.api.domain.PropertiesPolicy
-import org.poc.objs.core.domain.Schema
-import org.poc.objs.core.domain.SchemaCatalog
-import org.poc.objs.core.domain.SchemaDsl
-import org.poc.objs.core.match.GraphExprMatcher
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.SpringBootConfiguration
-import org.springframework.boot.autoconfigure.ImportAutoConfiguration
-import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
-import org.springframework.context.annotation.Import
-import org.springframework.jdbc.core.JdbcTemplate
-import org.springframework.test.context.DynamicPropertyRegistry
-import org.springframework.test.context.DynamicPropertySource
-import org.testcontainers.containers.PostgreSQLContainer
-import org.testcontainers.junit.jupiter.Container
-import org.testcontainers.junit.jupiter.Testcontainers
+import org.poc.objs.api.domain.Schema
+import org.poc.objs.api.domain.SchemaDsl
+import org.poc.objs.api.match.GraphExprMatcher
 import java.util.UUID
 
 /**
  * Verify existing entity/edge persistence against real PostgreSQL, including JSONB round-trips.
  */
-@DataJpaTest
-@ImportAutoConfiguration(ObjsCoreAutoConfiguration::class)
-@Import(GraphStore::class, NamedGraphStore::class, PoolEntityReader::class)
-@Testcontainers
-class GraphStorePostgresIT {
-
-    companion object {
-        @Container
-        @JvmStatic
-        val pg = PostgreSQLContainer("postgres:17-alpine")
-
-        @DynamicPropertySource
-        @JvmStatic
-        fun pgProperties(registry: DynamicPropertyRegistry) {
-            registry.add("spring.datasource.url") { pg.jdbcUrl }
-            registry.add("spring.datasource.username") { pg.username }
-            registry.add("spring.datasource.password") { pg.password }
-            registry.add("spring.datasource.driver-class-name") { "org.postgresql.Driver" }
-            registry.add("spring.jpa.hibernate.ddl-auto") { "validate" }
-            registry.add("spring.flyway.enabled") { "false" }
-        }
-    }
-
-    @SpringBootConfiguration
-    class TestApp
-
-    @Autowired
-    lateinit var store: GraphStore
-
-    @Autowired
-    lateinit var jdbc: JdbcTemplate
-
-    @Autowired
-    lateinit var schemas: SchemaCatalog
-
-    @Autowired
-    lateinit var allowed: AllowedEdgeCatalog
-
-    @Autowired
-    lateinit var graphRepository: GraphRepository
-
-    @Autowired
-    lateinit var namedGraphs: NamedGraphStore
+class GraphStorePostgresIT : ObjsPostgresPersistenceFixture() {
 
     /** Edges require an owning graph (`graph_id` NOT NULL); every edge in this file shares [graphId]. */
     private lateinit var graphId: UUID
@@ -94,7 +39,7 @@ class GraphStorePostgresIT {
         )
         allowed.register(AllowedEdgeRule("Person", "knows", "Person", PropertiesPolicy.NONE))
         graphId = UUID.randomUUID()
-        graphRepository.save(GraphRecord(id = graphId))
+        uow.write { graphRepository.save(GraphRecord(id = graphId)) }
     }
 
     @Test
@@ -136,43 +81,43 @@ class GraphStorePostgresIT {
 
     @Test
     fun shouldHaveAnnotationsGinIndex_afterJsonbMigration() {
-        val count = jdbc.queryForObject(
+        val count = db.queryLong(
             """
             SELECT COUNT(*) FROM pg_indexes
-            WHERE tablename = 'objs_entity'
+            WHERE schemaname = current_schema()
+              AND tablename = 'objs_entity'
               AND indexname = 'idx_objs_entity_annotations_gin'
             """.trimIndent(),
-            Int::class.java,
         )
         assertThat(count).isEqualTo(1)
     }
 
     @Test
     fun shouldHaveGraphAnnotationsGinIndex_afterV2() {
-        val count = jdbc.queryForObject(
+        val count = db.queryLong(
             """
             SELECT COUNT(*) FROM pg_indexes
-            WHERE tablename = 'objs_graph'
+            WHERE schemaname = current_schema()
+              AND tablename = 'objs_graph'
               AND indexname = 'idx_objs_graph_annotations_gin'
             """.trimIndent(),
-            Int::class.java,
         )
         assertThat(count).isEqualTo(1)
     }
 
     @Test
     fun shouldHaveGraphScopedEdgeCompositeIndexes_afterV2() {
-        val names = jdbc.queryForList(
+        val names = db.queryStrings(
             """
             SELECT indexname FROM pg_indexes
-            WHERE tablename = 'objs_graph_edge'
+            WHERE schemaname = current_schema()
+              AND tablename = 'objs_graph_edge'
               AND indexname IN (
                 'idx_objs_graph_edge_graph_source',
                 'idx_objs_graph_edge_graph_target'
               )
             ORDER BY indexname
             """.trimIndent(),
-            String::class.java,
         )
         assertThat(names).containsExactly(
             "idx_objs_graph_edge_graph_source",

@@ -1,19 +1,24 @@
 package org.poc.objs.core.validation
 
+import org.poc.objs.api.validation.EntityTypeLookup
+import org.poc.objs.api.validation.PersistGate
+import org.poc.objs.api.validation.ValidationIssue
+import org.poc.objs.api.validation.ValidationResult
+
 import java.util.UUID
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.poc.objs.api.domain.AllowedEdgeRule
-import org.poc.objs.core.domain.InMemoryAllowedEdgeCatalog
+import org.poc.objs.api.domain.InMemoryAllowedEdgeCatalog
 import org.poc.objs.api.domain.Edge
 import org.poc.objs.api.domain.Entity
 import org.poc.objs.api.domain.Graph
 import org.poc.objs.api.domain.PropertiesPolicy
-import org.poc.objs.core.domain.Schema
-import org.poc.objs.core.domain.SchemaDsl
-import org.poc.objs.core.domain.InMemorySchemaCatalog
+import org.poc.objs.api.domain.Schema
+import org.poc.objs.api.domain.SchemaDsl
+import org.poc.objs.api.domain.InMemorySchemaCatalog
 
 private fun personSchema() = Schema(
     "Person",

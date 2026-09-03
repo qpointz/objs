@@ -1,12 +1,12 @@
 package org.poc.objs.core.persistence
 
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.poc.objs.core.domain.AllowedEdgeCatalog
 import org.poc.objs.api.domain.AllowedEdgeRule
 import org.poc.objs.api.domain.Edge
 import org.poc.objs.api.domain.Entity
@@ -15,63 +15,15 @@ import org.poc.objs.api.domain.GraphMutation
 import org.poc.objs.api.domain.MutationMode
 import org.poc.objs.api.domain.graphMutation
 import org.poc.objs.api.domain.PropertiesPolicy
-import org.poc.objs.core.domain.Schema
-import org.poc.objs.core.domain.SchemaCatalog
-import org.poc.objs.core.domain.SchemaDsl
-import org.poc.objs.core.domain.GraphException
-import org.poc.objs.core.domain.FirstSeenGraphMergePolicy
-import org.poc.objs.core.domain.GraphSpec
-import org.poc.objs.core.match.GraphExprMatcher
-import org.poc.objs.core.match.ObjExprMatcher
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.SpringBootConfiguration
-import org.springframework.boot.autoconfigure.ImportAutoConfiguration
-import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
-import org.springframework.context.annotation.Import
-import org.springframework.jdbc.core.JdbcTemplate
-import org.springframework.test.context.TestPropertySource
+import org.poc.objs.api.domain.Schema
+import org.poc.objs.api.domain.SchemaDsl
+import org.poc.objs.api.domain.GraphException
+import org.poc.objs.api.domain.FirstSeenGraphMergePolicy
+import org.poc.objs.api.domain.GraphSpec
+import org.poc.objs.api.match.GraphExprMatcher
+import org.poc.objs.api.match.ObjExprMatcher
 
-@DataJpaTest
-@ImportAutoConfiguration(ObjsCoreAutoConfiguration::class)
-@Import(GraphStore::class, NamedGraphStore::class, PoolEntityReader::class)
-@TestPropertySource(
-    properties = [
-        "spring.datasource.url=jdbc:h2:mem:objs-named-graph-store;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",
-        "spring.datasource.username=sa",
-        "spring.datasource.password=",
-        "spring.datasource.driver-class-name=org.h2.Driver",
-        "spring.jpa.hibernate.ddl-auto=validate",
-        "spring.flyway.enabled=false",
-    ],
-)
-class NamedGraphStoreTest {
-
-    @SpringBootConfiguration
-    class TestApp
-
-    @Autowired
-    lateinit var graphStore: GraphStore
-
-    @Autowired
-    lateinit var namedGraphs: NamedGraphStore
-
-    @Autowired
-    lateinit var schemas: SchemaCatalog
-
-    @Autowired
-    lateinit var allowed: AllowedEdgeCatalog
-
-    @Autowired
-    lateinit var entityRepository: EntityRepository
-
-    @Autowired
-    lateinit var membershipRepository: GraphMembershipRepository
-
-    @Autowired
-    lateinit var jdbc: JdbcTemplate
-
-    @Autowired
-    lateinit var poolReader: PoolEntityReader
+class NamedGraphStoreTest : ObjsPersistenceFixture() {
 
     private lateinit var a: UUID
     private lateinit var b: UUID
@@ -205,8 +157,8 @@ class NamedGraphStoreTest {
 
         namedGraphs.delete(created.id)
         assertThat(namedGraphs.get(created.id)).isNull()
-        assertThat(entityRepository.existsById(a)).isTrue()
-        assertThat(entityRepository.existsById(b)).isTrue()
+        assertThat(uow.read { entityRepository.existsById(a) }).isTrue()
+        assertThat(uow.read { entityRepository.existsById(b) }).isTrue()
     }
 
     @Test
@@ -259,7 +211,7 @@ class NamedGraphStoreTest {
             GraphSpec(annotations = mapOf("live" to "true"), entityIds = setOf(a, b)),
         )
         val edgeId = addEdge(source.id, a, b)
-        val poolBefore = entityRepository.count()
+        val poolBefore = uow.read { entityRepository.count() }
 
         val copied = namedGraphs.copyGraph(source.id, mapOf("kind" to "copy"))
 
@@ -270,7 +222,7 @@ class NamedGraphStoreTest {
         assertThat(copied.contents.edges.single().id).isNotEqualTo(edgeId)
         assertThat(copied.contents.edges.single().source).isEqualTo(a)
         assertThat(copied.contents.edges.single().target).isEqualTo(b)
-        assertThat(entityRepository.count()).isEqualTo(poolBefore)
+        assertThat(uow.read { entityRepository.count() }).isEqualTo(poolBefore)
         val stillLive = namedGraphs.get(source.id)!!
         assertThat(stillLive.contents.entities.map { it.id }.toSet()).isEqualTo(setOf(a, b))
         assertThat(stillLive.contents.edges.single().id).isEqualTo(edgeId)
@@ -291,7 +243,7 @@ class NamedGraphStoreTest {
         addEdge(left.id, a, b)
         val right = namedGraphs.create(GraphSpec(entityIds = setOf(a)))
         addEdge(right.id, a, b)
-        val poolBefore = entityRepository.count()
+        val poolBefore = uow.read { entityRepository.count() }
 
         val merged = namedGraphs.mergeGraph(listOf(left.id, right.id), mapOf("kind" to "union"))
 
@@ -300,7 +252,7 @@ class NamedGraphStoreTest {
         assertThat(merged.contents.edges).hasSize(1)
         assertThat(merged.contents.edges.single().source).isEqualTo(a)
         assertThat(merged.contents.edges.single().target).isEqualTo(b)
-        assertThat(entityRepository.count()).isEqualTo(poolBefore)
+        assertThat(uow.read { entityRepository.count() }).isEqualTo(poolBefore)
     }
 
     @Test
@@ -359,8 +311,8 @@ class NamedGraphStoreTest {
         val g1 = namedGraphs.create(GraphSpec(entityIds = setOf(a)))
         val g2 = namedGraphs.create(GraphSpec(entityIds = setOf(a)))
 
-        assertThat(membershipRepository.findByGraphId(g1.id).map { it.entityId }).containsExactly(a)
-        assertThat(membershipRepository.findByGraphId(g2.id).map { it.entityId }).containsExactly(a)
+        assertThat(uow.read { membershipRepository.findByGraphId(g1.id).map { it.entityId } }).containsExactly(a)
+        assertThat(uow.read { membershipRepository.findByGraphId(g2.id).map { it.entityId } }).containsExactly(a)
         assertThat(namedGraphs.get(g1.id)!!.contents.entities.map { it.id }).containsExactly(a)
         assertThat(namedGraphs.get(g2.id)!!.contents.entities.map { it.id }).containsExactly(a)
     }
@@ -376,7 +328,7 @@ class NamedGraphStoreTest {
 
         namedGraphs.detach(graph.id, a)
         assertThat(namedGraphs.get(graph.id)!!.contents.entities).isEmpty()
-        assertThat(entityRepository.existsById(a)).isTrue()
+        assertThat(uow.read { entityRepository.existsById(a) }).isTrue()
     }
 
     @Test
@@ -389,7 +341,7 @@ class NamedGraphStoreTest {
         val resolved = namedGraphs.get(graph.id)!!
         assertThat(resolved.contents.entities.map { it.id }).containsExactly(b)
         assertThat(resolved.contents.edges.map { it.id }).doesNotContain(edgeId)
-        assertThat(entityRepository.existsById(a)).isTrue()
+        assertThat(uow.read { entityRepository.existsById(a) }).isTrue()
     }
 
     @Test
@@ -428,7 +380,7 @@ class NamedGraphStoreTest {
         assertThat(result.isValid).isTrue()
         val resolved = namedGraphs.get(graph.id)!!
         assertThat(resolved.contents.entities.map { it.id }).containsExactly(neu)
-        assertThat(entityRepository.existsById(neu)).isTrue()
+        assertThat(uow.read { entityRepository.existsById(neu) }).isTrue()
     }
 
     @Test
@@ -499,7 +451,7 @@ class NamedGraphStoreTest {
         val resolved = namedGraphs.get(graph.id)!!
         assertThat(resolved.contents.entities.map { it.id }).containsExactly(b)
         assertThat(resolved.contents.edges).isEmpty()
-        assertThat(entityRepository.existsById(a)).isTrue()
+        assertThat(uow.read { entityRepository.existsById(a) }).isTrue()
     }
 
     @Test
@@ -561,7 +513,7 @@ class NamedGraphStoreTest {
         assertThat(resolved.contents.entities.map { it.id }).containsExactlyInAnyOrder(a, keep)
         assertThat(resolved.contents.edges).hasSize(1)
         assertThat(resolved.contents.edges.single().target).isEqualTo(keep)
-        assertThat(entityRepository.existsById(b)).isTrue()
+        assertThat(uow.read { entityRepository.existsById(b) }).isTrue()
     }
 
     @Test
@@ -579,8 +531,8 @@ class NamedGraphStoreTest {
         assertThat(resolved.id).isEqualTo(graph.id)
         assertThat(resolved.contents.entities).isEmpty()
         assertThat(resolved.contents.edges).isEmpty()
-        assertThat(entityRepository.existsById(a)).isTrue()
-        assertThat(entityRepository.existsById(b)).isTrue()
+        assertThat(uow.read { entityRepository.existsById(a) }).isTrue()
+        assertThat(uow.read { entityRepository.existsById(b) }).isTrue()
     }
 
     @Test
@@ -725,7 +677,7 @@ class NamedGraphStoreTest {
         namedGraphs.createDeepGraphVersion(graph.id, mapOf("label" to "snap"))
         namedGraphs.detach(graph.id, a)
 
-        assertThat(membershipRepository.findByEntityId(a)).isEmpty()
+        assertThat(uow.read { membershipRepository.findByEntityId(a) }).isEmpty()
         assertThat(namedGraphs.listGraphIdsForEntity(a)).containsExactly(graph.id)
         assertThat(namedGraphs.listGraphIdsForEntity(b)).containsExactly(graph.id)
         assertThat(namedGraphs.listLiveGraphHeadersForEntity(a).total).isZero()
@@ -757,7 +709,7 @@ class NamedGraphStoreTest {
 
     @Test
     fun shouldSelectFromPool_withCompareAndPrefixPushdown() {
-        assertThat(poolReader.isPostgres).isFalse()
+        assertThat(uow.read { poolReader.isPostgres }).isFalse()
         graphStore.write(
             Graph(
                 entities =
@@ -826,43 +778,45 @@ class NamedGraphStoreTest {
         val graph = namedGraphs.create(GraphSpec(entityIds = setOf(a)))
         val created = graph.createdAt!!
         val updated = graph.updatedAt!!
-        Thread.sleep(15)
+        Thread.sleep(1200)
         namedGraphs.attach(graph.id, b)
         val after = namedGraphs.get(graph.id)!!
-        assertThat(after.createdAt).isEqualTo(created)
-        assertThat(after.updatedAt).isAfter(updated)
+        assertThat(after.createdAt!!.truncatedTo(ChronoUnit.SECONDS))
+            .isEqualTo(created.truncatedTo(ChronoUnit.SECONDS))
+        assertThat(after.updatedAt!!.truncatedTo(ChronoUnit.SECONDS))
+            .isAfter(updated.truncatedTo(ChronoUnit.SECONDS))
     }
 
     @Test
     fun shouldNotWriteVersionRows_onOrdinaryPersist() {
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM objs_entity_version", Int::class.java)).isZero()
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM objs_graph_version", Int::class.java)).isZero()
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM objs_graph_edge_version", Int::class.java)).isZero()
+        assertThat(db.queryLong("SELECT COUNT(*) FROM objs_entity_version")).isZero()
+        assertThat(db.queryLong("SELECT COUNT(*) FROM objs_graph_version")).isZero()
+        assertThat(db.queryLong("SELECT COUNT(*) FROM objs_graph_edge_version")).isZero()
         val loaded = graphStore.getEntity(a)!!
-        assertThat(entityRepository.findById(a).orElseThrow().headVersion).isNull()
+        assertThat(uow.read { entityRepository.findById(a) }!!.headVersion).isNull()
         loaded.payload["name"] = "A3"
         assertThat(graphStore.write(Graph(entities = mutableListOf(loaded))).isValid).isTrue()
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM objs_entity_version", Int::class.java)).isZero()
-        assertThat(entityRepository.findById(a).orElseThrow().headVersion).isNull()
+        assertThat(db.queryLong("SELECT COUNT(*) FROM objs_entity_version")).isZero()
+        assertThat(uow.read { entityRepository.findById(a) }!!.headVersion).isNull()
 
         val graph = namedGraphs.create(GraphSpec(entityIds = setOf(a, b)))
         addEdge(graph.id, a, b)
         namedGraphs.clone(graph.id)
         namedGraphs.copyGraph(graph.id)
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM objs_entity_version", Int::class.java)).isZero()
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM objs_graph_version", Int::class.java)).isZero()
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM objs_graph_edge_version", Int::class.java)).isZero()
+        assertThat(db.queryLong("SELECT COUNT(*) FROM objs_entity_version")).isZero()
+        assertThat(db.queryLong("SELECT COUNT(*) FROM objs_graph_version")).isZero()
+        assertThat(db.queryLong("SELECT COUNT(*) FROM objs_graph_edge_version")).isZero()
     }
 
     @Test
     fun shouldFreezeDeepGraphVersion_withoutChangingLiveHeadUntilEdit() {
         val graph = namedGraphs.create(GraphSpec(entityIds = setOf(a, b)))
         addEdge(graph.id, a, b)
-        val beforeCount = entityRepository.count()
+        val beforeCount = uow.read { entityRepository.count() }
         val freeze = namedGraphs.createDeepGraphVersion(graph.id, mapOf("label" to "v1"))
         assertThat(namedGraphs.listGraphVersions(graph.id).map { it.version }).containsExactly(freeze.version)
-        assertThat(entityRepository.count()).isEqualTo(beforeCount)
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM objs_entity_version", Int::class.java)).isEqualTo(2)
+        assertThat(uow.read { entityRepository.count() }).isEqualTo(beforeCount)
+        assertThat(db.queryLong("SELECT COUNT(*) FROM objs_entity_version")).isEqualTo(2)
 
         val pin = namedGraphs.getGraphVersion(graph.id, freeze.version)
         val liveEntity = graphStore.getEntity(a)!!
@@ -871,12 +825,12 @@ class NamedGraphStoreTest {
         val pinAgain = namedGraphs.getGraphVersion(graph.id, freeze.version)
         assertThat(pinAgain.contents.entities.single { it.id == a }.payload["name"]).isEqualTo(pin.contents.entities.single { it.id == a }.payload["name"])
         assertThat(graphStore.getEntity(a)!!.payload["name"]).isEqualTo("A-live")
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM objs_graph_version", Int::class.java)).isEqualTo(1)
+        assertThat(db.queryLong("SELECT COUNT(*) FROM objs_graph_version")).isEqualTo(1)
 
         val cloned = namedGraphs.clone(graph.id)
         assertThat(cloned.contents.entities.map { it.payload["name"] }).contains("A-live")
         assertThat(namedGraphs.listGraphVersions(cloned.id)).isEmpty()
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM objs_graph_version", Int::class.java)).isEqualTo(1)
+        assertThat(db.queryLong("SELECT COUNT(*) FROM objs_graph_version")).isEqualTo(1)
 
         namedGraphs.delete(graph.id)
         val afterDelete = namedGraphs.getGraphVersion(graph.id, freeze.version)

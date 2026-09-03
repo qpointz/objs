@@ -4,23 +4,12 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.poc.objs.api.domain.AllowedEdgeRule
-import org.poc.objs.core.domain.AllowedEdgeCatalog
 import org.poc.objs.api.domain.EdgeCardinality
 import org.poc.objs.api.domain.PropertiesPolicy
-import org.poc.objs.core.domain.Schema
-import org.poc.objs.core.domain.SchemaCatalog
-import org.poc.objs.core.domain.SchemaDsl
-import org.poc.objs.core.domain.SchemaUsage
-import org.poc.objs.core.typed.PayloadMapper
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.SpringBootConfiguration
-import org.springframework.boot.autoconfigure.ImportAutoConfiguration
-import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
-import org.springframework.test.context.DynamicPropertyRegistry
-import org.springframework.test.context.DynamicPropertySource
-import org.testcontainers.containers.PostgreSQLContainer
-import org.testcontainers.junit.jupiter.Container
-import org.testcontainers.junit.jupiter.Testcontainers
+import org.poc.objs.api.domain.Schema
+import org.poc.objs.api.domain.SchemaDsl
+import org.poc.objs.api.domain.SchemaUsage
+import org.poc.objs.core.typed.DefaultPayloadMapper
 
 private fun schema(type: String, version: String, title: String = type) =
     Schema(type, version, SchemaDsl.obj(title, "$title payload"))
@@ -29,43 +18,7 @@ private fun schema(type: String, version: String, title: String = type) =
  * Integration tests for [JpaSchemaCatalog] and [JpaAllowedEdgeCatalog] against real
  * PostgreSQL via Testcontainers.
  */
-@DataJpaTest
-@ImportAutoConfiguration(ObjsCoreAutoConfiguration::class)
-@Testcontainers
-class JpaCatalogsIT {
-
-    companion object {
-        @Container
-        @JvmStatic
-        val pg = PostgreSQLContainer("postgres:17-alpine")
-
-        @DynamicPropertySource
-        @JvmStatic
-        fun pgProperties(registry: DynamicPropertyRegistry) {
-            registry.add("spring.datasource.url") { pg.jdbcUrl }
-            registry.add("spring.datasource.username") { pg.username }
-            registry.add("spring.datasource.password") { pg.password }
-            registry.add("spring.datasource.driver-class-name") { "org.postgresql.Driver" }
-            registry.add("spring.jpa.hibernate.ddl-auto") { "validate" }
-            registry.add("spring.flyway.enabled") { "false" }
-        }
-    }
-
-    @SpringBootConfiguration
-    class TestApp
-
-    @Autowired
-    lateinit var schemaCatalog: SchemaCatalog
-
-    @Autowired
-    lateinit var edgeCatalog: AllowedEdgeCatalog
-
-    @Autowired
-    lateinit var schemaRepo: SchemaCatalogRepository
-
-    @Autowired
-    lateinit var edgeRuleRepo: AllowedEdgeRuleRepository
-
+class JpaCatalogsIT : ObjsPostgresPersistenceFixture() {
 
     @BeforeEach
     fun reset() {
@@ -100,7 +53,7 @@ class JpaCatalogsIT {
         assertThat(schemaCatalog.get("Person", "1")!!.usage).isEqualTo(SchemaUsage.ENTITY)
         assertThat(schemaCatalog.contains("Person", "1")).isTrue()
         assertThat(schemaCatalog.types()).contains("Person")
-        assertThat(schemaRepo.count()).isEqualTo(1)
+        assertThat(uow.read { schemaRepo.count() }).isEqualTo(1)
     }
 
     @Test
@@ -134,17 +87,19 @@ class JpaCatalogsIT {
     @Test
     fun shouldHydrate() {
         // Insert directly via repo to ensure the row is in the DB
-        schemaRepo.save(
-            SchemaCatalogRecord(
-                type = "H",
-                version = "1",
-                definitionDoc = PayloadMapper.toMap(schema("H", "1").contentSchema),
-                usage = "ENTITY",
-            ),
-        )
-        schemaRepo.flush()
+        uow.write {
+            schemaRepo.save(
+                SchemaCatalogRecord(
+                    type = "H",
+                    version = "1",
+                    definitionDoc = DefaultPayloadMapper.toMap(schema("H", "1").contentSchema),
+                    usage = "ENTITY",
+                ),
+            )
+            schemaRepo.flush()
+        }
         // Simulate restart: create a fresh catalog and hydrate from the same repo
-        val fresh = JpaSchemaCatalog(schemaRepo)
+        val fresh = JpaSchemaCatalog(schemaRepo, uow)
         assertThat(fresh.get("H", "1")).isNull() // cache empty before hydrate
         fresh.hydrate()
         assertThat(fresh.get("H", "1")).isNotNull
@@ -172,7 +127,7 @@ class JpaCatalogsIT {
         assertThat(rule.propertiesSchemaType).isEqualTo("CanonicalEdge")
         assertThat(rule.propertiesSchemaVersion).isEqualTo("1.0.0")
         assertThat(rule.cardinality).isEqualTo(EdgeCardinality.UNSPECIFIED)
-        assertThat(edgeRuleRepo.count()).isEqualTo(1)
+        assertThat(uow.read { edgeRuleRepo.count() }).isEqualTo(1)
     }
 
     @Test
@@ -197,9 +152,13 @@ class JpaCatalogsIT {
             .isEqualTo(EdgeCardinality.ONE_TO_ONE)
         assertThat(edgeCatalog.find("Component", "DEPENDS_ON", "Component")!!.cardinality)
             .isEqualTo(EdgeCardinality.ONE_TO_MANY)
-        assertThat(edgeRuleRepo.findById(
-            org.poc.objs.core.persistence.AllowedEdgeRuleId("Product", "CONTAINS", "Component"),
-        ).get().cardinality).isEqualTo(EdgeCardinality.ONE_TO_ONE)
+        assertThat(
+            uow.read {
+                edgeRuleRepo.findById(
+                    AllowedEdgeRuleId("Product", "CONTAINS", "Component"),
+                )!!.cardinality
+            },
+        ).isEqualTo(EdgeCardinality.ONE_TO_ONE)
     }
 
     @Test
@@ -241,11 +200,13 @@ class JpaCatalogsIT {
 
     @Test
     fun shouldHydrateEdges() {
-        edgeRuleRepo.save(AllowedEdgeRuleRecord(
-            sourceType = "X", role = "y", targetType = "Z",
-        ))
-        edgeRuleRepo.flush()
-        val fresh = JpaAllowedEdgeCatalog(edgeRuleRepo)
+        uow.write {
+            edgeRuleRepo.save(AllowedEdgeRuleRecord(
+                sourceType = "X", role = "y", targetType = "Z",
+            ))
+            edgeRuleRepo.flush()
+        }
+        val fresh = JpaAllowedEdgeCatalog(edgeRuleRepo, uow)
         assertThat(fresh.find("X", "y", "Z")).isNull()
         fresh.hydrate()
         assertThat(fresh.find("X", "y", "Z")).isNotNull

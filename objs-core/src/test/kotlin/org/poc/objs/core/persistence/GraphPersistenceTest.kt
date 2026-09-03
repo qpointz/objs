@@ -3,43 +3,12 @@ package org.poc.objs.core.persistence
 import java.util.UUID
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.SpringBootConfiguration
-import org.springframework.boot.autoconfigure.ImportAutoConfiguration
-import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
-import org.springframework.test.context.TestPropertySource
 
-@DataJpaTest
-@ImportAutoConfiguration(ObjsCoreAutoConfiguration::class)
-@TestPropertySource(
-    properties = [
-        "spring.datasource.url=jdbc:h2:mem:objs-graph-persistence;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",
-        "spring.datasource.username=sa",
-        "spring.datasource.password=",
-        "spring.datasource.driver-class-name=org.h2.Driver",
-        "spring.jpa.hibernate.ddl-auto=validate",
-        "spring.flyway.enabled=false",
-    ],
-)
-class GraphPersistenceTest {
-
-    @SpringBootConfiguration
-    class TestApp
-
-    @Autowired
-    lateinit var entities: EntityRepository
-
-    @Autowired
-    lateinit var edges: EdgeRepository
-
-    @Autowired
-    lateinit var graphs: GraphRepository
-
-    @Autowired
-    lateinit var memberships: GraphMembershipRepository
+class GraphPersistenceTest : ObjsPersistenceFixture() {
 
     @Test
     fun shouldCascadeEntityMembership_whenEntityDeleted() {
+        uow.write {
         val e1 = UUID.randomUUID()
         val e2 = UUID.randomUUID()
         entities.saveAll(
@@ -72,13 +41,16 @@ class GraphPersistenceTest {
 
         entities.deleteById(e1)
         entities.flush()
+        uow.entityManager().clear()
 
         assertThat(memberships.findByGraphId(sgId).map { it.entityId }).containsExactly(e2)
-        assertThat(graphs.findById(sgId)).isPresent
+        assertThat(graphs.findById(sgId)).isNotNull
+        }
     }
 
     @Test
     fun shouldCascadeEdgeDelete_whenGraphDeleted() {
+        uow.write {
         val e1 = UUID.randomUUID()
         val e2 = UUID.randomUUID()
         entities.saveAll(
@@ -101,14 +73,17 @@ class GraphPersistenceTest {
 
         graphs.deleteById(sgId)
         graphs.flush()
+        uow.entityManager().clear()
 
         assertThat(edges.existsById(edgeId)).isFalse()
         assertThat(entities.existsById(e1)).isTrue()
         assertThat(entities.existsById(e2)).isTrue()
+        }
     }
 
     @Test
     fun shouldCascadeEdgeDelete_whenEndpointEntityDeleted() {
+        uow.write {
         val e1 = UUID.randomUUID()
         val e2 = UUID.randomUUID()
         entities.saveAll(
@@ -124,13 +99,16 @@ class GraphPersistenceTest {
 
         edges.deleteById(edgeId)
         edges.flush()
+        uow.entityManager().clear()
 
         assertThat(edges.findByGraphId(sgId)).isEmpty()
         assertThat(entities.existsById(e1)).isTrue()
+        }
     }
 
     @Test
     fun shouldCascadeMembership_whenGraphDeleted_withoutDeletingGraphObjects() {
+        uow.write {
         val e1 = UUID.randomUUID()
         entities.save(
             EntityRecord(
@@ -147,9 +125,11 @@ class GraphPersistenceTest {
 
         graphs.deleteById(sgId)
         graphs.flush()
+        uow.entityManager().clear()
 
-        assertThat(graphs.findById(sgId)).isEmpty
+        assertThat(graphs.findById(sgId)).isNull()
         assertThat(memberships.findByGraphId(sgId)).isEmpty()
-        assertThat(entities.findById(e1)).isPresent
+        assertThat(entities.findById(e1)).isNotNull
+        }
     }
 }

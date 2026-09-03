@@ -2,7 +2,7 @@ package org.poc.objs.core.persistence
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import org.poc.objs.core.typed.PayloadMapper
+import org.poc.objs.core.typed.DefaultPayloadMapper
 
 class LazyJsonMapTest {
 
@@ -29,7 +29,7 @@ class LazyJsonMapTest {
     @Test
     fun shouldSerializeLazyMapsLikeOrdinaryMaps() {
         val map = LazyJsonMap.annotations("""{"env":"test"}""")
-        val json = PayloadMapper.mapper.writeValueAsString(map)
+        val json = DefaultPayloadMapper.mapper.writeValueAsString(map)
         assertThat(json).isEqualTo("""{"env":"test"}""")
     }
 

@@ -1,16 +1,19 @@
 package org.poc.objs.core.seed
 
+import org.poc.objs.api.seed.*
+
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.poc.objs.api.domain.AllowedEdgeRule
 import org.poc.objs.api.domain.PropertiesPolicy
-import org.poc.objs.core.domain.Schema
-import org.poc.objs.core.domain.SchemaDsl
-import org.poc.objs.core.domain.SchemaUsage
-import org.poc.objs.core.domain.InMemoryAllowedEdgeCatalog
-import org.poc.objs.core.domain.InMemorySchemaCatalog
+import org.poc.objs.api.domain.Schema
+import org.poc.objs.api.domain.SchemaDsl
+import org.poc.objs.api.domain.SchemaUsage
+import org.poc.objs.api.domain.InMemoryAllowedEdgeCatalog
+import org.poc.objs.api.domain.InMemorySchemaCatalog
+import org.poc.objs.core.persistence.tx.PassthroughUnitOfWork
 
 class SeedImporterTest {
     private lateinit var schemas: InMemorySchemaCatalog
@@ -27,7 +30,7 @@ class SeedImporterTest {
         objectHandler = ObjectSchemaSeedHandler(schemas)
         ruleHandler = AllowedEdgeRuleSeedHandler(rules)
         // Graph apply needs GraphStore; covered by SeedImporterIT. Unit tests cover schema/rule kinds.
-        importer = SeedImporter(listOf(objectHandler, ruleHandler))
+        importer = SeedImporter(listOf(objectHandler, ruleHandler), PassthroughUnitOfWork())
         serializer = CanonicalSeedSerializer(
             schemas,
             rules,
@@ -319,7 +322,7 @@ class SeedImporterTest {
                 )
             }
         }
-        val withCustom = SeedImporter(listOf(objectHandler, ruleHandler, custom))
+        val withCustom = SeedImporter(listOf(objectHandler, ruleHandler, custom), PassthroughUnitOfWork())
         val result = withCustom.importYaml(
             """
             apiVersion: objs.poc.org/v1
@@ -351,7 +354,7 @@ class SeedImporterTest {
             override fun apply(parsed: ParsedSeedDocument): SeedDocumentResult = error("unused")
         }
         assertThatThrownBy {
-            SeedImporter(listOf(objectHandler, dup))
+            SeedImporter(listOf(objectHandler, dup), PassthroughUnitOfWork())
         }.isInstanceOf(IllegalArgumentException::class.java)
             .hasMessageContaining(SEED_KIND_OBJECT_SCHEMA)
     }

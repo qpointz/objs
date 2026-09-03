@@ -6,62 +6,26 @@ import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.assertj.core.api.Assertions.catchThrowableOfType
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.poc.objs.core.domain.AllowedEdgeCatalog
 import org.poc.objs.api.domain.AllowedEdgeRule
 import org.poc.objs.api.domain.Edge
 import org.poc.objs.api.domain.Entity
 import org.poc.objs.api.domain.Graph
 import org.poc.objs.api.domain.PropertiesPolicy
-import org.poc.objs.core.domain.Schema
-import org.poc.objs.core.domain.SchemaCatalog
-import org.poc.objs.core.domain.SchemaDsl
-import org.poc.objs.core.domain.GraphSpec
-import org.poc.objs.core.match.GraphExprMatcher
-import org.poc.objs.core.match.GraphIdsMatcher
-import org.poc.objs.core.match.MatcherDsl
-import org.poc.objs.core.match.MatcherFormat
-import org.poc.objs.core.match.ObjExprMatcher
-import org.poc.objs.core.validation.ValidationException
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.SpringBootConfiguration
-import org.springframework.boot.autoconfigure.ImportAutoConfiguration
-import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
-import org.springframework.context.annotation.Import
-import org.springframework.test.context.TestPropertySource
+import org.poc.objs.api.domain.Schema
+import org.poc.objs.api.domain.SchemaDsl
+import org.poc.objs.api.domain.GraphSpec
+import org.poc.objs.api.match.GraphExprMatcher
+import org.poc.objs.api.match.GraphIdsMatcher
+import org.poc.objs.api.match.MatcherDsl
+import org.poc.objs.api.match.MatcherFormat
+import org.poc.objs.api.match.ObjExprMatcher
+import org.poc.objs.api.validation.ValidationException
 
 /**
  * `graph-expr` / `obj-expr` selection through [GraphStore.select] /
  * [GraphStore.selectInGraph], including the G-G16 fail-closed guard.
  */
-@DataJpaTest
-@ImportAutoConfiguration(ObjsCoreAutoConfiguration::class)
-@Import(GraphStore::class, NamedGraphStore::class, PoolEntityReader::class)
-@TestPropertySource(
-    properties = [
-        "spring.datasource.url=jdbc:h2:mem:objs-graph-match;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",
-        "spring.datasource.username=sa",
-        "spring.datasource.password=",
-        "spring.datasource.driver-class-name=org.h2.Driver",
-        "spring.jpa.hibernate.ddl-auto=validate",
-        "spring.flyway.enabled=false",
-    ],
-)
-class GraphMatcherSelectTest {
-
-    @SpringBootConfiguration
-    class TestApp
-
-    @Autowired
-    lateinit var graphStore: GraphStore
-
-    @Autowired
-    lateinit var namedGraphs: NamedGraphStore
-
-    @Autowired
-    lateinit var schemas: SchemaCatalog
-
-    @Autowired
-    lateinit var allowed: AllowedEdgeCatalog
+class GraphMatcherSelectTest : ObjsPersistenceFixture() {
 
     private val dsl = MatcherDsl.create()
 

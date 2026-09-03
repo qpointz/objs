@@ -6,61 +6,22 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.catchThrowableOfType
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.poc.objs.core.domain.AllowedEdgeCatalog
 import org.poc.objs.api.domain.AllowedEdgeRule
 import org.poc.objs.api.domain.Edge
 import org.poc.objs.api.domain.Entity
 import org.poc.objs.api.domain.Graph
 import org.poc.objs.api.domain.GraphMutation
-import org.poc.objs.core.domain.GraphSpec
+import org.poc.objs.api.domain.GraphSpec
 import org.poc.objs.api.domain.graphMutation
-import org.poc.objs.core.domain.PageRequest
+import org.poc.objs.api.domain.PageRequest
 import org.poc.objs.api.domain.PropertiesPolicy
-import org.poc.objs.core.domain.Schema
-import org.poc.objs.core.domain.SchemaCatalog
-import org.poc.objs.core.domain.SchemaDsl
-import org.poc.objs.core.match.AllGraphsMatcher
-import org.poc.objs.core.match.ObjExprMatcher
-import org.poc.objs.core.validation.ValidationException
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.SpringBootConfiguration
-import org.springframework.boot.autoconfigure.ImportAutoConfiguration
-import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
-import org.springframework.context.annotation.Import
-import org.springframework.test.context.TestPropertySource
+import org.poc.objs.api.domain.Schema
+import org.poc.objs.api.domain.SchemaDsl
+import org.poc.objs.api.match.AllGraphsMatcher
+import org.poc.objs.api.match.ObjExprMatcher
+import org.poc.objs.api.validation.ValidationException
 
-@DataJpaTest
-@ImportAutoConfiguration(ObjsCoreAutoConfiguration::class)
-@Import(GraphStore::class, NamedGraphStore::class, PoolEntityReader::class)
-@TestPropertySource(
-    properties = [
-        "spring.datasource.url=jdbc:h2:mem:objs;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",
-        "spring.datasource.username=sa",
-        "spring.datasource.password=",
-        "spring.datasource.driver-class-name=org.h2.Driver",
-        "spring.jpa.hibernate.ddl-auto=validate",
-        "spring.flyway.enabled=false",
-    ],
-)
-class GraphStoreTest {
-
-    @SpringBootConfiguration
-    class TestApp
-
-    @Autowired
-    lateinit var store: GraphStore
-
-    @Autowired
-    lateinit var schemas: SchemaCatalog
-
-    @Autowired
-    lateinit var allowed: AllowedEdgeCatalog
-
-    @Autowired
-    lateinit var graphRepository: GraphRepository
-
-    @Autowired
-    lateinit var namedGraphs: NamedGraphStore
+class GraphStoreTest : ObjsPersistenceFixture() {
 
     /** Edges require an owning graph (`graph_id` NOT NULL); every edge in this file shares [graphId]. */
     private lateinit var graphId: UUID
@@ -82,7 +43,7 @@ class GraphStoreTest {
         )
         allowed.register(AllowedEdgeRule("Person", "knows", "Person", PropertiesPolicy.NONE))
         graphId = UUID.randomUUID()
-        graphRepository.save(GraphRecord(id = graphId))
+        uow.write { graphDao.save(GraphRecord(id = graphId)) }
     }
 
     @Test

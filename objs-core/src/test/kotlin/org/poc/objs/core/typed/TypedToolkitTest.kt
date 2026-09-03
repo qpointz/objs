@@ -6,9 +6,9 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.poc.objs.api.domain.AllowedEdgeRule
 import org.poc.objs.api.domain.PropertiesPolicy
-import org.poc.objs.core.domain.SchemaDsl
-import org.poc.objs.core.domain.InMemoryAllowedEdgeCatalog
-import org.poc.objs.core.domain.InMemorySchemaCatalog
+import org.poc.objs.api.domain.SchemaDsl
+import org.poc.objs.api.domain.InMemoryAllowedEdgeCatalog
+import org.poc.objs.api.domain.InMemorySchemaCatalog
 import tools.jackson.databind.json.JsonMapper
 
 class TypedToolkitTest {
