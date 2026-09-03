@@ -132,10 +132,11 @@ open class JpaSchemaCatalog(
     private fun ensureFresh() {
         if (uow.isActive()) return
         if (isTtlDisabled(properties.cacheTtl)) return
+        // Loader must not call markFresh()/put — nested ConcurrentHashMap update throws.
         freshness.get(FRESHNESS_KEY) {
             uow.read {
                 synchronized(lock) {
-                    hydrateUnlocked()
+                    reloadSnapshot()
                 }
             }
             true
@@ -143,11 +144,15 @@ open class JpaSchemaCatalog(
     }
 
     private fun hydrateUnlocked() {
+        reloadSnapshot()
+        markFresh()
+    }
+
+    private fun reloadSnapshot() {
         cache.clear()
         dao.findAll().forEach { record ->
             cache.register(record.toDomain())
         }
-        markFresh()
     }
 
     private fun markFresh() {
@@ -254,10 +259,11 @@ open class JpaAllowedEdgeCatalog(
     private fun ensureFresh() {
         if (uow.isActive()) return
         if (isTtlDisabled(properties.cacheTtl)) return
+        // Loader must not call markFresh()/put — nested ConcurrentHashMap update throws.
         freshness.get(FRESHNESS_KEY) {
             uow.read {
                 synchronized(lock) {
-                    hydrateUnlocked()
+                    reloadSnapshot()
                 }
             }
             true
@@ -265,11 +271,15 @@ open class JpaAllowedEdgeCatalog(
     }
 
     private fun hydrateUnlocked() {
+        reloadSnapshot()
+        markFresh()
+    }
+
+    private fun reloadSnapshot() {
         cache.clear()
         dao.findAll().forEach { record ->
             cache.register(record.toDomain())
         }
-        markFresh()
     }
 
     private fun markFresh() {

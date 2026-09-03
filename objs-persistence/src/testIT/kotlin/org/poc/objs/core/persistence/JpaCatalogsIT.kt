@@ -10,13 +10,14 @@ import org.poc.objs.api.domain.Schema
 import org.poc.objs.api.domain.SchemaDsl
 import org.poc.objs.api.domain.SchemaUsage
 import org.poc.objs.core.typed.DefaultPayloadMapper
+import java.time.Duration
 
 private fun schema(type: String, version: String, title: String = type) =
     Schema(type, version, SchemaDsl.obj(title, "$title payload"))
 
 /**
- * Integration tests for [JpaSchemaCatalog] and [JpaAllowedEdgeCatalog] against real
- * PostgreSQL via Testcontainers.
+ * Integration tests for [JpaSchemaCatalog] and [JpaAllowedEdgeCatalog] against real PostgreSQL
+ * ([ObjsPostgresPersistenceFixture]: CI JDBC service or local Testcontainers).
  */
 class JpaCatalogsIT : ObjsPostgresPersistenceFixture() {
 
@@ -98,8 +99,12 @@ class JpaCatalogsIT : ObjsPostgresPersistenceFixture() {
             )
             schemaRepo.flush()
         }
-        // Simulate restart: create a fresh catalog and hydrate from the same repo
-        val fresh = JpaSchemaCatalog(schemaRepo, uow)
+        // Simulate restart: empty snapshot + explicit hydrate (TTL off so get does not auto-reload)
+        val fresh = JpaSchemaCatalog(
+            schemaRepo,
+            uow,
+            ObjsCatalogProperties(cacheTtl = Duration.ZERO),
+        )
         assertThat(fresh.get("H", "1")).isNull() // cache empty before hydrate
         fresh.hydrate()
         assertThat(fresh.get("H", "1")).isNotNull
@@ -206,7 +211,11 @@ class JpaCatalogsIT : ObjsPostgresPersistenceFixture() {
             ))
             edgeRuleRepo.flush()
         }
-        val fresh = JpaAllowedEdgeCatalog(edgeRuleRepo, uow)
+        val fresh = JpaAllowedEdgeCatalog(
+            edgeRuleRepo,
+            uow,
+            ObjsCatalogProperties(cacheTtl = Duration.ZERO),
+        )
         assertThat(fresh.find("X", "y", "Z")).isNull()
         fresh.hydrate()
         assertThat(fresh.find("X", "y", "Z")).isNotNull
