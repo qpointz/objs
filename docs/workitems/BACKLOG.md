@@ -39,6 +39,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | C-22 | Graph mutate MERGE vs REPLACE (stable id rebuild + history) | feature | done | [`completed/20260826-graph-mutate-replace/`](completed/20260826-graph-mutate-replace/STORY.md) |
 | C-23 | Spring-free `objs-api` + schema-driven entity/edge codegen | feature | done | [`completed/20260828-objs-api-codegen/`](completed/20260828-objs-api-codegen/STORY.md) |
 | C-24 | Foundation policy + suites (`objs-policy-*`); M:N hierarchy, applicability, folder roll-up; Drools-first; design first | feature | planned | [`planned/objs-policy/`](planned/objs-policy/STORY.md), [`docs/design/policy/`](../design/policy/) |
+| C-25 | Split `objs-core` (Spring-free persistence) + `objs-autoconfigure`; expand `objs-api` model | refactoring | in-progress | [`in-progress/objs-core-spring-split/`](in-progress/objs-core-spring-split/STORY.md) |
 
 ---
 
@@ -89,5 +90,5 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 |--------|------:|
 | backlog | 2 |
 | planned | 2 |
-| in-progress | 0 |
-| done | 32 |
+| in-progress | 1 |
+| done | 40 |

@@ -56,3 +56,5 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 
 - [`store-text-search`](planned/store-text-search/STORY.md) — FB-3 contains/`q`; design first (C-20). Does not block C-18.
 - [`objs-policy`](planned/objs-policy/STORY.md) — Foundation policy + **suites** (M:N, hierarchy, folder roll-up); applicability SPI; Drools-first; design first (C-24).
+- [`objs-core-spring-split`](in-progress/objs-core-spring-split/STORY.md) — Spring-free `:objs-core` persistence + `:objs-autoconfigure`; expand `:objs-api` (C-25). WI-000…WI-007 done (story still in-progress until user asks to close).
+

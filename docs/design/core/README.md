@@ -1,39 +1,37 @@
-# objs-core (Kotlin)
+# objs-core / objs-api / objs-autoconfigure
 
-**Module:** `:objs-core`  
-**Packages:** `org.poc.objs.core.*`
+**Modules:** `:objs-api` · `:objs-core` (persistence role) · `:objs-autoconfigure` (Boot adapter)  
+**Story:** [C-25 objs-core-spring-split](../../workitems/in-progress/objs-core-spring-split/STORY.md) · [GAPS](../../workitems/in-progress/objs-core-spring-split/GAPS.md) · [spring-split.md](spring-split.md)
 
 ## Role
 
-Entity SDK + validation + JPA/Flyway persistence for the entity store.
+| Module | Owns |
+|--------|------|
+| `:objs-api` | Foundational model: graph primitives, schemas/InMemory catalogs, matcher contract + in-memory/JEXL, validation **contracts**, seed **parse**, store **ports** |
+| `:objs-core` | Persistence: JPA/DAOs, store **impls**, SQL pushdown, Flyway SQL, seed **apply**/ledger, networknt `Validator` **impl** — **no Spring** |
+| `:objs-autoconfigure` | Tiny Boot wiring: `DataSource`/`EntityManager` → beans, `@ConfigurationProperties`, Spring UoW, seed startup |
 
-## Package map
+Gradle name `:objs-core` is kept this story; rename to `:objs-persistence` is follow-up (G-X7).
 
-| Package | Types | Responsibility |
-|---------|-------|----------------|
-| `org.poc.objs.core` | `ObjsCore` | Module marker |
-| `…domain` | `BoMEntity`, `BoMEdge`, `BoMGraph`, `BoMGraphContents`, `BoMSchema*`, `BoAllowedEdge*` | In-memory domain + catalogs |
-| `…match` | `BoMMatcher`, `BoMSourceCapableMatcher`, `BoMObjExprMatcher`, `BoMGraphExprMatcher`, `BoMAllGraphsMatcher`, `BoMChainedMatcher` | Matcher DSL + candidate sources |
-| `…validation` | `BoMValidator`, `BoMPersistGate`, `BoMValidationResult` | Schema + allow-list; two-stage persist gate |
-| `…persistence` | `BoMEntityRecord`, `BoMEdgeRecord`, `BoMGraphRecord`, repos, `BoMGraphStore`, `BoMNamedGraphStore`, `ObjsFlywayAutoConfiguration` | JPA + two-line Flyway + store facade |
+## Package map (during / after C-25)
+
+| Location | Responsibility |
+|----------|----------------|
+| `org.poc.objs.api.*` | Model + ports |
+| `org.poc.objs.core.persistence.*` | JPA records, DAOs, stores, Flyway helpers |
+| `org.poc.objs.core.*` (shrinking) | Persistence-only leftovers until package tidy |
+| `org.poc.objs.autoconfigure.*` | Boot autoconfig |
 
 ## Key behaviours
 
-- **SDK:** construct any `BoMGraph` in memory without validation.
-- **Schemas:** PostgreSQL-authoritative `BoMSchemaCatalog` keyed by `(type, version)`.
-- **Allow-list:** `BoMAllowedEdgeCatalog` with properties policy `NONE` | `SCHEMA`.
-- **Persist gate:** stage 1 entities vs schema → assign missing `UUID.randomUUID()` → stage 2 edges vs payload∪store.
-- **Id rule:** no id → create (`UUID.randomUUID()`); id not in store → create with client id; id in store → update.
-- **DB:** objs-core applies `bom_*` via its own Flyway (`flyway_schema_history_objs`, vendor SQL in
-  the JAR). Derived apps depend on `objs-core` and keep an independent Boot Flyway `V1` for app
-  tables — see [`../graph/persistence.md`](../graph/persistence.md) and
-  [`docs/workitems/RULES.md`](../../workitems/RULES.md) **Flyway (library + derived apps)**. Tests run
-  on H2 and Testcontainers PostgreSQL.
+- **SDK / model:** construct graphs, match in memory, hold catalogs — prefer `:objs-api`.
+- **Persist:** DAOs + internal UoW; Boot apps never open TX themselves.
+- **DB:** objs Flyway (`flyway_schema_history_objs`, vendor SQL in core JAR) before Boot Flyway — see [`../graph/persistence.md`](../graph/persistence.md).
 
 ## Tests
 
-- Domain / subgraph / validator / persist-gate unit tests (no Spring)
-- `BoMGraphStoreTest` — `@DataJpaTest` + objs Flyway + H2 round-trip and batch validation
-- `ObjsFlywayVendorTest` / `ObjsFlywayAutoConfigurationTest` — `{vendor}` from JDBC URL; Boot Flyway off
+- Model / matcher unit tests → `:objs-api`
+- Persistence harness (EMF + objs Flyway + EM UoW) → `:objs-core`
+- Boot slices → `:objs-autoconfigure`
 
 See also [`../graph/`](../graph/README.md).
