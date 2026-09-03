@@ -7,17 +7,18 @@ import org.mockito.Mockito.mock
 import org.poc.objs.api.domain.AllowedEdgeRule
 import org.poc.objs.api.domain.EdgeCardinality
 import org.poc.objs.api.domain.PropertiesPolicy
-import org.poc.objs.core.domain.Schema
-import org.poc.objs.core.domain.SchemaDsl
-import org.poc.objs.core.domain.SchemaUsage
-import org.poc.objs.core.domain.FullCatalogJsonSchemaExporter
-import org.poc.objs.core.domain.InMemoryAllowedEdgeCatalog
-import org.poc.objs.core.domain.InMemorySchemaCatalog
+import org.poc.objs.api.domain.Schema
+import org.poc.objs.api.domain.SchemaDsl
+import org.poc.objs.api.domain.SchemaUsage
+import org.poc.objs.api.domain.FullCatalogJsonSchemaExporter
+import org.poc.objs.api.domain.InMemoryAllowedEdgeCatalog
+import org.poc.objs.api.domain.InMemorySchemaCatalog
 import org.poc.objs.core.persistence.GraphStore
 import org.poc.objs.core.seed.AllowedEdgeRuleSeedHandler
 import org.poc.objs.core.seed.CanonicalSeedSerializer
 import org.poc.objs.core.seed.GraphSeedHandler
 import org.poc.objs.core.seed.ObjectSchemaSeedHandler
+import org.poc.objs.core.persistence.tx.PassthroughUnitOfWork
 import org.poc.objs.core.seed.SeedImporter
 import org.springframework.http.MediaType
 import org.springframework.http.converter.StringHttpMessageConverter
@@ -48,7 +49,7 @@ class ObjsRegistryControllerTest {
         edgeRules = InMemoryAllowedEdgeCatalog()
         val objectHandler = ObjectSchemaSeedHandler(schemas)
         val ruleHandler = AllowedEdgeRuleSeedHandler(edgeRules)
-        val importer = SeedImporter(listOf(objectHandler, ruleHandler))
+        val importer = SeedImporter(listOf(objectHandler, ruleHandler), PassthroughUnitOfWork())
         val serializer = CanonicalSeedSerializer(
             schemas,
             edgeRules,
@@ -61,7 +62,7 @@ class ObjsRegistryControllerTest {
                 ObjsRegistryController(
                     schemas,
                     edgeRules,
-                    org.poc.objs.core.domain.CatalogSupport(schemas, edgeRules),
+                    org.poc.objs.api.domain.CatalogSupport(schemas, edgeRules),
                     importer,
                     serializer,
                     FullCatalogJsonSchemaExporter(schemas, edgeRules),

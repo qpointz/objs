@@ -11,7 +11,7 @@ import org.poc.objs.assetrepository.service.CollectionService;
 import org.poc.objs.assetrepository.service.ObjectWriteService;
 import org.poc.objs.assetrepository.service.SchemaQueryService;
 import org.poc.objs.assetrepository.web.dto.ApiDtos;
-import org.poc.objs.core.domain.Schema;
+import org.poc.objs.api.domain.Schema;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;

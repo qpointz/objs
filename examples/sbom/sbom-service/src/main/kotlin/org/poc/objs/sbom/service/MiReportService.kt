@@ -1,7 +1,7 @@
 package org.poc.objs.sbom.service
 
 import org.poc.objs.api.domain.Entity
-import org.poc.objs.core.match.GraphIdsMatcher
+import org.poc.objs.api.match.GraphIdsMatcher
 import org.poc.objs.core.persistence.GraphStore
 import org.poc.objs.core.persistence.NamedGraphStore
 import org.poc.objs.gremlin.core.GremlinEngine

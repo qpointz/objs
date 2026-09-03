@@ -1,19 +1,19 @@
 package org.poc.objs.sbom.service
 
-import org.poc.objs.core.domain.AllowedEdgeCatalog
+import org.poc.objs.api.domain.AllowedEdgeCatalog
 import org.poc.objs.api.domain.Graph
 import org.poc.objs.api.domain.GraphMutation
-import org.poc.objs.core.domain.SchemaCatalog
+import org.poc.objs.api.domain.SchemaCatalog
 import org.poc.objs.api.domain.GraphContents
-import org.poc.objs.core.domain.GraphSpec
-import org.poc.objs.core.match.ChainedMatcher
-import org.poc.objs.core.match.GraphExprMatcher
-import org.poc.objs.core.match.Matcher
-import org.poc.objs.core.match.ObjExprMatcher
+import org.poc.objs.api.domain.GraphSpec
+import org.poc.objs.api.match.ChainedMatcher
+import org.poc.objs.api.match.GraphExprMatcher
+import org.poc.objs.api.match.Matcher
+import org.poc.objs.api.match.ObjExprMatcher
 import org.poc.objs.core.persistence.GraphStore
 import org.poc.objs.core.persistence.NamedGraphStore
 import org.poc.objs.api.typed.mergeAnnotations
-import org.poc.objs.core.validation.ValidationResult
+import org.poc.objs.api.validation.ValidationResult
 import org.poc.objs.sbom.annotations.SbomAnnotationKeys
 import org.poc.objs.sbom.annotations.SbomContext
 import org.poc.objs.sbom.model.SbomApplicationCatalog

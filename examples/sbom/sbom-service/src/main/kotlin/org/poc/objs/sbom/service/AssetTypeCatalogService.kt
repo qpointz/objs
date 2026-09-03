@@ -1,9 +1,9 @@
 package org.poc.objs.sbom.service
 
-import org.poc.objs.core.domain.CatalogSupport
-import org.poc.objs.core.domain.Schema
-import org.poc.objs.core.domain.SchemaCatalog
-import org.poc.objs.core.domain.SchemaUsage
+import org.poc.objs.api.domain.CatalogSupport
+import org.poc.objs.api.domain.Schema
+import org.poc.objs.api.domain.SchemaCatalog
+import org.poc.objs.api.domain.SchemaUsage
 import org.poc.objs.sbom.domain.AssetFieldHint
 import org.poc.objs.sbom.domain.AssetTypeDetail
 import org.poc.objs.sbom.domain.AssetTypeSummary
@@ -50,7 +50,7 @@ class AssetTypeCatalogService(
         return catalog.latestEntitySchema(type)
     }
 
-    private fun org.poc.objs.core.domain.FieldHint.toHint() =
+    private fun org.poc.objs.api.domain.FieldHint.toHint() =
         AssetFieldHint(
             path = path,
             title = title,

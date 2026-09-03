@@ -8,11 +8,11 @@ import org.poc.objs.api.domain.GraphMutation
 import org.poc.objs.core.persistence.GraphStore
 import org.poc.objs.core.persistence.NamedGraphStore
 import org.poc.objs.core.seed.CanonicalSeedSerializer
-import org.poc.objs.core.seed.GRAPH_SEED_KINDS
-import org.poc.objs.core.seed.SeedImportException
+import org.poc.objs.api.seed.GRAPH_SEED_KINDS
+import org.poc.objs.api.seed.SeedImportException
 import org.poc.objs.core.seed.SeedImporter
-import org.poc.objs.core.validation.ValidationIssue
-import org.poc.objs.core.validation.ValidationResult
+import org.poc.objs.api.validation.ValidationIssue
+import org.poc.objs.api.validation.ValidationResult
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity

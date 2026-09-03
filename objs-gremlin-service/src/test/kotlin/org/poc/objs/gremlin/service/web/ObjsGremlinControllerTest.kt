@@ -8,8 +8,8 @@ import org.mockito.Mockito.verify
 import org.poc.objs.api.domain.Edge
 import org.poc.objs.api.domain.Entity
 import org.poc.objs.api.domain.GraphContents
-import org.poc.objs.core.match.Matcher
-import org.poc.objs.core.persistence.GraphStore
+import org.poc.objs.api.match.Matcher
+import org.poc.objs.api.store.GraphStore
 import org.poc.objs.gremlin.core.GremlinEngine
 import org.springframework.http.MediaType
 import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter

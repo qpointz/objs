@@ -1,9 +1,9 @@
 package org.poc.objs.sbom.service
 
 import org.poc.objs.api.domain.Entity
-import org.poc.objs.core.domain.IdentityProjection
-import org.poc.objs.core.domain.SchemaCatalog
-import org.poc.objs.core.domain.SchemaUsage
+import org.poc.objs.api.domain.IdentityProjection
+import org.poc.objs.api.domain.SchemaCatalog
+import org.poc.objs.api.domain.SchemaUsage
 import org.poc.objs.core.persistence.NamedGraphStore
 import org.poc.objs.sbom.domain.CategoryAssetPage
 import org.poc.objs.sbom.domain.CategoryAssetRow

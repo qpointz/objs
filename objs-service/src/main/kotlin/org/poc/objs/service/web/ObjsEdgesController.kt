@@ -2,7 +2,7 @@ package org.poc.objs.service.web
 
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
-import org.poc.objs.core.domain.GraphException
+import org.poc.objs.api.domain.GraphException
 import org.poc.objs.core.persistence.GraphStore
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity

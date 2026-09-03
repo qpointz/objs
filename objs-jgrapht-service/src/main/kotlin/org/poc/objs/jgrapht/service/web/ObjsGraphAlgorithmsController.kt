@@ -6,10 +6,10 @@ import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
-import org.poc.objs.core.domain.GraphException
-import org.poc.objs.core.match.MatcherDsl
-import org.poc.objs.core.validation.ValidationException
-import org.poc.objs.core.validation.ValidationResult
+import org.poc.objs.api.domain.GraphException
+import org.poc.objs.api.match.MatcherDsl
+import org.poc.objs.api.validation.ValidationException
+import org.poc.objs.api.validation.ValidationResult
 import org.poc.objs.jgrapht.core.GraphAlgorithmCapabilities
 import org.poc.objs.jgrapht.core.GraphCycleAnalysis
 import org.poc.objs.jgrapht.service.GraphAlgorithmService

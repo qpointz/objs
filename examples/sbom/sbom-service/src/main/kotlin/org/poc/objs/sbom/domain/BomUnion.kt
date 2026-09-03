@@ -3,7 +3,7 @@ package org.poc.objs.sbom.domain
 import org.poc.objs.api.domain.DefaultGraphFragmentPolicy
 import org.poc.objs.api.domain.GraphContents
 import org.poc.objs.api.domain.ResolvedGraphFragment
-import org.poc.objs.core.domain.ResolvedGraph
+import org.poc.objs.api.domain.ResolvedGraph
 
 /**
  * Ephemeral Combined SBOM / multi-select union (G-A3). Never persisted on the version.

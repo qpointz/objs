@@ -9,7 +9,6 @@ description = "Objs Gremlin core: BoM subgraph materialization and gremlin-lang 
 
 dependencies {
     api(project(":objs-api"))
-    api(project(":objs-core"))
     api(libs.gremlin.core)
     api(libs.tinkergraph.gremlin)
     api(libs.gremlin.language)

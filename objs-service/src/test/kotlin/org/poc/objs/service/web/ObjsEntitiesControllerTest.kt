@@ -6,11 +6,11 @@ import org.mockito.BDDMockito.given
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
 import org.poc.objs.api.domain.Entity
-import org.poc.objs.core.domain.EntityLiveGraphs
-import org.poc.objs.core.domain.GraphHeader
+import org.poc.objs.api.domain.EntityLiveGraphs
+import org.poc.objs.api.domain.GraphHeader
 import org.poc.objs.core.persistence.GraphStore
-import org.poc.objs.core.validation.ValidationIssue
-import org.poc.objs.core.validation.ValidationResult
+import org.poc.objs.api.validation.ValidationIssue
+import org.poc.objs.api.validation.ValidationResult
 import org.springframework.http.MediaType
 import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter
 import org.springframework.test.web.servlet.MockMvc

@@ -3,16 +3,13 @@ package org.poc.objs.sbom.service
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.poc.objs.core.domain.AllowedEdgeCatalog
+import org.poc.objs.api.domain.AllowedEdgeCatalog
 import org.poc.objs.api.domain.AllowedEdgeRule
-import org.poc.objs.core.domain.Schema
-import org.poc.objs.core.domain.SchemaCatalog
-import org.poc.objs.core.domain.SchemaDsl
-import org.poc.objs.core.domain.SchemaUsage
-import org.poc.objs.core.persistence.GraphStore
-import org.poc.objs.core.persistence.NamedGraphStore
-import org.poc.objs.core.persistence.PoolEntityReader
-import org.poc.objs.core.persistence.ObjsCoreAutoConfiguration
+import org.poc.objs.api.domain.Schema
+import org.poc.objs.api.domain.SchemaCatalog
+import org.poc.objs.api.domain.SchemaDsl
+import org.poc.objs.api.domain.SchemaUsage
+import org.poc.objs.autoconfigure.ObjsCoreAutoConfiguration
 import org.poc.objs.sbom.persistence.SbomPersistenceConfiguration
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.SpringBootConfiguration
@@ -25,9 +22,6 @@ import org.springframework.test.context.TestPropertySource
 @ImportAutoConfiguration(ObjsCoreAutoConfiguration::class)
 @Import(
     SbomPersistenceConfiguration::class,
-    GraphStore::class,
-    NamedGraphStore::class,
-    PoolEntityReader::class,
     SbomService::class,
     AssetTypeCatalogService::class,
     SchemaBrowseService::class,

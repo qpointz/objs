@@ -5,12 +5,11 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.springframework.web.server.ResponseStatusException
-import org.poc.objs.core.domain.AllowedEdgeCatalog
-import org.poc.objs.core.domain.SchemaCatalog
+import org.poc.objs.api.domain.AllowedEdgeCatalog
+import org.poc.objs.api.domain.SchemaCatalog
 import org.poc.objs.core.persistence.GraphStore
 import org.poc.objs.core.persistence.NamedGraphStore
-import org.poc.objs.core.persistence.PoolEntityReader
-import org.poc.objs.core.persistence.ObjsCoreAutoConfiguration
+import org.poc.objs.autoconfigure.ObjsCoreAutoConfiguration
 import org.poc.objs.sbom.domain.CreateApplicationRequest
 import org.poc.objs.sbom.domain.CreateBomRequest
 import org.poc.objs.sbom.domain.CreateDraftVersionRequest
@@ -37,9 +36,6 @@ import javax.sql.DataSource
 @ImportAutoConfiguration(ObjsCoreAutoConfiguration::class)
 @Import(
     SbomPersistenceConfiguration::class,
-    GraphStore::class,
-    NamedGraphStore::class,
-    PoolEntityReader::class,
     SbomService::class,
     ApplicationInventoryService::class,
     ApplicationVersionService::class,

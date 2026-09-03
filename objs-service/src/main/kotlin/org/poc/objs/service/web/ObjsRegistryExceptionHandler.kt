@@ -1,7 +1,7 @@
 package org.poc.objs.service.web
 
-import org.poc.objs.core.validation.ValidationIssue
-import org.poc.objs.core.validation.ValidationResult
+import org.poc.objs.api.validation.ValidationIssue
+import org.poc.objs.api.validation.ValidationResult
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.HttpMessageNotReadableException

@@ -2,14 +2,14 @@ package org.poc.objs.sbom.service
 
 import org.poc.objs.api.domain.Entity
 import org.poc.objs.api.domain.Graph
-import org.poc.objs.core.domain.Schema
-import org.poc.objs.core.domain.CatalogSupport
-import org.poc.objs.core.domain.SchemaCatalog
-import org.poc.objs.core.domain.SchemaUsage
-import org.poc.objs.core.match.ObjExprMatcher
+import org.poc.objs.api.domain.Schema
+import org.poc.objs.api.domain.CatalogSupport
+import org.poc.objs.api.domain.SchemaCatalog
+import org.poc.objs.api.domain.SchemaUsage
+import org.poc.objs.api.match.ObjExprMatcher
 import org.poc.objs.core.persistence.GraphStore
 import org.poc.objs.core.persistence.NamedGraphStore
-import org.poc.objs.core.validation.ValidationException
+import org.poc.objs.api.validation.ValidationException
 import org.poc.objs.sbom.annotations.SbomAnnotationKeys
 import org.poc.objs.sbom.domain.AssetDetailView
 import org.poc.objs.sbom.domain.AssetDuplicateGroup
@@ -64,7 +64,7 @@ class AssetInventoryService(
         val expr = matcherExpr(request)
         val paged =
             try {
-                store.selectFromPool(ObjExprMatcher(expr), org.poc.objs.core.domain.PageRequest.of(page, size))
+                store.selectFromPool(ObjExprMatcher(expr), org.poc.objs.api.domain.PageRequest.of(page, size))
             } catch (ex: ValidationException) {
                 throw ResponseStatusException(HttpStatus.BAD_REQUEST, ex.message)
             }

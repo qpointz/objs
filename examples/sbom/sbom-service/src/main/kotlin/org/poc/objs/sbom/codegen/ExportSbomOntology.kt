@@ -1,10 +1,10 @@
 package org.poc.objs.sbom.codegen
 
-import org.poc.objs.core.domain.InMemoryAllowedEdgeCatalog
-import org.poc.objs.core.domain.InMemorySchemaCatalog
+import org.poc.objs.api.domain.InMemoryAllowedEdgeCatalog
+import org.poc.objs.api.domain.InMemorySchemaCatalog
 import org.poc.objs.core.seed.AllowedEdgeRuleSeedHandler
 import org.poc.objs.core.seed.ObjectSchemaSeedHandler
-import org.poc.objs.core.seed.SeedYaml
+import org.poc.objs.api.seed.SeedYaml
 import org.poc.objs.sbom.registry.SbomRegistry
 import java.nio.file.Files
 import java.nio.file.Path

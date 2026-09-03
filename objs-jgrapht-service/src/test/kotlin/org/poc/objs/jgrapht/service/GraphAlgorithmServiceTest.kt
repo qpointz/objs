@@ -9,7 +9,7 @@ class GraphAlgorithmServiceTest {
     @Test
     fun shouldAdvertiseTypedModeWhenProviderInstalled() {
         val service = GraphAlgorithmService(
-            store = org.mockito.Mockito.mock(org.poc.objs.core.persistence.GraphStore::class.java),
+            store = org.mockito.Mockito.mock(org.poc.objs.api.store.GraphStore::class.java),
             policy = org.poc.objs.api.domain.DefaultGraphFragmentPolicy,
             cycleAnalyzer = org.poc.objs.jgrapht.core.analysis.DirectedCycleRegionAnalyzer(),
             typedProviders = listOf(JGraphTTypedAnalysisProvider { fragment ->

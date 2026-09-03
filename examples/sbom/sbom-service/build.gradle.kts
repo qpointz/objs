@@ -27,7 +27,7 @@ val codegenTool by configurations.creating
 dependencies {
     implementation(platform(libs.boot.dependencies))
     implementation(project(":objs-api"))
-    implementation(project(":objs-core"))
+    implementation(project(":objs-autoconfigure"))
     implementation(project(":objs-gremlin-core"))
     implementation(libs.boot.starter.webmvc)
     implementation(libs.springdoc.openapi.starter.webmvc.ui)

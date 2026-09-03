@@ -1,11 +1,11 @@
 package org.poc.objs.sbom.codegen
 
-import org.poc.objs.core.domain.JsonSchema
-import org.poc.objs.core.domain.JsonSchemaEdgeInclusion
-import org.poc.objs.core.domain.JsonSchemaExportOptions
-import org.poc.objs.core.domain.FullCatalogJsonSchemaExporter
-import org.poc.objs.core.domain.InMemoryAllowedEdgeCatalog
-import org.poc.objs.core.domain.InMemorySchemaCatalog
+import org.poc.objs.api.domain.JsonSchema
+import org.poc.objs.api.domain.JsonSchemaEdgeInclusion
+import org.poc.objs.api.domain.JsonSchemaExportOptions
+import org.poc.objs.api.domain.FullCatalogJsonSchemaExporter
+import org.poc.objs.api.domain.InMemoryAllowedEdgeCatalog
+import org.poc.objs.api.domain.InMemorySchemaCatalog
 import org.poc.objs.sbom.registry.SbomRegistry
 import tools.jackson.databind.json.JsonMapper
 import java.nio.file.Files
@@ -57,7 +57,7 @@ object ExportSbomJsonSchema {
         mapper.writerWithDefaultPrettyPrinter().writeValue(catalogFile.toFile(), linked)
 
         // Payload-only schemas for TypedEntity / Wave* replacement experiments.
-        for (schema in schemas.all().filter { it.usage == org.poc.objs.core.domain.SchemaUsage.ENTITY }) {
+        for (schema in schemas.all().filter { it.usage == org.poc.objs.api.domain.SchemaUsage.ENTITY }) {
             val projected = JsonSchema.from(schema).toMutableMap()
             val defKey = FullCatalogJsonSchemaExporter.jsonSchemaDefKey(schema.type)
             val file = typesDir.resolve("$defKey.json")

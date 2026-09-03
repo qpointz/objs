@@ -7,11 +7,11 @@ import org.poc.objs.assetrepository.domain.CollectionEntity;
 import org.poc.objs.assetrepository.domain.CollectionTypeSpec;
 import org.poc.objs.assetrepository.domain.ObjectWriteMode;
 import org.poc.objs.assetrepository.service.CollectionService;
-import org.poc.objs.core.seed.ParsedSeedDocument;
-import org.poc.objs.core.seed.SeedDocumentHandler;
-import org.poc.objs.core.seed.SeedDocumentParseException;
-import org.poc.objs.core.seed.SeedDocumentResult;
-import org.poc.objs.core.seed.SeedRawDocument;
+import org.poc.objs.api.seed.ParsedSeedDocument;
+import org.poc.objs.api.seed.SeedDocumentHandler;
+import org.poc.objs.api.seed.SeedDocumentParseException;
+import org.poc.objs.api.seed.SeedDocumentResult;
+import org.poc.objs.api.seed.SeedRawDocument;
 import org.springframework.stereotype.Component;
 
 @Component

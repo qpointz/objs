@@ -1,7 +1,7 @@
 package org.poc.objs.service.web
 
-import org.poc.objs.core.validation.ValidationIssue
-import org.poc.objs.core.validation.ValidationResult
+import org.poc.objs.api.validation.ValidationIssue
+import org.poc.objs.api.validation.ValidationResult
 import org.springframework.http.ResponseEntity
 
 /** Shared format query values for registry / graph multi-format I/O. */

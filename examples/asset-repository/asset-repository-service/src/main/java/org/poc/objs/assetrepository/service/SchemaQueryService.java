@@ -9,12 +9,12 @@ import java.util.NoSuchElementException;
 import java.util.UUID;
 import org.poc.objs.assetrepository.domain.CollectionEntity;
 import org.poc.objs.assetrepository.web.dto.ApiDtos;
-import org.poc.objs.core.domain.CatalogSupport;
-import org.poc.objs.core.domain.AllowedEdgeCatalog;
+import org.poc.objs.api.domain.CatalogSupport;
+import org.poc.objs.api.domain.AllowedEdgeCatalog;
 import org.poc.objs.api.domain.AllowedEdgeRule;
-import org.poc.objs.core.domain.Schema;
-import org.poc.objs.core.domain.SchemaCatalog;
-import org.poc.objs.core.domain.SchemaUsage;
+import org.poc.objs.api.domain.Schema;
+import org.poc.objs.api.domain.SchemaCatalog;
+import org.poc.objs.api.domain.SchemaUsage;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

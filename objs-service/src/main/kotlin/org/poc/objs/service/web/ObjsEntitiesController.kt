@@ -10,11 +10,11 @@ import jakarta.servlet.http.HttpServletRequest
 import org.poc.objs.api.domain.Entity
 import org.poc.objs.api.domain.Graph
 import org.poc.objs.api.domain.GraphContents
-import org.poc.objs.core.match.MatcherDsl
-import org.poc.objs.core.match.MatcherFormat
+import org.poc.objs.api.match.MatcherDsl
+import org.poc.objs.api.match.MatcherFormat
 import org.poc.objs.core.persistence.GraphStore
-import org.poc.objs.core.validation.ValidationException
-import org.poc.objs.core.validation.ValidationResult
+import org.poc.objs.api.validation.ValidationException
+import org.poc.objs.api.validation.ValidationResult
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
-import org.poc.objs.core.domain.PageRequest
+import org.poc.objs.api.domain.PageRequest
 import java.nio.charset.StandardCharsets
 import java.util.UUID
 
@@ -176,7 +176,7 @@ class ObjsEntitiesController(
     ): ResponseEntity<Any> =
         try {
             ResponseEntity.ok(store.getEntityVersion(id, version))
-        } catch (ex: org.poc.objs.core.domain.GraphException) {
+        } catch (ex: org.poc.objs.api.domain.GraphException) {
             ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 mapOf("error" to (ex.message ?: ex.code), "code" to ex.code),
             )

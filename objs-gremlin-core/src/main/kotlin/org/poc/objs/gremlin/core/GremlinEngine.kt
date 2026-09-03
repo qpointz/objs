@@ -4,8 +4,8 @@ import org.apache.tinkerpop.gremlin.jsr223.GremlinLangScriptEngine
 import org.apache.tinkerpop.gremlin.process.traversal.Traversal
 import org.poc.objs.api.domain.DefaultGraphFragmentPolicy
 import org.poc.objs.api.domain.ResolvedGraphFragment
-import org.poc.objs.core.match.Matcher
-import org.poc.objs.core.persistence.GraphStore
+import org.poc.objs.api.match.Matcher
+import org.poc.objs.api.store.GraphStore
 import org.poc.objs.gremlin.core.materialize.GremlinMaterializer
 import org.poc.objs.gremlin.core.materialize.EnvelopeMaterializationStrategy
 import java.util.concurrent.ExecutionException

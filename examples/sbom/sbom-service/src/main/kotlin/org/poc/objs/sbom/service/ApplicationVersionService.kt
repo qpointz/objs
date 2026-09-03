@@ -4,8 +4,8 @@ import org.poc.objs.api.domain.Edge
 import org.poc.objs.api.domain.Entity
 import org.poc.objs.api.domain.Graph
 import org.poc.objs.api.domain.ResolvedGraphFragment
-import org.poc.objs.core.domain.GraphException
-import org.poc.objs.core.domain.GraphSpec
+import org.poc.objs.api.domain.GraphException
+import org.poc.objs.api.domain.GraphSpec
 import org.poc.objs.api.domain.MutationMode
 import org.poc.objs.api.domain.graphMutation
 import org.poc.objs.core.persistence.GraphStore

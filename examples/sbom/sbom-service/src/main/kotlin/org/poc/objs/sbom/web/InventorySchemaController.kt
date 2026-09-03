@@ -1,7 +1,7 @@
 package org.poc.objs.sbom.web
 
-import org.poc.objs.core.domain.AllowedEdgeCatalog
-import org.poc.objs.core.domain.Schema
+import org.poc.objs.api.domain.AllowedEdgeCatalog
+import org.poc.objs.api.domain.Schema
 import org.poc.objs.sbom.domain.AssetRelationshipSpec
 import org.poc.objs.sbom.domain.AssetTypeDetail
 import org.poc.objs.sbom.domain.AssetTypeSummary

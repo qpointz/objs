@@ -4,8 +4,8 @@ import org.poc.objs.api.domain.GraphContents
 import org.poc.objs.api.domain.GraphFragmentPolicy
 import org.poc.objs.api.domain.GraphMaterializationException
 import org.poc.objs.api.domain.ResolvedGraphFragment
-import org.poc.objs.core.match.Matcher
-import org.poc.objs.core.persistence.GraphStore
+import org.poc.objs.api.match.Matcher
+import org.poc.objs.api.store.GraphStore
 import org.poc.objs.jgrapht.core.GraphAlgorithmCatalog
 import org.poc.objs.jgrapht.core.GraphAlgorithmIds
 import org.poc.objs.jgrapht.core.GraphCycleAnalysis

@@ -2,27 +2,27 @@ package org.poc.objs.service.web
 
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
-import org.poc.objs.core.domain.CatalogMetadata
-import org.poc.objs.core.domain.CatalogSupport
-import org.poc.objs.core.domain.AllowedEdgeCatalog
+import org.poc.objs.api.domain.CatalogMetadata
+import org.poc.objs.api.domain.CatalogSupport
+import org.poc.objs.api.domain.AllowedEdgeCatalog
 import org.poc.objs.api.domain.AllowedEdgeRule
 import org.poc.objs.api.domain.EdgeCardinality
 import org.poc.objs.api.domain.PropertiesPolicy
-import org.poc.objs.core.domain.Schema
-import org.poc.objs.core.domain.SchemaCatalog
-import org.poc.objs.core.domain.SchemaDefinitionException
-import org.poc.objs.core.domain.SchemaNode
-import org.poc.objs.core.domain.SchemaUsage
-import org.poc.objs.core.domain.SchemaVersioning
-import org.poc.objs.core.seed.CATALOG_SEED_KINDS
+import org.poc.objs.api.domain.Schema
+import org.poc.objs.api.domain.SchemaCatalog
+import org.poc.objs.api.domain.SchemaDefinitionException
+import org.poc.objs.api.domain.SchemaNode
+import org.poc.objs.api.domain.SchemaUsage
+import org.poc.objs.api.domain.SchemaVersioning
+import org.poc.objs.api.seed.CATALOG_SEED_KINDS
 import org.poc.objs.core.seed.CanonicalSeedSerializer
-import org.poc.objs.core.seed.SeedImportException
+import org.poc.objs.api.seed.SeedImportException
 import org.poc.objs.core.seed.SeedImporter
-import org.poc.objs.core.domain.JsonSchemaExportOptions
-import org.poc.objs.core.domain.JsonSchemaExportOptionsException
-import org.poc.objs.core.domain.FullCatalogJsonSchemaExporter
-import org.poc.objs.core.validation.ValidationIssue
-import org.poc.objs.core.validation.ValidationResult
+import org.poc.objs.api.domain.JsonSchemaExportOptions
+import org.poc.objs.api.domain.JsonSchemaExportOptionsException
+import org.poc.objs.api.domain.FullCatalogJsonSchemaExporter
+import org.poc.objs.api.validation.ValidationIssue
+import org.poc.objs.api.validation.ValidationResult
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -511,7 +511,7 @@ class ObjsRegistryController(
 
     private fun normalizeRequest(type: String, version: String, body: SchemaDefinitionRequest): Schema {
         val usage = body.usage ?: SchemaUsage.ENTITY
-        return org.poc.objs.core.domain.SchemaNormalizer.normalizeStrict(
+        return org.poc.objs.api.domain.SchemaNormalizer.normalizeStrict(
             Schema(
                 type = type,
                 version = version,

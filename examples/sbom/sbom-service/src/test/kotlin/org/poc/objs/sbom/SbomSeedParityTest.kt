@@ -2,12 +2,13 @@ package org.poc.objs.sbom
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import org.poc.objs.core.domain.InMemoryAllowedEdgeCatalog
-import org.poc.objs.core.domain.InMemorySchemaCatalog
+import org.poc.objs.api.domain.InMemoryAllowedEdgeCatalog
+import org.poc.objs.api.domain.InMemorySchemaCatalog
 import org.poc.objs.core.seed.AllowedEdgeRuleSeedHandler
 import org.poc.objs.core.seed.ObjectSchemaSeedHandler
-import org.poc.objs.core.seed.SEED_KIND_ALLOWED_EDGE_RULE
-import org.poc.objs.core.seed.SEED_KIND_OBJECT_SCHEMA
+import org.poc.objs.api.seed.SEED_KIND_ALLOWED_EDGE_RULE
+import org.poc.objs.api.seed.SEED_KIND_OBJECT_SCHEMA
+import org.poc.objs.core.persistence.tx.PassthroughUnitOfWork
 import org.poc.objs.core.seed.SeedImporter
 import org.poc.objs.sbom.registry.SbomRegistry
 import org.springframework.core.io.ClassPathResource
@@ -26,6 +27,7 @@ class SbomSeedParityTest {
                 ObjectSchemaSeedHandler(schemas),
                 AllowedEdgeRuleSeedHandler(rules),
             ),
+            PassthroughUnitOfWork(),
         )
         val yaml = ClassPathResource("seeds/sbom-ontology.yaml").inputStream
             .bufferedReader()

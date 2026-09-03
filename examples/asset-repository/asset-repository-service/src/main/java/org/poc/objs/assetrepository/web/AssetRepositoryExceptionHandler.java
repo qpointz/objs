@@ -3,7 +3,7 @@ package org.poc.objs.assetrepository.web;
 import java.util.NoSuchElementException;
 import org.poc.objs.assetrepository.service.ObjectWriteService;
 import org.poc.objs.assetrepository.web.dto.ApiDtos;
-import org.poc.objs.core.validation.ValidationException;
+import org.poc.objs.api.validation.ValidationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;

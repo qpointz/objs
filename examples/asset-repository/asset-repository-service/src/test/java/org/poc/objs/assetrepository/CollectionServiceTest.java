@@ -13,7 +13,7 @@ import org.poc.objs.assetrepository.domain.ObjectWriteMode;
 import org.poc.objs.assetrepository.service.CollectionService;
 import org.poc.objs.assetrepository.service.ObjectWriteService;
 import org.poc.objs.assetrepository.web.dto.ApiDtos;
-import org.poc.objs.core.domain.SchemaCatalog;
+import org.poc.objs.api.domain.SchemaCatalog;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;

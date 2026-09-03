@@ -2,8 +2,8 @@ package org.poc.objs.sbom.service
 
 import org.poc.objs.api.domain.Edge
 import org.poc.objs.api.domain.ResolvedGraphFragment
-import org.poc.objs.core.domain.GraphSpec
-import org.poc.objs.core.domain.ResolvedGraph
+import org.poc.objs.api.domain.GraphSpec
+import org.poc.objs.api.domain.ResolvedGraph
 import org.poc.objs.api.domain.graphMutation
 import org.poc.objs.core.persistence.NamedGraphStore
 import org.poc.objs.sbom.domain.BomUnion

@@ -1,10 +1,10 @@
 package org.poc.objs.sbom.service
 
-import org.poc.objs.core.domain.AllowedEdgeCatalog
+import org.poc.objs.api.domain.AllowedEdgeCatalog
 import org.poc.objs.api.domain.AllowedEdgeRule
-import org.poc.objs.core.domain.Schema
-import org.poc.objs.core.domain.SchemaCatalog
-import org.poc.objs.core.domain.SchemaUsage
+import org.poc.objs.api.domain.Schema
+import org.poc.objs.api.domain.SchemaCatalog
+import org.poc.objs.api.domain.SchemaUsage
 import org.poc.objs.core.persistence.NamedGraphStore
 import org.poc.objs.sbom.domain.SchemaCatalogEntry
 import org.poc.objs.sbom.domain.SchemaUsedInRef
@@ -25,7 +25,7 @@ data class TypeAllowedEdges(
 class SchemaBrowseService(
     private val schemas: SchemaCatalog,
     private val edges: AllowedEdgeCatalog,
-    private val catalog: org.poc.objs.core.domain.CatalogSupport,
+    private val catalog: org.poc.objs.api.domain.CatalogSupport,
     private val sbom: SbomService,
     private val applications: SbomApplicationRepository,
     private val versions: SbomApplicationVersionRepository,

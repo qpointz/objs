@@ -11,7 +11,7 @@ import org.poc.objs.assetrepository.domain.CollectionRepository;
 import org.poc.objs.assetrepository.domain.CollectionTypeEntity;
 import org.poc.objs.assetrepository.domain.CollectionTypeSpec;
 import org.poc.objs.assetrepository.domain.ObjectWriteMode;
-import org.poc.objs.core.domain.GraphSpec;
+import org.poc.objs.api.domain.GraphSpec;
 import org.poc.objs.core.persistence.GraphStore;
 import org.poc.objs.core.persistence.NamedGraphStore;
 import org.springframework.stereotype.Service;

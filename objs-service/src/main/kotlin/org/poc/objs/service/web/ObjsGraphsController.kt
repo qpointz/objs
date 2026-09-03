@@ -9,19 +9,19 @@ import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.servlet.http.HttpServletRequest
 import org.poc.objs.api.domain.GraphMutation
 import org.poc.objs.api.domain.MutationMode
-import org.poc.objs.core.domain.ResolvedGraph
+import org.poc.objs.api.domain.ResolvedGraph
 import org.poc.objs.api.domain.GraphContents
-import org.poc.objs.core.domain.GraphException
-import org.poc.objs.core.domain.GraphHeader
-import org.poc.objs.core.domain.GraphListItem
-import org.poc.objs.core.domain.GraphSpec
-import org.poc.objs.core.match.MatcherDsl
-import org.poc.objs.core.match.MatcherFormat
+import org.poc.objs.api.domain.GraphException
+import org.poc.objs.api.domain.GraphHeader
+import org.poc.objs.api.domain.GraphListItem
+import org.poc.objs.api.domain.GraphSpec
+import org.poc.objs.api.match.MatcherDsl
+import org.poc.objs.api.match.MatcherFormat
 import org.poc.objs.core.persistence.GraphStore
 import org.poc.objs.core.persistence.NamedGraphStore
-import org.poc.objs.core.validation.ValidationException
-import org.poc.objs.core.validation.ValidationIssue
-import org.poc.objs.core.validation.ValidationResult
+import org.poc.objs.api.validation.ValidationException
+import org.poc.objs.api.validation.ValidationIssue
+import org.poc.objs.api.validation.ValidationResult
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
@@ -351,7 +351,7 @@ class ObjsGraphsController(
     fun createVersion(
         @PathVariable id: UUID,
         @RequestBody(required = false) body: CloneBody?,
-    ): ResponseEntity<org.poc.objs.core.domain.GraphVersionSummary> {
+    ): ResponseEntity<org.poc.objs.api.domain.GraphVersionSummary> {
         val created = namedGraphs.createDeepGraphVersion(id, body?.annotations ?: emptyMap())
         return ResponseEntity.status(HttpStatus.CREATED).body(created)
     }

@@ -6,11 +6,11 @@ plugins {
     alias(libs.plugins.kotlin.spring)
 }
 
-description = "Objs Spring REST service and Boot autoconfiguration (Kotlin)."
+description = "Objs Spring REST service (Kotlin). Persistence Boot wiring is :objs-autoconfigure."
 
 dependencies {
     api(platform(libs.boot.dependencies))
-    api(project(":objs-core"))
+    api(project(":objs-autoconfigure"))
     api(libs.boot.starter.webmvc)
     api(libs.kotlin.reflect)
     // api: Swagger/OpenAPI annotations are used by this module and downstream controllers

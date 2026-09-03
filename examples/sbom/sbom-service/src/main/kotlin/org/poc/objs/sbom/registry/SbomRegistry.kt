@@ -3,11 +3,11 @@ package org.poc.objs.sbom.registry
 import org.poc.objs.api.domain.AllowedEdgeRule
 import org.poc.objs.api.domain.EdgeCardinality
 import org.poc.objs.api.domain.PropertiesPolicy
-import org.poc.objs.core.domain.Schema
-import org.poc.objs.core.domain.SchemaDsl
-import org.poc.objs.core.domain.SchemaNode
-import org.poc.objs.core.domain.SchemaUsage
-import org.poc.objs.core.typed.RegistryPack
+import org.poc.objs.api.domain.Schema
+import org.poc.objs.api.domain.SchemaDsl
+import org.poc.objs.api.domain.SchemaNode
+import org.poc.objs.api.domain.SchemaUsage
+import org.poc.objs.api.typed.RegistryPack
 import org.poc.objs.api.typed.TypedEdgeMeta
 import org.poc.objs.sbom.model.ApiType
 import org.poc.objs.sbom.model.ArtifactType

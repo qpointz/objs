@@ -1,6 +1,6 @@
 package org.poc.objs.sbom.service
 
-import org.poc.objs.core.domain.GraphSpec
+import org.poc.objs.api.domain.GraphSpec
 import org.poc.objs.core.persistence.NamedGraphStore
 import org.poc.objs.sbom.domain.AssetView
 import org.poc.objs.sbom.domain.ApplicationVersionSummary
