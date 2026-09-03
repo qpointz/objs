@@ -34,7 +34,9 @@ REPLACE_EXTENSIONS = [
 ]
 
 TOP_LEVEL_MODULES = [
+    "objs-api",
     "objs-core",
+    "objs-autoconfigure",
     "objs-service",
     "objs-service-ui",
     "objs-gremlin-core",
@@ -62,8 +64,10 @@ GRADLE_PROJECTS = [
     ":objs-gremlin-core",
     ":objs-service-app",
     ":objs-service-ui",
+    ":objs-autoconfigure",
     ":objs-service",
     ":objs-core",
+    ":objs-api",
     ":sbom-service-ui",
     ":sbom-service",
 ]

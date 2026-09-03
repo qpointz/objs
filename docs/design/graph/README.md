@@ -2,7 +2,7 @@
 
 **Status:** early design (gaps for foundation story largely resolved — see story [`GAPS.md`](../../workitems/planned/entity-graph-foundation/GAPS.md))  
 **Packages (target):** `org.poc.objs.*`  
-**Modules:** [`objs-core`](../core/README.md) (entity SDK + persistence), [`objs-service`](../service/README.md) (REST — later stories)
+**Modules:** [`objs-api`](../core/README.md) (model + store ports), [`objs-core`](../core/README.md) (persistence), [`objs-autoconfigure`](../core/README.md) (Boot wiring), [`objs-service`](../service/README.md) (REST)
 
 Objs is an **entity store**: independent informational **entities** linked by **relations (edges)** into a **graph**. Callers select **subgraphs** via **annotations**. Validation uses JSON Schema generated from the authoritative object-schema DSL and allowed type–role rules, enforced at the **persistence** boundary.
 
@@ -54,8 +54,8 @@ flowchart LR
 
 ## Access
 
-- **Entity SDK** (`objs-core`): construct any in-memory graph without validation enforcement.
-- **Persistence**: two-stage gate; two Flyway lines (objs `bom_*` then app tables); PostgreSQL runtime; H2 plus Testcontainers coverage.
+- **Entity SDK** (`objs-api`): construct any in-memory graph without validation enforcement.
+- **Persistence** (`objs-core` + Boot via `objs-autoconfigure`): two-stage gate; two Flyway lines (objs `objs_*` then app tables); PostgreSQL runtime; H2 plus Testcontainers coverage.
 - **Read**: return whatever exists, including non-conforming data.
 
 ## Coordinates

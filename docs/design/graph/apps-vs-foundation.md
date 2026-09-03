@@ -5,7 +5,7 @@
 **Audience:** objs-core / graph APIs  
 **Not this doc:** product journeys, workbench REST (`objs-service`), Gradle/UI packaging (appendix only)
 
-Both examples sit on **objs-core** (pool, named graphs, schemas, matchers, seeds, Gremlin `selectAndEval`).
+Both examples sit on **objs-autoconfigure** (Boot) plus **objs-api** (model). They persist through the same store as the workbench.
 They do **not** use foundation workbench REST as the app contract. Domain tables point at `graph_id`;
 the store does not know “application version” vs “collection”.
 
@@ -15,8 +15,10 @@ SBOM story tracker for the same gaps: [`FOUNDATION-BACKLOG.md`](../../workitems/
 
 | Layer | Owns |
 |-------|------|
-| **objs-core** | Entities, edges, named graphs + membership, schema/allow-list catalogs, persist gate, identity *projection*, matchers (`obj-expr`, `graphs-in`, …), Graph/ObjectSchema/AllowedEdge seeds, Gremlin materialize + eval |
-| **objs-gremlin-core** | Matcher → resolved fragment → TinkerGraph → gremlin-lang |
+| **objs-api** | Model + matcher/JEXL + validation contracts + seed parse + store ports |
+| **objs-core** | Persistence impls, catalogs-on-store, persist gate, seed apply, identity *projection* |
+| **objs-autoconfigure** | Boot wiring for the store (`spring.datasource`, UoW, objs Flyway ordering) |
+| **objs-gremlin-core** | Matcher → resolved fragment → TinkerGraph → gremlin-lang (`api(:objs-api)` only) |
 | **objs-jgrapht-core** | Resolved fragment → JGraphT graph + SCC cycle analysis (JVM-only) |
 | **objs-jgrapht-service** | Optional REST capabilities + cycle endpoint (workbench runner only) |
 | **objs-policy-*** (planned C-24) | Policy + **suite** artefacts + repository; enrich → applicability → evaluate (Drools first); **folder roll-up**; unified result — **not** product regulations or suite content |

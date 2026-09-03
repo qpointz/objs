@@ -45,14 +45,14 @@ Establish the **persistence setup pattern**: expand `:objs-api` as the foundatio
 
 ## Work Items
 
-- [x] WI-000 — Story scaffold — examples: **—** (`WI-000-story-scaffold.md`)
-- [x] WI-001 — Design lock — examples: **docs** (`WI-001-design-lock.md`) — [`4092377`](https://gitlab.qpointz.io/sandbox/bom-poc/-/commit/4092377)
-- [x] WI-002 — Api foundation move + store ports — examples: **—** (`WI-002-api-foundation.md`) — [`ad8a9ac`](https://gitlab.qpointz.io/sandbox/bom-poc/-/commit/ad8a9ac)
-- [x] WI-003 — DAO layer + internal UoW — examples: **—** (`WI-003-dao-transactions.md`) — [`56e3997`](https://gitlab.qpointz.io/sandbox/bom-poc/-/commit/56e3997)
-- [x] WI-004 — `:objs-autoconfigure` module — examples: **—** (`WI-004-autoconfigure-module.md`) — [`fb52223`](https://gitlab.qpointz.io/sandbox/bom-poc/-/commit/fb52223)
-- [x] WI-005 — Consumer Gradle — examples: **SBOM** (`WI-005-consumer-gradle.md`) — [`3886329`](https://gitlab.qpointz.io/sandbox/bom-poc/-/commit/3886329)
-- [x] WI-006 — Test split — examples: **—** (`WI-006-tests.md`) — [`8db3766`](https://gitlab.qpointz.io/sandbox/bom-poc/-/commit/8db3766)
-- [x] WI-007 — Living docs + export — examples: **docs** (`WI-007-living-docs.md`) — [`4f2fd65`](https://gitlab.qpointz.io/sandbox/bom-poc/-/commit/4f2fd65)
+- [x] WI-000 — Story scaffold — examples: **—** (`WI-000-story-scaffold.md`) — [`bb23190`](https://gitlab.qpointz.io/sandbox/bom-poc/-/commit/bb23190)
+- [x] WI-001 — Design lock — examples: **docs** (`WI-001-design-lock.md`) — [`bb23190`](https://gitlab.qpointz.io/sandbox/bom-poc/-/commit/bb23190)
+- [x] WI-002 — Api foundation move + store ports — examples: **—** (`WI-002-api-foundation.md`) — [`57d0bf7`](https://gitlab.qpointz.io/sandbox/bom-poc/-/commit/57d0bf7)
+- [x] WI-003 — DAO layer + internal UoW — examples: **—** (`WI-003-dao-transactions.md`) — [`e39b2be`](https://gitlab.qpointz.io/sandbox/bom-poc/-/commit/e39b2be)
+- [x] WI-004 — `:objs-autoconfigure` module — examples: **—** (`WI-004-autoconfigure-module.md`) — [`ed8172e`](https://gitlab.qpointz.io/sandbox/bom-poc/-/commit/ed8172e)
+- [x] WI-005 — Consumer Gradle — examples: **SBOM** (`WI-005-consumer-gradle.md`) — [`5e98892`](https://gitlab.qpointz.io/sandbox/bom-poc/-/commit/5e98892)
+- [x] WI-006 — Test split — examples: **—** (`WI-006-tests.md`) — [`10b7955`](https://gitlab.qpointz.io/sandbox/bom-poc/-/commit/10b7955)
+- [x] WI-007 — Living docs + export — examples: **docs** (`WI-007-living-docs.md`)
 
 ## Out of scope
 

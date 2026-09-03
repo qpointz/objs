@@ -5,7 +5,7 @@
 **Package:** `org.poc.objs.app`
 
 Thin **workbench-only** runnable that wires `:objs-service` + `:objs-service-ui` (workbench SPA)
-and `:objs-gremlin-service` (and transitively `:objs-core` / `:objs-gremlin-core`).
+and `:objs-gremlin-service` (and transitively `:objs-autoconfigure` / `:objs-api` / `:objs-gremlin-core`).
 
 It **must not** depend on `examples/` or any other concrete product. Example apps are separate
 launchables and do not use this module.

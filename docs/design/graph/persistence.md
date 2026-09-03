@@ -1,12 +1,13 @@
 # Persistence
 
-**Status:** early design  
-**Parent:** [README.md](README.md)
+**Status:** living (C-25 ownership)  
+**Parent:** [README.md](README.md)  
+**Modules:** `:objs-core` owns JPA/DAOs/Flyway **SQL**; `:objs-autoconfigure` owns Boot DataSource/EMF wiring and objs Flyway **ordering** beans — see [core/spring-split.md](../core/spring-split.md).
 
 ## Database
 
 - **Primary database: PostgreSQL.**
-- Access from Java today: Spring Data **JPA** in `objs-core` (mapping details TBD).
+- Access: Jakarta Persistence + Hibernate in `:objs-core` (EntityManager DAOs). Boot apps obtain `DataSource` via `spring.datasource.*` and `:objs-autoconfigure`.
 - Package root for domain/persistence types (target): `org.poc.objs…`.
 
 ## Pool vs graphs
@@ -47,8 +48,8 @@ entity unset). Do not confuse with `replace(BoMGraphSpec)` (id-set membership) o
 (new union graph) — glossary in [rest-api.md](../service/rest-api.md#mutate-glossary).
 
 **Flyway (objs line):** objs-core ships vendor SQL `V1__bom_schema.sql` under
-`classpath:org/poc/objs/core/db/migration/{vendor}` (`postgresql`, `h2` — Spring Boot
-`DatabaseDriver` id from the JDBC URL, not JDBC `databaseProductName`). Autoconfig
+`classpath:org/poc/objs/core/db/migration/{vendor}` (`postgresql`, `h2`). Vendor id comes from
+the JDBC URL (`ObjsFlywayVendor`), not Spring `DatabaseDriver`. Autoconfig
 (`ObjsFlywayAutoConfiguration`) applies it into `flyway_schema_history_objs` **before** Boot
 Flyway and JPA `ddl-auto: validate`. PostgreSQL uses JSONB (+ GIN on entity **and** graph-header
 annotations); H2 uses JSON.

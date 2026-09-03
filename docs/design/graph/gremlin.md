@@ -37,7 +37,8 @@ There is no Gremlin Server process.
 | `:objs-service-app` | Depends on `:objs-gremlin-service` and `:objs-jgrapht-service` for workbench |
 | `:objs-service` UI | Query + Explorer; capability DTOs only — no TinkerPop or JGraphT |
 
-Foundation modules (`:objs-core`, `:objs-service`) stay free of TinkerPop dependencies.
+Foundation modules (`:objs-api`, `:objs-core`, `:objs-service`) stay free of TinkerPop dependencies.
+`:objs-gremlin-core` is `api(:objs-api)` only.
 
 ## Materialization strategies
 

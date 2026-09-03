@@ -108,9 +108,9 @@ def main() -> int:
             print("apiVersion replace failed in fixture", file=sys.stderr)
             return 1
 
-        imports = out_dir / "demo-core" / "src" / "main" / "resources" / "META-INF" / "spring" / "org.springframework.boot.autoconfigure.AutoConfiguration.imports"
+        imports = out_dir / "demo-autoconfigure" / "src" / "main" / "resources" / "META-INF" / "spring" / "org.springframework.boot.autoconfigure.AutoConfiguration.imports"
         imports_text = imports.read_text(encoding="utf-8")
-        if "com.example.demo.core.DemoAutoConfiguration" not in imports_text:
+        if "com.example.demo.autoconfigure.DemoAutoConfiguration" not in imports_text:
             print("SPI .imports replace failed in fixture", file=sys.stderr)
             return 1
 
@@ -247,6 +247,10 @@ replace:
         expected_core_path = '":platform:objs:demo-core"'
         if f"include({expected_core_path})" not in settings:
             print("Module hierarchy missing from generated include", file=sys.stderr)
+            return 1
+        expected_ac_path = '":platform:objs:demo-autoconfigure"'
+        if f"include({expected_ac_path})" not in settings:
+            print("Module hierarchy missing objs-autoconfigure include", file=sys.stderr)
             return 1
         if f"project({expected_core_path}).projectDir = file(\"demo-core\")" not in settings:
             print("Flat module directory mapping missing from generated settings", file=sys.stderr)

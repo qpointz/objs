@@ -24,7 +24,7 @@ See [`../graph/README.md`](../graph/README.md).
 | Versions | Root [`VERSION`](../../../VERSION) file; override `-PprojectVersion=` |
 | Catalog | Root [`libs.versions.toml`](../../../libs.versions.toml) |
 | Framework | Spring Boot **4.0.x** (BOM via `spring-boot-dependencies`) |
-| Persistence | Spring Data JPA (`objs-core`); **PostgreSQL** primary DB; JSONB for payloads |
+| Persistence | Hibernate/JPA in `:objs-core`; Boot via `:objs-autoconfigure`; **PostgreSQL** primary DB; JSONB for payloads |
 | HTTP | Spring WebMVC (`objs-service`) |
 | Libraries | Lombok, Jackson 3, JUnit Jupiter, Mockito, AssertJ |
 | Packaging style | Libraries + workbench/example apps; Maven/Docker publish reserved in CI |
@@ -44,15 +44,19 @@ flowchart LR
   ui[objs-service-ui]
   sbom[sbom-service :8080]
   sbomui[sbom-service-ui]
+  ac[objs-autoconfigure]
   core[objs-core]
+  api[objs-api]
   app -->|implementation| service
   app -->|implementation| gsvc
   app -->|runtimeOnly| ui
   gsvc --> gcore
   gsvc --> service
-  gcore --> core
-  service -->|api| core
-  sbom --> core
+  gcore --> api
+  service -->|api| ac
+  ac --> core
+  core --> api
+  sbom --> ac
   sbom --> gcore
   sbom -->|runtimeOnly| sbomui
   core -->|JPA / JSON| db[(H2 local / PostgreSQL)]
@@ -60,8 +64,10 @@ flowchart LR
 
 | Module | Gradle path | Responsibility |
 |--------|-------------|----------------|
-| **objs-core** | `:objs-core` | Entity SDK, core types, **JPA / PostgreSQL persistence** |
-| **objs-service** | `:objs-service` | Spring **REST** + Boot **autoconfiguration** (foundation side) |
+| **objs-api** | `:objs-api` | Model, matcher/JEXL, validation contracts, seed parse, store ports |
+| **objs-core** | `:objs-core` | Spring-free JPA persistence, Flyway SQL, seed apply |
+| **objs-autoconfigure** | `:objs-autoconfigure` | Boot adapter (`spring.datasource` → store beans) |
+| **objs-service** | `:objs-service` | Spring **REST** (foundation side) |
 | **objs-service-ui** | `:objs-service-ui` | Foundation workbench SPA (`runtimeOnly` of `:objs-service-app` or example sidecars) |
 | **objs-gremlin-core** | `:objs-gremlin-core` | BoM → TinkerGraph materialization + gremlin-lang eval |
 | **objs-gremlin-service** | `:objs-gremlin-service` | Gremlin traverse REST + Boot autoconfig |
@@ -69,7 +75,7 @@ flowchart LR
 | **sbom-service-ui** | `:sbom-service-ui` (`examples/sbom/sbom-service-ui`) | Inventory SPA |
 | **objs-service-app** | `:objs-service-app` | Workbench-only runnable — see [`app.md`](app.md) |
 
-Dependency rule: Gremlin and service libraries depend on core; `objs-service-app` wires the workbench runner only and **must not** depend on `examples/`. Example apps under `examples/` are separate launchables and **must not** depend on `:objs-service` / `:objs-service-ui` / `:objs-gremlin-service` / `:objs-service-app` at compile time. Core must not depend on service/app/gremlin.
+Dependency rule: Gremlin-core depends on `:objs-api` only. Boot libraries depend on `:objs-autoconfigure` (which brings `:objs-core`). `objs-service-app` wires the workbench runner only and **must not** depend on `examples/`. Example apps under `examples/` are separate launchables and **must not** depend on `:objs-service` / `:objs-service-ui` / `:objs-gremlin-service` / `:objs-service-app` at compile time. Core must not depend on service/app/gremlin/Spring.
 
 Object/graph capabilities that examples still reimplement (reverse lookup, identity query, paging, graph copy) are listed in [`../graph/apps-vs-foundation.md`](../graph/apps-vs-foundation.md).
 
@@ -86,7 +92,7 @@ Object/graph capabilities that examples still reimplement (reverse lookup, ident
 - Security / OAuth
 - Maven Central / Docker Hub credentials and publish jobs (CI stages reserved only)
 
-**Persistence migrations:** **two Flyway lines** — objs-core `bom_*` (`flyway_schema_history_objs`)
+**Persistence migrations:** **two Flyway lines** — objs-core `objs_*` (`flyway_schema_history_objs`)
 then the embedding app’s Boot Flyway (G-10). See [`../graph/persistence.md`](../graph/persistence.md).
 
 ## Open questions
