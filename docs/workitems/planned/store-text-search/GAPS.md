@@ -26,7 +26,7 @@ Status: `open` | `resolved` | `deferred` | `cancelled` | `accepted-risk`.
 |---|--------|--------|------------|
 | G-A8 | Domain name search | **resolved** | SBOM application `LIKE` and AR collection `LIKE` stay in the example |
 | G-A9 | Graph header search | **resolved** | Workbench `GET /graphs/search?q=` stays header substring; not payload `q` |
-| G-A10 | Layer | **resolved** | `:objs-core`; examples do not call workbench REST as the app data API |
+| G-A10 | Layer | **resolved** | `:objs-persistence`; examples do not call workbench REST as the app data API |
 | G-A11 | Consumers | **resolved** | Implementation WI rewires workbench Objects + SBOM asset list + AR collection object search together |
 
 ---

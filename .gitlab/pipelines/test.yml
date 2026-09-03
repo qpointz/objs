@@ -13,7 +13,7 @@ components:test:
   extends: .gradle-job
   script:
     - cd "${CI_PROJECT_DIR}"
-    - ./gradlew --no-daemon ${GRADLE_CONTINUE_PARAM} --console plain test :objs-core:testITClasses
+    - ./gradlew --no-daemon ${GRADLE_CONTINUE_PARAM} --console plain test :objs-persistence:testITClasses
   artifacts:
     when: always
     expire_in: 7 days

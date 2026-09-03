@@ -12,7 +12,7 @@ Publishable Spring library that exposes:
 - **SpringDoc** OpenAPI annotations + grouped API beans (UI also on `:objs-service-app`)
 - **Workbench SPA** serving (`ObjsWorkbenchUiConfiguration`) when `:objs-service-ui` is on the consuming app’s runtime classpath (`:objs-service-app` or an example sidecar)
 
-Depends on `:objs-core` only (no `:objs-service-ui`). Gremlin traverse REST lives in **`:objs-gremlin-service`** (see [`../graph/gremlin.md`](../graph/gremlin.md)). Workbench runnable: [`../platform/overview.md`](../platform/overview.md) / `:objs-service-app` (`runtimeOnly` `:objs-service-ui`). Domain: [`../graph/`](../graph/README.md). Operator UI: [`../ui.md`](../ui.md).
+Depends on `:objs-autoconfigure` (brings `:objs-persistence`; no `:objs-service-ui`). Gremlin traverse REST lives in **`:objs-gremlin-service`** (see [`../graph/gremlin.md`](../graph/gremlin.md)). Workbench runnable: [`../platform/overview.md`](../platform/overview.md) / `:objs-service-app` (`runtimeOnly` `:objs-service-ui`). Domain: [`../graph/`](../graph/README.md). Operator UI: [`../ui.md`](../ui.md).
 
 **Normative endpoint tables:** [`rest-api.md`](rest-api.md).
 

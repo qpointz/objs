@@ -2,7 +2,7 @@ rootProject.name = "objs"
 
 include(":objs-api")
 include(":objs-codegen-java")
-include(":objs-core")
+include(":objs-persistence")
 include(":objs-autoconfigure")
 include(":objs-service")
 include(":objs-service-ui")

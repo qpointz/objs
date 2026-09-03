@@ -35,7 +35,7 @@ REPLACE_EXTENSIONS = [
 
 TOP_LEVEL_MODULES = [
     "objs-api",
-    "objs-core",
+    "objs-persistence",
     "objs-autoconfigure",
     "objs-service",
     "objs-service-ui",
@@ -66,7 +66,7 @@ GRADLE_PROJECTS = [
     ":objs-service-ui",
     ":objs-autoconfigure",
     ":objs-service",
-    ":objs-core",
+    ":objs-persistence",
     ":objs-api",
     ":sbom-service-ui",
     ":sbom-service",

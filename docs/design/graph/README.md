@@ -2,7 +2,7 @@
 
 **Status:** early design (gaps for foundation story largely resolved — see story [`GAPS.md`](../../workitems/planned/entity-graph-foundation/GAPS.md))  
 **Packages (target):** `org.poc.objs.*`  
-**Modules:** [`objs-api`](../core/README.md) (model + store ports), [`objs-core`](../core/README.md) (persistence), [`objs-autoconfigure`](../core/README.md) (Boot wiring), [`objs-service`](../service/README.md) (REST)
+**Modules:** [`objs-api`](../core/README.md) (model + store ports), [`objs-persistence`](../core/README.md) (persistence), [`objs-autoconfigure`](../core/README.md) (Boot wiring), [`objs-service`](../service/README.md) (REST)
 
 Objs is an **entity store**: independent informational **entities** linked by **relations (edges)** into a **graph**. Callers select **subgraphs** via **annotations**. Validation uses JSON Schema generated from the authoritative object-schema DSL and allowed type–role rules, enforced at the **persistence** boundary.
 
@@ -22,6 +22,7 @@ Objs is an **entity store**: independent informational **entities** linked by **
 | [cycle-analysis-examples.md](cycle-analysis-examples.md) | Cycle analysis REST, workbench demo, sample responses |
 | [gremlin-examples.md](gremlin-examples.md) | Sample gremlin-lang scripts (vertices, tables, SBOM roles) |
 | [validation.md](validation.md) | Persist gate, batch two-stage validation, create/update by id |
+| [persist-sketch.md](persist-sketch.md) | Write path sketch: create graph → mutation → persist |
 | [persistence.md](persistence.md) | PostgreSQL, JSONB, two Flyway lines, H2 tests |
 | [database-model.md](database-model.md) | As-built `bom_*` schema (C-18 HEAD + history) |
 | [apps-vs-foundation.md](apps-vs-foundation.md) | Store vs example apps: missing graph APIs, lift candidates, duplicates |
@@ -55,7 +56,7 @@ flowchart LR
 ## Access
 
 - **Entity SDK** (`objs-api`): construct any in-memory graph without validation enforcement.
-- **Persistence** (`objs-core` + Boot via `objs-autoconfigure`): two-stage gate; two Flyway lines (objs `objs_*` then app tables); PostgreSQL runtime; H2 plus Testcontainers coverage.
+- **Persistence** (`objs-persistence` + Boot via `objs-autoconfigure`): two-stage gate; two Flyway lines (objs `objs_*` then app tables); PostgreSQL runtime; H2 plus Testcontainers coverage.
 - **Read**: return whatever exists, including non-conforming data.
 
 ## Coordinates
@@ -71,7 +72,7 @@ flowchart LR
 
 Normative list: story [`GAPS.md`](../../workitems/planned/entity-graph-foundation/GAPS.md).
 
-- **G-13** default-ok: artifact names stay `objs-core` / `objs-service`
+- **G-13** default-ok: artifact names stay `objs-persistence` / `objs-service`
 - **Half-open:** edge annotations (G-14), JSONB indexing (G-16), soft-delete/versioning (G-17)
 - **Completed follow-ups:** REST (C-2); persistent schema and edge-rule catalogs (C-3)
 - **During WIs:** exact DDL columns; annotation map value types (string vs richer); cascade/delete detail; audit report shape (G-18)

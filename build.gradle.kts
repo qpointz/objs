@@ -57,7 +57,7 @@ tasks.register("test") {
     group = "verification"
     dependsOn(
         ":objs-api:test",
-        ":objs-core:test",
+        ":objs-persistence:test",
         ":objs-autoconfigure:test",
         ":objs-service:test",
         ":sbom-service:test",
@@ -70,6 +70,6 @@ tasks.register("testIT") {
     description = "Runs all testIT tasks across leaf modules"
     group = "verification"
     dependsOn(
-        ":objs-core:testIT",
+        ":objs-persistence:testIT",
     )
 }

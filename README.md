@@ -100,7 +100,7 @@ domain vocabulary belongs under `examples/`.
 |--------|---------|
 | [`objs-api`](objs-api/) | Spring-free, Java-compatible graph and mutation primitives |
 | [`objs-codegen-java`](objs-codegen-java/) | Reusable Java generator for typed bindings |
-| [`objs-core`](objs-core/) | Entity SDK, schema catalog, persistence, validation, and export |
+| [`objs-persistence`](objs-persistence/) | Spring-free JPA persistence, Flyway SQL, seed apply, networknt Validator |
 | [`objs-service`](objs-service/) | Foundation REST API and Spring Boot autoconfiguration |
 | [`objs-service-ui`](objs-service-ui/) | Foundation workbench for schemas and graph operations |
 | [`objs-gremlin-core`](objs-gremlin-core/) | In-process graph materialization and Gremlin evaluation |
@@ -117,7 +117,7 @@ domain vocabulary belongs under `examples/`.
 | [`examples/codegen/jsonschema-draft07`](examples/codegen/jsonschema-draft07/) | The same pipeline with draft-07 schemas |
 
 Generated output stays inside each consuming application. The examples demonstrate that domain
-applications can use Objs without placing application-specific generated classes in `objs-core`.
+applications can use Objs without placing application-specific generated classes in `objs-persistence`.
 
 ## Quick start
 

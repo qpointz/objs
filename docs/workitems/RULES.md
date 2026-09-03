@@ -314,7 +314,7 @@ implementation on the feature branch:
    or **unknown** — fix failures, amend with a new commit if needed, push again, and re-check until
    green (or report a blocker to the user).
 4. **Local tests** — run module-appropriate tests locally as part of the WI (e.g. `./gradlew test`,
-   `./gradlew :objs-core:test :objs-service:test`) **before** push; CI is the remote
+   `./gradlew :objs-persistence:test :objs-service:test`) **before** push; CI is the remote
    confirmation, not a substitute for local verification when the WI touches that code.
 
 Which jobs run is defined in [`docs/design/platform/ci-pipeline.md`](../design/platform/ci-pipeline.md).

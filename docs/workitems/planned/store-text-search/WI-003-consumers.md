@@ -24,4 +24,4 @@ All three labeled consumers call the C-20 store API. No app loads a full graph f
 ## Acceptance
 
 - Same search against the same pool/graph hits in all three apps
-- `./gradlew :objs-core:test :objs-service:test :sbom-service:test :asset-repository-service:test`
+- `./gradlew :objs-persistence:test :objs-service:test :sbom-service:test :asset-repository-service:test`

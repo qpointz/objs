@@ -12,7 +12,7 @@ build → integration → publish → release
 
 | Stage | Now | Later |
 |-------|-----|--------|
-| `build` | Child `test.yml`: `./gradlew test` + compile `:objs-core:testITClasses` | Per-module change filters |
+| `build` | Child `test.yml`: `./gradlew test` + compile `:objs-persistence:testITClasses` | Per-module change filters |
 | `integration` | Child `integration.yml`: `./gradlew testIT` | Extra IT jobs |
 | `publish` | Stub child `publish-docker.yml` (not triggered) | Official + example images |
 | `release` | Stub child `release.yml` (not triggered) | Tags: Hub + GitLab registry, Maven |
@@ -79,7 +79,7 @@ No Gradle files are owned by this pipeline.
 
 | Job | Command |
 |-----|---------|
-| Unit | `./gradlew test :objs-core:testITClasses` |
+| Unit | `./gradlew test :objs-persistence:testITClasses` |
 | Integration | `./gradlew testIT` |
 
 `testIT` uses Testcontainers PostgreSQL. The integration job may attach Docker-in-Docker; if the runner already exposes Docker, that service can be dropped later.

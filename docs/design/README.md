@@ -14,10 +14,10 @@ Organised by logical component (not by story). Story process lives under
 | GitLab CI | [`platform/ci-pipeline.md`](platform/ci-pipeline.md) | Orchestrator, unit/IT children, reserved Docker publish |
 | Kotlin | [`platform/kotlin.md`](platform/kotlin.md) | Kotlin toolchain and implementation notes |
 | App | [`platform/app.md`](platform/app.md) | `objs-service-app`: workbench-only runnable |
-| Core | [`core/README.md`](core/README.md), [`core/spring-split.md`](core/spring-split.md) | `objs-api` / Spring-free `objs-core` / `objs-autoconfigure` (C-25) |
+| Core | [`core/README.md`](core/README.md), [`core/spring-split.md`](core/spring-split.md), [`core/persistence-backends.md`](core/persistence-backends.md) | `objs-api` / Spring-free `objs-persistence` / `objs-autoconfigure` (C-25) |
 | Service | [`service/README.md`](service/README.md) | `objs-service`: REST + autoconfiguration |
-| Graph domain | [`graph/README.md`](graph/README.md) | Entity store model, annotations, validation, persistence |
-| Foundation vs examples | [`graph/apps-vs-foundation.md`](graph/apps-vs-foundation.md) | Object/graph APIs: what apps reimplemented; what to lift into objs-core |
+| Graph domain | [`graph/README.md`](graph/README.md), [`graph/persist-sketch.md`](graph/persist-sketch.md) | Entity store model, annotations, validation, write-path sketch |
+| Foundation vs examples | [`graph/apps-vs-foundation.md`](graph/apps-vs-foundation.md) | Object/graph APIs: what apps reimplemented; what to lift into objs-persistence |
 | Gremlin traversal | [`graph/gremlin.md`](graph/gremlin.md) | Matcher → read-only TinkerGraph → gremlin-lang → result |
 | Gremlin examples | [`graph/gremlin-examples.md`](graph/gremlin-examples.md) | Sample scripts (vertices, tables, SBOM edge roles) |
 | Typed domain | [`graph/typed-domain.md`](graph/typed-domain.md) | Reusable typed façades / GraphBuilder on the foundation |

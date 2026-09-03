@@ -45,7 +45,7 @@ For `TARGET_PACKAGE=com.acme.platform`:
 |--------|--------|
 | `org.poc.objs` | `com.acme.platform` |
 | `org/poc/objs/...` (classpath) | `com/acme/platform/...` |
-| `objs-core` | `platform-core` |
+| `objs-persistence` | `platform-persistence` |
 | `objs-api` | `platform-api` |
 | `objs-autoconfigure` | `platform-autoconfigure` |
 | `:sbom-service` | `:platform-sbom-service` |

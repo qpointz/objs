@@ -24,7 +24,7 @@ See [`../graph/README.md`](../graph/README.md).
 | Versions | Root [`VERSION`](../../../VERSION) file; override `-PprojectVersion=` |
 | Catalog | Root [`libs.versions.toml`](../../../libs.versions.toml) |
 | Framework | Spring Boot **4.0.x** (BOM via `spring-boot-dependencies`) |
-| Persistence | Hibernate/JPA in `:objs-core`; Boot via `:objs-autoconfigure`; **PostgreSQL** primary DB; JSONB for payloads |
+| Persistence | Hibernate/JPA in `:objs-persistence`; Boot via `:objs-autoconfigure`; **PostgreSQL** primary DB; JSONB for payloads |
 | HTTP | Spring WebMVC (`objs-service`) |
 | Libraries | Lombok, Jackson 3, JUnit Jupiter, Mockito, AssertJ |
 | Packaging style | Libraries + workbench/example apps; Maven/Docker publish reserved in CI |
@@ -45,7 +45,7 @@ flowchart LR
   sbom[sbom-service :8080]
   sbomui[sbom-service-ui]
   ac[objs-autoconfigure]
-  core[objs-core]
+  core[objs-persistence]
   api[objs-api]
   app -->|implementation| service
   app -->|implementation| gsvc
@@ -65,7 +65,7 @@ flowchart LR
 | Module | Gradle path | Responsibility |
 |--------|-------------|----------------|
 | **objs-api** | `:objs-api` | Model, matcher/JEXL, validation contracts, seed parse, store ports |
-| **objs-core** | `:objs-core` | Spring-free JPA persistence, Flyway SQL, seed apply |
+| **objs-persistence** | `:objs-persistence` | Spring-free JPA persistence, Flyway SQL, seed apply |
 | **objs-autoconfigure** | `:objs-autoconfigure` | Boot adapter (`spring.datasource` → store beans) |
 | **objs-service** | `:objs-service` | Spring **REST** (foundation side) |
 | **objs-service-ui** | `:objs-service-ui` | Foundation workbench SPA (`runtimeOnly` of `:objs-service-app` or example sidecars) |
@@ -75,7 +75,7 @@ flowchart LR
 | **sbom-service-ui** | `:sbom-service-ui` (`examples/sbom/sbom-service-ui`) | Inventory SPA |
 | **objs-service-app** | `:objs-service-app` | Workbench-only runnable — see [`app.md`](app.md) |
 
-Dependency rule: Gremlin-core depends on `:objs-api` only. Boot libraries depend on `:objs-autoconfigure` (which brings `:objs-core`). `objs-service-app` wires the workbench runner only and **must not** depend on `examples/`. Example apps under `examples/` are separate launchables and **must not** depend on `:objs-service` / `:objs-service-ui` / `:objs-gremlin-service` / `:objs-service-app` at compile time. Core must not depend on service/app/gremlin/Spring.
+Dependency rule: Gremlin-core depends on `:objs-api` only. Boot libraries depend on `:objs-autoconfigure` (which brings `:objs-persistence`). `objs-service-app` wires the workbench runner only and **must not** depend on `examples/`. Example apps under `examples/` are separate launchables and **must not** depend on `:objs-service` / `:objs-service-ui` / `:objs-gremlin-service` / `:objs-service-app` at compile time. Persistence must not depend on service/app/gremlin/Spring.
 
 Object/graph capabilities that examples still reimplement (reverse lookup, identity query, paging, graph copy) are listed in [`../graph/apps-vs-foundation.md`](../graph/apps-vs-foundation.md).
 
@@ -92,7 +92,7 @@ Object/graph capabilities that examples still reimplement (reverse lookup, ident
 - Security / OAuth
 - Maven Central / Docker Hub credentials and publish jobs (CI stages reserved only)
 
-**Persistence migrations:** **two Flyway lines** — objs-core `objs_*` (`flyway_schema_history_objs`)
+**Persistence migrations:** **two Flyway lines** — objs-persistence `objs_*` (`flyway_schema_history_objs`)
 then the embedding app’s Boot Flyway (G-10). See [`../graph/persistence.md`](../graph/persistence.md).
 
 ## Open questions

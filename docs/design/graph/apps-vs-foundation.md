@@ -2,7 +2,7 @@
 
 **Status:** design note (2026-08-16), from SBOM inventory + asset repository  
 **Shipped:** [C-17 `live-store-apis`](../../workitems/completed/20260819-live-store-apis/STORY.md), [C-18 versions](../../workitems/completed/20260819-versions-and-snapshots/STORY.md) (clocks + HEAD/history + Snapshot freeze; `clone()` kept), [C-19 after versions](../../workitems/completed/20260822-foundation-after-versions/STORY.md) (pin reverse + `>` / prefix pushdown). Text `q`: [C-20 `store-text-search`](../../workitems/planned/store-text-search/STORY.md). Policy evaluation (planned): [C-24 `objs-policy`](../../workitems/planned/objs-policy/STORY.md), [`docs/design/policy/`](../policy/). Sequence: [`SEQUENCE.md`](../../workitems/SEQUENCE.md).  
-**Audience:** objs-core / graph APIs  
+**Audience:** objs-persistence / graph APIs  
 **Not this doc:** product journeys, workbench REST (`objs-service`), Gradle/UI packaging (appendix only)
 
 Both examples sit on **objs-autoconfigure** (Boot) plus **objs-api** (model). They persist through the same store as the workbench.
@@ -16,7 +16,7 @@ SBOM story tracker for the same gaps: [`FOUNDATION-BACKLOG.md`](../../workitems/
 | Layer | Owns |
 |-------|------|
 | **objs-api** | Model + matcher/JEXL + validation contracts + seed parse + store ports |
-| **objs-core** | Persistence impls, catalogs-on-store, persist gate, seed apply, identity *projection* |
+| **objs-persistence** | Persistence impls, catalogs-on-store, persist gate, seed apply, identity *projection* |
 | **objs-autoconfigure** | Boot wiring for the store (`spring.datasource`, UoW, objs Flyway ordering) |
 | **objs-gremlin-core** | Matcher → resolved fragment → TinkerGraph → gremlin-lang (`api(:objs-api)` only) |
 | **objs-jgrapht-core** | Resolved fragment → JGraphT graph + SCC cycle analysis (JVM-only) |

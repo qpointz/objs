@@ -83,7 +83,7 @@ def main() -> int:
 
         moved = (
             out_dir
-            / "demo-core"
+            / "demo-persistence"
             / "src"
             / "main"
             / "kotlin"
@@ -142,7 +142,7 @@ def main() -> int:
 
         retained = (
             out_dir
-            / "objs-core"
+            / "objs-persistence"
             / "src"
             / "main"
             / "kotlin"
@@ -186,7 +186,7 @@ def main() -> int:
 
         retained = (
             out_dir
-            / "objs-core"
+            / "objs-persistence"
             / "src"
             / "main"
             / "kotlin"
@@ -244,7 +244,7 @@ replace:
         )
 
         settings = (out_dir / "settings.gradle.kts").read_text(encoding="utf-8")
-        expected_core_path = '":platform:objs:demo-core"'
+        expected_core_path = '":platform:objs:demo-persistence"'
         if f"include({expected_core_path})" not in settings:
             print("Module hierarchy missing from generated include", file=sys.stderr)
             return 1
@@ -252,16 +252,16 @@ replace:
         if f"include({expected_ac_path})" not in settings:
             print("Module hierarchy missing objs-autoconfigure include", file=sys.stderr)
             return 1
-        if f"project({expected_core_path}).projectDir = file(\"demo-core\")" not in settings:
+        if f"project({expected_core_path}).projectDir = file(\"demo-persistence\")" not in settings:
             print("Flat module directory mapping missing from generated settings", file=sys.stderr)
             return 1
 
         service_build = out_dir / "demo-service" / "build.gradle.kts"
         service_text = service_build.read_text(encoding="utf-8")
-        if 'project.parent!!.project("demo-core")' not in service_text:
+        if 'project.parent!!.project("demo-persistence")' not in service_text:
             print("Parent-relative dependency was not renamed", file=sys.stderr)
             return 1
-        if "objs-core" in service_text:
+        if "objs-persistence" in service_text:
             print("Source module name remained in parent-relative dependency", file=sys.stderr)
             return 1
         if "CUSTOM_EXPORT_MARKER" in service_text or "demo-target" not in service_text:

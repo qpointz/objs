@@ -6,7 +6,7 @@ Repository Guidelines
 Gradle multi-module Kotlin project. Foundation leaf modules at the repository root; concrete apps under `examples/`:
 
 - `objs-api` — Foundational model (graph types, catalogs, matcher/JEXL, validation contracts, seed parse, store ports)
-- `objs-core` — Spring-free persistence (JPA DAOs, Flyway SQL, seed apply, networknt Validator)
+- `objs-persistence` — Spring-free persistence (JPA DAOs, Flyway SQL, seed apply, networknt Validator); packages stay `org.poc.objs.core.*`
 - `objs-autoconfigure` — Boot adapter (`spring.datasource` → beans, Spring UoW, objs Flyway ordering)
 - `objs-service` — Spring REST API (library); **foundation side service** (with UI)
 - `objs-service-ui` — Workbench SPA (Vite/React); node-gradle build; JAR packs `static/workbench/`
@@ -26,8 +26,8 @@ Production sources: `src/main/kotlin`. Tests: `src/test/kotlin` (integration sui
 
 - `./gradlew build` — compile, test, assemble
 - `./gradlew test` — unit tests (all leaf modules)
-- `./gradlew :objs-core:test` / `./gradlew :objs-api:test` / `./gradlew :objs-autoconfigure:test` / `./gradlew :objs-service:test` — scoped tests
-- `./gradlew :objs-core:testIT` — integration tests when defined
+- `./gradlew :objs-persistence:test` / `./gradlew :objs-api:test` / `./gradlew :objs-autoconfigure:test` / `./gradlew :objs-service:test` — scoped tests
+- `./gradlew :objs-persistence:testIT` — integration tests when defined
 - GitLab CI: [`docs/design/platform/ci-pipeline.md`](docs/design/platform/ci-pipeline.md) — unit child on MRs; `testIT` on protected `dev` or `RUN_INTEGRATION=true`
 - `./gradlew :objs-service-app:run` — workbench only (H2, port 8081; `/workbench/` + `/api/v1/objs/**`)
 - `./gradlew :sbom-service:run` — SBOM inventory example (H2, port 8080; inventory UI `/sbom/`; must not call objs-service)
@@ -40,7 +40,7 @@ Java/Kotlin: four-space indentation, `PascalCase` classes. Prefer Lombok only if
 
 ## Testing Guidelines
 
-JUnit Jupiter + Mockito. Name tests `<Subject>Test`; methods `shouldX_whenY`. Persistence tests in `:objs-core` use the Spring-free harness (not `@DataJpaTest`). Prefer Spring Boot slice tests in `:objs-autoconfigure` / `:objs-service` when adding Boot features.
+JUnit Jupiter + Mockito. Name tests `<Subject>Test`; methods `shouldX_whenY`. Persistence tests in `:objs-persistence` use the Spring-free harness (not `@DataJpaTest`). Prefer Spring Boot slice tests in `:objs-autoconfigure` / `:objs-service` when adding Boot features.
 
 ## Branching Strategy
 

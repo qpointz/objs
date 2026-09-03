@@ -8,7 +8,7 @@
 
 ## Goal
 
-Implement the WI-001 store contract in `:objs-core` with H2 tests (Postgres IT if SQL-specific).
+Implement the WI-001 store contract in `:objs-persistence` with H2 tests (Postgres IT if SQL-specific).
 
 Draft from the old C-17 WI-008 (replace with WI-001 locks):
 
@@ -25,4 +25,4 @@ Draft from the old C-17 WI-008 (replace with WI-001 locks):
 ## Acceptance
 
 - Core tests cover WI-001 semantics
-- `./gradlew :objs-core:test`
+- `./gradlew :objs-persistence:test`

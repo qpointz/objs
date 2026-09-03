@@ -10,7 +10,7 @@ Status: `open` | `resolved` | `deferred` | `cancelled` | `accepted-risk`.
 - **Behaviour unchanged** — store/DAO method surface and mutate/select semantics stay; no product redesign.
 - **Maxim** — *“I can do everything with `:objs-api` except persistence”* (and except running networknt `Validator` until G-X8).
 - **Pattern** — `*-api` + Spring-free persistence module + tiny `*-autoconfigure`.
-- **Names this story** — Gradle **`:objs-core`** = persistence role; rename → **`:objs-persistence`** = **G-X7**.
+- **Names** — Gradle **`:objs-persistence`** = persistence role (renamed from `:objs-core`; **G-X7** resolved). Packages remain `org.poc.objs.core.*`.
 - **TX** — internal UoW in persistence; hidden from api / REST / gremlin / store signatures.
 
 ---
@@ -30,10 +30,10 @@ _None._
 | G-A3 | Spring TX | **resolved** | `TransactionTemplate` in autoconfigure. |
 | G-A4 | Test harness | **resolved** | Model tests → `:objs-api`; `ObjsPersistenceTestSupport` in core `src/test` (EMF + objs Flyway + EM UoW); Postgres `testIT` on core; Boot slices → autoconfigure; no separate test module. |
 | G-A5 | Configuration properties | **resolved** | Plain settings in **core**; `@ConfigurationProperties` **only** in autoconfigure; same prefixes (`objs.catalogs`, `objs.flyway`, `objs.seeds`). |
-| G-A6 | Export | **resolved** | Add `objs-autoconfigure` to dumper lists → `platform-autoconfigure`. Do not rename `objs-core` until G-X7. |
-| G-A7 | Seeds / `ResourceLoader` | **resolved** | Parse/SPI → api; apply/ledger → core; startup + Spring `ResourceLoader` → autoconfigure; api `(String) -> InputStream` / `SeedResourceResolver`. |
-| G-A8 | Hibernate without Boot | **resolved** | Core: `jakarta.persistence-api` + `hibernate-core` + Flyway **core**; no Boot BOM; EMF in tests / non-Spring wiring; keep `@JdbcTypeCode`. |
-| G-A9 | Module names (this story) | **resolved** | `:objs-autoconfigure` + keep `:objs-core` until G-X7. |
+| G-A6 | Export | **resolved** | Add `objs-autoconfigure` to dumper lists → `platform-autoconfigure`. Module dir `objs-persistence` → `platform-persistence` (G-X7). |
+| G-A7 | Seeds / `ResourceLoader` | **resolved** | Parse/SPI → api; apply/ledger → persistence; startup + Spring `ResourceLoader` → autoconfigure; api `(String) -> InputStream` / `SeedResourceResolver`. |
+| G-A8 | Hibernate without Boot | **resolved** | Persistence: `jakarta.persistence-api` + `hibernate-core` + Flyway **core**; no Boot BOM; EMF in tests / non-Spring wiring; keep `@JdbcTypeCode`. |
+| G-A9 | Module names | **resolved** | `:objs-autoconfigure` + `:objs-persistence` (G-X7 rename done). |
 | G-A10 | Consumer deps | **resolved** | Boot → autoconfigure; engines → api. |
 | G-A11 | Gremlin | **resolved** | `:objs-gremlin-core` → **`:objs-api` only**. |
 | G-A12 | Flyway SQL location | **resolved** | SQL in core JAR; autoconfig ordering. |
@@ -43,13 +43,13 @@ _None._
 | G-A16 | `@Lazy` cycle | **resolved** | Break `NamedGraphStore` ↔ `GraphStore` with ports / ctor order / setter; no Spring `@Lazy`. |
 | G-A17 | JDBC without Spring | **resolved** | Replace `JdbcTemplate` / `DataSourceUtils` with `Connection` joined to active UoW/TX. |
 | G-A18 | Flyway `{vendor}` | **resolved** | JDBC-URL → `postgresql` \| `h2` map in core; fail fast; no Boot `DatabaseDriver`. |
-| G-A19 | Topology / pattern | **resolved** | api + core(persistence role) + autoconfigure; future `*-persistence` rename. |
+| G-A19 | Topology / pattern | **resolved** | api + `:objs-persistence` + autoconfigure (G-X7 rename done). |
 | G-A20 | Api package move set | **resolved** | Boundary table below. Matcher hybrid C; validation hybrid C. |
 | G-A21 | Api new dependencies | **resolved** | **JEXL** on `:objs-api` only. No networknt / Jackson 2 on api. |
 
 ### G-A20 locked boundary
 
-| → `:objs-api` | → `:objs-core` (persistence) | → `:objs-autoconfigure` |
+| → `:objs-api` | → `:objs-persistence` | → `:objs-autoconfigure` |
 |---------------|------------------------------|-------------------------|
 | Graph primitives (already) | JPA records, DAOs | Autoconfig classes |
 | Schema / allow-list interfaces + **InMemory** catalogs | **Jpa** catalogs (Caffeine write-through) | `@ConfigurationProperties` binders |
@@ -74,7 +74,7 @@ _None._
 | G-X4 | Spring-free objs-service | **deferred** | REST stays MVC |
 | G-X5 | `:objs-core-jpa` | **cancelled** | Superseded by G-A19 |
 | G-X6 | Rename GraphStore / NamedGraphStore | **deferred** | Naming confusion only |
-| G-X7 | Rename `:objs-core` → `:objs-persistence` | **deferred** | Follow-up after this story |
+| G-X7 | Rename `:objs-core` → `:objs-persistence` | **resolved** | Gradle module + export + living docs; packages stay `org.poc.objs.core.*` |
 | G-X8 | Validator on api (Jackson 3) | **deferred** | Move networknt/`Validator` to api when Jackson 3-capable |
 
 ---

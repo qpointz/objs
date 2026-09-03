@@ -53,7 +53,7 @@ import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.annotation.EnableTransactionManagement
 
 /**
- * Autoconfiguration for objs-core persistence and validation beans.
+ * Autoconfiguration for objs-persistence and validation beans.
  *
  * Creates PostgreSQL-authoritative [JpaSchemaCatalog] / [JpaAllowedEdgeCatalog]
  * implementations with write-through + Caffeine TTL read snapshots. Tests or embedding

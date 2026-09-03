@@ -7,28 +7,28 @@
 **Backlog:** [C-25](../../BACKLOG.md)  
 **Base:** `origin/dev`  
 **Depends on:** [C-23 `objs-api-codegen`](../../completed/20260828-objs-api-codegen/STORY.md) (`:objs-api` boundary)  
-**Design:** [`docs/design/core/README.md`](../../../design/core/README.md), [`docs/design/core/spring-split.md`](../../../design/core/spring-split.md), [`docs/design/graph/persistence.md`](../../../design/graph/persistence.md)  
+**Design:** [`docs/design/core/README.md`](../../../design/core/README.md), [`docs/design/core/spring-split.md`](../../../design/core/spring-split.md), [`docs/design/core/persistence-backends.md`](../../../design/core/persistence-backends.md), [`docs/design/graph/persistence.md`](../../../design/graph/persistence.md)  
 **Gaps:** [`GAPS.md`](GAPS.md)  
 **Process:** [`docs/workitems/RULES.md`](../../RULES.md)  
 **Sibling:** [C-20 `store-text-search`](../../planned/store-text-search/STORY.md) — independent  
-**Follow-up:** rename `:objs-core` → `:objs-persistence` (G-X7); validator on api when Jackson 3-ready (G-X8)
+**Follow-up:** validator on api when Jackson 3-ready (G-X8)
 
 ## Goal
 
-Establish the **persistence setup pattern**: expand `:objs-api` as the foundational model (*everything except persistence*), make `:objs-core` a **Spring-free** persistence module (JPA DAOs + internal UoW), and add a tiny `:objs-autoconfigure` Boot adapter that wires `spring.datasource` into that store. Keep the Gradle name `:objs-core` this story; rename later.
+Establish the **persistence setup pattern**: expand `:objs-api` as the foundational model (*everything except persistence*), make `:objs-persistence` (formerly `:objs-core`) a **Spring-free** persistence module (JPA DAOs + internal UoW), and add a tiny `:objs-autoconfigure` Boot adapter that wires `spring.datasource` into that store. **G-X7** Gradle rename is done.
 
 ## Normative (locked — see GAPS)
 
 | Topic | Lock |
 |-------|------|
 | `:objs-api` | Model + store ports + matcher contract/in-memory eval + validation contracts + seed parse; **JEXL** OK; **no** networknt/Jackson 2 |
-| `:objs-core` | Persistence role: DAOs, store impls, SQL pushdown, Flyway SQL, seed apply, networknt `Validator` impl — **no** `org.springframework.*` |
+| `:objs-persistence` | Persistence role: DAOs, store impls, SQL pushdown, Flyway SQL, seed apply, networknt `Validator` impl — **no** `org.springframework.*` |
 | `:objs-autoconfigure` | Tiny Boot adapter: DataSource/EMF → beans, `@ConfigurationProperties`, Spring UoW, seed startup |
 | `:objs-gremlin-core` | `api(:objs-api)` only |
 | Boot apps | `api`/`implementation(:objs-autoconfigure)` |
-| Transactions | Internal UoW in core; Spring `TransactionTemplate` in autoconfigure; hidden from public API |
+| Transactions | Internal UoW in persistence; Spring `TransactionTemplate` in autoconfigure; hidden from public API |
 | DAOs | 1:1 mirror of current `JpaRepository` interfaces; no shim |
-| Packages | Autoconfigure → `org.poc.objs.autoconfigure.*`; persistence packages stay under `org.poc.objs.core.*` until G-X7 |
+| Packages | Autoconfigure → `org.poc.objs.autoconfigure.*`; persistence packages stay under `org.poc.objs.core.*` (Gradle name ≠ package) |
 
 ## Stages
 
@@ -58,7 +58,6 @@ Establish the **persistence setup pattern**: expand `:objs-api` as the foundatio
 
 - REST API or store semantic changes
 - `store-text-search` (C-20)
-- Gradle rename `:objs-core` → `:objs-persistence` (G-X7)
 - Moving networknt `Validator` onto api (G-X8)
 - Replacing Hibernate/JPA
 - Spring-free `:objs-service`
@@ -66,10 +65,11 @@ Establish the **persistence setup pattern**: expand `:objs-api` as the foundatio
 
 ## Acceptance (after implementation)
 
-- [x] `objs-core` compile classpath has zero `org.springframework` artifacts
+- [x] `objs-persistence` compile classpath has zero `org.springframework` artifacts
 - [x] `:objs-gremlin-core` depends on `:objs-api` only
+- [x] Gradle rename `:objs-core` → `:objs-persistence` (G-X7)
 - [ ] Boot apps work with `objs-autoconfigure` only; objs Flyway + stores behave as before
-- [ ] `./gradlew :objs-api:test :objs-core:test :objs-core:testIT :objs-autoconfigure:test :objs-service:test :sbom-service:test :asset-repository-service:test`
+- [ ] `./gradlew :objs-api:test :objs-persistence:test :objs-persistence:testIT :objs-autoconfigure:test :objs-service:test :sbom-service:test :asset-repository-service:test`
 - [ ] All GAPS design rows resolved or deferred
 
 ## Process notes

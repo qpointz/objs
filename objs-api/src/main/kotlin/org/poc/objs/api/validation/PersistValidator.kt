@@ -5,7 +5,7 @@ import org.poc.objs.api.domain.Entity
 
 /**
  * Persist-gate validation port. Implemented by the networknt-backed [org.poc.objs.core.validation.Validator]
- * in `:objs-core` (G-A20 hybrid C / G-X8).
+ * in `:objs-persistence` (G-A20 hybrid C / G-X8).
  */
 interface PersistValidator {
     fun validateEntities(entities: Collection<Entity>): ValidationResult

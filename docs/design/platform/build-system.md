@@ -10,7 +10,7 @@ objs/
   VERSION                  # default project version (e.g. 0.1.0)
   gradle/wrapper/          # Gradle 9.4.0
   objs-api/
-  objs-core/
+  objs-persistence/
   objs-autoconfigure/
   objs-service/
   objs-service-ui/         # workbench SPA (Vite); node-gradle 7.0.2
@@ -27,14 +27,14 @@ objs/
 
 - **Plugins per leaf module:** `java-library` (Kotlin libraries), `java` + `com.github.node-gradle.node`
   on UI modules (`:objs-service-ui`, `:sbom-service-ui`), `application` (`objs-service-app`, `sbom-service`); Kotlin `jvm` on Kotlin modules;
-  `kotlin-spring` on Spring modules; `kotlin-jpa` on `:objs-core` and `:objs-autoconfigure`
+  `kotlin-spring` on Spring modules; `kotlin-jpa` on `:objs-persistence` and `:objs-autoconfigure`
 - **BOM:** Gradle `platform(libs.boot.dependencies)` — no `io.spring.dependency-management`
 - **Catalog:** `libs.versions.toml` is the version SoT; declare only deps/plugins in use
 - **Toolchain:** Java 21 applied to all Java/Kotlin projects from the root `subprojects` block
-- **Tests:** JVM Test Suite + JUnit Jupiter from the version catalog; `testIT` on `:objs-core`
+- **Tests:** JVM Test Suite + JUnit Jupiter from the version catalog; `testIT` on `:objs-persistence`
 - **Aggregate:** root tasks `test` and `testIT` depend on leaf module tasks
 - **No** `build-logic` / custom convention plugins
-- **CI:** GitLab child pipelines — [`ci-pipeline.md`](ci-pipeline.md). Unit: `test` + compile `:objs-core:testITClasses`. Integration: `testIT` (protected `dev` or `RUN_INTEGRATION=true`). Docker/Maven publish stages reserved, not implemented.
+- **CI:** GitLab child pipelines — [`ci-pipeline.md`](ci-pipeline.md). Unit: `test` + compile `:objs-persistence:testITClasses`. Integration: `testIT` (protected `dev` or `RUN_INTEGRATION=true`). Docker/Maven publish stages reserved, not implemented.
 - **Workbench UI:** `:objs-service-ui` downloads Node via node-gradle, runs `npm ci` /
   `npm run build`, writes Vite output to `build/generated/vite`, then `processResources` copies
   into `build/resources/main/static/workbench/` (so project dependency classpaths see the assets).
@@ -49,11 +49,11 @@ objs/
 
 ```bash
 ./gradlew test
-./gradlew :objs-core:build
+./gradlew :objs-persistence:build
 ./gradlew :objs-service:build
 ./gradlew :objs-service-ui:build
 ./gradlew :objs-service:build -PskipUi=true
-./gradlew :objs-core:testIT
+./gradlew :objs-persistence:testIT
 ./gradlew :objs-service-app:run  # workbench only → :8081
 ./gradlew :sbom-service:run      # SBOM inventory → :8080
 ```

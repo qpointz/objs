@@ -2,12 +2,13 @@
 
 **Status:** living (C-25 ownership)  
 **Parent:** [README.md](README.md)  
-**Modules:** `:objs-core` owns JPA/DAOs/Flyway **SQL**; `:objs-autoconfigure` owns Boot DataSource/EMF wiring and objs Flyway **ordering** beans — see [core/spring-split.md](../core/spring-split.md).
+**Modules:** `:objs-persistence` owns JPA/DAOs/Flyway **SQL**; `:objs-autoconfigure` owns Boot DataSource/EMF wiring and objs Flyway **ordering** beans — see [core/spring-split.md](../core/spring-split.md), [core/persistence-backends.md](../core/persistence-backends.md).  
+**Write path (create / mutate / persist):** [persist-sketch.md](persist-sketch.md).
 
 ## Database
 
 - **Primary database: PostgreSQL.**
-- Access: Jakarta Persistence + Hibernate in `:objs-core` (EntityManager DAOs). Boot apps obtain `DataSource` via `spring.datasource.*` and `:objs-autoconfigure`.
+- Access: Jakarta Persistence + Hibernate in `:objs-persistence` (EntityManager DAOs). Boot apps obtain `DataSource` via `spring.datasource.*` and `:objs-autoconfigure`.
 - Package root for domain/persistence types (target): `org.poc.objs…`.
 
 ## Pool vs graphs
@@ -47,7 +48,7 @@ REPLACE updates **HEAD** only. Pin history with explicit `createDeepGraphVersion
 entity unset). Do not confuse with `replace(BoMGraphSpec)` (id-set membership) or `mergeGraph`
 (new union graph) — glossary in [rest-api.md](../service/rest-api.md#mutate-glossary).
 
-**Flyway (objs line):** objs-core ships vendor SQL `V1__bom_schema.sql` under
+**Flyway (objs line):** objs-persistence ships vendor SQL `V1__bom_schema.sql` under
 `classpath:org/poc/objs/core/db/migration/{vendor}` (`postgresql`, `h2`). Vendor id comes from
 the JDBC URL (`ObjsFlywayVendor`), not Spring `DatabaseDriver`. Autoconfig
 (`ObjsFlywayAutoConfiguration`) applies it into `flyway_schema_history_objs` **before** Boot

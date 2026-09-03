@@ -3,6 +3,6 @@ plugins {
 }
 
 dependencies {
-    implementation(project.parent!!.project("objs-core"))
+    implementation(project.parent!!.project("objs-persistence"))
     // CUSTOM_EXPORT_MARKER
 }

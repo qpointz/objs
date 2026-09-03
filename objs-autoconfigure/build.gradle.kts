@@ -7,10 +7,10 @@ plugins {
     alias(libs.plugins.kotlin.jpa)
 }
 
-description = "Objs Boot autoconfiguration: wires DataSource/EMF into Spring-free objs-core."
+description = "Objs Boot autoconfiguration: wires DataSource/EMF into Spring-free objs-persistence."
 
 dependencies {
-    api(project(":objs-core"))
+    api(project(":objs-persistence"))
     api(platform(libs.boot.dependencies))
     api(libs.boot.starter)
     api(libs.boot.starter.data.jpa)

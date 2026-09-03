@@ -26,7 +26,7 @@ This is the **contains / `q` slice of FB-3**. Other matcher operators stay **C-1
 
 | Topic | Draft (may change in WI-001) |
 |-------|------------------------------|
-| Layer | `:objs-core` programmatic API; workbench may expose; examples call core, not `/api/v1/objs/**` |
+| Layer | `:objs-persistence` programmatic API; workbench may expose; examples call persistence, not `/api/v1/objs/**` |
 | Consumers | **workbench + SBOM + AR** in the implementation WI |
 | Domain `LIKE` | Application name / collection name stay on product tables |
 | Graph headers | `GET /graphs/search?q=` header substring is **not** payload search |
@@ -64,7 +64,7 @@ This is the **contains / `q` slice of FB-3**. Other matcher operators stay **C-1
 - [ ] One store search API; same `q` (or locked equivalent) hits the same pool/graph members in workbench, SBOM assets, and AR collection objects
 - [ ] No example loads a full graph to implement substring search
 - [ ] Open GAPS from WI-001 are **resolved** or explicitly deferred
-- [ ] `./gradlew :objs-core:test :objs-service:test :sbom-service:test :asset-repository-service:test`
+- [ ] `./gradlew :objs-persistence:test :objs-service:test :sbom-service:test :asset-repository-service:test`
 
 ## Process notes
 

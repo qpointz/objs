@@ -6,7 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.jpa)
 }
 
-description = "Objs core: Spring-free JPA persistence, catalogs, seed apply, validation (Kotlin)."
+description = "Objs persistence: Spring-free JPA persistence, catalogs, seed apply, validation (Kotlin)."
 
 dependencies {
     api(project(":objs-api"))
