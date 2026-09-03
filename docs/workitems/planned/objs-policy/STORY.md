@@ -6,8 +6,9 @@
 **Folder:** [`docs/workitems/planned/objs-policy/`](.)  
 **Backlog:** [C-24](../../BACKLOG.md)  
 **Base:** `origin/dev`  
-**Depends on:** `GraphFragment` / `ResolvedGraphFragment` / `GraphFragmentPolicy` (shipped — [`graph-frontend-jgrapht`](../../in-progress/graph-frontend-jgrapht/STORY.md) / [`docs/design/graph/fragments-and-analysis.md`](../../../design/graph/fragments-and-analysis.md))  
-**Does not block:** C-20 store text search; workbench cosmetic  
+**Depends on:** `GraphFragment` / `ResolvedGraphFragment` / `GraphFragmentPolicy` (shipped — [`graph-frontend-jgrapht`](../../completed/20260903-graph-frontend-jgrapht/STORY.md) / [`docs/design/graph/fragments-and-analysis.md`](../../../design/graph/fragments-and-analysis.md))  
+**Does not block:** C-20 store text search  
+ 
 **Design (draft until WI-001):** [`docs/design/policy/overview.md`](../../../design/policy/overview.md) ([index](../../../design/policy/README.md))  
 **Gaps:** [`GAPS.md`](GAPS.md)  
 **Examples / scenarios:** [`EXAMPLES.md`](EXAMPLES.md)  

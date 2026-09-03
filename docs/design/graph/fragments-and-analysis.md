@@ -4,7 +4,7 @@
 (optional REST) · `:objs-gremlin-core` (TinkerGraph materialization) · `:objs-service-ui`
 (capability-driven UI)
 
-**Story:** [`graph-frontend-jgrapht`](../../workitems/in-progress/graph-frontend-jgrapht/STORY.md)
+**Story:** [`graph-frontend-jgrapht`](../../workitems/completed/20260903-graph-frontend-jgrapht/STORY.md)
 
 Native graph engines (Gremlin and JGraphT) consume the same **resolved fragment** after a shared
 normalization policy. The browser and REST JSON expose only implementation-neutral DTOs — never
@@ -55,7 +55,7 @@ ResolvedGraphFragment(entities, edges, diagnostics)
   (`ResolvedGraphMaterialization.requireMaterializable`).
 
 Semantic duplicate comparison ignores timestamps, version counters, and graph provenance. See
-story [`GAPS.md`](../../workitems/in-progress/graph-frontend-jgrapht/GAPS.md) for locked
+story [`GAPS.md`](../../workitems/completed/20260903-graph-frontend-jgrapht/GAPS.md) for locked
 decisions.
 
 ## Module boundaries

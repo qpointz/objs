@@ -10,7 +10,7 @@
 
 Close every **`open`** row in [`GAPS.md`](GAPS.md) (resolve or explicitly defer). Until this WI is `[x]`, do **not** implement WI-002+.
 
-This story is philosophical and boundary-heavy: naming, applicability, repository vs graph entities, and engine layering must be locked like [`graph-frontend-jgrapht` WI-000](../../in-progress/graph-frontend-jgrapht/WI-000-design-lock.md).
+This story is philosophical and boundary-heavy: naming, applicability, repository vs graph entities, and engine layering must be locked like [`graph-frontend-jgrapht` WI-000](../../completed/20260903-graph-frontend-jgrapht/WI-000-design-lock.md).
 
 ## Scope (docs)
 

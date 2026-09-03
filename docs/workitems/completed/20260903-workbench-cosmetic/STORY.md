@@ -2,8 +2,9 @@
 
 **Slug:** `workbench-cosmetic`  
 **Branch:** `workbench-cosmetic`  
-**Status:** in-progress  
-**Folder:** [`docs/workitems/in-progress/workbench-cosmetic/`](.)  
+**Status:** completed  
+**Closed:** 2026-09-03  
+**Folder:** [`docs/workitems/completed/20260903-workbench-cosmetic/`](.)  
 **Backlog:** [U-8](../../BACKLOG.md)  
 **Base:** `origin/dev`  
 **Design:** [`docs/design/ui.md`](../../../design/ui.md)  
@@ -56,10 +57,4 @@ Polish workbench (`:objs-service-ui`) **cosmetics and in-progress feedback** whe
 - [x] Empty context and “No entities matched” still behave as today when not busy
 - [x] Entity inspect shows Graphs section when used in live graphs; hidden when unused
 - [x] Each completed WI is `[x]`, committed, and pushed per RULES
-- [ ] Story stays open until the user asks to close it
-
-## Process notes
-
-1. One WI at a time; `[x]` + one commit + push per WI.  
-2. On first `[x]`, move folder `planned/` → `in-progress/`.  
-3. Do not close this story until the user asks.
+- [x] Story closed at user request (2026-09-03)

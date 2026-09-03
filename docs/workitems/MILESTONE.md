@@ -49,9 +49,10 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`foundation-after-versions`](completed/20260822-foundation-after-versions/STORY.md) — Pin reverse lookup (live ∪ version pins); leftover matcher pushdown `>` / prefix (C-19). WI-000…WI-005 (WI-002 cancelled → C-18).
 - [`catalog-cache-ttl`](completed/20260826-catalog-cache-ttl/STORY.md) — Write-through + Caffeine TTL catalog snapshots; `POST /registry/refresh`; `objs.catalogs.cache-ttl` (C-21). WI-001…WI-003.
 - [`graph-mutate-replace`](completed/20260826-graph-mutate-replace/STORY.md) — Kind-first mutate body (`set`/`unset`); named-graph MERGE (`PATCH`) vs REPLACE (`PUT`); `bomMutation` builder; Composer Save/Overwrite; SBOM `replaceBom` (C-22). WI-000…WI-008.
+- [`graph-frontend-jgrapht`](completed/20260903-graph-frontend-jgrapht/STORY.md) — Shared `GraphFragment` / policy normalization; `:objs-jgrapht-core` / `:objs-jgrapht-service`; workbench cycle analysis. WI-000…WI-005.
+- [`workbench-cosmetic`](completed/20260903-workbench-cosmetic/STORY.md) — Workbench cosmetic polish: Objects load splash; object inspect live Graphs; open-graph dialog polish (U-8). WI-000…WI-002.
 
 ### Planned
 
 - [`store-text-search`](planned/store-text-search/STORY.md) — FB-3 contains/`q`; design first (C-20). Does not block C-18.
 - [`objs-policy`](planned/objs-policy/STORY.md) — Foundation policy + **suites** (M:N, hierarchy, folder roll-up); applicability SPI; Drools-first; design first (C-24).
-- [`workbench-cosmetic`](in-progress/workbench-cosmetic/STORY.md) — Workbench cosmetic polish; Objects load splash first (U-8).

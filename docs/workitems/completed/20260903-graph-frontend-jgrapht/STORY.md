@@ -1,5 +1,15 @@
 # Graph fragments, JGraphT analysis, and workbench support
 
+**Slug:** `graph-frontend-jgrapht`  
+**Branch:** `graph-frontend-jgrapht`  
+**Status:** completed  
+**Closed:** 2026-09-03  
+**Folder:** [`docs/workitems/completed/20260903-graph-frontend-jgrapht/`](.)  
+**Base:** `origin/dev`  
+**Design:** [`docs/design/graph/fragments-and-analysis.md`](../../../design/graph/fragments-and-analysis.md)  
+**Gaps:** [`GAPS.md`](GAPS.md)  
+**Process:** [`docs/workitems/RULES.md`](../../RULES.md)
+
 ## Goal
 
 Create a reusable, framework-free graph-fragment boundary that normalizes one or more collections

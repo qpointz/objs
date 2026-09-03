@@ -10,6 +10,8 @@ docs/workitems/completed/YYYYMMDD-<story-slug>/
 
 ## Index (optional, newest first)
 
+- [`20260903-workbench-cosmetic`](20260903-workbench-cosmetic/STORY.md) — Workbench cosmetic polish: Objects splash, inspect Graphs, open-graph dialog (U-8)
+- [`20260903-graph-frontend-jgrapht`](20260903-graph-frontend-jgrapht/STORY.md) — Graph fragments, JGraphT analysis, workbench cycles
 - [`20260828-objs-api-codegen`](20260828-objs-api-codegen/STORY.md) — Spring-free API and schema-driven Java graph codegen (C-23)
 - [`20260828-source-export`](20260828-source-export/STORY.md) — Makefile source export with package/module transformation and verification (P-4)
 - [`20260826-catalog-cache-ttl`](20260826-catalog-cache-ttl/STORY.md) — Catalog cache TTL (Caffeine) + registry refresh (C-21)
