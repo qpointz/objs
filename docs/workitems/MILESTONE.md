@@ -53,10 +53,11 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`workbench-cosmetic`](completed/20260903-workbench-cosmetic/STORY.md) — Workbench cosmetic polish: Objects load splash; object inspect live Graphs; open-graph dialog polish (U-8). WI-000…WI-002.
 - [`objs-core-spring-split`](completed/20260903-objs-core-spring-split/STORY.md) — Spring-free `:objs-persistence` + `:objs-autoconfigure`; expand `:objs-api`; Gradle rename G-X7 (C-25). WI-000…WI-007.
 - [`policy-evaluate-core`](completed/20260904-policy-evaluate-core/STORY.md) — Flat policy evaluate MVP: `:objs-policy-api` / `:objs-policy-core`, ALWAYS_APPLY + CUSTOM + in-memory repo (C-24). WI-000…WI-004.
+- [`policy-drools`](completed/20260904-policy-drools/STORY.md) — `:objs-policy-drools` adapter (`EntityFact`/`EdgeFact`/`ObjectFact`, fixture DRL) (C-26). WI-000…WI-003.
 
 ### In progress
 
-- [`policy-drools`](in-progress/policy-drools/STORY.md) — `:objs-policy-drools` adapter, fixture DRL only (C-26).
+_(none)_
 
 ### Planned
 

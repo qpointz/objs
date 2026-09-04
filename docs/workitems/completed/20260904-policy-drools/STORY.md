@@ -2,11 +2,14 @@
 
 **Slug:** `policy-drools`  
 **Branch:** `policy-drools`  
-**Status:** in-progress  
-**Folder:** [`docs/workitems/in-progress/policy-drools/`](.)  
+**Status:** completed  
+**Closed:** 2026-09-04  
+**Folder:** [`docs/workitems/completed/20260904-policy-drools/`](.)  
 **Backlog:** [C-26](../../BACKLOG.md)  
+**Base:** `origin/dev`  
+**MR:** https://gitlab.qpointz.io/sandbox/bom-poc/-/merge_requests/57  
 **Sequence:** [policy family](../../SEQUENCE.md#policy-family-c-24c-31--normative-order) step **2 / 7**  
-**Before:** [C-24 `policy-evaluate-core`](../../completed/20260904-policy-evaluate-core/STORY.md) (required)  
+**Before:** [C-24 `policy-evaluate-core`](../20260904-policy-evaluate-core/STORY.md) (required)  
 **Next:** [C-31 `policy-workbench`](../../planned/policy-workbench/STORY.md)  
 **Gaps:** [`GAPS.md`](GAPS.md)  
 **Design:** [`docs/design/policy/drools.md`](../../../design/policy/drools.md)
@@ -35,7 +38,7 @@ Detail: [`GAPS.md`](GAPS.md) · [`drools.md`](../../../design/policy/drools.md)
 
 ## Process notes
 
-All WIs complete on branch `policy-drools`. Story stays **in-progress** until explicit closure (squash / archive / BACKLOG `done`).
+Story **closed** 2026-09-04 — archived under `completed/20260904-policy-drools/`; history squashed; MR !57.
 
 ## Out of scope
 

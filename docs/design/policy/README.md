@@ -6,7 +6,7 @@
 **Audience:** foundation embedders, example-app authors  
 **Not this folder:** product compliance UX, regulatory catalogs, SBOM Application workflows, suite product content  
 
-**Stories:** [`policy-evaluate-core`](../../workitems/completed/20260904-policy-evaluate-core/STORY.md) · [`policy-drools`](../../workitems/in-progress/policy-drools/STORY.md) · **Order:** [`SEQUENCE.md` § Policy family](../../workitems/SEQUENCE.md#policy-family-c-24c-31--normative-order)
+**Stories:** [`policy-evaluate-core`](../../workitems/completed/20260904-policy-evaluate-core/STORY.md) · [`policy-drools`](../../workitems/completed/20260904-policy-drools/STORY.md) · **Order:** [`SEQUENCE.md` § Policy family](../../workitems/SEQUENCE.md#policy-family-c-24c-31--normative-order)
 
 ---
 
@@ -43,7 +43,7 @@ flowchart LR
 | [**drools.md**](drools.md) | C-26 Drools adapter locks (facts, deps, KB cache) |
 
 Normative S1 decisions: [`GAPS.md`](../../workitems/completed/20260904-policy-evaluate-core/GAPS.md) · Story: [`STORY.md`](../../workitems/completed/20260904-policy-evaluate-core/STORY.md) · Scenarios: [`EXAMPLES.md`](../../workitems/completed/20260904-policy-evaluate-core/EXAMPLES.md)  
-C-26 gaps: [`policy-drools/GAPS.md`](../../workitems/in-progress/policy-drools/GAPS.md)
+C-26 gaps: [`policy-drools/GAPS.md`](../../workitems/completed/20260904-policy-drools/GAPS.md)
 
 ---
 
@@ -52,7 +52,7 @@ C-26 gaps: [`policy-drools/GAPS.md`](../../workitems/in-progress/policy-drools/G
 | Step | Id | Story | Status |
 |------|----|--------|--------|
 | 1 | C-24 | [`policy-evaluate-core`](../../workitems/completed/20260904-policy-evaluate-core/STORY.md) | **done** (archived) |
-| 2 | C-26 | [`policy-drools`](../../workitems/in-progress/policy-drools/STORY.md) | **shipped** (WIs done; in-progress until close) |
+| 2 | C-26 | [`policy-drools`](../../workitems/completed/20260904-policy-drools/STORY.md) | **done** (archived) |
 | 3 | C-31 | [`policy-workbench`](../../workitems/planned/policy-workbench/STORY.md) | planned |
 | 4 | C-27 | [`policy-suites`](../../workitems/planned/policy-suites/STORY.md) | planned |
 | 5 | C-28 | [`policy-seeds-persistence`](../../workitems/planned/policy-seeds-persistence/STORY.md) | planned |

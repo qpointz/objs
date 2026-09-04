@@ -19,7 +19,7 @@ JGraphT types or generated application classes.
 | **Validation / mutation** | Schema, allow-list, cardinality at the persist gate | `BoMGraphStore.persist`, MERGE/REPLACE |
 | **Gremlin result projection** | Map TinkerPop traversal hits back to `BoMGraphContents` / table / scalar views | `BoMGremlinEngine` subgraph2 rules |
 | **Frontend graph rendering** | React Flow + Dagre canvas; type filter dimming; optional analysis highlight | `:objs-service-ui` Explorer |
-| **Policy evaluation (C-24 + C-26)** | Executable policy artefacts over a resolved fragment (`DefaultPolicyEvaluator` + optional `DroolsPolicyEngine`) — **not** `GraphFragmentPolicy` | [`docs/design/policy/`](../policy/), [`policy-evaluate-core`](../../workitems/completed/20260904-policy-evaluate-core/STORY.md), [`policy-drools`](../../workitems/in-progress/policy-drools/STORY.md); follow-ups C-31…C-30 |
+| **Policy evaluation (C-24 + C-26)** | Executable policy artefacts over a resolved fragment (`DefaultPolicyEvaluator` + optional `DroolsPolicyEngine`) — **not** `GraphFragmentPolicy` | [`docs/design/policy/`](../policy/), [`policy-evaluate-core`](../../workitems/completed/20260904-policy-evaluate-core/STORY.md), [`policy-drools`](../../workitems/completed/20260904-policy-drools/STORY.md); follow-ups C-31…C-30 |
 
 `GraphStore.selectAcrossGraphs` already deduplicates by globally unique entity/edge ids when
 reading from persistence. **`GraphFragmentPolicy`** is required for **caller-assembled** fragments

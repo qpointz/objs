@@ -1,7 +1,7 @@
 # Drools PolicyEngine adapter (C-26)
 
-**Status:** C-26 **shipped** (`:objs-policy-drools`) — story folder still in-progress until explicit closure  
-**Normative:** [`GAPS.md`](../../workitems/in-progress/policy-drools/GAPS.md)  
+**Status:** C-26 **shipped** (`:objs-policy-drools`) — story archived [`20260904-policy-drools`](../../workitems/completed/20260904-policy-drools/STORY.md)  
+**Normative:** [`GAPS.md`](../../workitems/completed/20260904-policy-drools/GAPS.md)  
 **Module:** `:objs-policy-drools` → `org.poc.objs.policy.drools`  
 **Depends on:** `:objs-policy-api` only (not core); Drools **not** on api/core classpaths
 

@@ -1,7 +1,7 @@
 # Policy evaluation — detailed design
 
 **Status:** C-24 S1 **shipped**; C-26 Drools **shipped** (`:objs-policy-drools`) — see README  
-**Normative locks:** S1 [`policy-evaluate-core/GAPS.md`](../../workitems/completed/20260904-policy-evaluate-core/GAPS.md); Drools [`policy-drools/GAPS.md`](../../workitems/in-progress/policy-drools/GAPS.md)  
+**Normative locks:** S1 [`policy-evaluate-core/GAPS.md`](../../workitems/completed/20260904-policy-evaluate-core/GAPS.md); Drools [`policy-drools/GAPS.md`](../../workitems/completed/20260904-policy-drools/GAPS.md)  
 **Audience:** foundation embedders, design-lock reviewers, example-app authors  
 **Folder index:** [`README.md`](README.md)
 
@@ -685,7 +685,7 @@ SBOM Application / Portfolio binding stays in the app. Foundation never requires
 | Story | Gaps |
 |-------|------|
 | C-24 S1 flat evaluate | [`policy-evaluate-core/GAPS.md`](../../workitems/completed/20260904-policy-evaluate-core/GAPS.md) |
-| C-26 Drools | [`policy-drools/GAPS.md`](../../workitems/in-progress/policy-drools/GAPS.md) |
+| C-26 Drools | [`policy-drools/GAPS.md`](../../workitems/completed/20260904-policy-drools/GAPS.md) |
 | C-31 Workbench Policy play | [`policy-workbench/GAPS.md`](../../workitems/planned/policy-workbench/GAPS.md) |
 | C-27 Suites | [`policy-suites/GAPS.md`](../../workitems/planned/policy-suites/GAPS.md) |
 | C-28 Seeds + persistence | [`policy-seeds-persistence/GAPS.md`](../../workitems/planned/policy-seeds-persistence/GAPS.md) |
