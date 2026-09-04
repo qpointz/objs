@@ -32,6 +32,7 @@ data class PolicyWrite(
 /** Well-known [Policy.engineKind] values. Kind is a String (not an enum) for extensibility. */
 object PolicyEngineKinds {
     const val CUSTOM: String = "CUSTOM"
+    const val DROOLS: String = "DROOLS"
 }
 
 /** Well-known [Policy.applicabilityKind] values. */

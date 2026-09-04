@@ -15,6 +15,7 @@ Gradle multi-module Kotlin project. Foundation leaf modules at the repository ro
 - `objs-jgrapht-core` / `objs-jgrapht-service` — JGraphT analysis (+ optional REST; not default on `:objs-service`)
 - `objs-policy-api` — Policy evaluation contracts (model, SPIs, flat `EvaluationResult`)
 - `objs-policy-core` — In-memory `PolicyRepository` + `DefaultPolicyEvaluator` (CUSTOM stub; not default on `:objs-service`)
+- `objs-policy-drools` — Drools `PolicyEngine` adapter (fixture DRL only; opt-in classpath)
 - `objs-service-app` — Workbench-only runnable (`./gradlew :objs-service-app:run`, port **8081**) — objs-service + objs-service-ui; **no** example dependencies; **must not** be used by example apps
 - `examples/sbom/sbom-service` (`:sbom-service`) — SBOM inventory app (launchable; Boot via `:objs-autoconfigure`; port **8080**)
 - `examples/sbom/sbom-service-ui` (`:sbom-service-ui`) — Inventory SPA; same node-gradle packaging as `:objs-service-ui`
@@ -29,7 +30,7 @@ Production sources: `src/main/kotlin`. Tests: `src/test/kotlin` (integration sui
 
 - `./gradlew build` — compile, test, assemble
 - `./gradlew test` — unit tests (all leaf modules)
-- `./gradlew :objs-persistence:test` / `./gradlew :objs-api:test` / `./gradlew :objs-autoconfigure:test` / `./gradlew :objs-service:test` / `./gradlew :objs-policy-api:test :objs-policy-core:test` — scoped tests
+- `./gradlew :objs-persistence:test` / `./gradlew :objs-api:test` / `./gradlew :objs-autoconfigure:test` / `./gradlew :objs-service:test` / `./gradlew :objs-policy-api:test :objs-policy-core:test :objs-policy-drools:test` — scoped tests
 - `./gradlew :objs-persistence:testIT` — integration tests when defined
 - GitLab CI: [`docs/design/platform/ci-pipeline.md`](docs/design/platform/ci-pipeline.md) — unit child on MRs; `testIT` on protected `dev` or `RUN_INTEGRATION=true`
 - `./gradlew :objs-service-app:run` — workbench only (H2, port 8081; `/workbench/` + `/api/v1/objs/**`)

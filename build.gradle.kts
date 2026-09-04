@@ -63,6 +63,9 @@ tasks.register("test") {
         ":sbom-service:test",
         ":objs-gremlin-core:test",
         ":objs-gremlin-service:test",
+        ":objs-policy-api:test",
+        ":objs-policy-core:test",
+        ":objs-policy-drools:test",
     )
 }
 

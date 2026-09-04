@@ -16,6 +16,7 @@ jgrapht = "1.5.3"
 postgresql = "42.7.7"
 nodeGradle = "7.0.2"
 caffeine = "3.2.3"
+drools = "10.2.0"
 
 [libraries]
 boot-dependencies = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "springBoot" }
@@ -58,6 +59,10 @@ gremlin-core = { module = "org.apache.tinkerpop:gremlin-core", version.ref = "ti
 tinkergraph-gremlin = { module = "org.apache.tinkerpop:tinkergraph-gremlin", version.ref = "tinkerpop" }
 gremlin-language = { module = "org.apache.tinkerpop:gremlin-language", version.ref = "tinkerpop" }
 jgrapht-core = { module = "org.jgrapht:jgrapht-core", version.ref = "jgrapht" }
+
+drools-bom = { module = "org.drools:drools-bom", version.ref = "drools" }
+drools-engine = { module = "org.drools:drools-engine", version.ref = "drools" }
+drools-xml-support = { module = "org.drools:drools-xml-support", version.ref = "drools" }
 
 [bundles]
 jackson = ["jackson-databind", "jackson-dataformat-yaml", "jackson-module-kotlin"]
