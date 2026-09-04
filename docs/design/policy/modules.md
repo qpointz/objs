@@ -8,32 +8,37 @@
 
 ```mermaid
 flowchart TB
-  api_mod[":objs-api"]
-  papi[":objs-policy-api"]
-  pcore[":objs-policy-core"]
+  api_mod[objs-api]
+  api[objs-policy-api]
+  pcore[objs-policy-core]
+  pdrools[objs-policy-drools]
   apps[Example apps / tests]
-  api_mod --> papi
-  papi --> pcore
+  api_mod --> api
+  api --> pcore
+  api --> pdrools
   pcore --> apps
-  papi --> apps
+  api --> apps
+  pdrools --> apps
 ```
 
 | Module | Responsibility | Depends on |
 |--------|----------------|------------|
 | `:objs-policy-api` | Model, refs, context **types**, result DTOs, SPI **interfaces**, exceptions | `:objs-api` |
 | `:objs-policy-core` | In-memory repo, PolicyContextWiring, orchestrator, ALWAYS_APPLY gate, CUSTOM stub | `:objs-policy-api` |
+| `:objs-policy-drools` | Drools `PolicyEngine` (`EntityFact`/`EdgeFact`/`ObjectFact`; fixture DRL) | `:objs-policy-api` + Drools BOM |
 
-**Packages:** `org.poc.objs.policy.api.*` / `org.poc.objs.policy.core.*`  
-**Settings:** both included in root `settings.gradle.kts`.
+**Packages:** `org.poc.objs.policy.api.*` / `org.poc.objs.policy.core.*` / `org.poc.objs.policy.drools.*`  
+**Settings:** api, core, drools included in root `settings.gradle.kts`.
 
-**Not in S1:** `:objs-policy-drools`, `:objs-policy-service`, suite modules, JPA.
+**S1 shipped without:** `:objs-policy-service`, suite modules, JPA. Drools is C-26 — see [`drools.md`](drools.md).
 
-### Shipped types (C-24)
+### Shipped types (C-24 + C-26)
 
 | Layer | Types |
 |-------|--------|
-| api | `Policy`, `PolicyWrite`, `PolicyRef`, `PolicyEvaluationContext`, `PolicyOutcome` / `EvaluationResult`, `Finding`, `aggregateOverall`, `PolicyContextWirer`, `ApplicabilitySelector`, `PolicyEngine`, `PolicyRepository`, `PolicyEvaluator`, `PolicyEvaluationException` |
+| api | `Policy`, `PolicyWrite`, `PolicyRef`, `PolicyEvaluationContext`, `PolicyOutcome` / `EvaluationResult`, `Finding`, `aggregateOverall`, `PolicyContextWirer`, `ApplicabilitySelector`, `PolicyEngine`, `PolicyRepository`, `PolicyEvaluator`, `PolicyEvaluationException`; `PolicyEngineKinds.CUSTOM` / `DROOLS` |
 | core | `InMemoryPolicyRepository`, `DefaultPolicyEvaluator`, `AlwaysApplyApplicabilitySelector`, `CustomPolicyEngine` |
+| drools | `DroolsPolicyEngine`, `PolicyKnowledgeBaseCache`, `EntityFact`, `EdgeFact`, `ObjectFact`, `DroolsEvaluationScratch` |
 
 ---
 
@@ -91,7 +96,7 @@ flowchart LR
 
 | Module / story | When |
 |----------------|------|
-| `:objs-policy-drools` | C-26 |
+| `:objs-policy-drools` | C-26 — [`drools.md`](drools.md) |
 | Workbench UI + thin HTTP | C-31 |
 | Suites | C-27 (may stay in api/core types + core orchestration) |
 | JPA + seeds | C-28 |

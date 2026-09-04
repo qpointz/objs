@@ -40,7 +40,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | C-23 | Spring-free `objs-api` + schema-driven entity/edge codegen | feature | done | [`completed/20260828-objs-api-codegen/`](completed/20260828-objs-api-codegen/STORY.md) |
 | C-24 | Flat policy evaluate MVP (`:objs-policy-api` / `:objs-policy-core`); applicability + CUSTOM engine; in-memory repo | feature | done | [`completed/20260904-policy-evaluate-core/`](completed/20260904-policy-evaluate-core/STORY.md), [`docs/design/policy/`](../design/policy/) |
 | C-25 | Split `objs-core` (Spring-free persistence) + `objs-autoconfigure`; expand `objs-api` model | refactoring | done | [`completed/20260903-objs-core-spring-split/`](completed/20260903-objs-core-spring-split/STORY.md) |
-| C-26 | `:objs-policy-drools` adapter (fixture DRL only) | feature | planned | [`planned/policy-drools/`](planned/policy-drools/STORY.md) |
+| C-26 | `:objs-policy-drools` adapter (fixture DRL only) | feature | in-progress | [`in-progress/policy-drools/`](in-progress/policy-drools/STORY.md) |
 | C-27 | Policy suites: hierarchy, M:N membership, folder roll-up | feature | planned | [`planned/policy-suites/`](planned/policy-suites/STORY.md) |
 | C-28 | Policy (+suite) persistence + seed format | feature | planned | [`planned/policy-seeds-persistence/`](planned/policy-seeds-persistence/STORY.md) |
 | C-29 | Thin policy batch / result pack (no matrix) | feature | planned | [`planned/policy-batch/`](planned/policy-batch/STORY.md) |

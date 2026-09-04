@@ -1,11 +1,11 @@
 # Policy evaluation — detailed design
 
-**Status:** C-24 S1 **shipped** (`:objs-policy-api` / `:objs-policy-core`); later stories still open — see README  
-**Normative locks:** [`policy-evaluate-core/GAPS.md`](../../workitems/completed/20260904-policy-evaluate-core/GAPS.md) (S1); other stories own their GAPS  
+**Status:** C-24 S1 **shipped**; C-26 Drools **shipped** (`:objs-policy-drools`) — see README  
+**Normative locks:** S1 [`policy-evaluate-core/GAPS.md`](../../workitems/completed/20260904-policy-evaluate-core/GAPS.md); Drools [`policy-drools/GAPS.md`](../../workitems/in-progress/policy-drools/GAPS.md)  
 **Audience:** foundation embedders, design-lock reviewers, example-app authors  
 **Folder index:** [`README.md`](README.md)
 
-Shared philosophy for foundation policy evaluation. **S1 flat evaluate is implemented.** Drools, workbench, suites, seeds, batch, and consumers remain separate stories.
+Shared philosophy for foundation policy evaluation. **S1 flat evaluate** and the **Drools adapter** are implemented. Workbench, suites, seeds, batch, and consumers remain separate stories.
 
 ### S1 design pages (normative detail + diagrams)
 
@@ -17,6 +17,7 @@ Shared philosophy for foundation policy evaluation. **S1 flat evaluate is implem
 | [`modules.md`](modules.md) | `:objs-policy-api` / `:objs-policy-core` (shipped types) |
 | [`results.md`](results.md) | Outcomes, findings, ERROR vs FAIL, aggregate helper |
 | [`repository.md`](repository.md) | In-memory repo; resolve latest\|version\|id |
+| [`drools.md`](drools.md) | C-26 Drools adapter (EntityFact/EdgeFact/ObjectFact, BOM+engine, KB cache) |
 
 Also: [`GAPS.md`](../../workitems/completed/20260904-policy-evaluate-core/GAPS.md) · [`EXAMPLES.md`](../../workitems/completed/20260904-policy-evaluate-core/EXAMPLES.md)
 
@@ -37,11 +38,13 @@ Also: [`GAPS.md`](../../workitems/completed/20260904-policy-evaluate-core/GAPS.m
 | Entry | fixed `evaluate(fragment, policyRefs)`; wrappers later — [`pipeline.md`](pipeline.md) |
 | Boundaries | no product rules in foundation; not default on `:objs-service`; Policy ≠ graph entity; input = GraphFragment |
 
-**Shipped entry points:** `DefaultPolicyEvaluator`, `InMemoryPolicyRepository`, `AlwaysApplyApplicabilitySelector`, `CustomPolicyEngine` (`org.poc.objs.policy.core`).
+**Shipped entry points:** `DefaultPolicyEvaluator`, `InMemoryPolicyRepository`, `AlwaysApplyApplicabilitySelector`, `CustomPolicyEngine` (`org.poc.objs.policy.core`); `DroolsPolicyEngine` (`org.poc.objs.policy.drools`, opt-in).
 
-**Deferred to later stories:** Drools (C-26), workbench (C-31), suites (C-27), seeds/JPA (C-28), batch (C-29), example/REST consumer (C-30).
+**C-26 design lock:** [`drools.md`](drools.md) — `EntityFact`/`EdgeFact`/`ObjectFact`; `drools-bom`+`drools-engine`+`drools-xml-support`; per-call session + KB cache by policy revision.
 
-Sections **§1+** below remain illustrative for the **full-family** vision (suites, seeds, batch, Drools). Where they conflict with the table above or the S1 pages, **S1 locks win**.
+**Deferred to later stories:** workbench (C-31), suites (C-27), seeds/JPA (C-28), batch (C-29), example/REST consumer (C-30).
+
+Sections **§1+** below remain illustrative for the **full-family** vision (suites, seeds, batch, Drools). Where they conflict with the table above, S1 pages, or [`drools.md`](drools.md), **those locks win**.
 
 ---
 
@@ -386,11 +389,11 @@ flowchart TB
 
 | Kind | Module | Role |
 |------|--------|------|
-| `DROOLS` | `:objs-policy-drools` | First real adapter; facts from wired context / fragment; body = DRL (or locked format) |
+| `DROOLS` | `:objs-policy-drools` | First real adapter; `EntityFact`/`EdgeFact`/`ObjectFact`; body = DRL — [`drools.md`](drools.md) |
 | `OPA` | later | Deferred |
 | `CUSTOM` | tests / apps | Stub or app-specific |
 
-Engine receives **already-applicable** policies only. Drools fact mapping / session lifecycle: C-26 GAPS.
+Engine receives **already-applicable** policies only. Drools fact mapping / session lifecycle / deps: **locked** in [`drools.md`](drools.md) (C-26 GAPS closed).
 
 Foundation must not ship regulatory DRL in `src/main` — fixtures and example packs only.
 
@@ -682,7 +685,7 @@ SBOM Application / Portfolio binding stays in the app. Foundation never requires
 | Story | Gaps |
 |-------|------|
 | C-24 S1 flat evaluate | [`policy-evaluate-core/GAPS.md`](../../workitems/completed/20260904-policy-evaluate-core/GAPS.md) |
-| C-26 Drools | [`policy-drools/GAPS.md`](../../workitems/planned/policy-drools/GAPS.md) |
+| C-26 Drools | [`policy-drools/GAPS.md`](../../workitems/in-progress/policy-drools/GAPS.md) |
 | C-31 Workbench Policy play | [`policy-workbench/GAPS.md`](../../workitems/planned/policy-workbench/GAPS.md) |
 | C-27 Suites | [`policy-suites/GAPS.md`](../../workitems/planned/policy-suites/GAPS.md) |
 | C-28 Seeds + persistence | [`policy-seeds-persistence/GAPS.md`](../../workitems/planned/policy-seeds-persistence/GAPS.md) |

@@ -17,7 +17,7 @@ C-17, C-18, and C-25 are **done**. Do not start C-20 implementation until C-20 W
 | Step | Id | Story | Status | Before | Next |
 |------|----|--------|--------|--------|------|
 | 1 | **C-24** | [`policy-evaluate-core`](completed/20260904-policy-evaluate-core/STORY.md) | **done** | `GraphFragment` resolve path (shipped) | **C-26** |
-| 2 | **C-26** | [`policy-drools`](planned/policy-drools/STORY.md) | planned | **C-24** | **C-31** |
+| 2 | **C-26** | [`policy-drools`](in-progress/policy-drools/STORY.md) | in-progress (WIs done) | **C-24** | **C-31** |
 | 3 | **C-31** | [`policy-workbench`](planned/policy-workbench/STORY.md) | planned | **C-26** | **C-27** |
 | 4 | **C-27** | [`policy-suites`](planned/policy-suites/STORY.md) | planned | **C-31** | **C-28** |
 | 5 | **C-28** | [`policy-seeds-persistence`](planned/policy-seeds-persistence/STORY.md) | planned | **C-27** | **C-29** |
@@ -39,4 +39,4 @@ C-24 flat evaluate
 **Content deps:** suite seed kinds need C-27; batch suite target needs C-27.  
 **Do not** start a story’s WI-002+ until that story’s own WI-001 closes its GAPS. Do not pull later-story gaps into an earlier design lock.
 
-**Next to work now:** C-26 [`policy-drools`](planned/policy-drools/STORY.md) — C-24 closed.
+**Next to work now:** C-26 [`policy-drools`](in-progress/policy-drools/STORY.md) — WIs done; MR / close when ready. Then C-31 [`policy-workbench`](planned/policy-workbench/STORY.md).

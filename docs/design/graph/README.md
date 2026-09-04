@@ -26,7 +26,7 @@ Objs is an **entity store**: independent informational **entities** linked by **
 | [persistence.md](persistence.md) | PostgreSQL, JSONB, two Flyway lines, H2 tests |
 | [database-model.md](database-model.md) | As-built `bom_*` schema (C-18 HEAD + history) |
 | [apps-vs-foundation.md](apps-vs-foundation.md) | Store vs example apps: missing graph APIs, lift candidates, duplicates |
-| [../policy/README.md](../policy/README.md) | **Policy evaluation (C-24 shipped):** S1 api+core + design pages; suites/seeds/batch later |
+| [../policy/README.md](../policy/README.md) | **Policy evaluation:** C-24 api+core + C-26 Drools adapter (opt-in); suites/seeds/batch later |
 
 ## Core ideas (summary)
 
