@@ -6,6 +6,7 @@ import {
   IconMoon,
   IconPencilCode,
   IconRoute,
+  IconScale,
   IconSchema,
   IconSun,
   IconTournament,
@@ -157,6 +158,12 @@ export function AppLayout() {
                 tour="nav-query"
                 label="Query"
                 icon={<IconRoute size={16} stroke={1.75} />}
+              />
+              <HeaderNavLink
+                to="/policy"
+                tour="nav-policy"
+                label="Policy"
+                icon={<IconScale size={16} stroke={1.75} />}
               />
               <HeaderNavLink
                 to="/composer"

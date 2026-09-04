@@ -43,6 +43,16 @@ class DefaultPolicyEvaluator(
         )
     }
 
+    /** Evaluate already-resolved [policies] (playground dirty-buffer path). */
+    override fun evaluatePolicies(fragment: GraphFragment, policies: List<Policy>): EvaluationResult {
+        val context = prepareContext(fragment)
+        val outcomes = policies.map { policy -> evaluateResolved(context, policy) }
+        return EvaluationResult(
+            outcomes = outcomes,
+            overall = if (includeOverall) aggregateOverall(outcomes) else null,
+        )
+    }
+
     override fun applicability(
         fragment: GraphFragment,
         policyRefs: List<PolicyRef>,
@@ -107,6 +117,10 @@ class DefaultPolicyEvaluator(
             )
         }
 
+        return evaluateResolved(context, policy)
+    }
+
+    private fun evaluateResolved(context: PolicyEvaluationContext, policy: Policy): PolicyOutcome {
         if (!isApplicabilitySupported(policy)) {
             return PolicyOutcome(
                 policyName = policy.name,

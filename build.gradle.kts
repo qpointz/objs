@@ -66,6 +66,7 @@ tasks.register("test") {
         ":objs-policy-api:test",
         ":objs-policy-core:test",
         ":objs-policy-drools:test",
+        ":objs-policy-service:test",
     )
 }
 

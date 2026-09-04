@@ -18,6 +18,35 @@ export function matcherFromGraphContext(context: GraphContextSnapshot): unknown 
   throw new Error('Open a graph or matcher as graph context before Exec')
 }
 
+/**
+ * Matcher for Policy evaluate / fragment load.
+ * Graph mode → match-all in that graph (pass `graphId`).
+ * Matcher mode → body as-is when already graph-scoped (`all` / `graph-expr` / `graphs-in`);
+ * bare `obj-expr` (“Returning objects”) is wrapped as `[{ all: true }, …]` so
+ * `GraphStore.select` accepts it.
+ */
+export function policyFragmentMatcher(context: GraphContextSnapshot): {
+  matcher: unknown
+  graphId: string | null
+  graphVersion: number | null
+} {
+  if (context.kind === 'graph' && context.graphId) {
+    return {
+      matcher: MATCH_ALL_OBJ_EXPR,
+      graphId: context.graphId,
+      graphVersion: context.graphVersion,
+    }
+  }
+  if (context.kind === 'matcher' && context.matcherBody != null) {
+    const body = context.matcherBody
+    const matcher = isGraphScopedMatcher(body)
+      ? body
+      : [{ all: true }, ...(Array.isArray(body) ? body : [body])]
+    return { matcher, graphId: null, graphVersion: null }
+  }
+  throw new Error('Open a graph or matcher (Matcher / All) in the shared context before Evaluate')
+}
+
 /** True when stage-0 is all / graph-expr / graphs-in (or a chain starting with one). */
 export function isGraphScopedMatcher(body: unknown): boolean {
   const stages = Array.isArray(body) ? body : [body]

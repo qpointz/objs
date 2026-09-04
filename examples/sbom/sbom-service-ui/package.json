@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "clean": "node --input-type=module -e \"import { rmSync } from 'node:fs'; for (const p of ['node_modules', 'build/generated/vite']) rmSync(p, { recursive: true, force: true })\""
   },
   "dependencies": {
     "@mantine/core": "^7.17.8",

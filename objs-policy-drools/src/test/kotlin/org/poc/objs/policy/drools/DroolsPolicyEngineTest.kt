@@ -69,6 +69,22 @@ class DroolsPolicyEngineTest {
         end
     """.trimIndent()
 
+    private val passWithRuleNote = """
+        package org.poc.objs.policy.drools.fixtures;
+
+        import org.poc.objs.policy.drools.EntityFact;
+        import org.poc.objs.policy.drools.DroolsEvaluationScratch;
+
+        global DroolsEvaluationScratch scratch;
+
+        rule "component-present"
+        when
+            EntityFact( type == "Component" )
+        then
+            scratch.pass("component ok");
+        end
+    """.trimIndent()
+
     @Test
     fun shouldPass_whenEntityAnnotationNotCritical() {
         val engine = DroolsPolicyEngine()
@@ -91,8 +107,13 @@ class DroolsPolicyEngineTest {
         val result = engine.evaluate(context, policy)
 
         assertThat(result.status).isEqualTo(PolicyOutcomeStatus.FAIL)
-        assertThat(result.findings).singleElement().extracting { it.message }
-            .isEqualTo("component has CRITICAL severity")
+        assertThat(result.findings).singleElement().satisfies({ f ->
+            assertThat(f.message).isEqualTo(
+                "[fail when component annotation severity critical] component has CRITICAL severity",
+            )
+            assertThat(f.extras[DroolsEvaluationScratch.EXTRA_RULE])
+                .isEqualTo("fail when component annotation severity critical")
+        })
     }
 
     @Test
@@ -105,7 +126,7 @@ class DroolsPolicyEngineTest {
 
         assertThat(result.status).isEqualTo(PolicyOutcomeStatus.FAIL)
         assertThat(result.findings).singleElement().extracting { it.message }
-            .isEqualTo("depends_on edge found")
+            .isEqualTo("[fail when depends_on edge present] depends_on edge found")
     }
 
     @Test
@@ -121,7 +142,23 @@ class DroolsPolicyEngineTest {
 
         assertThat(result.status).isEqualTo(PolicyOutcomeStatus.FAIL)
         assertThat(result.findings).singleElement().extracting { it.message }
-            .isEqualTo("asset has CRITICAL severity")
+            .isEqualTo("[fail when wired asset severity critical] asset has CRITICAL severity")
+    }
+
+    @Test
+    fun shouldSurfaceRuleName_onPassFinding() {
+        val engine = DroolsPolicyEngine()
+        val policy = savedPolicy(passWithRuleNote)
+        val context = PolicyEvaluationContext(fragment = okFragment())
+
+        val result = engine.evaluate(context, policy)
+
+        assertThat(result.status).isEqualTo(PolicyOutcomeStatus.PASS)
+        assertThat(result.findings).singleElement().satisfies({ f ->
+            assertThat(f.severity).isEqualTo("OK")
+            assertThat(f.message).isEqualTo("[component-present] component ok")
+            assertThat(f.extras[DroolsEvaluationScratch.EXTRA_RULE]).isEqualTo("component-present")
+        })
     }
 
     @Test

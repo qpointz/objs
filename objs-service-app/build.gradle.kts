@@ -13,6 +13,7 @@ dependencies {
     implementation(project(":objs-service"))
     implementation(project(":objs-gremlin-service"))
     implementation(project(":objs-jgrapht-service"))
+    implementation(project(":objs-policy-service"))
     implementation(libs.kotlin.reflect)
     runtimeOnly(project(":objs-service-ui"))
     runtimeOnly(libs.h2.database)

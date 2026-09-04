@@ -13,6 +13,7 @@ include(":objs-jgrapht-service")
 include(":objs-policy-api")
 include(":objs-policy-core")
 include(":objs-policy-drools")
+include(":objs-policy-service")
 include(":objs-service-app")
 
 include(":sbom-service")

@@ -14,7 +14,7 @@ export const WORKBENCH_TOUR_STEPS: WorkbenchTourStep[] = [
   {
     id: 'nav',
     title: 'Workbench',
-    body: 'L0 nav: Explorer · Objects · Query · Composer · Schema. Explorer, Objects, and Query share one graph context. Composer and Schema stay separate.',
+    body: 'L0 nav: Explorer · Objects · Query · Policy · Composer · Schema. Explorer, Objects, Query, and Policy share one graph context. Composer and Schema stay separate.',
     selector: '[data-tour="nav"]',
   },
   {
@@ -100,6 +100,13 @@ export const WORKBENCH_TOUR_STEPS: WorkbenchTourStep[] = [
     body: 'Timeout (traversalOptions.timeoutSeconds) lives in the Options popover. Matcher and a right Options pane were removed — scope is script + shared context only.',
     selector: '[data-tour="query-options"]',
     route: '/query',
+  },
+  {
+    id: 'policy',
+    title: 'Policy playground',
+    body: 'Replaceable DROOLS playground: policy list + editor, shared graph context, Check/Evaluate, severity pills, Object/Tasks inspect, and bottom Policy/Evaluations tasks. Soft-fails if the policy service module is absent.',
+    selector: '[data-tour="nav-policy"]',
+    route: '/policy',
   },
   {
     id: 'composer',

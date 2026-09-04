@@ -22,6 +22,20 @@ class InMemoryPolicyRepositoryTest {
         assertThat(repo.resolve(PolicyRef.ById(v1.id))).isEqualTo(v1)
     }
 
+    @Test
+    fun shouldUpdateAndDeleteById() {
+        val repo = InMemoryPolicyRepository()
+        val saved = repo.save(write("gate", "PASS"))
+        val updated = repo.update(
+            saved.id,
+            PolicyWrite(name = "gate", engineKind = PolicyEngineKinds.CUSTOM, body = "FAIL"),
+        )
+        assertThat(updated?.body).isEqualTo("FAIL")
+        assertThat(updated?.id).isEqualTo(saved.id)
+        assertThat(repo.delete(saved.id)).isTrue()
+        assertThat(repo.findById(saved.id)).isNull()
+    }
+
     private fun write(name: String, body: String) = PolicyWrite(
         name = name,
         engineKind = PolicyEngineKinds.CUSTOM,

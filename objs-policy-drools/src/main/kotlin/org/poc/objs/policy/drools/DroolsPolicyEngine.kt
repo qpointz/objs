@@ -1,10 +1,13 @@
 package org.poc.objs.policy.drools
 
+import org.kie.api.event.rule.BeforeMatchFiredEvent
+import org.kie.api.event.rule.DefaultAgendaEventListener
 import org.poc.objs.policy.api.Policy
 import org.poc.objs.policy.api.PolicyEngine
 import org.poc.objs.policy.api.PolicyEngineResult
 import org.poc.objs.policy.api.PolicyEvaluationContext
 import org.poc.objs.policy.api.PolicyOutcomeStatus
+import org.kie.api.runtime.KieSession
 
 /**
  * Drools [PolicyEngine]: [EntityFact]/[EdgeFact]/[ObjectFact] facts, per-call session,
@@ -27,7 +30,9 @@ class DroolsPolicyEngine(
         } catch (ex: Exception) {
             return PolicyEngineResult(
                 status = PolicyOutcomeStatus.ERROR,
-                message = ex.message ?: ex.cause?.message ?: "Drools compile failed",
+                message = sanitizeDroolsMessage(
+                    ex.message ?: ex.cause?.message ?: "Drools compile failed",
+                ),
             )
         }
 
@@ -35,20 +40,21 @@ class DroolsPolicyEngine(
         val session = container.newKieSession()
         return try {
             session.setGlobal("scratch", scratch)
+            session.addEventListener(RuleNameAgendaListener(scratch))
             insertFacts(session, context)
             session.fireAllRules()
             scratch.toResult()
         } catch (ex: Exception) {
             PolicyEngineResult(
                 status = PolicyOutcomeStatus.ERROR,
-                message = ex.message ?: ex::class.simpleName,
+                message = sanitizeDroolsMessage(ex.message ?: ex::class.simpleName ?: "Drools error"),
             )
         } finally {
             session.dispose()
         }
     }
 
-    private fun insertFacts(session: org.kie.api.runtime.KieSession, context: PolicyEvaluationContext) {
+    private fun insertFacts(session: KieSession, context: PolicyEvaluationContext) {
         context.fragment.entities.forEach { session.insert(EntityFact.from(it)) }
         context.fragment.edges.forEach { session.insert(EdgeFact.from(it)) }
         context.facts.forEach { (name, value) ->
@@ -66,4 +72,17 @@ class DroolsPolicyEngine(
             null -> ObjectFact(name, emptyMap())
             else -> ObjectFact(name, mapOf("value" to value))
         }
+
+    /** Captures the firing rule name onto [scratch] for finding attribution. */
+    private class RuleNameAgendaListener(
+        private val scratch: DroolsEvaluationScratch,
+    ) : DefaultAgendaEventListener() {
+        override fun beforeMatchFired(event: BeforeMatchFiredEvent) {
+            scratch.currentRuleName = event.match?.rule?.name
+        }
+
+        override fun afterMatchFired(event: org.kie.api.event.rule.AfterMatchFiredEvent) {
+            scratch.currentRuleName = null
+        }
+    }
 }

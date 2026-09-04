@@ -104,6 +104,8 @@ export type GraphNode = {
   dimmed?: boolean
   /** Failing latest Validate — red blink until result cleared/revalidated. */
   validationError?: boolean
+  /** Policy evaluation highest severity for this node (OK / WARN / ERROR / …). */
+  findingSeverity?: string
 }
 
 /** How a top-level payload field should render on graph cards. */
@@ -131,6 +133,8 @@ export type GraphLink = {
   dimmed?: boolean
   /** Failing latest Validate — red blink until result cleared/revalidated. */
   validationError?: boolean
+  /** Policy evaluation highest severity for this edge. */
+  findingSeverity?: string
 }
 
 export type GraphSelection =

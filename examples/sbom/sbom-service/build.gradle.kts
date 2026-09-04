@@ -36,6 +36,7 @@ dependencies {
     runtimeOnly(project(":objs-service"))
     runtimeOnly(project(":objs-service-ui"))
     runtimeOnly(project(":objs-gremlin-service"))
+    runtimeOnly(project(":objs-policy-service"))
     runtimeOnly(libs.h2.database)
     runtimeOnly(libs.postgresql)
     runtimeOnly(libs.flyway.postgresql)

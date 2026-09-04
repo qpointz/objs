@@ -5,6 +5,7 @@ import {
   ensureTraverseMatcherScoped,
   isGraphScopedMatcher,
   matcherFromGraphContext,
+  policyFragmentMatcher,
 } from './queryGraphContext'
 
 describe('matcherFromGraphContext', () => {
@@ -59,5 +60,50 @@ describe('ensureTraverseMatcherScoped', () => {
   it('passes through scoped matchers', () => {
     const body = { all: true }
     expect(ensureTraverseMatcherScoped(body)).toBe(body)
+  })
+})
+
+describe('policyFragmentMatcher', () => {
+  it('uses graph id + match-all for graph mode', () => {
+    expect(
+      policyFragmentMatcher({
+        ...EMPTY_GRAPH_CONTEXT,
+        kind: 'graph',
+        graphId: 'abc',
+        graphVersion: 3,
+      }),
+    ).toEqual({
+      matcher: MATCH_ALL_OBJ_EXPR,
+      graphId: 'abc',
+      graphVersion: 3,
+    })
+  })
+
+  it('passes through All matcher', () => {
+    const body = { all: true }
+    expect(
+      policyFragmentMatcher({
+        ...EMPTY_GRAPH_CONTEXT,
+        kind: 'matcher',
+        matcherBody: body,
+        matcherLine: 'All',
+      }),
+    ).toEqual({ matcher: body, graphId: null, graphVersion: null })
+  })
+
+  it('wraps bare obj-expr with all for store.select', () => {
+    const body = { 'obj-expr': "type == 'Component'" }
+    expect(
+      policyFragmentMatcher({
+        ...EMPTY_GRAPH_CONTEXT,
+        kind: 'matcher',
+        matcherBody: body,
+        matcherLine: '…',
+      }),
+    ).toEqual({
+      matcher: [{ all: true }, body],
+      graphId: null,
+      graphVersion: null,
+    })
   })
 })

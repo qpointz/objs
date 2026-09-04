@@ -96,6 +96,40 @@ const VIEW_SIZE = {
 
 type ViewTokens = (typeof VIEW_SIZE)[EntityPayloadViewSize]
 
+const FINDING_PILL: Record<string, { bg: string; label: string }> = {
+  ERROR: { bg: '#fa5252', label: 'ERROR' },
+  WARN: { bg: '#fd7e14', label: 'WARN' },
+  WARNING: { bg: '#fd7e14', label: 'WARN' },
+  OK: { bg: '#12b886', label: 'OK' },
+  INFO: { bg: '#228be6', label: 'INFO' },
+}
+
+function FindingSeverityPill({ severity }: { severity: string | undefined }) {
+  if (!severity) return null
+  const key = severity.trim().toUpperCase()
+  const style = FINDING_PILL[key] ?? { bg: '#868e96', label: key.slice(0, 8) || 'FIND' }
+  return (
+    <span
+      title={severity}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        height: 14,
+        padding: '0 5px',
+        borderRadius: 3,
+        background: style.bg,
+        color: '#fff',
+        fontSize: 8,
+        fontWeight: 800,
+        letterSpacing: '0.04em',
+        lineHeight: 1,
+      }}
+    >
+      {style.label}
+    </span>
+  )
+}
+
 function StatusPill({ status }: { status: GraphNode['draftStatus'] }) {
   if (!status || status === 'unchanged') return null
   const cfg = STATUS_PILL[status]
@@ -565,6 +599,7 @@ function EntityCardNodeComponent({ data }: NodeProps) {
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {entity.type}: {entity.schemaVersion}
         </span>
+        <FindingSeverityPill severity={entity.findingSeverity} />
         <StatusPill status={entity.draftStatus} />
       </div>
       <div style={{ borderTop: '1px solid #dee2e6', padding: '4px 6px' }}>

@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "clean": "node --input-type=module -e \"import { rmSync } from 'node:fs'; for (const p of ['node_modules', 'build/generated/vite']) rmSync(p, { recursive: true, force: true })\""
   },
   "dependencies": {
     "@codemirror/lang-json": "^6.0.2",

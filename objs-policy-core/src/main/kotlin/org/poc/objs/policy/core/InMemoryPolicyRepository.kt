@@ -42,6 +42,46 @@ class InMemoryPolicyRepository : PolicyRepository {
         return stored
     }
 
+    override fun update(id: UUID, write: PolicyWrite): Policy? {
+        val existing = byId[id] ?: return null
+        require(write.name.isNotBlank()) { "Policy name must not be blank" }
+        require(write.engineKind.isNotBlank()) { "engineKind must not be blank" }
+
+        val updated = existing.copy(
+            name = write.name,
+            engineKind = write.engineKind,
+            body = write.body,
+            contentType = write.contentType,
+            applicabilityKind = write.applicabilityKind,
+            applicabilityBody = write.applicabilityBody,
+        )
+
+        if (existing.name != updated.name) {
+            versionsByName[existing.name]?.remove(existing.version)
+            if (versionsByName[existing.name].isNullOrEmpty()) {
+                versionsByName.remove(existing.name)
+                latestByName.remove(existing.name)
+            }
+        }
+
+        byId[id] = updated
+        versionsByName
+            .computeIfAbsent(updated.name) { ConcurrentHashMap() }[updated.version] = updated
+        latestByName.computeIfAbsent(updated.name) { AtomicLong(updated.version) }
+            .updateAndGet { maxOf(it, updated.version) }
+        return updated
+    }
+
+    override fun delete(id: UUID): Boolean {
+        val existing = byId.remove(id) ?: return false
+        versionsByName[existing.name]?.remove(existing.version)
+        if (versionsByName[existing.name].isNullOrEmpty()) {
+            versionsByName.remove(existing.name)
+            latestByName.remove(existing.name)
+        }
+        return true
+    }
+
     override fun resolve(ref: PolicyRef): Policy? =
         when (ref) {
             is PolicyRef.ById -> findById(ref.id)

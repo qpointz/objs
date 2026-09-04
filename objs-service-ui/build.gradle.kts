@@ -12,10 +12,19 @@ description = "Objs workbench SPA (Vite/React) packaged as classpath static/work
 
 val viteOutDir = layout.buildDirectory.dir("generated/vite")
 
+// GitLab CI sets CI=true / GITLAB_CI=true → npm ci (clean, lockfile-strict).
+// Local: npm install (incremental). Force CI path with -PnpmInstallCi=true.
+val npmInstallCmd =
+    when {
+        findProperty("npmInstallCi")?.toString()?.toBoolean() == true -> "ci"
+        System.getenv("GITLAB_CI") == "true" || System.getenv("CI") == "true" -> "ci"
+        else -> "install"
+    }
+
 node {
     download.set(true)
     version.set("22.14.0")
-    npmInstallCommand.set("ci")
+    npmInstallCommand.set(npmInstallCmd)
 }
 
 fun Project.uiSkipped(): Boolean =
@@ -23,7 +32,7 @@ fun Project.uiSkipped(): Boolean =
 
 tasks.npmInstall {
     group = "ui"
-    description = "npm ci for workbench SPA"
+    description = "npm $npmInstallCmd for workbench SPA"
     notCompatibleWithConfigurationCache("node-gradle npmInstall")
     onlyIf("skipUi is not true") { !uiSkipped() }
 }
