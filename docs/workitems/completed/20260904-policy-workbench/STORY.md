@@ -7,6 +7,7 @@
 **Folder:** [`docs/workitems/completed/20260904-policy-workbench/`](.)  
 **Backlog:** [C-31](../../BACKLOG.md) / [U-9](../../BACKLOG.md)  
 **Base:** `origin/dev`  
+**MR:** https://gitlab.qpointz.io/sandbox/bom-poc/-/merge_requests/58  
 **Sequence:** [policy family](../../SEQUENCE.md#policy-family-c-24c-31--normative-order) step **3 / 7**  
 **Before:** [C-26 `policy-drools`](../20260904-policy-drools/STORY.md) (required for real engine play; hard require [C-24](../20260904-policy-evaluate-core/STORY.md))  
 **Next:** [C-27 `policy-suites`](../../planned/policy-suites/STORY.md)  
