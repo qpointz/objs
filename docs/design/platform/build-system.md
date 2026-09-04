@@ -35,13 +35,15 @@ objs/
 - **Aggregate:** root tasks `test` and `testIT` depend on leaf module tasks
 - **No** `build-logic` / custom convention plugins
 - **CI:** GitLab child pipelines — [`ci-pipeline.md`](ci-pipeline.md). Unit: `test` + compile `:objs-persistence:testITClasses`. Integration: `testIT` (protected `dev` or `RUN_INTEGRATION=true`). Docker/Maven publish stages reserved, not implemented.
-- **Workbench UI:** `:objs-service-ui` downloads Node via node-gradle, runs `npm ci` /
+- **Workbench UI:** `:objs-service-ui` downloads Node via node-gradle, runs `npm install`
+  locally (or `npm ci` when `CI`/`GITLAB_CI` is set, or `-PnpmInstallCi=true`) /
   `npm run build`, writes Vite output to `build/generated/vite`, then `processResources` copies
   into `build/resources/main/static/workbench/` (so project dependency classpaths see the assets).
   `:objs-service-app` (and example sidecars) depend with `runtimeOnly`. Skip with `-PskipUi=true`.
   **Convention:** HTTP prefix = classpath folder under `static/` (`/workbench` → `static/workbench`,
   `/ar` → `static/ar`, `/sbom` → `static/sbom`).
 - **SBOM UI:** same pattern for `:sbom-service-ui` → `:sbom-service` `runtimeOnly`.
+- **Asset-repository UI:** same npm install/ci rule for `:asset-repository-service-ui`.
 - **SBOM compile lock:** `:sbom-service` must not compile against `:objs-service`, `:objs-service-ui`,
   `:objs-gremlin-service`, or `:objs-service-app` (enforced in `sbom-service/build.gradle.kts`).
 

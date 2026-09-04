@@ -26,4 +26,4 @@ Organised by logical component (not by story). Story process lives under
 | SBOM user guide | [`sbom/user.md`](sbom/user.md) | Inventory SPA: applications, multi-BOM versions, drafts, graph |
 | Canonical software graph | [`sbom/canonical-spec.md`](sbom/canonical-spec.md) | Ontology draft (types + relationships) |
 | Asset repository example | [`asset-repository/example.md`](asset-repository/example.md) | Collections-as-graphs object store example |
-| Policy evaluation | [`policy/README.md`](policy/README.md) | Foundation policy family: **C-24 + C-26 shipped** (api+core+drools); suites/seeds/batch later |
+| Policy evaluation | [`policy/README.md`](policy/README.md) | C-24 + C-26 shipped; C-31 playground on branch; suites/seeds/batch later |

@@ -88,7 +88,7 @@ flowchart LR
 | Rule | Meaning |
 |------|---------|
 | No product rules in foundation | Concrete DRL / “IT Governance” packs live in examples/apps |
-| Not on `:objs-service` by default | Opt-in later (C-31 workbench / C-30 consumer), like jgrapht-service |
+| Not on `:objs-service` by default | HTTP lives in `:objs-policy-service`; wire from `:objs-service-app` (C-31), like gremlin |
 
 ---
 
@@ -96,8 +96,8 @@ flowchart LR
 
 | Module / story | When |
 |----------------|------|
-| `:objs-policy-drools` | C-26 — [`drools.md`](drools.md) |
-| Workbench UI + thin HTTP | C-31 |
+| `:objs-policy-drools` | C-26 — shipped ([`drools.md`](drools.md)) |
+| `:objs-policy-service` + workbench UI | C-31 — [`workbench.md`](workbench.md) |
 | Suites | C-27 (may stay in api/core types + core orchestration) |
 | JPA + seeds | C-28 |
 | Batch pack | C-29 |

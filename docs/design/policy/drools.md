@@ -60,7 +60,10 @@ Example DRL match: `EntityFact( type == "Component", annotations["severity"] == 
 Engine-owned scratch / global collected during fire:
 
 - Default **PASS** if session completes without FAIL/ERROR
-- Rules call into scratch to **fail** / **error** and optionally add findings
+- Rules call into scratch to **fail** / **error** / **finding** / **pass** and optionally add findings
+- Prefer `scratch.fail("…")` / `scratch.finding(…)` / `scratch.pass("…")` while a rule fires —
+  the engine agenda listener fills **`extras.rule`** (and a `[ruleName]` message prefix) automatically
+- Optional explicit override: `scratch.fail("…", "my-rule")`
 - Compile failures → **ERROR** (not FAIL)
 
 Exact scratch type is an implementation detail of `:objs-policy-drools`.

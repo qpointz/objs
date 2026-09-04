@@ -1,6 +1,6 @@
 # Policy evaluation (foundation)
 
-**Status:** C-24 S1 **shipped**; C-26 Drools adapter **shipped** (`:objs-policy-drools`, opt-in)  
+**Status:** C-24 S1 **shipped**; C-26 Drools adapter **shipped**; C-31 Policy playground **implemented** (close story when ready)  
 **Family:** `objs-policy*` — not “assessment”  
 **Packages:** `org.poc.objs.policy.api` / `org.poc.objs.policy.core` / `org.poc.objs.policy.drools`  
 **Audience:** foundation embedders, example-app authors  
@@ -41,6 +41,8 @@ flowchart LR
 | [**results.md**](results.md) | Outcomes, findings, ERROR vs FAIL, aggregate helper |
 | [**repository.md**](repository.md) | In-memory `PolicyRepository` (S1); persistence later |
 | [**drools.md**](drools.md) | C-26 Drools adapter locks (facts, deps, KB cache) |
+| [**workbench.md**](workbench.md) | C-31 Policy playground UI + `:objs-policy-service` |
+| [**examples-sbom.md**](examples-sbom.md) | Paste-ready DROOLS sketches against SBOM ontology |
 
 Normative S1 decisions: [`GAPS.md`](../../workitems/completed/20260904-policy-evaluate-core/GAPS.md) · Story: [`STORY.md`](../../workitems/completed/20260904-policy-evaluate-core/STORY.md) · Scenarios: [`EXAMPLES.md`](../../workitems/completed/20260904-policy-evaluate-core/EXAMPLES.md)  
 C-26 gaps: [`policy-drools/GAPS.md`](../../workitems/completed/20260904-policy-drools/GAPS.md)
@@ -53,7 +55,7 @@ C-26 gaps: [`policy-drools/GAPS.md`](../../workitems/completed/20260904-policy-d
 |------|----|--------|--------|
 | 1 | C-24 | [`policy-evaluate-core`](../../workitems/completed/20260904-policy-evaluate-core/STORY.md) | **done** (archived) |
 | 2 | C-26 | [`policy-drools`](../../workitems/completed/20260904-policy-drools/STORY.md) | **done** (archived) |
-| 3 | C-31 | [`policy-workbench`](../../workitems/planned/policy-workbench/STORY.md) | planned |
+| 3 | C-31 | [`policy-workbench`](../../workitems/completed/20260904-policy-workbench/STORY.md) | done |
 | 4 | C-27 | [`policy-suites`](../../workitems/planned/policy-suites/STORY.md) | planned |
 | 5 | C-28 | [`policy-seeds-persistence`](../../workitems/planned/policy-seeds-persistence/STORY.md) | planned |
 | 6 | C-29 | [`policy-batch`](../../workitems/planned/policy-batch/STORY.md) | planned |

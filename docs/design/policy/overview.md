@@ -686,7 +686,7 @@ SBOM Application / Portfolio binding stays in the app. Foundation never requires
 |-------|------|
 | C-24 S1 flat evaluate | [`policy-evaluate-core/GAPS.md`](../../workitems/completed/20260904-policy-evaluate-core/GAPS.md) |
 | C-26 Drools | [`policy-drools/GAPS.md`](../../workitems/completed/20260904-policy-drools/GAPS.md) |
-| C-31 Workbench Policy play | [`policy-workbench/GAPS.md`](../../workitems/planned/policy-workbench/GAPS.md) |
+| C-31 Workbench Policy play | [`policy-workbench/GAPS.md`](../../workitems/completed/20260904-policy-workbench/GAPS.md) |
 | C-27 Suites | [`policy-suites/GAPS.md`](../../workitems/planned/policy-suites/GAPS.md) |
 | C-28 Seeds + persistence | [`policy-seeds-persistence/GAPS.md`](../../workitems/planned/policy-seeds-persistence/GAPS.md) |
 | C-29 Batch | [`policy-batch/GAPS.md`](../../workitems/planned/policy-batch/GAPS.md) |
