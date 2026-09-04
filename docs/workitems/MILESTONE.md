@@ -54,6 +54,7 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`objs-core-spring-split`](completed/20260903-objs-core-spring-split/STORY.md) — Spring-free `:objs-persistence` + `:objs-autoconfigure`; expand `:objs-api`; Gradle rename G-X7 (C-25). WI-000…WI-007.
 - [`policy-evaluate-core`](completed/20260904-policy-evaluate-core/STORY.md) — Flat policy evaluate MVP: `:objs-policy-api` / `:objs-policy-core`, ALWAYS_APPLY + CUSTOM + in-memory repo (C-24). WI-000…WI-004.
 - [`policy-drools`](completed/20260904-policy-drools/STORY.md) — `:objs-policy-drools` adapter (`EntityFact`/`EdgeFact`/`ObjectFact`, fixture DRL) (C-26). WI-000…WI-003.
+- [`policy-workbench`](completed/20260904-policy-workbench/STORY.md) — Policy playground UI: `:objs-policy-service` + `/policy` Visual/Data, Check/Evaluate (C-31 / U-9). WI-000…WI-004.
 
 ### In progress
 
@@ -62,5 +63,5 @@ _(none)_
 ### Planned
 
 - [`store-text-search`](planned/store-text-search/STORY.md) — FB-3 contains/`q`; design first (C-20). Does not block C-18.
-- Policy family after C-26: [`policy-workbench`](planned/policy-workbench/STORY.md) (C-31 / U-9) → [`policy-suites`](planned/policy-suites/STORY.md) (C-27) → [`policy-seeds-persistence`](planned/policy-seeds-persistence/STORY.md) (C-28) → [`policy-batch`](planned/policy-batch/STORY.md) (C-29) → [`policy-consumer`](planned/policy-consumer/STORY.md) (C-30).
+- Policy family after C-31: [`policy-suites`](planned/policy-suites/STORY.md) (C-27) → [`policy-seeds-persistence`](planned/policy-seeds-persistence/STORY.md) (C-28) → [`policy-batch`](planned/policy-batch/STORY.md) (C-29) → [`policy-consumer`](planned/policy-consumer/STORY.md) (C-30).
 

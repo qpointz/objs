@@ -1,6 +1,6 @@
 # Gaps — policy-consumer (C-30)
 
-Close in this story’s WI-001 only. Workbench UI gaps moved to [C-31 `policy-workbench`](../policy-workbench/GAPS.md).
+Close in this story’s WI-001 only. Workbench UI gaps moved to [C-31 `policy-workbench`](../../completed/20260904-policy-workbench/GAPS.md).
 
 | # | Topic | Status | Notes |
 |---|--------|--------|-------|
