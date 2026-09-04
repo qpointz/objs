@@ -1,6 +1,6 @@
 # Policy evaluation pipeline (S1 locked)
 
-**Normative:** C-24 WI-001 · [`GAPS.md`](../../workitems/in-progress/policy-evaluate-core/GAPS.md)
+**Normative:** C-24 WI-001 · [`GAPS.md`](../../workitems/completed/20260904-policy-evaluate-core/GAPS.md)
 
 **Implement / document with sequences:** full call-level diagrams (happy path, refuse, preview, per-policy branches, repo resolve, wrappers) live in [`evaluation-sequences.md`](evaluation-sequences.md). Keep this page as the compact contract; keep sequences in sync when behaviour is clarified in code.
 

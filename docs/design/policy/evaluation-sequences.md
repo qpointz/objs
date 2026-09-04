@@ -1,7 +1,7 @@
 # Evaluation sequence diagrams (S1)
 
 **Audience:** WI-002+ implementers and the living-docs / documenting pass  
-**Normative:** C-24 WI-001 · [`pipeline.md`](pipeline.md) · [`GAPS.md`](../../workitems/in-progress/policy-evaluate-core/GAPS.md)  
+**Normative:** C-24 WI-001 · [`pipeline.md`](pipeline.md) · [`GAPS.md`](../../workitems/completed/20260904-policy-evaluate-core/GAPS.md)  
 **Shipped types:** `DefaultPolicyEvaluator`, `InMemoryPolicyRepository`, `AlwaysApplyApplicabilitySelector`, `CustomPolicyEngine`
 
 Use these sequences as the **behavioural checklist**. They match the shipped orchestrator; prefer updating this page if behaviour is clarified further.
@@ -264,4 +264,4 @@ sequenceDiagram
 | §6 | Unresolvable ref → ERROR (continue) |
 | §7 | Wrappers only call fixed `evaluate` |
 
-Scenarios: [`EXAMPLES.md`](../../workitems/in-progress/policy-evaluate-core/EXAMPLES.md).
+Scenarios: [`EXAMPLES.md`](../../workitems/completed/20260904-policy-evaluate-core/EXAMPLES.md).

@@ -1,6 +1,6 @@
 # Policy modules (S1 shipped)
 
-**Normative:** G-P1, G-P2, G-P25 · [`GAPS.md`](../../workitems/in-progress/policy-evaluate-core/GAPS.md)
+**Normative:** G-P1, G-P2, G-P25 · [`GAPS.md`](../../workitems/completed/20260904-policy-evaluate-core/GAPS.md)
 
 ---
 

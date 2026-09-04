@@ -1,6 +1,6 @@
 # Policy model (S1 locked)
 
-**Normative:** C-24 WI-001 · [`GAPS.md`](../../workitems/in-progress/policy-evaluate-core/GAPS.md)  
+**Normative:** C-24 WI-001 · [`GAPS.md`](../../workitems/completed/20260904-policy-evaluate-core/GAPS.md)  
 **Package (target):** `org.poc.objs.policy.api`
 
 ---

@@ -1,6 +1,6 @@
 # Policy repository (S1 locked)
 
-**Normative:** G-P19–G-P22 · [`GAPS.md`](../../workitems/in-progress/policy-evaluate-core/GAPS.md)
+**Normative:** G-P19–G-P22 · [`GAPS.md`](../../workitems/completed/20260904-policy-evaluate-core/GAPS.md)
 
 ---
 

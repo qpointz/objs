@@ -38,8 +38,14 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | C-21 | Catalog cache TTL (Caffeine) + registry refresh without restart | improvement | done | [`completed/20260826-catalog-cache-ttl/`](completed/20260826-catalog-cache-ttl/STORY.md) |
 | C-22 | Graph mutate MERGE vs REPLACE (stable id rebuild + history) | feature | done | [`completed/20260826-graph-mutate-replace/`](completed/20260826-graph-mutate-replace/STORY.md) |
 | C-23 | Spring-free `objs-api` + schema-driven entity/edge codegen | feature | done | [`completed/20260828-objs-api-codegen/`](completed/20260828-objs-api-codegen/STORY.md) |
-| C-24 | Foundation policy + suites (`objs-policy-*`); M:N hierarchy, applicability, folder roll-up; Drools-first; design first | feature | planned | [`planned/objs-policy/`](planned/objs-policy/STORY.md), [`docs/design/policy/`](../design/policy/) |
+| C-24 | Flat policy evaluate MVP (`:objs-policy-api` / `:objs-policy-core`); applicability + CUSTOM engine; in-memory repo | feature | done | [`completed/20260904-policy-evaluate-core/`](completed/20260904-policy-evaluate-core/STORY.md), [`docs/design/policy/`](../design/policy/) |
 | C-25 | Split `objs-core` (Spring-free persistence) + `objs-autoconfigure`; expand `objs-api` model | refactoring | done | [`completed/20260903-objs-core-spring-split/`](completed/20260903-objs-core-spring-split/STORY.md) |
+| C-26 | `:objs-policy-drools` adapter (fixture DRL only) | feature | planned | [`planned/policy-drools/`](planned/policy-drools/STORY.md) |
+| C-27 | Policy suites: hierarchy, M:N membership, folder roll-up | feature | planned | [`planned/policy-suites/`](planned/policy-suites/STORY.md) |
+| C-28 | Policy (+suite) persistence + seed format | feature | planned | [`planned/policy-seeds-persistence/`](planned/policy-seeds-persistence/STORY.md) |
+| C-29 | Thin policy batch / result pack (no matrix) | feature | planned | [`planned/policy-batch/`](planned/policy-batch/STORY.md) |
+| C-30 | Optional policy REST / example consumer (gated; workbench = C-31) | feature | planned | [`planned/policy-consumer/`](planned/policy-consumer/STORY.md) |
+| C-31 | Workbench tactical Policy play UI (after Drools) | feature | planned | [`planned/policy-workbench/`](planned/policy-workbench/STORY.md), also [U-9](#ui--workbench) |
 
 ---
 
@@ -55,6 +61,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | U-6 | Workbench UI Gradle build via node-gradle plugin (`:objs-service-ui`) | improvement | done | [`completed/20260813-ui-gradle-node/`](completed/20260813-ui-gradle-node/STORY.md) |
 | U-7 | Workbench UX: shared graph context (Explorer/Objects/Query) + chrome | improvement | done | [`completed/20260822-workbench-ux/`](completed/20260822-workbench-ux/STORY.md) |
 | U-8 | Workbench cosmetic polish (loading feedback + visual polish) | improvement | done | [`completed/20260903-workbench-cosmetic/`](completed/20260903-workbench-cosmetic/STORY.md) |
+| U-9 | Tactical Policy play UI in workbench (same as C-31) | feature | planned | [`planned/policy-workbench/`](planned/policy-workbench/STORY.md), [C-31](#core--entity--graph-core) |
 
 ---
 

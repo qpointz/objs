@@ -6,7 +6,7 @@
 **Folder:** [`docs/workitems/planned/policy-workbench/`](.)  
 **Backlog:** [C-31](../../BACKLOG.md) (ui surface; tracked with policy family)  
 **Sequence:** [policy family](../../SEQUENCE.md#policy-family-c-24c-31--normative-order) step **3 / 7**  
-**Before:** [C-26 `policy-drools`](../policy-drools/STORY.md) (required for real engine play; hard require [C-24](../../in-progress/policy-evaluate-core/STORY.md))  
+**Before:** [C-26 `policy-drools`](../policy-drools/STORY.md) (required for real engine play; hard require [C-24](../../completed/20260904-policy-evaluate-core/STORY.md))  
 **Next:** [C-27 `policy-suites`](../policy-suites/STORY.md)  
 **Gaps:** [`GAPS.md`](GAPS.md)  
 **Design:** [`docs/design/policy/overview.md`](../../../design/policy/overview.md)

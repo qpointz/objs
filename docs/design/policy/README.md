@@ -6,7 +6,7 @@
 **Audience:** foundation embedders, example-app authors  
 **Not this folder:** product compliance UX, regulatory catalogs, SBOM Application workflows, suite product content  
 
-**Story:** [`policy-evaluate-core`](../../workitems/in-progress/policy-evaluate-core/STORY.md) · **Order:** [`SEQUENCE.md` § Policy family](../../workitems/SEQUENCE.md#policy-family-c-24c-31--normative-order)
+**Story:** [`policy-evaluate-core`](../../workitems/completed/20260904-policy-evaluate-core/STORY.md) · **Order:** [`SEQUENCE.md` § Policy family](../../workitems/SEQUENCE.md#policy-family-c-24c-31--normative-order)
 
 ---
 
@@ -41,7 +41,7 @@ flowchart LR
 | [**results.md**](results.md) | Outcomes, findings, ERROR vs FAIL, aggregate helper |
 | [**repository.md**](repository.md) | In-memory `PolicyRepository` (S1); persistence later |
 
-Normative S1 decisions: [`GAPS.md`](../../workitems/in-progress/policy-evaluate-core/GAPS.md) · Story: [`STORY.md`](../../workitems/in-progress/policy-evaluate-core/STORY.md) · Scenarios: [`EXAMPLES.md`](../../workitems/in-progress/policy-evaluate-core/EXAMPLES.md)
+Normative S1 decisions: [`GAPS.md`](../../workitems/completed/20260904-policy-evaluate-core/GAPS.md) · Story: [`STORY.md`](../../workitems/completed/20260904-policy-evaluate-core/STORY.md) · Scenarios: [`EXAMPLES.md`](../../workitems/completed/20260904-policy-evaluate-core/EXAMPLES.md)
 
 ---
 
@@ -49,7 +49,7 @@ Normative S1 decisions: [`GAPS.md`](../../workitems/in-progress/policy-evaluate-
 
 | Step | Id | Story | Status |
 |------|----|--------|--------|
-| 1 | C-24 | [`policy-evaluate-core`](../../workitems/in-progress/policy-evaluate-core/STORY.md) | **shipped** (api+core; living docs) |
+| 1 | C-24 | [`policy-evaluate-core`](../../workitems/completed/20260904-policy-evaluate-core/STORY.md) | **done** (archived) |
 | 2 | C-26 | [`policy-drools`](../../workitems/planned/policy-drools/STORY.md) | planned |
 | 3 | C-31 | [`policy-workbench`](../../workitems/planned/policy-workbench/STORY.md) | planned |
 | 4 | C-27 | [`policy-suites`](../../workitems/planned/policy-suites/STORY.md) | planned |

@@ -1,7 +1,7 @@
 # Policy evaluation — detailed design
 
 **Status:** C-24 S1 **shipped** (`:objs-policy-api` / `:objs-policy-core`); later stories still open — see README  
-**Normative locks:** [`policy-evaluate-core/GAPS.md`](../../workitems/in-progress/policy-evaluate-core/GAPS.md) (S1); other stories own their GAPS  
+**Normative locks:** [`policy-evaluate-core/GAPS.md`](../../workitems/completed/20260904-policy-evaluate-core/GAPS.md) (S1); other stories own their GAPS  
 **Audience:** foundation embedders, design-lock reviewers, example-app authors  
 **Folder index:** [`README.md`](README.md)
 
@@ -18,7 +18,7 @@ Shared philosophy for foundation policy evaluation. **S1 flat evaluate is implem
 | [`results.md`](results.md) | Outcomes, findings, ERROR vs FAIL, aggregate helper |
 | [`repository.md`](repository.md) | In-memory repo; resolve latest\|version\|id |
 
-Also: [`GAPS.md`](../../workitems/in-progress/policy-evaluate-core/GAPS.md) · [`EXAMPLES.md`](../../workitems/in-progress/policy-evaluate-core/EXAMPLES.md)
+Also: [`GAPS.md`](../../workitems/completed/20260904-policy-evaluate-core/GAPS.md) · [`EXAMPLES.md`](../../workitems/completed/20260904-policy-evaluate-core/EXAMPLES.md)
 
 ---
 
@@ -681,7 +681,7 @@ SBOM Application / Portfolio binding stays in the app. Foundation never requires
 
 | Story | Gaps |
 |-------|------|
-| C-24 S1 flat evaluate | [`policy-evaluate-core/GAPS.md`](../../workitems/in-progress/policy-evaluate-core/GAPS.md) |
+| C-24 S1 flat evaluate | [`policy-evaluate-core/GAPS.md`](../../workitems/completed/20260904-policy-evaluate-core/GAPS.md) |
 | C-26 Drools | [`policy-drools/GAPS.md`](../../workitems/planned/policy-drools/GAPS.md) |
 | C-31 Workbench Policy play | [`policy-workbench/GAPS.md`](../../workitems/planned/policy-workbench/GAPS.md) |
 | C-27 Suites | [`policy-suites/GAPS.md`](../../workitems/planned/policy-suites/GAPS.md) |
@@ -699,8 +699,8 @@ SBOM Application / Portfolio binding stays in the app. Foundation never requires
 |-----|-----|
 | [`README.md`](README.md) | Folder index |
 | [`model.md`](model.md) · [`pipeline.md`](pipeline.md) · [`evaluation-sequences.md`](evaluation-sequences.md) · [`modules.md`](modules.md) · [`results.md`](results.md) · [`repository.md`](repository.md) | S1 normative design pages |
-| [`STORY.md`](../../workitems/in-progress/policy-evaluate-core/STORY.md) | C-24 delivery plan (flat MVP) |
-| [`EXAMPLES.md`](../../workitems/in-progress/policy-evaluate-core/EXAMPLES.md) | S1 scenarios; follow-ups linked |
+| [`STORY.md`](../../workitems/completed/20260904-policy-evaluate-core/STORY.md) | C-24 delivery plan (flat MVP) |
+| [`EXAMPLES.md`](../../workitems/completed/20260904-policy-evaluate-core/EXAMPLES.md) | S1 scenarios; follow-ups linked |
 | [`SEQUENCE.md`](../../workitems/SEQUENCE.md) | C-24…C-31 order |
 | [`fragments-and-analysis.md`](../graph/fragments-and-analysis.md) | Fragment resolve contract |
 | [`seeds.md`](../graph/seeds.md) | Graph seed envelope to align with |

@@ -1,6 +1,6 @@
 # Policy results and findings (S1 locked)
 
-**Normative:** G-P11–G-P14, G-P16–G-P18 · [`GAPS.md`](../../workitems/in-progress/policy-evaluate-core/GAPS.md)
+**Normative:** G-P11–G-P14, G-P16–G-P18 · [`GAPS.md`](../../workitems/completed/20260904-policy-evaluate-core/GAPS.md)
 
 ---
 

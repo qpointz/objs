@@ -2,12 +2,14 @@
 
 **Slug:** `policy-evaluate-core`  
 **Branch:** `policy-evaluate-core`  
-**Status:** in-progress  
-**Folder:** [`docs/workitems/in-progress/policy-evaluate-core/`](.)  
+**Status:** completed  
+**Closed:** 2026-09-04  
+**Folder:** [`docs/workitems/completed/20260904-policy-evaluate-core/`](.)  
 **Backlog:** [C-24](../../BACKLOG.md)  
 **Base:** `origin/dev`  
+**MR:** https://gitlab.qpointz.io/sandbox/bom-poc/-/merge_requests/56  
 **Sequence:** [policy family](../../SEQUENCE.md#policy-family-c-24c-31--normative-order) step **1 / 7**  
-**Before:** `GraphFragment` / resolve path (shipped — [`graph-frontend-jgrapht`](../../completed/20260903-graph-frontend-jgrapht/STORY.md))  
+**Before:** `GraphFragment` / resolve path (shipped — [`graph-frontend-jgrapht`](../20260903-graph-frontend-jgrapht/STORY.md))  
 **Next:** [C-26 `policy-drools`](../../planned/policy-drools/STORY.md)  
 **Does not block:** C-20 store text search  
 **Issue:** [#3](https://gitlab.qpointz.io/sandbox/bom-poc/-/work_items/3)  
@@ -161,7 +163,6 @@ Not in this story: `:objs-policy-drools`, `:objs-policy-service`, suite modules.
 
 ## Process notes
 
-1. One WI at a time; `[x]` + commit + push per WI ([`RULES.md`](../../RULES.md)).
-2. All WIs complete — story remains **in-progress** until user asks to close/archive.
-3. Do not close this story until the user asks.
-4. Do **not** implement follow-up stories on this branch.
+1. Story **closed** 2026-09-04 — archived under [`completed/20260904-policy-evaluate-core/`](.).
+2. Follow-ups: C-26…C-31 per [`SEQUENCE.md`](../../SEQUENCE.md).
+3. MR: https://gitlab.qpointz.io/sandbox/bom-poc/-/merge_requests/56
