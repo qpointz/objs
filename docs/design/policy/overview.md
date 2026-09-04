@@ -1,11 +1,47 @@
-# Policy evaluation — detailed design draft
+# Policy evaluation — detailed design
 
-**Status:** draft (planned **C-24** [`objs-policy`](../../workitems/planned/objs-policy/STORY.md))  
-**Normative locks:** story **WI-001**; until then this document is **provisional**.  
+**Status:** C-24 S1 **shipped** (`:objs-policy-api` / `:objs-policy-core`); later stories still open — see README  
+**Normative locks:** [`policy-evaluate-core/GAPS.md`](../../workitems/in-progress/policy-evaluate-core/GAPS.md) (S1); other stories own their GAPS  
 **Audience:** foundation embedders, design-lock reviewers, example-app authors  
-**Index:** [`README.md`](README.md) · **Gaps:** [`GAPS.md`](../../workitems/planned/objs-policy/GAPS.md) · **Scenarios:** [`EXAMPLES.md`](../../workitems/planned/objs-policy/EXAMPLES.md)
+**Folder index:** [`README.md`](README.md)
 
-This draft records the philosophy and contracts discussed for foundation policy evaluation: artefacts, suites, applicability, engines, findings, seeds, unified results, and a **thin batch / result pack** (matrix views stay in product). Open field-level choices remain in GAPS; do not treat draft guesses below as locked.
+Shared philosophy for foundation policy evaluation. **S1 flat evaluate is implemented.** Drools, workbench, suites, seeds, batch, and consumers remain separate stories.
+
+### S1 design pages (normative detail + diagrams)
+
+| Page | Topic |
+|------|--------|
+| [`model.md`](model.md) | Identity, serial version, body, engineKind, applicability fields |
+| [`pipeline.md`](pipeline.md) | Resolve → PolicyContextWiring → gated evaluate |
+| [`evaluation-sequences.md`](evaluation-sequences.md) | Sequence diagrams for implement + documenting pass |
+| [`modules.md`](modules.md) | `:objs-policy-api` / `:objs-policy-core` (shipped types) |
+| [`results.md`](results.md) | Outcomes, findings, ERROR vs FAIL, aggregate helper |
+| [`repository.md`](repository.md) | In-memory repo; resolve latest\|version\|id |
+
+Also: [`GAPS.md`](../../workitems/in-progress/policy-evaluate-core/GAPS.md) · [`EXAMPLES.md`](../../workitems/in-progress/policy-evaluate-core/EXAMPLES.md)
+
+---
+
+## Locked (S1 / C-24) — shipped
+
+| Topic | Lock |
+|-------|------|
+| Modules | `:objs-policy-api` + `:objs-policy-core`; `org.poc.objs.policy.{api,core}` — [`modules.md`](modules.md) |
+| Policy | name + serial version (new on create/update); no `enabled`; body String + optional contentType; `engineKind` String (`CUSTOM` only in S1) — [`model.md`](model.md) |
+| Applicability | optional kind+body on Policy; S1 ALWAYS_APPLY / blank; **bound into** `evaluate` (optional `applicability` preview); cannot skip gate — [`pipeline.md`](pipeline.md) |
+| Context / wiring | `PolicyEvaluationContext` + **`PolicyContextWirer`** (PolicyContextWiring) — first after resolve; not Enricher — [`pipeline.md`](pipeline.md) |
+| Pipeline | resolve → PolicyContextWiring → gated evaluate; refuse fragment ERROR diagnostics — [`pipeline.md`](pipeline.md) |
+| Results | per-policy outcomes authoritative (+ version); optional flat aggregate helper; findings optional + soft validation — [`results.md`](results.md) |
+| ERROR vs FAIL | FAIL = not satisfied; ERROR = engine/body/unknown-kind; continue others — [`results.md`](results.md) |
+| Repo | in-memory; save→new version; resolve latest\|version\|id — [`repository.md`](repository.md) |
+| Entry | fixed `evaluate(fragment, policyRefs)`; wrappers later — [`pipeline.md`](pipeline.md) |
+| Boundaries | no product rules in foundation; not default on `:objs-service`; Policy ≠ graph entity; input = GraphFragment |
+
+**Shipped entry points:** `DefaultPolicyEvaluator`, `InMemoryPolicyRepository`, `AlwaysApplyApplicabilitySelector`, `CustomPolicyEngine` (`org.poc.objs.policy.core`).
+
+**Deferred to later stories:** Drools (C-26), workbench (C-31), suites (C-27), seeds/JPA (C-28), batch (C-29), example/REST consumer (C-30).
+
+Sections **§1+** below remain illustrative for the **full-family** vision (suites, seeds, batch, Drools). Where they conflict with the table above or the S1 pages, **S1 locks win**.
 
 ---
 
@@ -32,7 +68,7 @@ flowchart LR
   end
   subgraph foundation [objs-policy]
     Repo[Repository]
-    Pipe[Enrich apply evaluate]
+    Pipe[PolicyContextWiring · gated evaluate]
     Engines[PolicyEngine adapters]
     Batch[Thin result pack]
   end
@@ -91,7 +127,7 @@ flowchart TB
     Model[Policy + Suite model]
     Store[Policy / suite repository]
     SeedsFmt[Seed format + importer]
-    SPI[Enricher + ApplicabilitySelector + PolicyEngine SPI]
+    SPI[PolicyContextWirer + ApplicabilitySelector + PolicyEngine SPI]
     Orch[Orchestration + roll-up]
     Result[Unified result DTOs]
     Drools[objs-policy-drools adapter]
@@ -121,14 +157,16 @@ flowchart TB
 
 ---
 
-## 4. Module map (planned)
+## 4. Module map
+
+**S1 (locked):** only `:objs-policy-api` + `:objs-policy-core` — see [`modules.md`](modules.md).
 
 ```mermaid
 flowchart TB
   api[objs-api GraphFragment]
   papi[objs-policy-api]
   pcore[objs-policy-core]
-  pdrools[objs-policy-drools]
+  pdrools[objs-policy-drools C-26]
   popa[objs-policy-opa later]
   psvc[objs-policy-service optional]
   app[Example apps / workbench runner]
@@ -144,15 +182,13 @@ flowchart TB
   psvc -.->|opt-in not default on objs-service| app
 ```
 
-| Module | Responsibility |
-|--------|----------------|
-| `:objs-policy-api` | Spring-free contracts: Policy, Suite, SPIs, findings, results |
-| `:objs-policy-core` | Repository, seed import, enrich → apply → evaluate, suite roll-up |
-| `:objs-policy-drools` | First `PolicyEngine` |
-| `:objs-policy-opa` | Later |
-| `:objs-policy-service` | Optional REST (jgrapht-service pattern); **not** on `:objs-service` by default |
-
-Exact split / packages / Flyway home: open GAPS (`G-P1`, `G-P2`, `G-P13`, `G-P25`).
+| Module | Responsibility | When |
+|--------|----------------|------|
+| `:objs-policy-api` | Spring-free contracts: Policy, SPIs, findings, results (+ Suite types later) | **C-24** |
+| `:objs-policy-core` | In-memory repo, wire → gated evaluate; later seeds/suites as stories land | **C-24** (+ C-27/C-28) |
+| `:objs-policy-drools` | First real `PolicyEngine` | **C-26** |
+| `:objs-policy-opa` | Later | deferred |
+| `:objs-policy-service` | Optional REST (jgrapht-service pattern); **not** on `:objs-service` by default | C-30 / C-31 as needed |
 
 ---
 
@@ -169,12 +205,12 @@ erDiagram
   POLICY {
     uuid id
     string name
-    string version
+    long serialVersion
     string engineKind
-    bytes evaluationBody
+    string evaluationBody
+    string contentType
     string applicabilityKind
-    bytes applicabilityBody
-    boolean enabled
+    string applicabilityBody
   }
   SUITE {
     uuid id
@@ -198,17 +234,19 @@ erDiagram
 
 **Hierarchy:** suite nodes form a tree (cycles forbidden — validation gap `G-P40seed`). Analogy: SBOM portfolio → subject areas; here suite → folders → **policy refs**, not applications.
 
-### 5.2 Policy artefact (draft fields)
+### 5.2 Policy artefact
 
-| Field | Role | Notes / GAPS |
-|-------|------|----------------|
-| Identity | Stable id and/or `(name, version)` | `G-P3`, `G-P36seed` |
-| `engineKind` | `DROOLS` \| `OPA` \| `CUSTOM` \| … | `G-P5` |
-| Evaluation body | Opaque engine payload (e.g. DRL) | `G-P4`, `G-P37seed` |
-| Optional applicability artefact | Gate metadata/body separate from evaluation body | `G-P6` |
-| Metadata | description, tags, enabled, timestamps | — |
+**S1 normative fields:** [`model.md`](model.md) (name + serial version; String body; no `enabled`).
 
-Policies are **not** rows in `bom_entity`. They live in a dedicated policy store (`G-P13`, `G-P41`).
+| Field | Role | Notes |
+|-------|------|--------|
+| Identity | `name` + serial `version` (+ row `id`) | S1 locked; seed MERGE keys = C-28 |
+| `engineKind` | String: `CUSTOM` (S1), later `DROOLS` / … | Not an enum |
+| Evaluation body | Opaque UTF-8 String | + optional `contentType` |
+| Optional applicability | `applicabilityKind` + `applicabilityBody` | S1: blank / `ALWAYS_APPLY` |
+| Metadata | description, tags, timestamps | Optional; **no** policy-level enabled |
+
+Policies are **not** rows in `bom_entity`. Dedicated policy store (in-memory S1; JPA C-28).
 
 ### 5.3 Suite tree (illustrative product content)
 
@@ -259,47 +297,17 @@ flowchart LR
   Raw --> Resolve --> Resolved
 ```
 
-**Draft default (`G-P17`):** if resolved fragment carries **ERROR** diagnostics, refuse evaluation (same spirit as Gremlin/JGraphT materializers), rather than evaluating a broken topology.
+**S1 lock:** if resolved fragment carries **ERROR** diagnostics, refuse evaluation (`PolicyEvaluationException`) — same spirit as Gremlin/JGraphT materializers.
 
 ---
 
 ## 7. Evaluation pipelines
 
-### 7.1 Flat policy collection
+### 7.1 Flat policy collection (S1)
 
-```mermaid
-sequenceDiagram
-  participant Caller
-  participant Orch as PolicyEvaluator
-  participant Enrich as FragmentEnricher
-  participant Appl as ApplicabilitySelector
-  participant Eng as PolicyEngine
-  Caller->>Orch: evaluate(fragment, policyRefs)
-  Orch->>Orch: GraphFragmentPolicy.resolve
-  Orch->>Enrich: enrich(resolved)
-  Orch->>Appl: select(enriched, policies)
-  Appl-->>Orch: applicable[] + notApplicable[]
-  loop each applicable policy
-    Orch->>Eng: evaluate(enriched, policy)
-    Eng-->>Orch: status + findings
-  end
-  Orch-->>Caller: EvaluationResult
-```
+**Normative diagrams and contract:** [`pipeline.md`](pipeline.md).
 
-```mermaid
-flowchart TB
-  P[PolicyCollection]
-  F[ResolvedGraphFragment]
-  E[Enrich optional]
-  A{ApplicabilitySelector}
-  Ev[PolicyEngine.evaluate]
-  NA[Record NOT_APPLICABLE]
-  R[EvaluationResult]
-  P --> A
-  F --> E --> A
-  A -->|applicable| Ev --> R
-  A -->|not applicable| NA --> R
-```
+Applicability is **bound into** `evaluate` (not a skippable outer stage). Optional `applicability(...)` preview shares the same gate.
 
 ### 7.2 Suite execution
 
@@ -315,7 +323,7 @@ sequenceDiagram
   Orch->>SuiteRepo: load suite tree + memberships
   SuiteRepo-->>Orch: nodes + policy refs
   Orch->>Orch: dedupe policies M:N
-  Orch->>Orch: resolve + enrich + applicability + evaluate
+  Orch->>Orch: resolve + wiring + applicability + evaluate
   Orch->>Roll: aggregate per node and root
   Roll-->>Orch: node statuses
   Orch-->>Caller: SuiteEvaluationResult
@@ -333,7 +341,9 @@ sequenceDiagram
 
 Applicability answers: *is this policy in scope for this fragment?* It is **not** pass/fail.
 
-**Example:** “PostgreSQL must be version > 16.5”
+**S1:** blank / `ALWAYS_APPLY` only; gate always runs inside `evaluate` — [`pipeline.md`](pipeline.md) · [`model.md`](model.md).
+
+**Example (later kinds):** “PostgreSQL must be version > 16.5”
 
 | Fragment | Applicability | Evaluation |
 |----------|---------------|------------|
@@ -350,12 +360,12 @@ flowchart LR
   Gate -->|no| NA[NOT_APPLICABLE]
 ```
 
-**Contract requirements (provisional):**
+**Family requirements:**
 
-- Explicit pipeline step + implementer **`ApplicabilitySelector`** SPI (`G-P7`, `G-P8`)  
-- Optional per-policy applicability artefact (`G-P6`)  
+- Gate bound to evaluate + optional preview (S1 locked)  
+- Optional per-policy applicability artefact (S1 fields present; kinds beyond ALWAYS_APPLY later)  
 - Must **not** rely only on Drools `when` for N/A visibility across engines  
-- Primary gate is **per-policy**; suite/node-level applicability is `G-P33`
+- Suite/node-level applicability = C-27
 
 ---
 
@@ -376,11 +386,11 @@ flowchart TB
 
 | Kind | Module | Role |
 |------|--------|------|
-| `DROOLS` | `:objs-policy-drools` | First real adapter; facts from enriched fragment; body = DRL (or locked format) |
+| `DROOLS` | `:objs-policy-drools` | First real adapter; facts from wired context / fragment; body = DRL (or locked format) |
 | `OPA` | later | Deferred |
 | `CUSTOM` | tests / apps | Stub or app-specific |
 
-Engine receives **already-applicable** policies only. Fact mapping, session lifecycle, BOM versions: `G-P18`…`G-P20`.
+Engine receives **already-applicable** policies only. Drools fact mapping / session lifecycle: C-26 GAPS.
 
 Foundation must not ship regulatory DRL in `src/main` — fixtures and example packs only.
 
@@ -388,14 +398,7 @@ Foundation must not ship regulatory DRL in `src/main` — fixtures and example p
 
 ## 10. Findings and evidence bindings
 
-A policy outcome may include **0..n findings**.
-
-Each finding binds:
-
-- **`entities`:** `List<UUID>` — **0..n** fragment entity ids  
-- **`edges`:** `List<UUID>` — **0..n** fragment edge ids  
-
-Empty lists are valid (policy-level statement with no graph locus).
+**S1 normative:** [`results.md`](results.md) — findings optional on all statuses; FAIL may have zero; soft validation only.
 
 ```mermaid
 erDiagram
@@ -431,27 +434,27 @@ flowchart LR
 
 Same spirit as `GraphFragmentDiagnostic` node/edge lists, but for **evaluation**, not fragment normalization.
 
-Open: exact fields, severity enum, whether FAIL must carry ≥1 finding, whether PASS may carry warnings (`G-P11f`, `G-P12f`).
-
 ---
 
 ## 11. Status and suite roll-up
 
-### 11.1 Per-policy status (draft)
+### 11.1 Per-policy status (S1 locked)
 
 | Status | Meaning |
 |--------|---------|
 | `PASS` | Applicable and satisfied |
 | `FAIL` | Applicable and violated |
-| `ERROR` | Engine/policy execution failure (bad body, crash) |
+| `ERROR` | Engine/policy execution failure (bad body, crash, unknown kind) |
 | `NOT_APPLICABLE` | Out of scope for this fragment |
 
-**Draft aggregation (`G-P12`, `G-P16`, `G-P29s`):**
+**Flat aggregate helper (S1):** optional convenience only — `ERROR > FAIL > PASS > N/A` — see [`results.md`](results.md). **Not** suite roll-up.
+
+**Suite folder roll-up (C-27):**
 
 - `ERROR` dominates when present  
 - Else `FAIL` if any FAIL among considered children  
 - `NOT_APPLICABLE` does **not** count as failure  
-- All-N/A / empty folder behavior still open  
+- All-N/A / empty folder behavior = suite GAPS  
 
 ```mermaid
 flowchart TB
@@ -537,30 +540,31 @@ sequenceDiagram
 
 ---
 
-## 13. Enrichment
+## 13. PolicyContextWiring
 
-Optional **`FragmentEnricher`** SPI runs after resolve (and, by draft default, before applicability) so selectors/engines can see derived signals without baking product logic into core.
+**S1 lock:** `PolicyContextWirer`s only **wire into** `PolicyEvaluationContext` (sidecar bag); run **first** after resolve so applicability can use context — [`pipeline.md`](pipeline.md).
 
 ```mermaid
 flowchart LR
   R[ResolvedGraphFragment]
-  En[Enricher chain]
-  Ctx[Enriched fragment and/or EnrichmentContext]
-  R --> En --> Ctx
+  Wirer[PolicyContextWirer chain]
+  Ctx[PolicyEvaluationContext]
+  R --> Wirer --> Ctx
 ```
 
-Open: return new fragment vs sidecar facts bag; enrich-all vs enrich-applicable-only (`G-P9`, `G-P10`).
+No built-in wirers; no topology rewrite in foundation.
 
 ---
 
-## 14. Repository and orchestration API (draft)
+## 14. Repository and orchestration API
+
+**S1:** [`repository.md`](repository.md) · [`pipeline.md`](pipeline.md) — `evaluate(fragment, policyRefs)` + optional `applicability(...)`; in-memory `PolicyRepository`.
 
 ```mermaid
 classDiagram
   class PolicyRepository {
     save(policy)
-    get(id)
-    resolve(refs)
+    resolve(ref)
     list(...)
   }
   class PolicySuiteRepository {
@@ -570,6 +574,7 @@ classDiagram
   }
   class PolicyEvaluator {
     evaluate(fragment, policyRefs)
+    applicability(fragment, policyRefs)
     evaluateSuite(fragment, suiteId, level)
     evaluateBatch(subjects, target)
   }
@@ -581,20 +586,16 @@ classDiagram
     subjectKey String
     result EvaluationResultOrSuite
   }
-  class ApplicabilitySelector {
-    select(fragment, policies) Decision
-  }
   class PolicyEngine {
-    evaluate(fragment, policy) PolicyOutcome
+    evaluate(context, policy) PolicyOutcome
   }
   PolicyEvaluator --> PolicyRepository
   PolicyEvaluator --> PolicySuiteRepository
-  PolicyEvaluator --> ApplicabilitySelector
   PolicyEvaluator --> PolicyEngine
   PolicyEvaluator --> BatchEvaluationResult
 ```
 
-Whether suite APIs live on one facade or two repositories: `G-P31s`. Public method names: `G-P15`. Batch shape: `G-P41b`…`G-P43b`.
+Suite / batch methods = later stories (wrappers over the fixed S1 contract).
 
 ---
 
@@ -657,7 +658,7 @@ sequenceDiagram
   Sbom-->>Op: Tree statuses + highlight nodes/edges
 ```
 
-For portfolio-level management views, the app loops subjects (or calls **batch**) and owns the matrix — see **§15** and story [`EXAMPLES.md` E8](../../workitems/planned/objs-policy/EXAMPLES.md).
+For portfolio-level management views, the app loops subjects (or calls **batch**) and owns the matrix — see **§15** and follow-up [`policy-batch`](../../workitems/planned/policy-batch/STORY.md) (C-29).
 
 SBOM Application / Portfolio binding stays in the app. Foundation never requires SBOM types.
 
@@ -676,12 +677,19 @@ SBOM Application / Portfolio binding stays in the app. Foundation never requires
 
 ---
 
-## 18. Open decisions
+## 18. Open decisions (story-scoped)
 
-All field-level and SPI-shape decisions:  
-[`docs/workitems/planned/objs-policy/GAPS.md`](../../workitems/planned/objs-policy/GAPS.md)
+| Story | Gaps |
+|-------|------|
+| C-24 S1 flat evaluate | [`policy-evaluate-core/GAPS.md`](../../workitems/in-progress/policy-evaluate-core/GAPS.md) |
+| C-26 Drools | [`policy-drools/GAPS.md`](../../workitems/planned/policy-drools/GAPS.md) |
+| C-31 Workbench Policy play | [`policy-workbench/GAPS.md`](../../workitems/planned/policy-workbench/GAPS.md) |
+| C-27 Suites | [`policy-suites/GAPS.md`](../../workitems/planned/policy-suites/GAPS.md) |
+| C-28 Seeds + persistence | [`policy-seeds-persistence/GAPS.md`](../../workitems/planned/policy-seeds-persistence/GAPS.md) |
+| C-29 Batch | [`policy-batch/GAPS.md`](../../workitems/planned/policy-batch/GAPS.md) |
+| C-30 Example/REST consumer | [`policy-consumer/GAPS.md`](../../workitems/planned/policy-consumer/GAPS.md) |
 
-Do not implement `:objs-policy-*` modules until WI-001 closes every `open` row.
+**C-24 WI-001 is closed.** Implement api/core against S1 locks (WI-002+). Do not pull later-story gaps into C-24.
 
 ---
 
@@ -689,9 +697,11 @@ Do not implement `:objs-policy-*` modules until WI-001 closes every `open` row.
 
 | Doc | Why |
 |-----|-----|
-| [`README.md`](README.md) | Short index for this folder |
-| [`STORY.md`](../../workitems/planned/objs-policy/STORY.md) | Delivery plan, stages, WIs |
-| [`EXAMPLES.md`](../../workitems/planned/objs-policy/EXAMPLES.md) | Motivating scenarios E1–E8 |
+| [`README.md`](README.md) | Folder index |
+| [`model.md`](model.md) · [`pipeline.md`](pipeline.md) · [`evaluation-sequences.md`](evaluation-sequences.md) · [`modules.md`](modules.md) · [`results.md`](results.md) · [`repository.md`](repository.md) | S1 normative design pages |
+| [`STORY.md`](../../workitems/in-progress/policy-evaluate-core/STORY.md) | C-24 delivery plan (flat MVP) |
+| [`EXAMPLES.md`](../../workitems/in-progress/policy-evaluate-core/EXAMPLES.md) | S1 scenarios; follow-ups linked |
+| [`SEQUENCE.md`](../../workitems/SEQUENCE.md) | C-24…C-31 order |
 | [`fragments-and-analysis.md`](../graph/fragments-and-analysis.md) | Fragment resolve contract |
 | [`seeds.md`](../graph/seeds.md) | Graph seed envelope to align with |
 | [`apps-vs-foundation.md`](../graph/apps-vs-foundation.md) | Foundation vs examples |

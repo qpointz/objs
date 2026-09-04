@@ -1,7 +1,7 @@
 # Object store: foundation vs example apps
 
 **Status:** design note (2026-08-16), from SBOM inventory + asset repository  
-**Shipped:** [C-17 `live-store-apis`](../../workitems/completed/20260819-live-store-apis/STORY.md), [C-18 versions](../../workitems/completed/20260819-versions-and-snapshots/STORY.md) (clocks + HEAD/history + Snapshot freeze; `clone()` kept), [C-19 after versions](../../workitems/completed/20260822-foundation-after-versions/STORY.md) (pin reverse + `>` / prefix pushdown). Text `q`: [C-20 `store-text-search`](../../workitems/planned/store-text-search/STORY.md). Policy evaluation (planned): [C-24 `objs-policy`](../../workitems/planned/objs-policy/STORY.md), [`docs/design/policy/`](../policy/). Sequence: [`SEQUENCE.md`](../../workitems/SEQUENCE.md).  
+**Shipped:** [C-17 `live-store-apis`](../../workitems/completed/20260819-live-store-apis/STORY.md), [C-18 versions](../../workitems/completed/20260819-versions-and-snapshots/STORY.md) (clocks + HEAD/history + Snapshot freeze; `clone()` kept), [C-19 after versions](../../workitems/completed/20260822-foundation-after-versions/STORY.md) (pin reverse + `>` / prefix pushdown). Text `q`: [C-20 `store-text-search`](../../workitems/planned/store-text-search/STORY.md). Policy evaluation: [C-24 `policy-evaluate-core`](../../workitems/in-progress/policy-evaluate-core/STORY.md) (**`:objs-policy-api` / `:objs-policy-core` shipped**); follow-ups C-26…C-31 in [`SEQUENCE.md`](../../workitems/SEQUENCE.md). Design: [`docs/design/policy/`](../policy/).  
 **Audience:** objs-persistence / graph APIs  
 **Not this doc:** product journeys, workbench REST (`objs-service`), Gradle/UI packaging (appendix only)
 
@@ -21,7 +21,7 @@ SBOM story tracker for the same gaps: [`FOUNDATION-BACKLOG.md`](../../workitems/
 | **objs-gremlin-core** | Matcher → resolved fragment → TinkerGraph → gremlin-lang (`api(:objs-api)` only) |
 | **objs-jgrapht-core** | Resolved fragment → JGraphT graph + SCC cycle analysis (JVM-only) |
 | **objs-jgrapht-service** | Optional REST capabilities + cycle endpoint (workbench runner only) |
-| **objs-policy-*** (planned C-24) | Policy + **suite** artefacts + repository; enrich → applicability → evaluate (Drools first); **folder roll-up**; unified result — **not** product regulations or suite content |
+| **objs-policy-*** (C-24…C-31) | **C-24 shipped:** flat evaluate + ALWAYS_APPLY + CUSTOM + in-memory repo; later: Drools, workbench, suites/roll-up, seeds, batch, optional REST — **not** product regulations or suite content |
 | **Example apps** | Product tables and meaning of graphs (SBOM apps/versions/fingerprints/portfolios; AR collections + write modes), product REST, ontology packs, reports; **concrete policies, suite trees, product applicability** when using objs-policy |
 | **objs-service / objs-service-app** | Foundation *workbench* only — not an example dependency |
 

@@ -22,7 +22,7 @@ kind: ObjectSchema | AllowedEdgeRule | Graph | *(application-defined)* | *(plann
 | Field | Required | Notes |
 |-------|----------|--------|
 | `apiVersion` | **yes** | Only `objs.poc.org/v1` is accepted |
-| `kind` | **yes** | Built-in: `ObjectSchema`, `AllowedEdgeRule`, `Graph`. Applications register more via `SeedDocumentHandler` beans. **Planned (C-24):** policy seed kinds — see [`docs/design/policy/`](../policy/) and [`objs-policy` GAPS](../../workitems/planned/objs-policy/GAPS.md) `G-P34seed`… |
+| `kind` | **yes** | Built-in: `ObjectSchema`, `AllowedEdgeRule`, `Graph`. Applications register more via `SeedDocumentHandler` beans. **Planned (C-28):** policy seed kinds — see [`docs/design/policy/`](../policy/) and [`policy-seeds-persistence` GAPS](../../workitems/planned/policy-seeds-persistence/GAPS.md) |
 | other root keys | kind-specific | Flat at document root — no Kubernetes-style `metadata` / `spec` |
 
 Seed documents deliberately follow Mill's flat format. `apiVersion` and `kind` are the only

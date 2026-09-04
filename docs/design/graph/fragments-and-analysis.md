@@ -19,13 +19,13 @@ JGraphT types or generated application classes.
 | **Validation / mutation** | Schema, allow-list, cardinality at the persist gate | `BoMGraphStore.persist`, MERGE/REPLACE |
 | **Gremlin result projection** | Map TinkerPop traversal hits back to `BoMGraphContents` / table / scalar views | `BoMGremlinEngine` subgraph2 rules |
 | **Frontend graph rendering** | React Flow + Dagre canvas; type filter dimming; optional analysis highlight | `:objs-service-ui` Explorer |
-| **Policy evaluation (planned)** | Executable policy artefacts over a resolved fragment (applicability → engine) — **not** `GraphFragmentPolicy` | [`docs/design/policy/`](../policy/), C-24 [`objs-policy`](../../workitems/planned/objs-policy/STORY.md) |
+| **Policy evaluation (C-24 shipped)** | Executable policy artefacts over a resolved fragment (`DefaultPolicyEvaluator`: wiring → applicability → engine) — **not** `GraphFragmentPolicy` | [`docs/design/policy/`](../policy/), [`policy-evaluate-core`](../../workitems/in-progress/policy-evaluate-core/STORY.md); follow-ups C-26…C-31 |
 
 `GraphStore.selectAcrossGraphs` already deduplicates by globally unique entity/edge ids when
 reading from persistence. **`GraphFragmentPolicy`** is required for **caller-assembled** fragments
 (SBOM multi-select union, asset-repository composition batches, codegen builders) — not as a
-replacement for store selection invariants. Planned **`objs-policy-*`** consumes the same resolved
-fragment for business/governance evaluation; do not conflate it with fragment normalization.
+replacement for store selection invariants. **`:objs-policy-api` / `:objs-policy-core`** consume the same resolved
+fragment for business/governance evaluation; do not conflate them with fragment normalization.
 
 ## Fragment contract (`:objs-api`)
 
