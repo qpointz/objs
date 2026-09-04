@@ -10,6 +10,8 @@ include(":objs-gremlin-core")
 include(":objs-gremlin-service")
 include(":objs-jgrapht-core")
 include(":objs-jgrapht-service")
+include(":objs-policy-api")
+include(":objs-policy-core")
 include(":objs-service-app")
 
 include(":sbom-service")
