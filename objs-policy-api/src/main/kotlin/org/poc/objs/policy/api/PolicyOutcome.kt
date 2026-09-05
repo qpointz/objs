@@ -9,11 +9,11 @@ enum class PolicyOutcomeStatus {
 }
 
 /**
- * One policy's outcome. Always cites executed [policyName] + serial [policyVersion].
+ * One policy's outcome. Always cites executed [policyName] + [policySerial].
  */
 data class PolicyOutcome(
     val policyName: String,
-    val policyVersion: Long,
+    val policySerial: Long,
     val engineKind: String,
     val status: PolicyOutcomeStatus,
     val notApplicableReason: String? = null,

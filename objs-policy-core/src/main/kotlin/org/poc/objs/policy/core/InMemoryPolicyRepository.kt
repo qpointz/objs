@@ -1,84 +1,86 @@
 package org.poc.objs.policy.core
 
+import org.poc.objs.policy.api.CategoryRepository
 import org.poc.objs.policy.api.Policy
+import org.poc.objs.policy.api.PolicyQuery
 import org.poc.objs.policy.api.PolicyRef
 import org.poc.objs.policy.api.PolicyRepository
+import org.poc.objs.policy.api.PolicyTags
 import org.poc.objs.policy.api.PolicyWrite
+import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
+import kotlin.math.max
 
 /**
- * Process-local [PolicyRepository]. Each [save] allocates a new serial [Policy.version]
- * for the logical name (never overwrites an existing serial in place).
+ * Process-local [PolicyRepository]. Each [save] / [update] allocates a new [Policy.serial]
+ * using the same timestamp rule as object head versions (`max(nowMillis, previous + 1)`).
+ * Requires a known [PolicyWrite.categoryId] in [categories].
  */
-class InMemoryPolicyRepository : PolicyRepository {
+class InMemoryPolicyRepository(
+    private val categories: CategoryRepository,
+) : PolicyRepository {
     private val byId = ConcurrentHashMap<UUID, Policy>()
-    private val versionsByName = ConcurrentHashMap<String, ConcurrentHashMap<Long, Policy>>()
+    private val serialsByName = ConcurrentHashMap<String, ConcurrentHashMap<Long, Policy>>()
     private val latestByName = ConcurrentHashMap<String, AtomicLong>()
 
     override fun save(write: PolicyWrite): Policy {
-        require(write.name.isNotBlank()) { "Policy name must not be blank" }
-        require(write.engineKind.isNotBlank()) { "engineKind must not be blank" }
-
-        val nextVersion = latestByName
-            .computeIfAbsent(write.name) { AtomicLong(0) }
-            .incrementAndGet()
+        val normalized = normalizeWrite(write)
+        val previous = latestByName[normalized.name]?.get()
+        val nextSerial = nextSerial(previous)
 
         val stored = Policy(
             id = UUID.randomUUID(),
-            name = write.name,
-            version = nextVersion,
-            engineKind = write.engineKind,
-            body = write.body,
-            contentType = write.contentType,
-            applicabilityKind = write.applicabilityKind,
-            applicabilityBody = write.applicabilityBody,
+            name = normalized.name,
+            serial = nextSerial,
+            engineKind = normalized.engineKind,
+            body = normalized.body,
+            contentType = normalized.contentType,
+            applicabilityKind = normalized.applicabilityKind,
+            applicabilityBody = normalized.applicabilityBody,
+            categoryId = normalized.categoryId,
+            tags = normalized.tags,
+            annotations = normalized.annotations,
+            version = normalized.version,
+            description = normalized.description,
         )
 
         byId[stored.id] = stored
-        versionsByName
-            .computeIfAbsent(stored.name) { ConcurrentHashMap() }[stored.version] = stored
+        index(stored)
         return stored
     }
 
     override fun update(id: UUID, write: PolicyWrite): Policy? {
         val existing = byId[id] ?: return null
-        require(write.name.isNotBlank()) { "Policy name must not be blank" }
-        require(write.engineKind.isNotBlank()) { "engineKind must not be blank" }
+        val normalized = normalizeWrite(write)
+        val nextSerial = nextSerial(existing.serial)
+
+        unindex(existing)
 
         val updated = existing.copy(
-            name = write.name,
-            engineKind = write.engineKind,
-            body = write.body,
-            contentType = write.contentType,
-            applicabilityKind = write.applicabilityKind,
-            applicabilityBody = write.applicabilityBody,
+            name = normalized.name,
+            serial = nextSerial,
+            engineKind = normalized.engineKind,
+            body = normalized.body,
+            contentType = normalized.contentType,
+            applicabilityKind = normalized.applicabilityKind,
+            applicabilityBody = normalized.applicabilityBody,
+            categoryId = normalized.categoryId,
+            tags = normalized.tags,
+            annotations = normalized.annotations,
+            version = normalized.version,
+            description = normalized.description,
         )
 
-        if (existing.name != updated.name) {
-            versionsByName[existing.name]?.remove(existing.version)
-            if (versionsByName[existing.name].isNullOrEmpty()) {
-                versionsByName.remove(existing.name)
-                latestByName.remove(existing.name)
-            }
-        }
-
         byId[id] = updated
-        versionsByName
-            .computeIfAbsent(updated.name) { ConcurrentHashMap() }[updated.version] = updated
-        latestByName.computeIfAbsent(updated.name) { AtomicLong(updated.version) }
-            .updateAndGet { maxOf(it, updated.version) }
+        index(updated)
         return updated
     }
 
     override fun delete(id: UUID): Boolean {
         val existing = byId.remove(id) ?: return false
-        versionsByName[existing.name]?.remove(existing.version)
-        if (versionsByName[existing.name].isNullOrEmpty()) {
-            versionsByName.remove(existing.name)
-            latestByName.remove(existing.name)
-        }
+        unindex(existing)
         return true
     }
 
@@ -86,12 +88,12 @@ class InMemoryPolicyRepository : PolicyRepository {
         when (ref) {
             is PolicyRef.ById -> findById(ref.id)
             is PolicyRef.ByName -> {
-                val versions = versionsByName[ref.name] ?: return null
-                if (ref.version == null) {
+                val serials = serialsByName[ref.name] ?: return null
+                if (ref.serial == null) {
                     val latest = latestByName[ref.name]?.get() ?: return null
-                    versions[latest]
+                    serials[latest]
                 } else {
-                    versions[ref.version]
+                    serials[ref.serial]
                 }
             }
         }
@@ -99,8 +101,72 @@ class InMemoryPolicyRepository : PolicyRepository {
     override fun findById(id: UUID): Policy? = byId[id]
 
     override fun findByName(name: String): List<Policy> =
-        versionsByName[name]?.values?.sortedBy { it.version } ?: emptyList()
+        serialsByName[name]?.values?.sortedBy { it.serial } ?: emptyList()
 
     override fun list(): List<Policy> =
-        byId.values.sortedWith(compareBy({ it.name }, { it.version }))
+        byId.values.sortedWith(compareBy({ it.name }, { it.serial }))
+
+    override fun query(query: PolicyQuery): List<Policy> {
+        val nameNeedle = query.nameContains?.trim()?.takeIf { it.isNotEmpty() }?.lowercase()
+        val wantTags = PolicyTags.normalize(query.tags)
+        return list().filter { p ->
+            if (query.categoryId != null && p.categoryId != query.categoryId) return@filter false
+            if (wantTags.isNotEmpty() && !p.tags.containsAll(wantTags)) return@filter false
+            if (query.annotations.isNotEmpty()) {
+                for ((k, v) in query.annotations) {
+                    if (p.annotations[k] != v) return@filter false
+                }
+            }
+            if (nameNeedle != null && !p.name.lowercase().contains(nameNeedle)) return@filter false
+            true
+        }
+    }
+
+    private fun index(policy: Policy) {
+        serialsByName
+            .computeIfAbsent(policy.name) { ConcurrentHashMap() }[policy.serial] = policy
+        latestByName.computeIfAbsent(policy.name) { AtomicLong(policy.serial) }
+            .updateAndGet { maxOf(it, policy.serial) }
+    }
+
+    private fun unindex(policy: Policy) {
+        serialsByName[policy.name]?.remove(policy.serial)
+        if (serialsByName[policy.name].isNullOrEmpty()) {
+            serialsByName.remove(policy.name)
+            latestByName.remove(policy.name)
+        } else {
+            val maxLeft = serialsByName[policy.name]!!.keys.maxOrNull()
+            if (maxLeft != null) {
+                latestByName[policy.name] = AtomicLong(maxLeft)
+            } else {
+                latestByName.remove(policy.name)
+            }
+        }
+    }
+
+    private fun normalizeWrite(write: PolicyWrite): PolicyWrite {
+        require(write.name.isNotBlank()) { "Policy name must not be blank" }
+        require(write.engineKind.isNotBlank()) { "engineKind must not be blank" }
+        val version = write.version.trim()
+        require(version.isNotEmpty()) { "version must not be blank" }
+        require(categories.findById(write.categoryId) != null) {
+            "Unknown categoryId: ${write.categoryId}"
+        }
+        val tags = PolicyTags.requireNonEmpty(write.tags)
+        return write.copy(
+            name = write.name.trim(),
+            tags = tags,
+            annotations = write.annotations.toMap(),
+            version = version,
+            description = write.description.trim(),
+        )
+    }
+
+    companion object {
+        /** Same rule as object head versions: max(nowMillis, previous + 1). */
+        fun nextSerial(previous: Long?): Long {
+            val millis = Instant.now().toEpochMilli()
+            return max(millis, (previous ?: 0L) + 1L)
+        }
+    }
 }

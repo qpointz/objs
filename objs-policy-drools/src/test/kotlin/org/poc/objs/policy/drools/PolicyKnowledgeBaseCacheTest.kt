@@ -4,18 +4,23 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.poc.objs.policy.api.PolicyEngineKinds
 import org.poc.objs.policy.api.PolicyWrite
-import org.poc.objs.policy.core.InMemoryPolicyRepository
+import org.poc.objs.policy.api.CategoryWrite
+import org.poc.objs.policy.core.InMemoryPolicyStores
 
 class PolicyKnowledgeBaseCacheTest {
 
     @Test
     fun shouldReportLineFromMessageApi_whenCompileFails() {
         val cache = PolicyKnowledgeBaseCache()
+        val stores = InMemoryPolicyStores()
+        val categoryId = stores.categories.save(CategoryWrite("General", "general")).id
         val policy =
-            InMemoryPolicyRepository().save(
+            stores.policies.save(
                 PolicyWrite(
                     name = "bad",
                     engineKind = PolicyEngineKinds.DROOLS,
+                    categoryId = categoryId,
+                    tags = listOf("test"),
                     body =
                         """
                         package org.poc.objs.policy.drools.bad;

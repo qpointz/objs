@@ -6,12 +6,13 @@ import java.util.UUID
  * Persist / load / resolve policy revisions. S1 ships an in-memory impl in `:objs-policy-core`.
  */
 interface PolicyRepository {
-    /** Create or update-by-name: allocates a **new** serial [Policy.version]. */
+    /** Create: allocates a **new** [Policy.serial]. */
     fun save(write: PolicyWrite): Policy
 
     /**
-     * Replace body/metadata for an existing revision (same [Policy.id] + [Policy.version]).
-     * Playground Save uses this so the UI selection stays stable.
+     * Replace body/metadata for an existing policy row (same [Policy.id]).
+     * Allocates a new timestamp [Policy.serial] (object head-version rule).
+     * Playground Save uses this so the UI selection stays stable by id.
      */
     fun update(id: UUID, write: PolicyWrite): Policy?
 
@@ -25,4 +26,7 @@ interface PolicyRepository {
     fun findByName(name: String): List<Policy>
 
     fun list(): List<Policy>
+
+    /** Filtered list (C-32). No paging. */
+    fun query(query: PolicyQuery): List<Policy>
 }

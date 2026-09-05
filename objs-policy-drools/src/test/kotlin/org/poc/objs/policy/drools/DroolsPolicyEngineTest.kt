@@ -12,10 +12,14 @@ import org.poc.objs.policy.api.PolicyOutcomeStatus
 import org.poc.objs.policy.api.PolicyRef
 import org.poc.objs.policy.api.PolicyWrite
 import org.poc.objs.policy.core.DefaultPolicyEvaluator
-import org.poc.objs.policy.core.InMemoryPolicyRepository
+import org.poc.objs.policy.api.CategoryWrite
+import org.poc.objs.policy.core.InMemoryPolicyStores
 import java.util.UUID
 
 class DroolsPolicyEngineTest {
+
+    private val stores = InMemoryPolicyStores()
+    private val categoryId = stores.categories.save(CategoryWrite("General", "general")).id
 
     private val entityA = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
     private val entityB = UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
@@ -193,12 +197,14 @@ class DroolsPolicyEngineTest {
 
     @Test
     fun shouldIntegrateWithDefaultPolicyEvaluator_failViaFragment() {
-        val repo = InMemoryPolicyRepository()
+        val repo = stores.policies
         val saved = repo.save(
             PolicyWrite(
                 name = "critical-component",
                 engineKind = PolicyEngineKinds.DROOLS,
                 body = criticalComponentRule,
+                categoryId = categoryId,
+                tags = listOf("fixture"),
             ),
         )
         val evaluator = DefaultPolicyEvaluator(
@@ -213,7 +219,7 @@ class DroolsPolicyEngineTest {
 
         assertThat(result.outcomes).singleElement().satisfies({ o ->
             assertThat(o.status).isEqualTo(PolicyOutcomeStatus.FAIL)
-            assertThat(o.policyVersion).isEqualTo(saved.version)
+            assertThat(o.policySerial).isEqualTo(saved.serial)
             assertThat(o.engineKind).isEqualTo(PolicyEngineKinds.DROOLS)
             assertThat(o.findings).isNotEmpty()
         })
@@ -238,11 +244,13 @@ class DroolsPolicyEngineTest {
     }
 
     private fun savedPolicy(body: String) =
-        InMemoryPolicyRepository().save(
+        stores.policies.save(
             PolicyWrite(
                 name = "fixture",
                 engineKind = PolicyEngineKinds.DROOLS,
                 body = body,
+                categoryId = categoryId,
+                tags = listOf("fixture"),
             ),
         )
 

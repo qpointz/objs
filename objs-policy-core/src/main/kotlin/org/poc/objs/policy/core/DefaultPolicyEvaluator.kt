@@ -63,7 +63,7 @@ class DefaultPolicyEvaluator(
             if (policy == null) {
                 PolicyApplicabilityOutcome(
                     policyName = refLabel(ref),
-                    policyVersion = refVersionHint(ref),
+                    policySerial = refSerialHint(ref),
                     engineKind = "",
                     verdict = ApplicabilityVerdict(
                         decision = ApplicabilityDecision.NOT_APPLICABLE,
@@ -73,7 +73,7 @@ class DefaultPolicyEvaluator(
             } else if (!isApplicabilitySupported(policy)) {
                 PolicyApplicabilityOutcome(
                     policyName = policy.name,
-                    policyVersion = policy.version,
+                    policySerial = policy.serial,
                     engineKind = policy.engineKind,
                     verdict = ApplicabilityVerdict(
                         decision = ApplicabilityDecision.NOT_APPLICABLE,
@@ -83,7 +83,7 @@ class DefaultPolicyEvaluator(
             } else {
                 PolicyApplicabilityOutcome(
                     policyName = policy.name,
-                    policyVersion = policy.version,
+                    policySerial = policy.serial,
                     engineKind = policy.engineKind,
                     verdict = applicabilitySelector.decide(context, policy),
                 )
@@ -110,7 +110,7 @@ class DefaultPolicyEvaluator(
         if (policy == null) {
             return PolicyOutcome(
                 policyName = refLabel(ref),
-                policyVersion = refVersionHint(ref),
+                policySerial = refSerialHint(ref),
                 engineKind = "",
                 status = PolicyOutcomeStatus.ERROR,
                 message = "Policy not found: ${refLabel(ref)}",
@@ -124,7 +124,7 @@ class DefaultPolicyEvaluator(
         if (!isApplicabilitySupported(policy)) {
             return PolicyOutcome(
                 policyName = policy.name,
-                policyVersion = policy.version,
+                policySerial = policy.serial,
                 engineKind = policy.engineKind,
                 status = PolicyOutcomeStatus.ERROR,
                 message = "Unsupported applicabilityKind '${policy.applicabilityKind}'",
@@ -135,7 +135,7 @@ class DefaultPolicyEvaluator(
         if (verdict.decision == ApplicabilityDecision.NOT_APPLICABLE) {
             return PolicyOutcome(
                 policyName = policy.name,
-                policyVersion = policy.version,
+                policySerial = policy.serial,
                 engineKind = policy.engineKind,
                 status = PolicyOutcomeStatus.NOT_APPLICABLE,
                 notApplicableReason = verdict.reason,
@@ -146,7 +146,7 @@ class DefaultPolicyEvaluator(
         if (engine == null) {
             return PolicyOutcome(
                 policyName = policy.name,
-                policyVersion = policy.version,
+                policySerial = policy.serial,
                 engineKind = policy.engineKind,
                 status = PolicyOutcomeStatus.ERROR,
                 message = "No PolicyEngine registered for engineKind '${policy.engineKind}'",
@@ -164,7 +164,7 @@ class DefaultPolicyEvaluator(
             }
             PolicyOutcome(
                 policyName = policy.name,
-                policyVersion = policy.version,
+                policySerial = policy.serial,
                 engineKind = policy.engineKind,
                 status = status,
                 findings = result.findings,
@@ -177,7 +177,7 @@ class DefaultPolicyEvaluator(
         } catch (ex: Exception) {
             PolicyOutcome(
                 policyName = policy.name,
-                policyVersion = policy.version,
+                policySerial = policy.serial,
                 engineKind = policy.engineKind,
                 status = PolicyOutcomeStatus.ERROR,
                 message = ex.message ?: ex::class.simpleName,
@@ -198,9 +198,9 @@ class DefaultPolicyEvaluator(
             is PolicyRef.ByName -> ref.name
         }
 
-    private fun refVersionHint(ref: PolicyRef): Long =
+    private fun refSerialHint(ref: PolicyRef): Long =
         when (ref) {
             is PolicyRef.ById -> 0L
-            is PolicyRef.ByName -> ref.version ?: 0L
+            is PolicyRef.ByName -> ref.serial ?: 0L
         }
 }

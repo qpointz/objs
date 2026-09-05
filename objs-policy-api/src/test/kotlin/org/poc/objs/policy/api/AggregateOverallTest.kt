@@ -47,7 +47,7 @@ class AggregateOverallTest {
 
     private fun outcome(status: PolicyOutcomeStatus) = PolicyOutcome(
         policyName = "p",
-        policyVersion = 1L,
+        policySerial = 1L,
         engineKind = PolicyEngineKinds.CUSTOM,
         status = status,
     )

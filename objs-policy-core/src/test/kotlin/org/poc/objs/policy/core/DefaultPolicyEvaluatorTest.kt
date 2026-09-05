@@ -18,9 +18,16 @@ import org.poc.objs.policy.api.PolicyEvaluationException
 import org.poc.objs.policy.api.PolicyOutcomeStatus
 import org.poc.objs.policy.api.PolicyRef
 import org.poc.objs.policy.api.PolicyWrite
+import org.poc.objs.policy.core.PolicyTestFixtures.storesWithCategory
+import org.poc.objs.policy.core.PolicyTestFixtures.write as fixtureWrite
 import java.util.UUID
 
 class DefaultPolicyEvaluatorTest {
+
+    private val stores = InMemoryPolicyStores()
+    private val categoryId = stores.categories.save(
+        org.poc.objs.policy.api.CategoryWrite(displayName = "General", slug = "general"),
+    ).id
 
     private val entityA = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
     private val entityB = UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
@@ -28,7 +35,7 @@ class DefaultPolicyEvaluatorTest {
 
     @Test
     fun shouldEvaluateHappyPath_withOverallAndVersionCitation() {
-        val repo = InMemoryPolicyRepository()
+        val repo = stores.policies
         val pass = repo.save(write("ok", "PASS"))
         val fail = repo.save(write("bad", "FAIL"))
         val evaluator = DefaultPolicyEvaluator(repo)
@@ -40,15 +47,15 @@ class DefaultPolicyEvaluatorTest {
 
         assertThat(result.outcomes).hasSize(2)
         assertThat(result.outcomes[0].status).isEqualTo(PolicyOutcomeStatus.PASS)
-        assertThat(result.outcomes[0].policyVersion).isEqualTo(pass.version)
+        assertThat(result.outcomes[0].policySerial).isEqualTo(pass.serial)
         assertThat(result.outcomes[1].status).isEqualTo(PolicyOutcomeStatus.FAIL)
-        assertThat(result.outcomes[1].policyVersion).isEqualTo(fail.version)
+        assertThat(result.outcomes[1].policySerial).isEqualTo(fail.serial)
         assertThat(result.overall).isEqualTo(PolicyOutcomeStatus.FAIL)
     }
 
     @Test
     fun shouldRefuse_whenFragmentHasErrors() {
-        val repo = InMemoryPolicyRepository()
+        val repo = stores.policies
         repo.save(write("ok", "PASS"))
         val evaluator = DefaultPolicyEvaluator(repo)
 
@@ -60,7 +67,7 @@ class DefaultPolicyEvaluatorTest {
 
     @Test
     fun shouldPreviewApplicability_withoutEngineSideEffects() {
-        val repo = InMemoryPolicyRepository()
+        val repo = stores.policies
         repo.save(write("ok", "PASS"))
         var engineCalls = 0
         val engines = mapOf(
@@ -79,15 +86,17 @@ class DefaultPolicyEvaluatorTest {
 
     @Test
     fun shouldContinueAfterFailAndError_andCiteLatestVersion() {
-        val repo = InMemoryPolicyRepository()
+        val repo = stores.policies
         repo.save(write("a", "FAIL"))
-        repo.save(write("a", "PASS"))
+        val aLatest = repo.save(write("a", "PASS"))
         repo.save(write("b", "ERROR"))
         repo.save(
             PolicyWrite(
                 name = "c",
                 engineKind = "DROOLS",
                 body = "x",
+                categoryId = categoryId,
+                tags = listOf("test"),
             ),
         )
         repo.save(
@@ -96,6 +105,8 @@ class DefaultPolicyEvaluatorTest {
                 engineKind = PolicyEngineKinds.CUSTOM,
                 body = "PASS",
                 applicabilityKind = "HAS_DATABASE",
+                categoryId = categoryId,
+                tags = listOf("test"),
             ),
         )
         val evaluator = DefaultPolicyEvaluator(repo)
@@ -116,7 +127,7 @@ class DefaultPolicyEvaluatorTest {
             PolicyOutcomeStatus.ERROR,
             PolicyOutcomeStatus.ERROR,
         )
-        assertThat(result.outcomes[0].policyVersion).isEqualTo(2L)
+        assertThat(result.outcomes[0].policySerial).isEqualTo(aLatest.serial)
         assertThat(result.outcomes[2].message).contains("engineKind")
         assertThat(result.outcomes[3].message).contains("applicabilityKind")
         assertThat(result.overall).isEqualTo(PolicyOutcomeStatus.ERROR)
@@ -124,15 +135,15 @@ class DefaultPolicyEvaluatorTest {
 
     @Test
     fun shouldResolvePinnedVersion_andMissingRefAsError() {
-        val repo = InMemoryPolicyRepository()
-        repo.save(write("gate", "FAIL"))
+        val repo = stores.policies
+        val v1 = repo.save(write("gate", "FAIL"))
         val v2 = repo.save(write("gate", "PASS"))
         val evaluator = DefaultPolicyEvaluator(repo)
 
         val result = evaluator.evaluate(
             okFragment(),
             listOf(
-                PolicyRef.ByName("gate", version = 1L),
+                PolicyRef.ByName("gate", serial = v1.serial),
                 PolicyRef.ByName("gate"),
                 PolicyRef.ByName("missing"),
                 PolicyRef.ById(v2.id),
@@ -140,18 +151,18 @@ class DefaultPolicyEvaluatorTest {
         )
 
         assertThat(result.outcomes[0].status).isEqualTo(PolicyOutcomeStatus.FAIL)
-        assertThat(result.outcomes[0].policyVersion).isEqualTo(1L)
+        assertThat(result.outcomes[0].policySerial).isEqualTo(v1.serial)
         assertThat(result.outcomes[1].status).isEqualTo(PolicyOutcomeStatus.PASS)
-        assertThat(result.outcomes[1].policyVersion).isEqualTo(2L)
+        assertThat(result.outcomes[1].policySerial).isEqualTo(v2.serial)
         assertThat(result.outcomes[2].status).isEqualTo(PolicyOutcomeStatus.ERROR)
         assertThat(result.outcomes[2].message).contains("not found")
         assertThat(result.outcomes[3].status).isEqualTo(PolicyOutcomeStatus.PASS)
-        assertThat(result.outcomes[3].policyVersion).isEqualTo(2L)
+        assertThat(result.outcomes[3].policySerial).isEqualTo(v2.serial)
     }
 
     @Test
     fun shouldRecordNotApplicable_whenSelectorSaysSo() {
-        val repo = InMemoryPolicyRepository()
+        val repo = stores.policies
         repo.save(write("gate", "FAIL"))
         val selector = ApplicabilitySelector { _, _ ->
             ApplicabilityVerdict(ApplicabilityDecision.NOT_APPLICABLE, reason = "no database")
@@ -169,7 +180,7 @@ class DefaultPolicyEvaluatorTest {
 
     @Test
     fun shouldWireContextBeforeEvaluate_andSupportFindings() {
-        val repo = InMemoryPolicyRepository()
+        val repo = stores.policies
         repo.save(
             write(
                 "with-findings",
@@ -205,7 +216,7 @@ class DefaultPolicyEvaluatorTest {
 
     @Test
     fun shouldAllowFailWithZeroFindings() {
-        val repo = InMemoryPolicyRepository()
+        val repo = stores.policies
         repo.save(write("bare-fail", "FAIL"))
         val evaluator = DefaultPolicyEvaluator(repo)
 
@@ -218,6 +229,8 @@ class DefaultPolicyEvaluatorTest {
         name = name,
         engineKind = PolicyEngineKinds.CUSTOM,
         body = body,
+        categoryId = categoryId,
+        tags = listOf("test"),
     )
 
     private fun okFragment(): GraphContents {

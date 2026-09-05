@@ -22,7 +22,7 @@ fun interface ApplicabilitySelector {
 /** Per-ref preview row from [PolicyEvaluator.applicability]. */
 data class PolicyApplicabilityOutcome(
     val policyName: String,
-    val policyVersion: Long,
+    val policySerial: Long,
     val engineKind: String,
     val verdict: ApplicabilityVerdict,
 )

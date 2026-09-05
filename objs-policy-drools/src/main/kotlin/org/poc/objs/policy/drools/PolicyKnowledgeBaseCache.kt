@@ -39,7 +39,7 @@ class PolicyKnowledgeBaseCache(
         val releaseId = kieServices.newReleaseId(
             "org.poc.objs.policy.drools",
             "validate-${policy.id}-${System.nanoTime()}",
-            policy.version.toString(),
+            policy.serial.toString(),
         )
         val kfs = kieServices.newKieFileSystem()
         kfs.generateAndWritePomXML(releaseId)
@@ -69,7 +69,7 @@ class PolicyKnowledgeBaseCache(
         if (errors.isNotEmpty()) {
             val detail = errors.joinToString("; ") { it.display() }
             throw IllegalStateException(
-                "Drools compile failed for policy '${policy.name}'@${policy.version}: $detail",
+                "Drools compile failed for policy '${policy.name}'@${policy.serial}: $detail",
             )
         }
         return kieServices.newKieContainer(releaseId)
@@ -79,6 +79,6 @@ class PolicyKnowledgeBaseCache(
         kieServices.newReleaseId(
             "org.poc.objs.policy.drools",
             "policy-${policy.id}",
-            policy.version.toString(),
+            policy.serial.toString(),
         )
 }
