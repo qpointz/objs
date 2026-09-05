@@ -7,6 +7,7 @@
 **Folder:** [`docs/workitems/completed/20260905-policy-metadata/`](.)  
 **Backlog:** [C-32](../../BACKLOG.md) / [U-10](../../BACKLOG.md)  
 **Base:** `origin/dev`  
+**MR:** https://gitlab.qpointz.io/sandbox/bom-poc/-/merge_requests/59  
 **Sequence:** [policy family](../../SEQUENCE.md#policy-family-c-24c-32--normative-order) step **4 / 8**  
 **Before:** [C-31 `policy-workbench`](../../completed/20260904-policy-workbench/STORY.md); hard require [C-24](../../completed/20260904-policy-evaluate-core/STORY.md)  
 **Next:** [C-27 `policy-suites`](../../planned/policy-suites/STORY.md)  
