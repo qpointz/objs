@@ -46,7 +46,7 @@ class ObjsPolicyServiceAutoConfigurationTest {
                 Policy(
                     id = UUID.randomUUID(),
                     name = "probe",
-                    version = 1L,
+                    serial = 1L,
                     engineKind = PolicyEngineKinds.DROOLS,
                     body =
                         """
@@ -62,6 +62,8 @@ class ObjsPolicyServiceAutoConfigurationTest {
                         end
                         """.trimIndent(),
                     applicabilityKind = ApplicabilityKinds.ALWAYS_APPLY,
+                    categoryId = UUID.randomUUID(),
+                    tags = listOf("probe"),
                 )
 
             val result = evaluator.evaluatePolicies(fragment, listOf(policy))

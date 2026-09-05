@@ -6,11 +6,15 @@ import org.poc.objs.api.domain.GraphContents
 import org.poc.objs.api.match.Matcher
 import org.poc.objs.api.store.GraphStore
 import org.poc.objs.policy.api.ApplicabilityKinds
+import org.poc.objs.policy.api.Category
+import org.poc.objs.policy.api.CategoryRepository
+import org.poc.objs.policy.api.CategoryWrite
 import org.poc.objs.policy.api.EvaluationResult
 import org.poc.objs.policy.api.Policy
 import org.poc.objs.policy.api.PolicyEngineKinds
 import org.poc.objs.policy.api.PolicyWrite
 import org.poc.objs.policy.api.PolicyEvaluator
+import org.poc.objs.policy.api.PolicyQuery
 import org.poc.objs.policy.api.PolicyRepository
 import org.poc.objs.policy.drools.PolicyKnowledgeBaseCache
 import org.springframework.stereotype.Service
@@ -35,16 +39,27 @@ class PolicyPlayService(
     private val store: GraphStore,
     private val fragmentPolicy: GraphFragmentPolicy,
     private val repository: PolicyRepository,
+    private val categories: CategoryRepository,
     private val evaluator: PolicyEvaluator,
     private val knowledgeBaseCache: PolicyKnowledgeBaseCache,
 ) {
     fun capabilities(): PolicyCapabilities =
         PolicyCapabilities(
             engines = listOf(PolicyEngineKinds.DROOLS),
-            operations = listOf("list", "create", "update", "delete", "check", "evaluate"),
+            operations = listOf(
+                "list",
+                "create",
+                "update",
+                "delete",
+                "check",
+                "evaluate",
+                "categories",
+                "query",
+            ),
         )
 
-    fun list(): List<Policy> = repository.list()
+    fun list(query: PolicyQuery = PolicyQuery()): List<Policy> =
+        if (query == PolicyQuery()) repository.list() else repository.query(query)
 
     fun get(id: UUID): Policy? = repository.findById(id)
 
@@ -62,6 +77,16 @@ class PolicyPlayService(
         return removed
     }
 
+    fun listCategories(): List<Category> = categories.list()
+
+    fun getCategory(id: UUID): Category? = categories.findById(id)
+
+    fun createCategory(write: CategoryWrite): Category = categories.save(write)
+
+    fun updateCategory(id: UUID, write: CategoryWrite): Category? = categories.update(id, write)
+
+    fun deleteCategory(id: UUID): Boolean = categories.delete(id)
+
     fun check(body: String, engineKind: String = PolicyEngineKinds.DROOLS): PolicyCheckResult {
         if (engineKind != PolicyEngineKinds.DROOLS) {
             val issue = PolicyCheckIssue(message = "Only DROOLS check is supported")
@@ -74,10 +99,13 @@ class PolicyPlayService(
         val probe = Policy(
             id = UUID.randomUUID(),
             name = "check",
-            version = 1L,
+            serial = 1L,
             engineKind = PolicyEngineKinds.DROOLS,
             body = body,
             applicabilityKind = ApplicabilityKinds.ALWAYS_APPLY,
+            categoryId = UUID(0L, 0L),
+            tags = listOf("check"),
+            version = "0.1",
         )
         val compiled = knowledgeBaseCache.tryCompile(probe)
         val issues = compiled.map {
@@ -128,10 +156,13 @@ class PolicyPlayService(
         return Policy(
             id = UUID.randomUUID(),
             name = policyName?.takeIf { it.isNotBlank() } ?: "ephemeral",
-            version = 0L,
+            serial = 0L,
             engineKind = engineKind ?: PolicyEngineKinds.DROOLS,
             body = body,
             applicabilityKind = ApplicabilityKinds.ALWAYS_APPLY,
+            categoryId = UUID(0L, 0L),
+            tags = listOf("ephemeral"),
+            version = "0.1",
         )
     }
 

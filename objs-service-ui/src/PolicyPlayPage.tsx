@@ -7,17 +7,21 @@ import {
   Code,
   Group,
   Menu,
+  Modal,
   MultiSelect,
   Paper,
   ScrollArea,
+  Select,
   Stack,
   Tabs,
+  TagsInput,
   Text,
+  Textarea,
   TextInput,
   Title,
   Tooltip,
 } from '@mantine/core'
-import { IconPlus } from '@tabler/icons-react'
+import { IconChevronDown, IconChevronRight, IconPlus } from '@tabler/icons-react'
 import { getGraph, getGraphVersion, listSchemas, queryAddObjects, toGraphData } from './api'
 import { GraphCanvas, type GraphCanvasHandle, type GraphLayout } from './GraphCanvas'
 import { GraphContextBar } from './GraphContextBar'
@@ -30,22 +34,28 @@ import {
 import { ObjectInspectPane } from './ObjectInspectPane'
 import {
   checkPolicy,
+  createCategory,
   createPolicy,
+  deleteCategory,
   deletePolicy,
   evaluatePolicy,
   fetchPolicyCapabilities,
+  listCategories,
   listPolicies,
   updatePolicy,
 } from './policyApi'
 import {
   findingRuleName,
   maxSeverity,
+  formatPolicyVersion,
   severityRank,
+  type Category,
   type EvaluationResult,
   type Finding,
   type Policy,
   type PolicyCheckResult,
 } from './policyTypes'
+import { KeyValueRowsEditor, rowsToStringMap, stringMapToRows, type KeyValueRow } from './KeyValueRowsEditor'
 import { formatObjectCell, scalarPayloadColumns } from './ObjectResultsTable'
 import { objectDisplayTitle } from './objectViewerTitle'
 import { payloadFieldKindsByTypeVersion } from './payloadFieldKinds'
@@ -278,9 +288,27 @@ export function PolicyPlayPage() {
 
   const [capable, setCapable] = useState<boolean | null>(null)
   const [policies, setPolicies] = useState<Policy[]>([])
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  type NavSel = { kind: 'category'; id: string } | { kind: 'policy'; id: string }
+  const [nav, setNav] = useState<NavSel | null>(null)
+  const [expandedCats, setExpandedCats] = useState<Set<string>>(() => new Set())
   const [editorName, setEditorName] = useState('')
   const [editorBody, setEditorBody] = useState('')
+  const [editorDescription, setEditorDescription] = useState('')
+  const [editorCategoryId, setEditorCategoryId] = useState<string | null>(null)
+  const [editorTags, setEditorTags] = useState<string[]>([])
+  const [editorAnnoRows, setEditorAnnoRows] = useState<KeyValueRow[]>([])
+  const [editorVersion, setEditorVersion] = useState('0.1')
+  const [editorTab, setEditorTab] = useState<string | null>('general')
+  const [categories, setCategories] = useState<Category[]>([])
+  const [filterCategoryId, setFilterCategoryId] = useState<string | null>(null)
+  const [filterTags, setFilterTags] = useState<string[]>([])
+  const [filterName, setFilterName] = useState('')
+  const [catDisplayName, setCatDisplayName] = useState('')
+  const [catSlug, setCatSlug] = useState('')
+  const [addCategoryOpen, setAddCategoryOpen] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [confirmKind, setConfirmKind] = useState<'discard' | 'delete-policy' | 'delete-category'>('discard')
+  const [pendingNav, setPendingNav] = useState<NavSel | null>(null)
   const [dirty, setDirty] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -318,7 +346,26 @@ export function PolicyPlayPage() {
     Math.max(MIN_TASKS_ABS, loadNum(TASKS_HEIGHT_KEY, 180)),
   )
 
-  const selectedPolicy = policies.find((p) => p.id === selectedId) ?? null
+  const selectedPolicy =
+    nav?.kind === 'policy' ? (policies.find((p) => p.id === nav.id) ?? null) : null
+  const selectedCategory =
+    nav?.kind === 'category' ? (categories.find((c) => c.id === nav.id) ?? null) : null
+  const selectedId = nav?.kind === 'policy' ? nav.id : null
+
+  const policiesInSelectedCategory = useMemo(() => {
+    if (!selectedCategory) return []
+    return policies.filter((p) => p.categoryId === selectedCategory.id)
+  }, [policies, selectedCategory])
+
+  const treeCategories = useMemo(() => {
+    const cats = filterCategoryId
+      ? categories.filter((c) => c.id === filterCategoryId)
+      : categories
+    return cats.map((c) => ({
+      category: c,
+      policies: policies.filter((p) => p.categoryId === c.id),
+    }))
+  }, [categories, policies, filterCategoryId])
 
   const markEditorDirty = useCallback(() => setDirty(true), [])
 
@@ -367,11 +414,77 @@ export function PolicyPlayPage() {
     [schemas],
   )
 
-  const refreshPolicies = useCallback(async () => {
-    const rows = await listPolicies()
-    setPolicies(rows)
+  const refreshCategories = useCallback(async () => {
+    const rows = await listCategories()
+    setCategories(rows)
     return rows
   }, [])
+
+  const refreshPolicies = useCallback(async () => {
+    const rows = await listPolicies({
+      tags: filterTags,
+      name: filterName.trim() || null,
+    })
+    setPolicies(rows)
+    return rows
+  }, [filterTags, filterName])
+
+  function seedEditor(p: Policy | null) {
+    if (!p) {
+      setEditorName('')
+      setEditorBody('')
+      setEditorDescription('')
+      setEditorCategoryId(null)
+      setEditorTags([])
+      setEditorAnnoRows([])
+      setEditorVersion('0.1')
+      return
+    }
+    setEditorName(p.name)
+    setEditorBody(p.body)
+    setEditorDescription(p.description ?? '')
+    setEditorCategoryId(p.categoryId)
+    setEditorTags([...(p.tags ?? [])])
+    setEditorAnnoRows(stringMapToRows(p.annotations ?? {}))
+    setEditorVersion(p.version ?? '0.1')
+  }
+
+  function toggleCatExpanded(id: string) {
+    setExpandedCats((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function requestNav(next: NavSel | null) {
+    if (dirty) {
+      setPendingNav(next)
+      setConfirmKind('discard')
+      setConfirmOpen(true)
+      return
+    }
+    applyNav(next)
+  }
+
+  function applyNav(next: NavSel | null, policyOverride?: Policy | null) {
+    setNav(next)
+    if (next?.kind === 'policy') {
+      const p =
+        policyOverride ?? policies.find((x) => x.id === next.id) ?? null
+      seedEditor(p)
+      if (p) {
+        setExpandedCats((prev) => new Set(prev).add(p.categoryId))
+      }
+    } else {
+      seedEditor(null)
+      if (next?.kind === 'category') {
+        setExpandedCats((prev) => new Set(prev).add(next.id))
+      }
+    }
+    setDirty(false)
+  }
 
   useEffect(() => {
     void (async () => {
@@ -379,18 +492,25 @@ export function PolicyPlayPage() {
       setCapable(caps != null)
       if (!caps) return
       try {
-        const rows = await refreshPolicies()
-        if (rows[0]) {
-          setSelectedId(rows[0].id)
-          setEditorName(rows[0].name)
-          setEditorBody(rows[0].body)
-          setDirty(false)
-        }
+        await refreshCategories()
+        await refreshPolicies()
       } catch (ex) {
         setError(ex instanceof Error ? ex.message : String(ex))
       }
     })()
-  }, [refreshPolicies])
+  }, [refreshPolicies, refreshCategories])
+
+  useEffect(() => {
+    if (!capable) return
+    void refreshPolicies().catch((ex) => setError(ex instanceof Error ? ex.message : String(ex)))
+  }, [capable, refreshPolicies])
+
+  useEffect(() => {
+    if (!filterCategoryId) return
+    if (dirty) return
+    applyNav({ kind: 'category', id: filterCategoryId })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterCategoryId])
 
   useEffect(() => {
     void listSchemas().then(setSchemas).catch(() => setSchemas([]))
@@ -602,8 +722,21 @@ export function PolicyPlayPage() {
     return all.find((r) => r.id === focusedTaskId) ?? null
   }, [checkRows, evalRows, focusedTaskId])
 
-  async function onAdd() {
+  async function onAddPolicy() {
     if (!capable) return
+    const categoryId =
+      (nav?.kind === 'category' ? nav.id : null) ??
+      (nav?.kind === 'policy' ? selectedPolicy?.categoryId : null) ??
+      filterCategoryId ??
+      categories[0]?.id ??
+      null
+    if (categoryId == null) {
+      setError('Create a category first (Add → Category), then add a policy.')
+      setCatDisplayName('')
+      setCatSlug('')
+      setAddCategoryOpen(true)
+      return
+    }
     setBusy(true)
     setError(null)
     try {
@@ -612,12 +745,15 @@ export function PolicyPlayPage() {
         engineKind: 'DROOLS',
         body: DEFAULT_DRL,
         applicabilityKind: 'ALWAYS_APPLY',
+        categoryId,
+        tags: ['new'],
+        version: '0.1',
+        annotations: {},
+        description: '',
       })
       await refreshPolicies()
-      setSelectedId(created.id)
-      setEditorName(created.name)
-      setEditorBody(created.body)
-      setDirty(false)
+      applyNav({ kind: 'policy', id: created.id }, created)
+      setEditorTab('code')
     } catch (ex) {
       setError(ex instanceof Error ? ex.message : String(ex))
     } finally {
@@ -625,24 +761,57 @@ export function PolicyPlayPage() {
     }
   }
 
-  async function onDelete() {
-    if (!capable || !selectedPolicy) return
-    if (!window.confirm(`Delete policy "${editorName || selectedPolicy.name}"?`)) return
+  function onDeleteClick() {
+    if (!capable || !nav) return
+    if (nav.kind === 'category') {
+      setConfirmKind('delete-category')
+      setConfirmOpen(true)
+    } else {
+      setConfirmKind('delete-policy')
+      setConfirmOpen(true)
+    }
+  }
+
+  async function confirmDeletePolicy() {
+    if (!selectedPolicy) return
     setBusy(true)
     setError(null)
+    setConfirmOpen(false)
     try {
+      const catId = selectedPolicy.categoryId
       await deletePolicy(selectedPolicy.id)
-      const rows = await refreshPolicies()
-      const next = rows[0] ?? null
-      setSelectedId(next?.id ?? null)
-      setEditorName(next?.name ?? '')
-      setEditorBody(next?.body ?? '')
-      setDirty(false)
+      await refreshPolicies()
+      applyNav({ kind: 'category', id: catId })
     } catch (ex) {
       setError(ex instanceof Error ? ex.message : String(ex))
     } finally {
       setBusy(false)
     }
+  }
+
+  async function confirmDeleteCategory() {
+    if (!selectedCategory) return
+    setBusy(true)
+    setError(null)
+    setConfirmOpen(false)
+    try {
+      await deleteCategory(selectedCategory.id)
+      if (filterCategoryId === selectedCategory.id) setFilterCategoryId(null)
+      await refreshCategories()
+      await refreshPolicies()
+      applyNav(null)
+    } catch (ex) {
+      setError(ex instanceof Error ? ex.message : String(ex))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function confirmDiscard() {
+    setConfirmOpen(false)
+    const next = pendingNav
+    setPendingNav(null)
+    applyNav(next)
   }
 
   async function onSave() {
@@ -655,17 +824,30 @@ export function PolicyPlayPage() {
     setBusy(true)
     setError(null)
     try {
+      if (!editorCategoryId) {
+        setError('Category is required')
+        setBusy(false)
+        return
+      }
+      const tags = editorTags.map((t) => t.trim().toLowerCase()).filter(Boolean)
+      if (tags.length === 0) {
+        setError('At least one tag is required')
+        setBusy(false)
+        return
+      }
       const updated = await updatePolicy(selectedPolicy.id, {
         name,
         engineKind: selectedPolicy.engineKind || 'DROOLS',
         body: liveEditorBody(),
         applicabilityKind: selectedPolicy.applicabilityKind ?? 'ALWAYS_APPLY',
+        categoryId: editorCategoryId,
+        tags,
+        annotations: rowsToStringMap(editorAnnoRows),
+        version: editorVersion.trim() || '0.1',
+        description: editorDescription,
       })
       await refreshPolicies()
-      setSelectedId(updated.id)
-      setEditorName(updated.name)
-      setEditorBody(updated.body)
-      setDirty(false)
+      applyNav({ kind: 'policy', id: updated.id }, updated)
     } catch (ex) {
       setError(ex instanceof Error ? ex.message : String(ex))
     } finally {
@@ -729,12 +911,36 @@ export function PolicyPlayPage() {
   }
 
   function selectPolicy(p: Policy) {
-    if (dirty && !window.confirm('Discard unsaved editor changes?')) return
-    setSelectedId(p.id)
-    setEditorName(p.name)
-    setEditorBody(p.body)
-    setDirty(false)
+    requestNav({ kind: 'policy', id: p.id })
   }
+
+  function selectCategory(c: Category) {
+    requestNav({ kind: 'category', id: c.id })
+  }
+
+  async function onCreateCategory() {
+    const displayName = catDisplayName.trim()
+    const slug = catSlug.trim().toLowerCase()
+    if (!displayName || !slug) {
+      setError('Category display name and slug are required')
+      return
+    }
+    setBusy(true)
+    setError(null)
+    try {
+      const created = await createCategory({ displayName, slug })
+      setCatDisplayName('')
+      setCatSlug('')
+      setAddCategoryOpen(false)
+      await refreshCategories()
+      applyNav({ kind: 'category', id: created.id })
+    } catch (ex) {
+      setError(ex instanceof Error ? ex.message : String(ex))
+    } finally {
+      setBusy(false)
+    }
+  }
+
 
   function onTaskClick(row: TaskRow) {
     setFocusedTaskId(row.id)
@@ -883,7 +1089,7 @@ export function PolicyPlayPage() {
   )
 
   return (
-    <Stack gap="sm" style={{ flex: 1, minHeight: 0, height: '100%' }} p="sm">
+    <Stack gap="sm" style={{ flex: 1, minHeight: 0, height: '100%' }}>
       <Group align="center" wrap="nowrap" gap="md" style={{ flexShrink: 0 }}>
         <Title order={3} style={{ flexShrink: 0 }}>
           Policy
@@ -891,9 +1097,6 @@ export function PolicyPlayPage() {
         <Box style={{ flex: 1, minWidth: 0 }}>
           <GraphContextBar />
         </Box>
-        <Text size="sm" c="dimmed" style={{ flexShrink: 0 }}>
-          Playground (DROOLS){dirty ? ' · unsaved' : ''}
-        </Text>
       </Group>
 
       <Group
@@ -904,9 +1107,32 @@ export function PolicyPlayPage() {
         style={{ flexShrink: 0 }}
         data-tour="policy-view-actions"
       >
-        <Group gap={6} wrap="wrap" style={{ flex: 1, minWidth: 0 }}>
+        <Group gap={6} wrap="wrap" style={{ flex: 1, minWidth: 0 }} align="center">
+          <Select
+            size={VIEW_ACTION_BUTTON_SIZE}
+            clearable
+            placeholder="Categories"
+            data={categories.map((c) => ({ value: c.id, label: c.displayName }))}
+            value={filterCategoryId}
+            onChange={setFilterCategoryId}
+            disabled={!capable}
+            w={180}
+          />
+          <MultiSelect
+            size={VIEW_ACTION_BUTTON_SIZE}
+            clearable
+            searchable
+            placeholder="Tags"
+            data={Array.from(
+              new Set(policies.flatMap((p) => p.tags ?? []).concat(filterTags)),
+            ).map((t) => ({ value: t, label: t }))}
+            value={filterTags}
+            onChange={setFilterTags}
+            disabled={!capable}
+            w={220}
+          />
           <Text size="xs" c="dimmed" style={{ alignSelf: 'center' }}>
-            {evalStats != null ? formatPolicyEvalStats(evalStats) : '\u00a0'}
+            {evalStats != null ? formatPolicyEvalStats(evalStats) : dirty ? 'unsaved' : '\u00a0'}
           </Text>
           {severitiesPresent.map((sev) => {
             const active = severityFilter.has(sev)
@@ -937,27 +1163,59 @@ export function PolicyPlayPage() {
           )}
         </Group>
         <Group gap={6} wrap="nowrap" style={{ flexShrink: 0 }}>
-          <Button
-            size={VIEW_ACTION_BUTTON_SIZE}
-            leftSection={<IconPlus size={14} />}
-            onClick={() => void onAdd()}
-            disabled={!capable || busy}
-          >
-            Add
-          </Button>
+          <Group gap={0}>
+            <Button
+              size={VIEW_ACTION_BUTTON_SIZE}
+              leftSection={<IconPlus size={14} />}
+              onClick={() => void onAddPolicy()}
+              disabled={!capable || busy}
+              style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
+            >
+              Add
+            </Button>
+            <Menu position="bottom-end" withinPortal>
+              <Menu.Target>
+                <Button
+                  size={VIEW_ACTION_BUTTON_SIZE}
+                  disabled={!capable || busy}
+                  aria-label="Add policy or category"
+                  px="xs"
+                  style={{
+                    borderTopLeftRadius: 0,
+                    borderBottomLeftRadius: 0,
+                    borderLeft: '1px solid var(--mantine-color-default-border)',
+                  }}
+                >
+                  <IconChevronDown size={14} />
+                </Button>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item onClick={() => void onAddPolicy()}>Policy</Menu.Item>
+                <Menu.Item
+                  onClick={() => {
+                    setCatDisplayName('')
+                    setCatSlug('')
+                    setAddCategoryOpen(true)
+                  }}
+                >
+                  Category
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+          </Group>
           <Button
             size={VIEW_ACTION_BUTTON_SIZE}
             variant="light"
             color="red"
-            onClick={() => void onDelete()}
-            disabled={!capable || !selectedPolicy || busy}
+            onClick={() => onDeleteClick()}
+            disabled={!capable || !nav || busy}
           >
             Delete
           </Button>
           <Button
             size={VIEW_ACTION_BUTTON_SIZE}
             onClick={() => void onSave()}
-            disabled={!capable || !selectedPolicy || busy || !dirty}
+            disabled={!capable || nav?.kind !== 'policy' || !selectedPolicy || busy || !dirty}
           >
             Save
           </Button>
@@ -1012,7 +1270,7 @@ export function PolicyPlayPage() {
                     borderLeft: '1px solid var(--mantine-color-default-border)',
                   }}
                 >
-                  ▾
+                  <IconChevronDown size={14} />
                 </Button>
               </Menu.Target>
               <Menu.Dropdown>
@@ -1070,37 +1328,89 @@ export function PolicyPlayPage() {
           <Text size="sm" fw={600} mb="xs">
             Policies
           </Text>
+          <TextInput
+            size="xs"
+            placeholder="Search name"
+            value={filterName}
+            onChange={(e) => setFilterName(e.currentTarget.value)}
+            disabled={!capable}
+            mb="xs"
+          />
           <ScrollArea style={{ flex: 1, minHeight: 0 }}>
-            <Stack gap={4}>
-              {policies.map((p) => (
-                <Group
-                  key={p.id}
-                  gap={4}
-                  wrap="nowrap"
-                  p={6}
-                  style={{
-                    borderRadius: 6,
-                    cursor: 'pointer',
-                    background:
-                      p.id === selectedId
-                        ? 'color-mix(in srgb, var(--mantine-color-blue-filled) 18%, transparent)'
-                        : undefined,
-                  }}
-                  onClick={() => selectPolicy(p)}
-                >
-                  <Stack gap={0} style={{ flex: 1, minWidth: 0 }}>
-                    <Text size="sm" fw={600} truncate>
-                      {p.name}
-                    </Text>
-                    <Text size="xs" c="dimmed">
-                      {p.engineKind} · v{p.version}
-                    </Text>
+            <Stack gap={2}>
+              {treeCategories.map(({ category: c, policies: kids }) => {
+                const expanded = expandedCats.has(c.id)
+                const catSelected = nav?.kind === 'category' && nav.id === c.id
+                return (
+                  <Stack key={c.id} gap={2}>
+                    <Group
+                      gap={4}
+                      wrap="nowrap"
+                      p={6}
+                      style={{
+                        borderRadius: 6,
+                        cursor: 'pointer',
+                        background: catSelected
+                          ? 'color-mix(in srgb, var(--mantine-color-blue-filled) 18%, transparent)'
+                          : undefined,
+                      }}
+                      onClick={() => selectCategory(c)}
+                    >
+                      <Button
+                        size="compact-xs"
+                        variant="subtle"
+                        px={4}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          toggleCatExpanded(c.id)
+                        }}
+                        aria-label={expanded ? 'Collapse' : 'Expand'}
+                      >
+                        {expanded ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />}
+                      </Button>
+                      <Stack gap={0} style={{ flex: 1, minWidth: 0 }}>
+                        <Text size="sm" fw={600} truncate>
+                          {c.displayName}
+                        </Text>
+                        <Text size="xs" c="dimmed" truncate>
+                          {c.slug} · {kids.length}
+                        </Text>
+                      </Stack>
+                    </Group>
+                    {expanded &&
+                      kids.map((p) => (
+                        <Group
+                          key={p.id}
+                          gap={4}
+                          wrap="nowrap"
+                          p={6}
+                          pl={28}
+                          style={{
+                            borderRadius: 6,
+                            cursor: 'pointer',
+                            background:
+                              nav?.kind === 'policy' && nav.id === p.id
+                                ? 'color-mix(in srgb, var(--mantine-color-blue-filled) 18%, transparent)'
+                                : undefined,
+                          }}
+                          onClick={() => selectPolicy(p)}
+                        >
+                          <Stack gap={0} style={{ flex: 1, minWidth: 0 }}>
+                            <Text size="sm" truncate>
+                              {p.name}
+                            </Text>
+                            <Text size="xs" c="dimmed" truncate>
+                              {formatPolicyVersion(p)}
+                            </Text>
+                          </Stack>
+                        </Group>
+                      ))}
                   </Stack>
-                </Group>
-              ))}
-              {policies.length === 0 && (
+                )
+              })}
+              {treeCategories.length === 0 && (
                 <Text size="sm" c="dimmed">
-                  No policies yet.
+                  No categories yet.
                 </Text>
               )}
             </Stack>
@@ -1128,38 +1438,248 @@ export function PolicyPlayPage() {
                 overflow: 'hidden',
               }}
             >
-              <Text size="sm" fw={600} mb="xs">
-                Policy editor
-              </Text>
-              <TextInput
-                size="xs"
-                label="Name"
-                value={editorName}
-                onChange={(e) => {
-                  setEditorName(e.currentTarget.value)
-                  setDirty(true)
-                }}
-                disabled={!selectedPolicy || !capable}
-                mb="xs"
-              />
-              <Box
-                style={{
-                  flex: 1,
-                  minHeight: 0,
-                  height: 0,
-                  overflow: 'hidden',
-                  display: 'flex',
-                  flexDirection: 'column',
-                }}
-              >
-                <PolicyDrlEditor
-                  editorRef={editorRef}
-                  policyKey={selectedId}
-                  body={editorBody}
-                  onDirty={markEditorDirty}
-                  readOnly={!selectedPolicy || !capable}
-                />
-              </Box>
+              {nav?.kind === 'category' && selectedCategory ? (
+                <>
+                  <Text size="sm" fw={600} mb={2}>
+                    {selectedCategory.displayName}
+                  </Text>
+                  <Text size="xs" c="dimmed" mb="xs">
+                    {selectedCategory.slug} · {policiesInSelectedCategory.length} polic
+                    {policiesInSelectedCategory.length === 1 ? 'y' : 'ies'}
+                  </Text>
+                  <ScrollArea style={{ flex: 1, minHeight: 0 }}>
+                    {policiesInSelectedCategory.length === 0 ? (
+                      <Text size="sm" c="dimmed">
+                        No policies in this category.
+                      </Text>
+                    ) : (
+                      <Box
+                        component="table"
+                        style={{
+                          width: '100%',
+                          borderCollapse: 'collapse',
+                          tableLayout: 'fixed',
+                        }}
+                      >
+                        <Box component="thead">
+                          <Box component="tr">
+                            <Box
+                              component="th"
+                              style={{
+                                textAlign: 'left',
+                                fontWeight: 600,
+                                fontSize: 'var(--mantine-font-size-xs)',
+                                color: 'var(--mantine-color-dimmed)',
+                                padding: '2px 6px 6px 0',
+                                width: '32%',
+                              }}
+                            >
+                              Name
+                            </Box>
+                            <Box
+                              component="th"
+                              style={{
+                                textAlign: 'left',
+                                fontWeight: 600,
+                                fontSize: 'var(--mantine-font-size-xs)',
+                                color: 'var(--mantine-color-dimmed)',
+                                padding: '2px 6px 6px',
+                                width: '18%',
+                              }}
+                            >
+                              Version
+                            </Box>
+                            <Box
+                              component="th"
+                              style={{
+                                textAlign: 'left',
+                                fontWeight: 600,
+                                fontSize: 'var(--mantine-font-size-xs)',
+                                color: 'var(--mantine-color-dimmed)',
+                                padding: '2px 0 6px 6px',
+                              }}
+                            >
+                              Description
+                            </Box>
+                          </Box>
+                        </Box>
+                        <Box component="tbody">
+                          {policiesInSelectedCategory.map((p) => (
+                            <Box
+                              component="tr"
+                              key={p.id}
+                              onClick={() => selectPolicy(p)}
+                              style={{ cursor: 'pointer' }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background =
+                                  'color-mix(in srgb, var(--mantine-color-default-hover) 55%, transparent)'
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'transparent'
+                              }}
+                            >
+                              <Box
+                                component="td"
+                                style={{
+                                  padding: '3px 6px 3px 0',
+                                  verticalAlign: 'top',
+                                  overflow: 'hidden',
+                                }}
+                              >
+                                <Text size="sm" truncate>
+                                  {p.name}
+                                </Text>
+                              </Box>
+                              <Box
+                                component="td"
+                                style={{
+                                  padding: '3px 6px',
+                                  verticalAlign: 'top',
+                                  overflow: 'hidden',
+                                }}
+                                title={formatPolicyVersion(p)}
+                              >
+                                <Text size="xs" c="dimmed" truncate>
+                                  {p.version}
+                                </Text>
+                              </Box>
+                              <Box
+                                component="td"
+                                style={{
+                                  padding: '3px 0 3px 6px',
+                                  verticalAlign: 'top',
+                                  overflow: 'hidden',
+                                }}
+                                title={p.description || undefined}
+                              >
+                                <Text size="xs" c="dimmed" truncate>
+                                  {p.description || '—'}
+                                </Text>
+                              </Box>
+                            </Box>
+                          ))}
+                        </Box>
+                      </Box>
+                    )}
+                  </ScrollArea>
+                </>
+              ) : nav?.kind === 'policy' && selectedPolicy ? (
+                <>
+                  <Text size="sm" fw={600} mb="xs">
+                    Policy editor
+                  </Text>
+                  <Tabs
+                    value={editorTab}
+                    onChange={setEditorTab}
+                    style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}
+                  >
+                    <Tabs.List>
+                      <Tabs.Tab value="general">General</Tabs.Tab>
+                      <Tabs.Tab value="code">Code</Tabs.Tab>
+                    </Tabs.List>
+                    <Tabs.Panel value="general" pt="xs" style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+                      <Stack gap="sm">
+                        <Select
+                          size="xs"
+                          label="Category"
+                          data={categories.map((c) => ({ value: c.id, label: c.displayName }))}
+                          value={editorCategoryId}
+                          onChange={(v) => {
+                            setEditorCategoryId(v)
+                            setDirty(true)
+                          }}
+                          disabled={!capable}
+                        />
+                        <TextInput
+                          size="xs"
+                          label="Name"
+                          value={editorName}
+                          onChange={(e) => {
+                            setEditorName(e.currentTarget.value)
+                            setDirty(true)
+                          }}
+                          disabled={!capable}
+                        />
+                        <Textarea
+                          size="xs"
+                          label="Description"
+                          placeholder="Human-readable summary"
+                          minRows={2}
+                          autosize
+                          maxRows={6}
+                          value={editorDescription}
+                          onChange={(e) => {
+                            setEditorDescription(e.currentTarget.value)
+                            setDirty(true)
+                          }}
+                          disabled={!capable}
+                        />
+                        <Group grow align="flex-end">
+                          <TextInput
+                            size="xs"
+                            label="Version"
+                            description="major.minor (e.g. 1.2)"
+                            value={editorVersion}
+                            onChange={(e) => {
+                              setEditorVersion(e.currentTarget.value)
+                              setDirty(true)
+                            }}
+                            disabled={!capable}
+                          />
+                          <Text size="xs" c="dimmed" pb={6}>
+                            serial {selectedPolicy.serial}
+                          </Text>
+                        </Group>
+                        <TagsInput
+                          size="xs"
+                          label="Tags"
+                          value={editorTags}
+                          onChange={(v) => {
+                            setEditorTags(v)
+                            setDirty(true)
+                          }}
+                          disabled={!capable}
+                        />
+                        <Text size="xs" fw={600}>
+                          Annotations
+                        </Text>
+                        <KeyValueRowsEditor
+                          rows={editorAnnoRows}
+                          onChange={(rows) => {
+                            setEditorAnnoRows(rows)
+                            setDirty(true)
+                          }}
+                          disabled={!capable}
+                        />
+                      </Stack>
+                    </Tabs.Panel>
+                    <Tabs.Panel
+                      value="code"
+                      pt="xs"
+                      style={{
+                        flex: 1,
+                        minHeight: 0,
+                        height: 0,
+                        overflow: 'hidden',
+                        display: 'flex',
+                        flexDirection: 'column',
+                      }}
+                    >
+                      <PolicyDrlEditor
+                        editorRef={editorRef}
+                        policyKey={selectedId}
+                        body={editorBody}
+                        onDirty={markEditorDirty}
+                        readOnly={!capable}
+                      />
+                    </Tabs.Panel>
+                  </Tabs>
+                </>
+              ) : (
+                <Text size="sm" c="dimmed">
+                  Select a category or policy from the tree.
+                </Text>
+              )}
             </Paper>
 
             <Box
@@ -1681,6 +2201,104 @@ export function PolicyPlayPage() {
           </Paper>
         </Stack>
       </Group>
+
+      <Modal
+        opened={addCategoryOpen}
+        onClose={() => setAddCategoryOpen(false)}
+        title="Add category"
+        centered
+      >
+        <Stack gap="sm">
+          <TextInput
+            label="Display name"
+            value={catDisplayName}
+            onChange={(e) => setCatDisplayName(e.currentTarget.value)}
+            disabled={busy}
+          />
+          <TextInput
+            label="Slug"
+            description="Lowercase letters only"
+            value={catSlug}
+            onChange={(e) => setCatSlug(e.currentTarget.value)}
+            disabled={busy}
+          />
+          <Group justify="flex-end" gap="xs">
+            <Button variant="default" onClick={() => setAddCategoryOpen(false)} disabled={busy}>
+              Cancel
+            </Button>
+            <Button onClick={() => void onCreateCategory()} disabled={busy}>
+              Create
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      <Modal
+        opened={confirmOpen && confirmKind === 'discard'}
+        onClose={() => {
+          setConfirmOpen(false)
+          setPendingNav(null)
+        }}
+        title="Discard changes?"
+        centered
+      >
+        <Text size="sm" mb="md">
+          You have unsaved edits. Discard them and continue?
+        </Text>
+        <Group justify="flex-end" gap="xs">
+          <Button
+            variant="default"
+            onClick={() => {
+              setConfirmOpen(false)
+              setPendingNav(null)
+            }}
+          >
+            Cancel
+          </Button>
+          <Button color="red" onClick={confirmDiscard}>
+            Discard
+          </Button>
+        </Group>
+      </Modal>
+
+      <Modal
+        opened={confirmOpen && confirmKind === 'delete-policy'}
+        onClose={() => setConfirmOpen(false)}
+        title="Delete policy?"
+        centered
+      >
+        <Text size="sm" mb="md">
+          Delete policy &quot;{editorName || selectedPolicy?.name}&quot;? This cannot be undone.
+        </Text>
+        <Group justify="flex-end" gap="xs">
+          <Button variant="default" onClick={() => setConfirmOpen(false)} disabled={busy}>
+            Cancel
+          </Button>
+          <Button color="red" onClick={() => void confirmDeletePolicy()} disabled={busy}>
+            Delete
+          </Button>
+        </Group>
+      </Modal>
+
+      <Modal
+        opened={confirmOpen && confirmKind === 'delete-category'}
+        onClose={() => setConfirmOpen(false)}
+        title="Delete category?"
+        centered
+      >
+        <Text size="sm" mb="md">
+          Delete category &quot;{selectedCategory?.displayName}&quot;? Categories with policies cannot
+          be deleted.
+        </Text>
+        <Group justify="flex-end" gap="xs">
+          <Button variant="default" onClick={() => setConfirmOpen(false)} disabled={busy}>
+            Cancel
+          </Button>
+          <Button color="red" onClick={() => void confirmDeleteCategory()} disabled={busy}>
+            Delete
+          </Button>
+        </Group>
+      </Modal>
     </Stack>
   )
 }

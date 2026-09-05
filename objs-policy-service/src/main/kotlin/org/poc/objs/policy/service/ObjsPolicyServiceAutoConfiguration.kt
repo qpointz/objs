@@ -2,11 +2,12 @@ package org.poc.objs.policy.service
 
 import org.poc.objs.api.domain.DefaultGraphFragmentPolicy
 import org.poc.objs.api.domain.GraphFragmentPolicy
+import org.poc.objs.policy.api.CategoryRepository
 import org.poc.objs.policy.api.PolicyEngineKinds
 import org.poc.objs.policy.api.PolicyEvaluator
 import org.poc.objs.policy.api.PolicyRepository
 import org.poc.objs.policy.core.DefaultPolicyEvaluator
-import org.poc.objs.policy.core.InMemoryPolicyRepository
+import org.poc.objs.policy.core.InMemoryPolicyStores
 import org.poc.objs.policy.drools.DroolsPolicyEngine
 import org.poc.objs.policy.drools.PolicyKnowledgeBaseCache
 import org.springframework.boot.autoconfigure.AutoConfiguration
@@ -20,7 +21,15 @@ class ObjsPolicyServiceAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    fun policyRepository(): PolicyRepository = InMemoryPolicyRepository()
+    fun inMemoryPolicyStores(): InMemoryPolicyStores = InMemoryPolicyStores()
+
+    @Bean
+    @ConditionalOnMissingBean
+    fun categoryRepository(stores: InMemoryPolicyStores): CategoryRepository = stores.categories
+
+    @Bean
+    @ConditionalOnMissingBean
+    fun policyRepository(stores: InMemoryPolicyStores): PolicyRepository = stores.policies
 
     @Bean
     @ConditionalOnMissingBean

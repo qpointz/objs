@@ -1,21 +1,51 @@
+export type Category = {
+  id: string
+  displayName: string
+  slug: string
+}
+
+export type CategoryWrite = {
+  displayName: string
+  slug: string
+}
+
 export type Policy = {
   id: string
   name: string
-  version: number
+  /** Timestamp serial (pin / latest key). */
+  serial: number
   engineKind: string
   body: string
   contentType?: string | null
   applicabilityKind?: string | null
   applicabilityBody?: string | null
+  categoryId: string
+  tags: string[]
+  annotations?: Record<string, string>
+  /** User-managed major.minor string (e.g. `0.1`). */
+  version: string
+  description?: string
 }
 
 export type PolicyWrite = {
   name: string
   engineKind: string
   body: string
+  categoryId: string
+  tags: string[]
   contentType?: string | null
   applicabilityKind?: string | null
   applicabilityBody?: string | null
+  annotations?: Record<string, string>
+  version?: string
+  description?: string
+}
+
+export type PolicyListQuery = {
+  categoryId?: string | null
+  tags?: string[]
+  name?: string | null
+  annotations?: Record<string, string>
 }
 
 export type PolicyCapabilities = {
@@ -51,7 +81,7 @@ export function findingRuleName(f: Finding): string | undefined {
 
 export type PolicyOutcome = {
   policyName: string
-  policyVersion: number
+  policySerial: number
   engineKind: string
   status: string
   notApplicableReason?: string | null
@@ -81,4 +111,9 @@ export function maxSeverity(a: string | undefined, b: string | undefined): strin
   if (!a) return b
   if (!b) return a
   return severityRank(a) >= severityRank(b) ? a : b
+}
+
+/** Display: major.minor · serial */
+export function formatPolicyVersion(p: Pick<Policy, 'version' | 'serial'>): string {
+  return `${p.version} · ${p.serial}`
 }

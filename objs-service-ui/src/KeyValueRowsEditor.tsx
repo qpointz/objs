@@ -28,12 +28,14 @@ export function KeyValueRowsEditor({
   keyPlaceholder = 'key',
   valuePlaceholder = 'value',
   addLabel = 'Add key/value',
+  disabled = false,
 }: {
   rows: KeyValueRow[]
   onChange: (rows: KeyValueRow[]) => void
   keyPlaceholder?: string
   valuePlaceholder?: string
   addLabel?: string
+  disabled?: boolean
 }) {
   return (
     <Stack gap={4}>
@@ -44,6 +46,7 @@ export function KeyValueRowsEditor({
             placeholder={keyPlaceholder}
             aria-label={index === 0 ? 'Annotation key' : undefined}
             value={row.key}
+            disabled={disabled}
             onChange={(e) => {
               const next = [...rows]
               next[index] = { ...row, key: e.currentTarget.value }
@@ -56,6 +59,7 @@ export function KeyValueRowsEditor({
             placeholder={valuePlaceholder}
             aria-label={index === 0 ? 'Annotation value' : undefined}
             value={row.value}
+            disabled={disabled}
             onChange={(e) => {
               const next = [...rows]
               next[index] = { ...row, value: e.currentTarget.value }
@@ -69,7 +73,7 @@ export function KeyValueRowsEditor({
             color="red"
             aria-label="Remove annotation row"
             onClick={() => onChange(rows.filter((_, i) => i !== index))}
-            disabled={rows.length <= 1}
+            disabled={disabled || rows.length <= 1}
           >
             <IconTrash size={12} />
           </ActionIcon>
@@ -81,6 +85,7 @@ export function KeyValueRowsEditor({
         w="fit-content"
         px={4}
         leftSection={<IconPlus size={11} />}
+        disabled={disabled}
         onClick={() => onChange([...rows, { key: '', value: '' }])}
       >
         {addLabel}

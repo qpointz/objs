@@ -10,10 +10,11 @@ import org.poc.objs.api.domain.GraphContents
 import org.poc.objs.api.match.Matcher
 import org.poc.objs.api.store.GraphStore
 import org.poc.objs.policy.api.ApplicabilityKinds
+import org.poc.objs.policy.api.CategoryWrite
 import org.poc.objs.policy.api.PolicyEngineKinds
 import org.poc.objs.policy.api.PolicyWrite
 import org.poc.objs.policy.core.DefaultPolicyEvaluator
-import org.poc.objs.policy.core.InMemoryPolicyRepository
+import org.poc.objs.policy.core.InMemoryPolicyStores
 import org.poc.objs.policy.drools.DroolsPolicyEngine
 import org.poc.objs.policy.drools.PolicyKnowledgeBaseCache
 import org.poc.objs.policy.service.PolicyPlayService
@@ -33,7 +34,8 @@ import java.util.UUID
 class ObjsPolicyControllerTest {
     private lateinit var mockMvc: MockMvc
     private lateinit var store: GraphStore
-    private lateinit var repo: InMemoryPolicyRepository
+    private lateinit var stores: InMemoryPolicyStores
+    private lateinit var categoryId: UUID
 
     @Suppress("UNCHECKED_CAST")
     private fun <T> anyObj(): T = org.mockito.ArgumentMatchers.any() as T
@@ -53,7 +55,9 @@ class ObjsPolicyControllerTest {
     @BeforeEach
     fun setUp() {
         store = mock(GraphStore::class.java)
-        repo = InMemoryPolicyRepository()
+        stores = InMemoryPolicyStores()
+        categoryId = stores.categories.save(CategoryWrite("General", "general")).id
+        val repo = stores.policies
         val cache = PolicyKnowledgeBaseCache()
         val drools = DroolsPolicyEngine(cache)
         val evaluator = DefaultPolicyEvaluator(
@@ -65,6 +69,7 @@ class ObjsPolicyControllerTest {
             store = store,
             fragmentPolicy = DefaultGraphFragmentPolicy,
             repository = repo,
+            categories = stores.categories,
             evaluator = evaluator,
             knowledgeBaseCache = cache,
         )
@@ -74,6 +79,21 @@ class ObjsPolicyControllerTest {
                 JacksonJsonHttpMessageConverter(JsonMapper.builder().findAndAddModules().build()),
             )
             .build()
+    }
+
+    @Test
+    fun shouldCrudCategories() {
+        mockMvc.perform(
+            post("/api/v1/objs/policy/categories")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"displayName":"Licensing","slug":"licensing"}"""),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.slug").value("licensing"))
+
+        mockMvc.perform(get("/api/v1/objs/policy/categories"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$[?(@.slug=='licensing')]").isNotEmpty)
     }
 
     @Test
@@ -94,13 +114,17 @@ class ObjsPolicyControllerTest {
                     {
                       "name": "demo",
                       "engineKind": "DROOLS",
-                      "body": "package x\n"
+                      "body": "package x\n",
+                      "categoryId": "$categoryId",
+                      "tags": ["demo"],
+                      "version": "1.0"
                     }
                     """.trimIndent(),
                 ),
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.name").value("demo"))
+            .andExpect(jsonPath("$.categoryId").value(categoryId.toString()))
             .andReturn()
 
         val id = JsonMapper.builder().findAndAddModules().build()
@@ -119,7 +143,10 @@ class ObjsPolicyControllerTest {
                     {
                       "name": "demo",
                       "engineKind": "DROOLS",
-                      "body": "package updated\n"
+                      "body": "package updated\n",
+                      "categoryId": "$categoryId",
+                      "tags": ["demo"],
+                      "version": "1.0"
                     }
                     """.trimIndent(),
                 ),
@@ -158,12 +185,14 @@ class ObjsPolicyControllerTest {
                 edges = emptyList(),
             ),
         )
-        val saved = repo.save(
+        val saved = stores.policies.save(
             PolicyWrite(
                 name = "pass",
                 engineKind = PolicyEngineKinds.DROOLS,
                 body = validDrl,
                 applicabilityKind = ApplicabilityKinds.ALWAYS_APPLY,
+                categoryId = categoryId,
+                tags = listOf("pass"),
             ),
         )
 
