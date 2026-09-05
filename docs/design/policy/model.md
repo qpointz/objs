@@ -78,7 +78,11 @@ classDiagram
 |-------|------|
 | `id` | Stable UUID for this revision row (implementation detail OK) |
 | `name` | Logical policy name |
-| `version` | Serial revision number |
+| `serial` | Timestamp-style identity revision (object head-version rule) |
+| `version` | User-managed major.minor string (C-32) |
+| `categoryId` | Required UUID → managed category (C-32) |
+| `tags` | Non-empty normalized list (C-32) |
+| `annotations` | Objs-shaped map (C-32) |
 | `engineKind` | **String** (no enum) — which adapter runs the body. S1 implements **`CUSTOM`** only |
 | `body` | Opaque UTF-8 **String** — engine-agnostic payload |
 | `contentType` | Optional **encoding** hint for body (not the engine name) |

@@ -27,8 +27,10 @@ flowchart LR
 |-----------|-----------|
 | `save(policy)` | Create or update-by-name → allocate **new serial version**; return stored revision |
 | `resolve(ref)` | By **id**, or by **name** + **`latest`**, or by **name** + **specific version** |
-| `list` / `findByName` | Implementation convenience (exact API in WI-002) |
+| `list` / `findByName` / `query` | List all or filter (C-32 `PolicyQuery`: category, tags, annotations, name) — no paging |
 | Delete | Optional in S1; not required for MVP evaluate path |
+
+**C-32:** Split [`CategoryRepository`](metadata.md) (create/rename; delete only when unreferenced). Policy writes require known `categoryId`, non-empty tags, `version` (major.minor string); `serial` allocated with object head-version (timestamp) rule.
 
 ```mermaid
 sequenceDiagram

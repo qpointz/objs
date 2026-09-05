@@ -36,8 +36,8 @@ flowchart TB
 
 | Layer | Types |
 |-------|--------|
-| api | `Policy`, `PolicyWrite`, `PolicyRef`, `PolicyEvaluationContext`, `PolicyOutcome` / `EvaluationResult`, `Finding`, `aggregateOverall`, `PolicyContextWirer`, `ApplicabilitySelector`, `PolicyEngine`, `PolicyRepository`, `PolicyEvaluator`, `PolicyEvaluationException`; `PolicyEngineKinds.CUSTOM` / `DROOLS` |
-| core | `InMemoryPolicyRepository`, `DefaultPolicyEvaluator`, `AlwaysApplyApplicabilitySelector`, `CustomPolicyEngine` |
+| api | `Policy`, `PolicyWrite`, `PolicyRef`, `Category`, `CategoryWrite`, `CategoryRepository`, `PolicyQuery`, `PolicyEvaluationContext`, `PolicyOutcome` / `EvaluationResult`, `Finding`, `aggregateOverall`, `PolicyContextWirer`, `ApplicabilitySelector`, `PolicyEngine`, `PolicyRepository`, `PolicyEvaluator`, `PolicyEvaluationException`; `PolicyEngineKinds.CUSTOM` / `DROOLS` |
+| core | `InMemoryPolicyRepository`, `InMemoryCategoryRepository`, `InMemoryPolicyStores`, `DefaultPolicyEvaluator`, `AlwaysApplyApplicabilitySelector`, `CustomPolicyEngine` |
 | drools | `DroolsPolicyEngine`, `PolicyKnowledgeBaseCache`, `EntityFact`, `EdgeFact`, `ObjectFact`, `DroolsEvaluationScratch` |
 
 ---
@@ -99,6 +99,7 @@ flowchart LR
 | `:objs-policy-drools` | C-26 — shipped ([`drools.md`](drools.md)) |
 | `:objs-policy-service` + workbench UI | C-31 — [`workbench.md`](workbench.md) |
 | Suites | C-27 (may stay in api/core types + core orchestration) |
+| Metadata (categories/tags/annotations/semver) | **C-32** — shipped in api/core + service/workbench; see [`metadata.md`](metadata.md) |
 | JPA + seeds | C-28 |
 | Batch pack | C-29 |
 | Example/REST extras | C-30 |

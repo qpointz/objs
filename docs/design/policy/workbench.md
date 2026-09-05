@@ -34,6 +34,14 @@ Policies | Editor | Visual | Data | Object | Tasks(N)
 - Right pane: **Object** (Explorer inspect) | **Tasks (N)** (findings for selection)
 - Bottom click → pan/select node/edge + focus Tasks detail; no bottom selection-filter
 
+Also: [`metadata.md`](metadata.md) (C-32 list navigation — **shipped** on play UI: category/tag filters; General \| Code tabs).
+
+## C-32 play extensions
+
+- `GET/POST/PUT/DELETE …/policy/categories`
+- `GET …/policy/policies?categoryId=&tag=&name=&annotation=k=v`
+- Policy create/update require `categoryId`, `tags`, optional `annotations`, `version` (major.minor)
+
 ## Engine
 
 C-31 is **DROOLS only** (UI badges may show kind/outcome). CUSTOM play deferred.
