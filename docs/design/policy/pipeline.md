@@ -59,7 +59,7 @@ Core API (names illustrative):
 
 **No** parameterless `evaluate()`.
 
-Suite / batch / other shapes = **wrappers** that resolve to `(fragment, policyRefs)` and call this contract (C-27+, C-29+).
+Suite / batch / other shapes = **wrappers** that resolve to `(fragment, policyRefs)` and call this contract. **C-27** ships `DefaultSuiteEvaluator.evaluateSuite` — see [`suites.md`](suites.md). Batch remains C-29.
 
 ```mermaid
 flowchart LR

@@ -6,7 +6,7 @@
 **Folder:** [`docs/workitems/planned/policy-seeds-persistence/`](.)  
 **Backlog:** [C-28](../../BACKLOG.md)  
 **Sequence:** [policy family](../../SEQUENCE.md#policy-family-c-24c-32--normative-order) step **6 / 8**  
-**Before:** [C-27 `policy-suites`](../policy-suites/STORY.md) (suite seed kinds); hard require [C-24](../../completed/20260904-policy-evaluate-core/STORY.md)  
+**Before:** [C-27 `policy-suites`](../../completed/20260905-policy-suites/STORY.md) (suite seed kinds); hard require [C-24](../../completed/20260904-policy-evaluate-core/STORY.md)  
 **Next:** [C-29 `policy-batch`](../policy-batch/STORY.md)  
 **Gaps:** [`GAPS.md`](GAPS.md)  
 **Design:** [`docs/design/policy/overview.md`](../../../design/policy/overview.md), [`docs/design/graph/seeds.md`](../../../design/graph/seeds.md)

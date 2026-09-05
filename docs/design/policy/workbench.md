@@ -42,6 +42,19 @@ Also: [`metadata.md`](metadata.md) (C-32 list navigation — **shipped** on play
 - `GET …/policy/policies?categoryId=&tag=&name=&annotation=k=v`
 - Policy create/update require `categoryId`, `tags`, optional `annotations`, `version` (major.minor)
 
+## C-27 Suites subnav
+
+Policy route (`/policy`) uses shared chrome with **subnav**:
+
+| Item | Role |
+|------|------|
+| **Evaluate** | Existing Policy play (C-31/C-32) — unchanged |
+| **Suites** | Suite/folder/matcher authoring, selection examine, `evaluateSuite` |
+
+- Suites layout is **edit-first**: tree + center editor primary; graph canvas secondary (shared **GraphContextBar** only — no large live graph by default).
+- HTTP (on `:objs-policy-service`): `…/policy/suites` CRUD, `POST …/suites/selection`, `POST …/suites/evaluate`.
+- Design: [`suites.md`](suites.md).
+
 ## Engine
 
 C-31 is **DROOLS only** (UI badges may show kind/outcome). CUSTOM play deferred.

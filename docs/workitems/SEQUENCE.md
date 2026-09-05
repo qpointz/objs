@@ -20,7 +20,7 @@ C-17, C-18, and C-25 are **done**. Do not start C-20 implementation until C-20 W
 | 2 | **C-26** | [`policy-drools`](completed/20260904-policy-drools/STORY.md) | **done** | **C-24** | **C-31** |
 | 3 | **C-31** | [`policy-workbench`](completed/20260904-policy-workbench/STORY.md) | **done** | **C-26** | **C-32** |
 | 4 | **C-32** | [`policy-metadata`](completed/20260905-policy-metadata/STORY.md) | **done** | **C-31** | **C-27** |
-| 5 | **C-27** | [`policy-suites`](planned/policy-suites/STORY.md) | planned | **C-32** | **C-28** |
+| 5 | **C-27** | [`policy-suites`](completed/20260905-policy-suites/STORY.md) | **done** | **C-32** | **C-28** |
 | 6 | **C-28** | [`policy-seeds-persistence`](planned/policy-seeds-persistence/STORY.md) | planned | **C-27** | **C-29** |
 | 7 | **C-29** | [`policy-batch`](planned/policy-batch/STORY.md) | planned | **C-28** | **C-30** |
 | 8 | **C-30** | [`policy-consumer`](planned/policy-consumer/STORY.md) | planned (gated) | **C-29** | — (end of family) |
@@ -42,4 +42,4 @@ C-24 flat evaluate
 **Content deps:** suite seed kinds need C-27; batch suite target needs C-27.  
 **Do not** start a story’s WI-002+ until that story’s own WI-001 closes its GAPS. Do not pull later-story gaps into an earlier design lock.
 
-**Next to work now:** C-27 [`policy-suites`](planned/policy-suites/STORY.md) (after C-32 metadata).
+**Next to work now:** C-28 [`policy-seeds-persistence`](planned/policy-seeds-persistence/STORY.md).

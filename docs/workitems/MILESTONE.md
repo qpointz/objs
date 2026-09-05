@@ -56,6 +56,7 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`policy-drools`](completed/20260904-policy-drools/STORY.md) — `:objs-policy-drools` adapter (`EntityFact`/`EdgeFact`/`ObjectFact`, fixture DRL) (C-26). WI-000…WI-003.
 - [`policy-workbench`](completed/20260904-policy-workbench/STORY.md) — Policy playground UI: `:objs-policy-service` + `/policy` Visual/Data, Check/Evaluate (C-31 / U-9). WI-000…WI-004.
 - [`policy-metadata`](completed/20260905-policy-metadata/STORY.md) — Policy catalog metadata: categories, tags, annotations; `version` + timestamp `serial`; workbench tree navigation (C-32 / U-10). WI-000…WI-004.
+- [`policy-suites`](completed/20260905-policy-suites/STORY.md) — Suite folder trees, matchers, `evaluateSuite` wrapper, Builtin roll-up (folder `rollUpMode`), Suites workbench subnav (C-27). WI-000…WI-006.
 
 ### In progress
 
@@ -64,5 +65,5 @@ _(none)_
 ### Planned
 
 - [`store-text-search`](planned/store-text-search/STORY.md) — FB-3 contains/`q`; design first (C-20). Does not block C-18.
-- Policy family after C-32: [`policy-suites`](planned/policy-suites/STORY.md) (C-27) → [`policy-seeds-persistence`](planned/policy-seeds-persistence/STORY.md) (C-28) → [`policy-batch`](planned/policy-batch/STORY.md) (C-29) → [`policy-consumer`](planned/policy-consumer/STORY.md) (C-30).
+- Policy family after C-27: [`policy-seeds-persistence`](planned/policy-seeds-persistence/STORY.md) (C-28) → [`policy-batch`](planned/policy-batch/STORY.md) (C-29) → [`policy-consumer`](planned/policy-consumer/STORY.md) (C-30).
 

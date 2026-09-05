@@ -42,7 +42,7 @@ Also: [`GAPS.md`](../../workitems/completed/20260904-policy-evaluate-core/GAPS.m
 
 **C-26 design lock:** [`drools.md`](drools.md) — `EntityFact`/`EdgeFact`/`ObjectFact`; `drools-bom`+`drools-engine`+`drools-xml-support`; per-call session + KB cache by policy revision.
 
-**Deferred to later stories:** policy metadata list navigation (C-32), suites (C-27), seeds/JPA (C-28), batch (C-29), example/REST consumer (C-30). Workbench play (C-31) **shipped**.
+**Deferred to later stories:** seeds/JPA (C-28), batch (C-29), example/REST consumer (C-30). Workbench play (C-31), metadata (C-32), and suites (C-27) **implemented** — see [`suites.md`](suites.md) / [`workbench.md`](workbench.md).
 
 Sections **§1+** below remain illustrative for the **full-family** vision (suites, seeds, batch, Drools). Where they conflict with the table above, S1 pages, or [`drools.md`](drools.md), **those locks win**.
 
@@ -688,7 +688,7 @@ SBOM Application / Portfolio binding stays in the app. Foundation never requires
 | C-26 Drools | [`policy-drools/GAPS.md`](../../workitems/completed/20260904-policy-drools/GAPS.md) |
 | C-31 Workbench Policy play | [`policy-workbench/GAPS.md`](../../workitems/completed/20260904-policy-workbench/GAPS.md) |
 | C-32 Metadata | [`policy-metadata/GAPS.md`](../../workitems/completed/20260905-policy-metadata/GAPS.md) |
-| C-27 Suites | [`policy-suites/GAPS.md`](../../workitems/planned/policy-suites/GAPS.md) |
+| C-27 Suites | [`policy-suites/GAPS.md`](../../workitems/completed/20260905-policy-suites/GAPS.md) · [`suites.md`](suites.md) |
 | C-28 Seeds + persistence | [`policy-seeds-persistence/GAPS.md`](../../workitems/planned/policy-seeds-persistence/GAPS.md) |
 | C-29 Batch | [`policy-batch/GAPS.md`](../../workitems/planned/policy-batch/GAPS.md) |
 | C-30 Example/REST consumer | [`policy-consumer/GAPS.md`](../../workitems/planned/policy-consumer/GAPS.md) |

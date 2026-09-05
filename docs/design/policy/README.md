@@ -1,12 +1,12 @@
 # Policy evaluation (foundation)
 
-**Status:** C-24 S1 **shipped**; C-26 Drools adapter **shipped**; C-31 Policy playground **shipped**; C-32 policy metadata **shipped**  
+**Status:** C-24 S1 **shipped**; C-26 Drools adapter **shipped**; C-31 Policy playground **shipped**; C-32 policy metadata **shipped**; C-27 suites **shipped**  
 **Family:** `objs-policy*` — not “assessment”  
 **Packages:** `org.poc.objs.policy.api` / `org.poc.objs.policy.core` / `org.poc.objs.policy.drools`  
 **Audience:** foundation embedders, example-app authors  
 **Not this folder:** product compliance UX, regulatory catalogs, SBOM Application workflows, suite product content  
 
-**Stories:** [`policy-evaluate-core`](../../workitems/completed/20260904-policy-evaluate-core/STORY.md) · [`policy-drools`](../../workitems/completed/20260904-policy-drools/STORY.md) · [`policy-workbench`](../../workitems/completed/20260904-policy-workbench/STORY.md) · [`policy-metadata`](../../workitems/completed/20260905-policy-metadata/STORY.md) · **Order:** [`SEQUENCE.md` § Policy family](../../workitems/SEQUENCE.md#policy-family-c-24c-32--normative-order)
+**Stories:** [`policy-evaluate-core`](../../workitems/completed/20260904-policy-evaluate-core/STORY.md) · [`policy-drools`](../../workitems/completed/20260904-policy-drools/STORY.md) · [`policy-workbench`](../../workitems/completed/20260904-policy-workbench/STORY.md) · [`policy-metadata`](../../workitems/completed/20260905-policy-metadata/STORY.md) · [`policy-suites`](../../workitems/completed/20260905-policy-suites/STORY.md) · **Order:** [`SEQUENCE.md` § Policy family](../../workitems/SEQUENCE.md#policy-family-c-24c-32--normative-order)
 
 ---
 
@@ -43,6 +43,7 @@ flowchart LR
 | [**drools.md**](drools.md) | C-26 Drools adapter locks (facts, deps, KB cache) |
 | [**workbench.md**](workbench.md) | C-31 Policy playground UI + `:objs-policy-service` |
 | [**metadata.md**](metadata.md) | C-32 categories, tags, annotations, semver (list navigation) |
+| [**suites.md**](suites.md) | C-27 suites — folders, matchers, `evaluateSuite`, roll-up (**normative / implemented**) |
 | [**examples-sbom.md**](examples-sbom.md) | Paste-ready DROOLS sketches against SBOM ontology |
 
 Normative S1 decisions: [`GAPS.md`](../../workitems/completed/20260904-policy-evaluate-core/GAPS.md) · Story: [`STORY.md`](../../workitems/completed/20260904-policy-evaluate-core/STORY.md) · Scenarios: [`EXAMPLES.md`](../../workitems/completed/20260904-policy-evaluate-core/EXAMPLES.md)  
@@ -58,7 +59,7 @@ C-26 gaps: [`policy-drools/GAPS.md`](../../workitems/completed/20260904-policy-d
 | 2 | C-26 | [`policy-drools`](../../workitems/completed/20260904-policy-drools/STORY.md) | **done** (archived) |
 | 3 | C-31 | [`policy-workbench`](../../workitems/completed/20260904-policy-workbench/STORY.md) | **done** (archived) |
 | 4 | C-32 | [`policy-metadata`](../../workitems/completed/20260905-policy-metadata/STORY.md) | **done** |
-| 5 | C-27 | [`policy-suites`](../../workitems/planned/policy-suites/STORY.md) | planned |
+| 5 | C-27 | [`policy-suites`](../../workitems/completed/20260905-policy-suites/STORY.md) | **done** |
 | 6 | C-28 | [`policy-seeds-persistence`](../../workitems/planned/policy-seeds-persistence/STORY.md) | planned |
 | 7 | C-29 | [`policy-batch`](../../workitems/planned/policy-batch/STORY.md) | planned |
 | 8 | C-30 | [`policy-consumer`](../../workitems/planned/policy-consumer/STORY.md) | planned (gated) |

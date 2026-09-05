@@ -138,4 +138,4 @@ classDiagram
   PolicyOutcome --> Finding
 ```
 
-Suite-level required/optional/waive semantics are **out of S1** (C-27).
+Suite-level roll-up / reporting tree is **C-27** — see [`suites.md`](suites.md) and the indicative [`RESULTS-MODEL.md`](../../workitems/completed/20260905-policy-suites/RESULTS-MODEL.md) (`evaluationId` + `meta` + `tree` + `outcomes`; no input persist).
