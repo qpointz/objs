@@ -5,8 +5,8 @@
 **Status:** planned  
 **Folder:** [`docs/workitems/planned/policy-suites/`](.)  
 **Backlog:** [C-27](../../BACKLOG.md)  
-**Sequence:** [policy family](../../SEQUENCE.md#policy-family-c-24c-31--normative-order) step **4 / 7**  
-**Before:** [C-31 `policy-workbench`](../../completed/20260904-policy-workbench/STORY.md); hard require [C-24](../../completed/20260904-policy-evaluate-core/STORY.md) (+ C-26 for Drools)  
+**Sequence:** [policy family](../../SEQUENCE.md#policy-family-c-24c-32--normative-order) step **5 / 8**  
+**Before:** [C-32 `policy-metadata`](../../in-progress/policy-metadata/STORY.md); hard require [C-24](../../completed/20260904-policy-evaluate-core/STORY.md) (+ C-26 for Drools); C-31 workbench shipped  
 **Next:** [C-28 `policy-seeds-persistence`](../policy-seeds-persistence/STORY.md)  
 **Gaps:** [`GAPS.md`](GAPS.md)  
 **Design:** [`docs/design/policy/overview.md`](../../../design/policy/overview.md)

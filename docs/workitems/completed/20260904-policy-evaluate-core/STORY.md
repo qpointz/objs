@@ -8,7 +8,7 @@
 **Backlog:** [C-24](../../BACKLOG.md)  
 **Base:** `origin/dev`  
 **MR:** https://gitlab.qpointz.io/sandbox/bom-poc/-/merge_requests/56  
-**Sequence:** [policy family](../../SEQUENCE.md#policy-family-c-24c-31--normative-order) step **1 / 7**  
+**Sequence:** [policy family](../../SEQUENCE.md#policy-family-c-24c-32--normative-order) step **1 / 8**  
 **Before:** `GraphFragment` / resolve path (shipped — [`graph-frontend-jgrapht`](../20260903-graph-frontend-jgrapht/STORY.md))  
 **Next:** [C-26 `policy-drools`](../20260904-policy-drools/STORY.md)  
 **Does not block:** C-20 store text search  

@@ -10,7 +10,7 @@ C-17, C-18, and C-25 are **done**. Do not start C-20 implementation until C-20 W
 
 ---
 
-## Policy family (C-24…C-31) — normative order
+## Policy family (C-24…C-32) — normative order
 
 **Canonical order** (each story’s `STORY.md` repeats **Before** / **Next**):
 
@@ -18,25 +18,28 @@ C-17, C-18, and C-25 are **done**. Do not start C-20 implementation until C-20 W
 |------|----|--------|--------|--------|------|
 | 1 | **C-24** | [`policy-evaluate-core`](completed/20260904-policy-evaluate-core/STORY.md) | **done** | `GraphFragment` resolve path (shipped) | **C-26** |
 | 2 | **C-26** | [`policy-drools`](completed/20260904-policy-drools/STORY.md) | **done** | **C-24** | **C-31** |
-| 3 | **C-31** | [`policy-workbench`](completed/20260904-policy-workbench/STORY.md) | **done** | **C-26** | **C-27** |
-| 4 | **C-27** | [`policy-suites`](planned/policy-suites/STORY.md) | planned | **C-31** | **C-28** |
-| 5 | **C-28** | [`policy-seeds-persistence`](planned/policy-seeds-persistence/STORY.md) | planned | **C-27** | **C-29** |
-| 6 | **C-29** | [`policy-batch`](planned/policy-batch/STORY.md) | planned | **C-28** | **C-30** |
-| 7 | **C-30** | [`policy-consumer`](planned/policy-consumer/STORY.md) | planned (gated) | **C-29** | — (end of family) |
+| 3 | **C-31** | [`policy-workbench`](completed/20260904-policy-workbench/STORY.md) | **done** | **C-26** | **C-32** |
+| 4 | **C-32** | [`policy-metadata`](in-progress/policy-metadata/STORY.md) | in-progress | **C-31** | **C-27** |
+| 5 | **C-27** | [`policy-suites`](planned/policy-suites/STORY.md) | planned | **C-32** | **C-28** |
+| 6 | **C-28** | [`policy-seeds-persistence`](planned/policy-seeds-persistence/STORY.md) | planned | **C-27** | **C-29** |
+| 7 | **C-29** | [`policy-batch`](planned/policy-batch/STORY.md) | planned | **C-28** | **C-30** |
+| 8 | **C-30** | [`policy-consumer`](planned/policy-consumer/STORY.md) | planned (gated) | **C-29** | — (end of family) |
 
 ```text
 C-24 flat evaluate
   → C-26 Drools
     → C-31 workbench tactical Policy play UI
-      → C-27 suites + roll-up
-        → C-28 seeds + JPA
-          → C-29 thin batch pack
-            → C-30 optional example/REST consumer
+      → C-32 policy metadata (tags / categories / annotations — list navigation)
+        → C-27 suites + roll-up (run configuration + result interpretation)
+          → C-28 seeds + JPA
+            → C-29 thin batch pack
+              → C-30 optional example/REST consumer
 ```
 
 **Hard dependency:** every later story needs **C-24** shipped (or api+core usable).  
 **C-31** needs **C-26** for Drools play (CUSTOM-only UI is insufficient for the story goal).  
+**C-32** is **pre-suite** catalog metadata for Policy list navigation — not a suite alternative.  
 **Content deps:** suite seed kinds need C-27; batch suite target needs C-27.  
 **Do not** start a story’s WI-002+ until that story’s own WI-001 closes its GAPS. Do not pull later-story gaps into an earlier design lock.
 
-**Next to work now:** C-27 [`policy-suites`](planned/policy-suites/STORY.md).
+**Next to work now:** C-32 [`policy-metadata`](in-progress/policy-metadata/STORY.md) — WIs complete on branch; close story when ready, then C-27 suites.

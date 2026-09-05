@@ -8,9 +8,9 @@
 **Backlog:** [C-31](../../BACKLOG.md) / [U-9](../../BACKLOG.md)  
 **Base:** `origin/dev`  
 **MR:** https://gitlab.qpointz.io/sandbox/bom-poc/-/merge_requests/58  
-**Sequence:** [policy family](../../SEQUENCE.md#policy-family-c-24c-31--normative-order) step **3 / 7**  
+**Sequence:** [policy family](../../SEQUENCE.md#policy-family-c-24c-32--normative-order) step **3 / 8**  
 **Before:** [C-26 `policy-drools`](../20260904-policy-drools/STORY.md) (required for real engine play; hard require [C-24](../20260904-policy-evaluate-core/STORY.md))  
-**Next:** [C-27 `policy-suites`](../../planned/policy-suites/STORY.md)  
+**Next:** [C-32 `policy-metadata`](../../in-progress/policy-metadata/STORY.md)  
 **Gaps:** [`GAPS.md`](GAPS.md)  
 **Design:** [`docs/design/policy/workbench.md`](../../../design/policy/workbench.md)
 
@@ -54,6 +54,7 @@ Story **closed** 2026-09-04 — archived under `completed/20260904-policy-workbe
 
 ## Out of scope
 
+- Policy list navigation metadata (C-32)
 - Suite tree authoring / roll-up UI (comes with or after C-27)
 - Portfolio × suite matrix
 - Full policy authoring IDE

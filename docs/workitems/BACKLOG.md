@@ -46,6 +46,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | C-29 | Thin policy batch / result pack (no matrix) | feature | planned | [`planned/policy-batch/`](planned/policy-batch/STORY.md) |
 | C-30 | Optional policy REST / example consumer (gated; workbench = C-31) | feature | planned | [`planned/policy-consumer/`](planned/policy-consumer/STORY.md) |
 | C-31 | Workbench tactical Policy play UI (after Drools) | feature | done | [`completed/20260904-policy-workbench/`](completed/20260904-policy-workbench/STORY.md), also [U-9](#ui--workbench) |
+| C-32 | Policy metadata: tags, user-managed categories, annotations (Policy list navigation) | feature | in-progress | [`in-progress/policy-metadata/`](in-progress/policy-metadata/STORY.md), also [U-10](#ui--workbench) |
 
 ---
 
@@ -62,6 +63,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | U-7 | Workbench UX: shared graph context (Explorer/Objects/Query) + chrome | improvement | done | [`completed/20260822-workbench-ux/`](completed/20260822-workbench-ux/STORY.md) |
 | U-8 | Workbench cosmetic polish (loading feedback + visual polish) | improvement | done | [`completed/20260903-workbench-cosmetic/`](completed/20260903-workbench-cosmetic/STORY.md) |
 | U-9 | Tactical Policy play UI in workbench (same as C-31) | feature | done | [`completed/20260904-policy-workbench/`](completed/20260904-policy-workbench/STORY.md), [C-31](#core--entity--graph-core) |
+| U-10 | Policy list navigation (categories / tags / annotations; same as C-32) | feature | in-progress | [`in-progress/policy-metadata/`](in-progress/policy-metadata/STORY.md), [C-32](#core--entity--graph-core) |
 
 ---
 
