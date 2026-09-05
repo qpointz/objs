@@ -104,7 +104,7 @@ export const WORKBENCH_TOUR_STEPS: WorkbenchTourStep[] = [
   {
     id: 'policy',
     title: 'Policy playground',
-    body: 'Replaceable DROOLS playground: policy list + editor, shared graph context, Check/Evaluate, severity pills, Object/Tasks inspect, and bottom Policy/Evaluations tasks. Soft-fails if the policy service module is absent.',
+    body: 'Policy playground: Evaluate (DROOLS + metadata) and Suites (folder trees, matchers, evaluateSuite). Shared graph context; soft-fails if the policy service module is absent.',
     selector: '[data-tour="nav-policy"]',
     route: '/policy',
   },

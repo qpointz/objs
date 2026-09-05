@@ -94,6 +94,101 @@ export type EvaluationResult = {
   overall?: string | null
 }
 
+export type SuiteMatcherMode = 'INCLUDE' | 'EXCLUDE'
+export type SuiteFolderParticipation = 'ENABLED' | 'DISABLED' | 'IGNORED'
+
+export type StaticPolicyEntry = {
+  policyId: string
+  version?: string | null
+}
+
+export type SuiteMatcher = {
+  kind: 'STATIC_LIST' | 'METADATA' | string
+  mode?: SuiteMatcherMode | string
+  skipMissing?: boolean
+  entries?: StaticPolicyEntry[]
+  categorySlug?: string | null
+  tags?: string[]
+  annotations?: Record<string, string>
+}
+
+export type SuiteFolder = {
+  id?: string | null
+  key: string
+  name: string
+  parentId?: string | null
+  sortOrder?: number
+  participation?: SuiteFolderParticipation | string
+  /** ALL_PASS | ANY_PASS — interpreted by suite rollUpStrategyKind. */
+  rollUpMode?: string
+  matchers?: SuiteMatcher[]
+  tags?: string[]
+  annotations?: Record<string, string>
+  severityConfig?: string | null
+}
+
+export type PolicySuite = {
+  id?: string | null
+  name: string
+  /** BUILTIN (C-27); later DROOLS etc. */
+  rollUpStrategyKind?: string
+  executionStrategyKind?: string
+  folders?: SuiteFolder[]
+  tags?: string[]
+  annotations?: Record<string, string>
+}
+
+export type SuitePolicyLeafResult = {
+  policyId: string
+  policyName: string
+  policySerial: number
+  policyVersion: string
+  status: string
+  severity?: string | null
+  outcomeIndex: number
+}
+
+export type SuiteFolderResult = {
+  folderId: string
+  key: string
+  name: string
+  parentFolderId?: string | null
+  participation: string
+  status: string
+  severity?: string | null
+  votes: boolean
+  tags?: string[]
+  annotations?: Record<string, string>
+  children?: SuiteFolderResult[]
+  leaves?: SuitePolicyLeafResult[]
+}
+
+export type SuiteEvaluationMeta = {
+  evaluationId: string
+  kind: string
+  evaluatedAtEpochMs: number
+  executionStrategyKind?: string | null
+  rollUpStrategyKind?: string | null
+  overallStatus?: string | null
+  overallSeverity?: string | null
+  tags?: string[]
+  annotations?: Record<string, string>
+  suiteId?: string | null
+  suiteName?: string | null
+}
+
+export type SuiteEvaluationResult = {
+  meta: SuiteEvaluationMeta
+  tree?: SuiteFolderResult | null
+  outcomes: PolicyOutcome[]
+}
+
+export type SuiteSelectionResult = {
+  policies: Policy[]
+  placementByPolicyId?: Record<string, string>
+  missing?: StaticPolicyEntry[]
+}
+
 export const SEVERITY_RANK: Record<string, number> = {
   ERROR: 40,
   WARN: 30,

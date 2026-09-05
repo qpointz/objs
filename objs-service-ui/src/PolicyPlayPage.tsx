@@ -280,7 +280,7 @@ const PolicyDrlEditor = memo(function PolicyDrlEditor({
   )
 })
 
-export function PolicyPlayPage() {
+export function PolicyPlayPage({ hideChrome = false }: { hideChrome?: boolean }) {
   const { context } = useGraphContext()
   const canvasRef = useRef<GraphCanvasHandle>(null)
   const editorRef = useRef<SyntaxCodeEditorHandle>(null)
@@ -1090,14 +1090,16 @@ export function PolicyPlayPage() {
 
   return (
     <Stack gap="sm" style={{ flex: 1, minHeight: 0, height: '100%' }}>
-      <Group align="center" wrap="nowrap" gap="md" style={{ flexShrink: 0 }}>
-        <Title order={3} style={{ flexShrink: 0 }}>
-          Policy
-        </Title>
-        <Box style={{ flex: 1, minWidth: 0 }}>
-          <GraphContextBar />
-        </Box>
-      </Group>
+      {!hideChrome && (
+        <Group align="center" wrap="nowrap" gap="md" style={{ flexShrink: 0 }}>
+          <Title order={3} style={{ flexShrink: 0 }}>
+            Policy
+          </Title>
+          <Box style={{ flex: 1, minWidth: 0 }}>
+            <GraphContextBar />
+          </Box>
+        </Group>
+      )}
 
       <Group
         justify="space-between"

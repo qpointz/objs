@@ -3,7 +3,7 @@ import { AppLayout } from './AppLayout'
 import { GraphExplorerPage } from './GraphExplorerPage'
 import { ObjectLinterPage } from './ObjectLinterPage'
 import { ObjectsPage } from './ObjectsPage'
-import { PolicyPlayPage } from './PolicyPlayPage'
+import { PolicyPage } from './PolicyPage'
 import { QueryPage } from './QueryPage'
 import { SchemaExplorerPage } from './SchemaExplorerPage'
 import { SchemaLinterPage } from './SchemaLinterPage'
@@ -26,7 +26,7 @@ const router = createBrowserRouter(
       <Route path="objects" element={<ObjectsPage />} />
       <Route path="composer" element={<ObjectLinterPage />} />
       <Route path="query" element={<QueryPage />} />
-      <Route path="policy" element={<PolicyPlayPage />} />
+      <Route path="policy" element={<PolicyPage />} />
       <Route path="model" element={<SchemaExplorerPage />} />
       <Route path="model/:type" element={<SchemaExplorerPage />} />
       <Route path="model/:type/:version" element={<SchemaExplorerPage />} />

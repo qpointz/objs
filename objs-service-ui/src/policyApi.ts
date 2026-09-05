@@ -6,7 +6,10 @@ import type {
   PolicyCapabilities,
   PolicyCheckResult,
   PolicyListQuery,
+  PolicySuite,
   PolicyWrite,
+  SuiteEvaluationResult,
+  SuiteSelectionResult,
 } from './policyTypes'
 
 async function parseResponse<T>(res: Response): Promise<T> {
@@ -164,4 +167,74 @@ export async function evaluatePolicy(request: {
     }),
   })
   return parseResponse<EvaluationResult>(res)
+}
+
+export async function listSuites(): Promise<PolicySuite[]> {
+  const res = await fetch('/api/v1/objs/policy/suites')
+  return parseResponse<PolicySuite[]>(res)
+}
+
+export async function createSuite(suite: PolicySuite): Promise<PolicySuite> {
+  const res = await fetch('/api/v1/objs/policy/suites', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(suite),
+  })
+  return parseResponse<PolicySuite>(res)
+}
+
+export async function updateSuite(id: string, suite: PolicySuite): Promise<PolicySuite> {
+  const res = await fetch(`/api/v1/objs/policy/suites/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(suite),
+  })
+  return parseResponse<PolicySuite>(res)
+}
+
+export async function deleteSuite(id: string): Promise<void> {
+  const res = await fetch(`/api/v1/objs/policy/suites/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  })
+  await parseResponse<void>(res)
+}
+
+export async function fetchSuiteSelection(request: {
+  suiteId: string
+  scope?: string
+  folderId?: string | null
+}): Promise<SuiteSelectionResult> {
+  const res = await fetch('/api/v1/objs/policy/suites/selection', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      suiteId: request.suiteId,
+      scope: request.scope ?? 'FULL',
+      folderId: request.folderId ?? undefined,
+    }),
+  })
+  return parseResponse<SuiteSelectionResult>(res)
+}
+
+export async function evaluateSuite(request: {
+  suiteId: string
+  graphId?: string | null
+  graphVersion?: number | null
+  matcher?: unknown
+  scope?: string
+  folderId?: string | null
+}): Promise<SuiteEvaluationResult> {
+  const res = await fetch('/api/v1/objs/policy/suites/evaluate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      suiteId: request.suiteId,
+      matcher: request.matcher ?? { all: true },
+      graphId: request.graphId ?? undefined,
+      graphVersion: request.graphVersion ?? undefined,
+      scope: request.scope ?? 'FULL',
+      folderId: request.folderId ?? undefined,
+    }),
+  })
+  return parseResponse<SuiteEvaluationResult>(res)
 }
