@@ -1,13 +1,13 @@
 # Policy metadata — categories, tags, annotations, semver (C-32)
 
 **Status:** **shipped** (api/core + `:objs-policy-service` + workbench)  
-**Normative:** [policy-metadata/GAPS.md](../../workitems/in-progress/policy-metadata/GAPS.md)  
-**Story:** [policy-metadata/STORY.md](../../workitems/in-progress/policy-metadata/STORY.md)  
+**Normative:** [policy-metadata/GAPS.md](../../workitems/completed/20260905-policy-metadata/GAPS.md)  
+**Story:** [policy-metadata/STORY.md](../../workitems/completed/20260905-policy-metadata/STORY.md)  
 **Boundary:** Pre-suite **catalog navigation** — not suite run configuration (C-27).
 
 ## Intent
 
-Extend Policy artefacts so the workbench Policy list can **navigate** larger inventories: group/filter by category and tags, edit annotations, and show a user-managed semantic version string with timestamp serial.
+Extend Policy artefacts so the workbench Policy list can **navigate** larger inventories: group/filter by category and tags, edit annotations, and show a user-managed version (major.minor) with timestamp serial.
 
 ## Category (user-managed vocabulary)
 

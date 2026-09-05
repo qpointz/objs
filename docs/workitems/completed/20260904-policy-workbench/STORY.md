@@ -10,7 +10,7 @@
 **MR:** https://gitlab.qpointz.io/sandbox/bom-poc/-/merge_requests/58  
 **Sequence:** [policy family](../../SEQUENCE.md#policy-family-c-24c-32--normative-order) step **3 / 8**  
 **Before:** [C-26 `policy-drools`](../20260904-policy-drools/STORY.md) (required for real engine play; hard require [C-24](../20260904-policy-evaluate-core/STORY.md))  
-**Next:** [C-32 `policy-metadata`](../../in-progress/policy-metadata/STORY.md)  
+**Next:** [C-32 `policy-metadata`](../20260905-policy-metadata/STORY.md)  
 **Gaps:** [`GAPS.md`](GAPS.md)  
 **Design:** [`docs/design/policy/workbench.md`](../../../design/policy/workbench.md)
 

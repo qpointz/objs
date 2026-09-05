@@ -2,9 +2,11 @@
 
 **Slug:** `policy-metadata`  
 **Branch:** `policy-metadata`  
-**Status:** in-progress  
-**Folder:** [`docs/workitems/in-progress/policy-metadata/`](.)  
+**Status:** completed  
+**Closed:** 2026-09-05  
+**Folder:** [`docs/workitems/completed/20260905-policy-metadata/`](.)  
 **Backlog:** [C-32](../../BACKLOG.md) / [U-10](../../BACKLOG.md)  
+**Base:** `origin/dev`  
 **Sequence:** [policy family](../../SEQUENCE.md#policy-family-c-24c-32--normative-order) step **4 / 8**  
 **Before:** [C-31 `policy-workbench`](../../completed/20260904-policy-workbench/STORY.md); hard require [C-24](../../completed/20260904-policy-evaluate-core/STORY.md)  
 **Next:** [C-27 `policy-suites`](../../planned/policy-suites/STORY.md)  
@@ -46,7 +48,7 @@ This is **not** suite configuration. Suites (C-27) remain “which policies to r
 | Query | Category, tags, annotation filters + name search; no paging |
 | Repos | Split `CategoryRepository` / `PolicyRepository` |
 | HTTP | Extend `:objs-policy-service` |
-| Workbench | List category+tag select; General \| Code tabs; existing styles |
+| Workbench | Category/policy tree; category list + editor; General\|Code; Mantine confirms |
 
 ## Out of scope
 

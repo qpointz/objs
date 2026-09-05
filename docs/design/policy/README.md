@@ -1,12 +1,12 @@
 # Policy evaluation (foundation)
 
-**Status:** C-24 S1 **shipped**; C-26 Drools adapter **shipped**; C-31 Policy playground **shipped**; C-32 policy metadata **shipped** (close story when ready)  
+**Status:** C-24 S1 **shipped**; C-26 Drools adapter **shipped**; C-31 Policy playground **shipped**; C-32 policy metadata **shipped**  
 **Family:** `objs-policy*` — not “assessment”  
 **Packages:** `org.poc.objs.policy.api` / `org.poc.objs.policy.core` / `org.poc.objs.policy.drools`  
 **Audience:** foundation embedders, example-app authors  
 **Not this folder:** product compliance UX, regulatory catalogs, SBOM Application workflows, suite product content  
 
-**Stories:** [`policy-evaluate-core`](../../workitems/completed/20260904-policy-evaluate-core/STORY.md) · [`policy-drools`](../../workitems/completed/20260904-policy-drools/STORY.md) · [`policy-workbench`](../../workitems/completed/20260904-policy-workbench/STORY.md) · **Order:** [`SEQUENCE.md` § Policy family](../../workitems/SEQUENCE.md#policy-family-c-24c-32--normative-order)
+**Stories:** [`policy-evaluate-core`](../../workitems/completed/20260904-policy-evaluate-core/STORY.md) · [`policy-drools`](../../workitems/completed/20260904-policy-drools/STORY.md) · [`policy-workbench`](../../workitems/completed/20260904-policy-workbench/STORY.md) · [`policy-metadata`](../../workitems/completed/20260905-policy-metadata/STORY.md) · **Order:** [`SEQUENCE.md` § Policy family](../../workitems/SEQUENCE.md#policy-family-c-24c-32--normative-order)
 
 ---
 
@@ -57,7 +57,7 @@ C-26 gaps: [`policy-drools/GAPS.md`](../../workitems/completed/20260904-policy-d
 | 1 | C-24 | [`policy-evaluate-core`](../../workitems/completed/20260904-policy-evaluate-core/STORY.md) | **done** (archived) |
 | 2 | C-26 | [`policy-drools`](../../workitems/completed/20260904-policy-drools/STORY.md) | **done** (archived) |
 | 3 | C-31 | [`policy-workbench`](../../workitems/completed/20260904-policy-workbench/STORY.md) | **done** (archived) |
-| 4 | C-32 | [`policy-metadata`](../../workitems/in-progress/policy-metadata/STORY.md) | in-progress (WIs complete) |
+| 4 | C-32 | [`policy-metadata`](../../workitems/completed/20260905-policy-metadata/STORY.md) | **done** |
 | 5 | C-27 | [`policy-suites`](../../workitems/planned/policy-suites/STORY.md) | planned |
 | 6 | C-28 | [`policy-seeds-persistence`](../../workitems/planned/policy-seeds-persistence/STORY.md) | planned |
 | 7 | C-29 | [`policy-batch`](../../workitems/planned/policy-batch/STORY.md) | planned |
