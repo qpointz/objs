@@ -169,4 +169,97 @@ class ObjsPolicyController(
                 }
             ResponseEntity.status(status).body(ex.message)
         }
+
+    @GetMapping("/suites")
+    @Operation(summary = "List policy suites")
+    fun listSuites(): List<PolicySuiteDto> = play.listSuites().map { SuiteHttpMapping.toDto(it) }
+
+    @GetMapping("/suites/{id}")
+    fun getSuite(@PathVariable id: UUID): ResponseEntity<PolicySuiteDto> =
+        play.getSuite(id)?.let { ResponseEntity.ok(SuiteHttpMapping.toDto(it)) }
+            ?: ResponseEntity.notFound().build()
+
+    @PostMapping("/suites")
+    fun createSuite(@RequestBody dto: PolicySuiteDto): ResponseEntity<Any> =
+        try {
+            ResponseEntity.ok(SuiteHttpMapping.toDto(play.createSuite(SuiteHttpMapping.toWrite(dto))))
+        } catch (ex: IllegalArgumentException) {
+            ResponseEntity.badRequest().body(ex.message)
+        }
+
+    @PutMapping("/suites/{id}")
+    fun updateSuite(@PathVariable id: UUID, @RequestBody dto: PolicySuiteDto): ResponseEntity<Any> =
+        try {
+            play.updateSuite(id, SuiteHttpMapping.toWrite(dto))
+                ?.let { ResponseEntity.ok(SuiteHttpMapping.toDto(it)) }
+                ?: ResponseEntity.notFound().build()
+        } catch (ex: IllegalArgumentException) {
+            ResponseEntity.badRequest().body(ex.message)
+        }
+
+    @DeleteMapping("/suites/{id}")
+    fun deleteSuite(@PathVariable id: UUID): ResponseEntity<Void> =
+        if (play.deleteSuite(id)) ResponseEntity.noContent().build()
+        else ResponseEntity.notFound().build()
+
+    @PostMapping("/suites/selection")
+    @Operation(summary = "Preview effective policy selection for a suite scope")
+    fun suiteSelection(@RequestBody request: SuiteSelectionRequest): ResponseEntity<Any> =
+        try {
+            val scope = SuiteHttpMapping.parseScope(
+                request.scope,
+                request.folderId,
+                request.folderIds,
+                request.policyIds,
+            )
+            val set = play.suiteSelection(request.suiteId, scope)
+            ResponseEntity.ok(
+                mapOf(
+                    "policies" to set.policies,
+                    "placementByPolicyId" to set.placementByPolicyId,
+                    "missing" to set.missing,
+                ),
+            )
+        } catch (ex: IllegalArgumentException) {
+            ResponseEntity.badRequest().body(ex.message)
+        }
+
+    @PostMapping("/suites/evaluate")
+    @Operation(summary = "Evaluate a suite against a matcher-selected graph fragment")
+    fun evaluateSuite(@RequestBody request: SuiteEvaluateRequest): ResponseEntity<Any> =
+        try {
+            val matcherNode =
+                request.matcher
+                    ?: tools.jackson.databind.node.JsonNodeFactory.instance.objectNode().put("all", true)
+            val matcher = matcherDsl.decodeNode(matcherNode, "$.matcher")
+            val scope = SuiteHttpMapping.parseScope(
+                request.scope,
+                request.folderId,
+                request.folderIds,
+                request.policyIds,
+            )
+            ResponseEntity.ok(
+                play.evaluateSuite(
+                    matcher = matcher,
+                    graphId = request.graphId?.let(UUID::fromString),
+                    graphVersion = request.graphVersion,
+                    suiteId = request.suiteId,
+                    scope = scope,
+                ),
+            )
+        } catch (ex: ValidationException) {
+            ResponseEntity.badRequest().body(ex.result)
+        } catch (ex: GraphMaterializationException) {
+            ResponseEntity.badRequest().body(ex.message)
+        } catch (ex: IllegalArgumentException) {
+            ResponseEntity.badRequest().body(ex.message)
+        } catch (ex: GraphException) {
+            val status =
+                if (ex.code == "GRAPH_VERSION_NOT_FOUND" || ex.code == "GRAPH_NOT_FOUND") {
+                    HttpStatus.NOT_FOUND
+                } else {
+                    HttpStatus.BAD_REQUEST
+                }
+            ResponseEntity.status(status).body(ex.message)
+        }
 }

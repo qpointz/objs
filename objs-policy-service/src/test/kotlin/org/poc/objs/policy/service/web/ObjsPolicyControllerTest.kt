@@ -70,7 +70,13 @@ class ObjsPolicyControllerTest {
             fragmentPolicy = DefaultGraphFragmentPolicy,
             repository = repo,
             categories = stores.categories,
+            suites = stores.suites,
             evaluator = evaluator,
+            suiteEvaluator = org.poc.objs.policy.core.DefaultSuiteEvaluator(
+                evaluator,
+                repo,
+                stores.categories,
+            ),
             knowledgeBaseCache = cache,
         )
         mockMvc = MockMvcBuilders

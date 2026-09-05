@@ -6,7 +6,10 @@ import org.poc.objs.policy.api.CategoryRepository
 import org.poc.objs.policy.api.PolicyEngineKinds
 import org.poc.objs.policy.api.PolicyEvaluator
 import org.poc.objs.policy.api.PolicyRepository
+import org.poc.objs.policy.api.SuiteEvaluator
+import org.poc.objs.policy.api.SuiteRepository
 import org.poc.objs.policy.core.DefaultPolicyEvaluator
+import org.poc.objs.policy.core.DefaultSuiteEvaluator
 import org.poc.objs.policy.core.InMemoryPolicyStores
 import org.poc.objs.policy.drools.DroolsPolicyEngine
 import org.poc.objs.policy.drools.PolicyKnowledgeBaseCache
@@ -30,6 +33,10 @@ class ObjsPolicyServiceAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     fun policyRepository(stores: InMemoryPolicyStores): PolicyRepository = stores.policies
+
+    @Bean
+    @ConditionalOnMissingBean
+    fun suiteRepository(stores: InMemoryPolicyStores): SuiteRepository = stores.suites
 
     @Bean
     @ConditionalOnMissingBean
@@ -62,5 +69,18 @@ class ObjsPolicyServiceAutoConfiguration {
             repository = repository,
             fragmentPolicy = fragmentPolicy,
             engines = mapOf(PolicyEngineKinds.DROOLS to drools),
+        )
+
+    @Bean
+    @ConditionalOnMissingBean
+    fun suiteEvaluator(
+        policyEvaluator: PolicyEvaluator,
+        repository: PolicyRepository,
+        categories: CategoryRepository,
+    ): SuiteEvaluator =
+        DefaultSuiteEvaluator(
+            policyEvaluator = policyEvaluator,
+            policies = repository,
+            categories = categories,
         )
 }

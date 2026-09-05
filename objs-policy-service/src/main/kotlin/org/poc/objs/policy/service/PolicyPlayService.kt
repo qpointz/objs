@@ -12,10 +12,17 @@ import org.poc.objs.policy.api.CategoryWrite
 import org.poc.objs.policy.api.EvaluationResult
 import org.poc.objs.policy.api.Policy
 import org.poc.objs.policy.api.PolicyEngineKinds
+import org.poc.objs.policy.api.PolicySuite
+import org.poc.objs.policy.api.PolicySuiteWrite
 import org.poc.objs.policy.api.PolicyWrite
 import org.poc.objs.policy.api.PolicyEvaluator
 import org.poc.objs.policy.api.PolicyQuery
 import org.poc.objs.policy.api.PolicyRepository
+import org.poc.objs.policy.api.SuiteEffectiveSet
+import org.poc.objs.policy.api.SuiteEvaluateScope
+import org.poc.objs.policy.api.SuiteEvaluationResult
+import org.poc.objs.policy.api.SuiteEvaluator
+import org.poc.objs.policy.api.SuiteRepository
 import org.poc.objs.policy.drools.PolicyKnowledgeBaseCache
 import org.springframework.stereotype.Service
 import java.util.UUID
@@ -40,7 +47,9 @@ class PolicyPlayService(
     private val fragmentPolicy: GraphFragmentPolicy,
     private val repository: PolicyRepository,
     private val categories: CategoryRepository,
+    private val suites: SuiteRepository,
     private val evaluator: PolicyEvaluator,
+    private val suiteEvaluator: SuiteEvaluator,
     private val knowledgeBaseCache: PolicyKnowledgeBaseCache,
 ) {
     fun capabilities(): PolicyCapabilities =
@@ -55,6 +64,9 @@ class PolicyPlayService(
                 "evaluate",
                 "categories",
                 "query",
+                "suites",
+                "evaluateSuite",
+                "suiteSelection",
             ),
         )
 
@@ -138,6 +150,42 @@ class PolicyPlayService(
 
         val policy = resolveEvaluatePolicy(policyId, body, engineKind, policyName)
         return evaluator.evaluatePolicies(resolved, listOf(policy))
+    }
+
+    fun listSuites(): List<PolicySuite> = suites.list()
+
+    fun getSuite(id: UUID): PolicySuite? = suites.findById(id)
+
+    fun createSuite(write: PolicySuiteWrite): PolicySuite = suites.save(write)
+
+    fun updateSuite(id: UUID, write: PolicySuiteWrite): PolicySuite? = suites.update(id, write)
+
+    fun deleteSuite(id: UUID): Boolean = suites.delete(id)
+
+    fun suiteSelection(suiteId: UUID, scope: SuiteEvaluateScope): SuiteEffectiveSet {
+        val suite = suites.findById(suiteId)
+            ?: throw IllegalArgumentException("Suite not found: $suiteId")
+        return suiteEvaluator.resolveSelection(suite, scope)
+    }
+
+    fun evaluateSuite(
+        matcher: Matcher,
+        graphId: UUID?,
+        graphVersion: Long?,
+        suiteId: UUID,
+        scope: SuiteEvaluateScope,
+    ): SuiteEvaluationResult {
+        val suite = suites.findById(suiteId)
+            ?: throw IllegalArgumentException("Suite not found: $suiteId")
+        val contents = selectContents(matcher, graphId, graphVersion)
+        val resolved = fragmentPolicy.resolve(contents)
+        if (resolved.hasErrors()) {
+            throw GraphMaterializationException(
+                resolved.diagnostics.joinToString("; ") { it.message },
+                diagnostics = resolved.diagnostics,
+            )
+        }
+        return suiteEvaluator.evaluateSuite(resolved, suite, scope)
     }
 
     private fun resolveEvaluatePolicy(
