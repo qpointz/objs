@@ -72,11 +72,12 @@ class InMemoryCategoryRepository(
 }
 
 /**
- * Wires [InMemoryCategoryRepository] + [InMemoryPolicyRepository] with cross-reference
- * for category delete / policy category validation.
+ * Wires [InMemoryCategoryRepository] + [InMemoryPolicyRepository] + [InMemorySuiteRepository]
+ * with cross-reference for category delete / policy category validation.
  */
 class InMemoryPolicyStores {
     val categories: InMemoryCategoryRepository =
         InMemoryCategoryRepository { id -> policies.list().any { it.categoryId == id } }
     val policies: InMemoryPolicyRepository = InMemoryPolicyRepository(categories)
+    val suites: InMemorySuiteRepository = InMemorySuiteRepository()
 }
