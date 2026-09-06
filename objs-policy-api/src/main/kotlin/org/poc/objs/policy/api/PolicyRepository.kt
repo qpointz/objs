@@ -23,7 +23,7 @@ interface PolicyRepository {
 
     fun findById(id: UUID): Policy?
 
-    fun findByName(name: String): List<Policy>
+    fun findByKey(key: String): List<Policy>
 
     fun list(): List<Policy>
 

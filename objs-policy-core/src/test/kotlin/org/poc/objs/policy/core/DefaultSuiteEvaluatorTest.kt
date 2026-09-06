@@ -23,7 +23,7 @@ class DefaultSuiteEvaluatorTest {
 
     private val stores = InMemoryPolicyStores()
     private val categoryId = stores.categories.save(
-        org.poc.objs.policy.api.CategoryWrite(displayName = "General", slug = "general"),
+        org.poc.objs.policy.api.CategoryWrite(name = "General", key = "general"),
     ).id
     private val policyEvaluator = DefaultPolicyEvaluator(stores.policies)
     private val suiteEvaluator = DefaultSuiteEvaluator(policyEvaluator, stores.policies, stores.categories)
@@ -39,6 +39,7 @@ class DefaultSuiteEvaluatorTest {
         val rootId = UUID.randomUUID()
         val suite = PolicySuite(
             id = UUID.randomUUID(),
+            key = "baseline",
             name = "Baseline",
             rollUpStrategyKind = SuiteRollUpStrategyKinds.BUILTIN,
             folders = listOf(
@@ -79,6 +80,7 @@ class DefaultSuiteEvaluatorTest {
         val disabledId = UUID.randomUUID()
         val suite = PolicySuite(
             id = UUID.randomUUID(),
+            key = "s",
             name = "S",
             rollUpStrategyKind = SuiteRollUpStrategyKinds.BUILTIN,
             folders = listOf(
@@ -117,6 +119,7 @@ class DefaultSuiteEvaluatorTest {
         val childId = UUID.randomUUID()
         val suite = PolicySuite(
             id = UUID.randomUUID(),
+            key = "s",
             name = "S",
             folders = listOf(
                 SuiteFolder(
@@ -152,6 +155,7 @@ class DefaultSuiteEvaluatorTest {
         val rootId = UUID.randomUUID()
         val suite = PolicySuite(
             id = UUID.randomUUID(),
+            key = "s",
             name = "S",
             rollUpStrategyKind = SuiteRollUpStrategyKinds.BUILTIN,
             folders = listOf(

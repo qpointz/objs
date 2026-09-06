@@ -34,6 +34,7 @@ class SuiteVersionSelectorsTest {
     fun shouldMatchPolicyAgainstSelectors() {
         val p = Policy(
             id = java.util.UUID.randomUUID(),
+            key = "p",
             name = "p",
             serial = 99L,
             engineKind = "CUSTOM",

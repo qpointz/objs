@@ -45,6 +45,7 @@ class ObjsPolicyServiceAutoConfigurationTest {
             val policy =
                 Policy(
                     id = UUID.randomUUID(),
+                    key = "probe",
                     name = "probe",
                     serial = 1L,
                     engineKind = PolicyEngineKinds.DROOLS,

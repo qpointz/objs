@@ -7,7 +7,7 @@ sealed class PolicyRef {
     data class ById(val id: UUID) : PolicyRef()
 
     /**
-     * Resolve by logical [name]. When [serial] is null, resolve **latest** serial for that name.
+     * Resolve by logical [key]. When [serial] is null, resolve **latest** serial for that key.
      */
-    data class ByName(val name: String, val serial: Long? = null) : PolicyRef()
+    data class ByKey(val key: String, val serial: Long? = null) : PolicyRef()
 }

@@ -10,6 +10,7 @@ description = "Objs persistence: Spring-free JPA persistence, catalogs, seed app
 
 dependencies {
     api(project(":objs-api"))
+    api(project(":objs-policy-api"))
     api(libs.bundles.jackson)
     api(libs.kotlin.reflect)
     api(libs.jakarta.persistence.api)

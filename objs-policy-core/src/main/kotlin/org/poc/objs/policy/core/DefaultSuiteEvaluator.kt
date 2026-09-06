@@ -206,6 +206,7 @@ class DefaultSuiteEvaluator(
         // Apply own matchers on empty accumulator (children merged separately in tree).
         val stub = PolicySuite(
             id = UUID.randomUUID(),
+            key = "_",
             name = "_",
             folders = listOf(folder.copy(parentId = null, participation = SuiteFolderParticipation.ENABLED)),
         )

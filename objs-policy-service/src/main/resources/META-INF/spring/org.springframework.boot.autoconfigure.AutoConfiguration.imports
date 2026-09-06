@@ -1,1 +1,2 @@
+org.poc.objs.policy.service.ObjsPolicyPersistenceAutoConfiguration
 org.poc.objs.policy.service.ObjsPolicyServiceAutoConfiguration

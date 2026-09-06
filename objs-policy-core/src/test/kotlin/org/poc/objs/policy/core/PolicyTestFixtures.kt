@@ -8,11 +8,11 @@ import java.util.UUID
 /** Shared fixtures for policy repo tests after C-32 metadata. */
 internal object PolicyTestFixtures {
     fun storesWithCategory(
-        displayName: String = "General",
-        slug: String = "general",
+        name: String = "General",
+        key: String = "general",
     ): Pair<InMemoryPolicyStores, UUID> {
         val stores = InMemoryPolicyStores()
-        val cat = stores.categories.save(CategoryWrite(displayName = displayName, slug = slug))
+        val cat = stores.categories.save(CategoryWrite(name = name, key = key))
         return stores to cat.id
     }
 
@@ -24,6 +24,7 @@ internal object PolicyTestFixtures {
         tags: List<String> = listOf("test"),
         version: String = "0.1",
     ) = PolicyWrite(
+        key = name,
         name = name,
         engineKind = engineKind,
         body = body,

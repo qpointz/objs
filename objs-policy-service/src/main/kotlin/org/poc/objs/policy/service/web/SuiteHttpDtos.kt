@@ -26,7 +26,7 @@ data class SuiteMatcherDto(
     val mode: String = "INCLUDE",
     val skipMissing: Boolean = false,
     val entries: List<StaticPolicyEntryDto> = emptyList(),
-    val categorySlug: String? = null,
+    val categoryKey: String? = null,
     val tags: List<String> = emptyList(),
     val annotations: Map<String, String> = emptyMap(),
 )
@@ -47,6 +47,7 @@ data class SuiteFolderDto(
 
 data class PolicySuiteDto(
     val id: UUID? = null,
+    val key: String,
     val name: String,
     val rollUpStrategyKind: String = SuiteRollUpStrategyKinds.BUILTIN,
     val executionStrategyKind: String = SuiteExecutionStrategyKinds.DEDUPE,
@@ -77,6 +78,7 @@ data class SuiteSelectionRequest(
 object SuiteHttpMapping {
     fun toWrite(dto: PolicySuiteDto): PolicySuiteWrite =
         PolicySuiteWrite(
+            key = dto.key,
             name = dto.name,
             rollUpStrategyKind = dto.rollUpStrategyKind,
             executionStrategyKind = dto.executionStrategyKind,
@@ -88,6 +90,7 @@ object SuiteHttpMapping {
     fun toDto(suite: PolicySuite): PolicySuiteDto =
         PolicySuiteDto(
             id = suite.id,
+            key = suite.key,
             name = suite.name,
             rollUpStrategyKind = suite.rollUpStrategyKind,
             executionStrategyKind = suite.executionStrategyKind,
@@ -157,7 +160,7 @@ object SuiteHttpMapping {
             "METADATA" -> MetadataMatcher(
                 mode = mode,
                 skipMissing = dto.skipMissing,
-                categorySlug = dto.categorySlug,
+                categoryKey = dto.categoryKey,
                 tags = dto.tags,
                 annotations = dto.annotations,
             )
@@ -177,7 +180,7 @@ object SuiteHttpMapping {
                 kind = "METADATA",
                 mode = matcher.mode.name,
                 skipMissing = matcher.skipMissing,
-                categorySlug = matcher.categorySlug,
+                categoryKey = matcher.categoryKey,
                 tags = matcher.tags,
                 annotations = matcher.annotations,
             )

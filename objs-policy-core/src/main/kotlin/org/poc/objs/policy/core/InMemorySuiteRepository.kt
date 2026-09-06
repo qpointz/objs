@@ -8,6 +8,7 @@ import org.poc.objs.policy.api.SuiteFolderRollUpModes
 import org.poc.objs.policy.api.SuiteFolderWrite
 import org.poc.objs.policy.api.SuiteRepository
 import org.poc.objs.policy.api.SuiteRollUpStrategyKinds
+import org.poc.objs.policy.api.SuiteTreeValidator
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
@@ -16,6 +17,7 @@ class InMemorySuiteRepository : SuiteRepository {
 
     override fun save(write: PolicySuiteWrite): PolicySuite {
         val suite = materialize(UUID.randomUUID(), write)
+        requireUniqueKey(suite.id, suite.key)
         byId[suite.id] = suite
         return suite
     }
@@ -23,15 +25,25 @@ class InMemorySuiteRepository : SuiteRepository {
     override fun update(id: UUID, write: PolicySuiteWrite): PolicySuite? {
         if (!byId.containsKey(id)) return null
         val suite = materialize(id, write)
+        requireUniqueKey(suite.id, suite.key)
         byId[id] = suite
         return suite
+    }
+
+    private fun requireUniqueKey(id: UUID, key: String) {
+        val other = byId.values.find { it.key == key && it.id != id }
+        if (other != null) {
+            throw InvalidSuiteException("Suite key already exists: $key")
+        }
     }
 
     override fun delete(id: UUID): Boolean = byId.remove(id) != null
 
     override fun findById(id: UUID): PolicySuite? = byId[id]
 
-    override fun list(): List<PolicySuite> = byId.values.sortedBy { it.name.lowercase() }
+    override fun findByKey(key: String): PolicySuite? = byId.values.find { it.key == key }
+
+    override fun list(): List<PolicySuite> = byId.values.sortedBy { it.key.lowercase() }
 
     private fun materialize(id: UUID, write: PolicySuiteWrite): PolicySuite {
         val folders = materializeFolders(write.folders)
@@ -44,9 +56,11 @@ class InMemorySuiteRepository : SuiteRepository {
                 "Unknown rollUpStrategyKind '$rollUpKind' (C-27 supports BUILTIN only)",
             )
         }
+        val key = write.key.trim().ifBlank { throw InvalidSuiteException("Suite key is required") }
         return PolicySuite(
             id = id,
-            name = write.name.trim().ifBlank { throw InvalidSuiteException("Suite name is required") },
+            key = key,
+            name = write.name.trim().ifBlank { key },
             rollUpStrategyKind = rollUpKind,
             executionStrategyKind = write.executionStrategyKind.trim().ifBlank {
                 throw InvalidSuiteException("executionStrategyKind is required")

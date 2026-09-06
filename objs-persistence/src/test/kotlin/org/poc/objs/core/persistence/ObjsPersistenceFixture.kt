@@ -43,4 +43,7 @@ abstract class ObjsPersistenceFixture {
     protected val ledger get() = db.seedLedger
     protected val ledgerRepo get() = db.seedLedgerDao
     protected val uow get() = db.uow
+    protected val policyCategories get() = db.policyCategories
+    protected val policies get() = db.policies
+    protected val policySuites get() = db.policySuites
 }

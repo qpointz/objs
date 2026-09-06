@@ -11,6 +11,7 @@ description = "Objs policy REST service and Boot autoconfiguration (workbench pl
 dependencies {
     api(project(":objs-policy-core"))
     api(project(":objs-policy-drools"))
+    api(project(":objs-persistence"))
     api(project(":objs-service"))
     api(libs.kotlin.reflect)
 }

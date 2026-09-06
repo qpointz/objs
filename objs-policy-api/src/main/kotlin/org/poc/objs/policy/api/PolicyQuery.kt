@@ -12,6 +12,8 @@ data class PolicyQuery(
     val annotations: Map<String, String> = emptyMap(),
     /** Case-insensitive substring on [Policy.name]; blank/null = no name filter. */
     val nameContains: String? = null,
+    /** Case-insensitive substring on [Policy.key]; blank/null = no key filter. */
+    val keyContains: String? = null,
 )
 
 object PolicyTags {

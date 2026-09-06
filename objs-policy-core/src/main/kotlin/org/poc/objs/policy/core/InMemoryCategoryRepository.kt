@@ -3,9 +3,9 @@ package org.poc.objs.policy.core
 import org.poc.objs.policy.api.Category
 import org.poc.objs.policy.api.CategoryInUseException
 import org.poc.objs.policy.api.CategoryRepository
-import org.poc.objs.policy.api.CategorySlugs
 import org.poc.objs.policy.api.CategoryWrite
 import org.poc.objs.policy.api.Policy
+import org.poc.objs.policy.api.PolicyKeys
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
@@ -16,39 +16,39 @@ class InMemoryCategoryRepository(
     private val isReferenced: (UUID) -> Boolean = { false },
 ) : CategoryRepository {
     private val byId = ConcurrentHashMap<UUID, Category>()
-    private val bySlug = ConcurrentHashMap<String, UUID>()
+    private val byKey = ConcurrentHashMap<String, UUID>()
 
     override fun save(write: CategoryWrite): Category {
-        val slug = CategorySlugs.requireValid(write.slug.trim())
-        require(write.displayName.isNotBlank()) { "Category displayName must not be blank" }
-        require(!bySlug.containsKey(slug)) { "Category slug already exists: $slug" }
+        val key = PolicyKeys.requireValid(write.key.trim())
+        require(write.name.isNotBlank()) { "Category name must not be blank" }
+        require(!byKey.containsKey(key)) { "Category key already exists: $key" }
 
         val stored = Category(
             id = UUID.randomUUID(),
-            displayName = write.displayName.trim(),
-            slug = slug,
+            name = write.name.trim(),
+            key = key,
         )
         byId[stored.id] = stored
-        bySlug[slug] = stored.id
+        byKey[key] = stored.id
         return stored
     }
 
     override fun update(id: UUID, write: CategoryWrite): Category? {
         val existing = byId[id] ?: return null
-        val slug = CategorySlugs.requireValid(write.slug.trim())
-        require(write.displayName.isNotBlank()) { "Category displayName must not be blank" }
-        val other = bySlug[slug]
-        require(other == null || other == id) { "Category slug already exists: $slug" }
+        val key = PolicyKeys.requireValid(write.key.trim())
+        require(write.name.isNotBlank()) { "Category name must not be blank" }
+        val other = byKey[key]
+        require(other == null || other == id) { "Category key already exists: $key" }
 
-        if (existing.slug != slug) {
-            bySlug.remove(existing.slug)
+        if (existing.key != key) {
+            byKey.remove(existing.key)
         }
         val updated = existing.copy(
-            displayName = write.displayName.trim(),
-            slug = slug,
+            name = write.name.trim(),
+            key = key,
         )
         byId[id] = updated
-        bySlug[slug] = id
+        byKey[key] = id
         return updated
     }
 
@@ -58,17 +58,17 @@ class InMemoryCategoryRepository(
             throw CategoryInUseException(id)
         }
         byId.remove(id)
-        bySlug.remove(existing.slug)
+        byKey.remove(existing.key)
         return true
     }
 
     override fun findById(id: UUID): Category? = byId[id]
 
-    override fun findBySlug(slug: String): Category? =
-        bySlug[slug]?.let { byId[it] }
+    override fun findByKey(key: String): Category? =
+        byKey[key]?.let { byId[it] }
 
     override fun list(): List<Category> =
-        byId.values.sortedBy { it.slug }
+        byId.values.sortedBy { it.key }
 }
 
 /**

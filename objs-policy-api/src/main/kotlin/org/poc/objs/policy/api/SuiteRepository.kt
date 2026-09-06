@@ -14,6 +14,8 @@ interface SuiteRepository {
 
     fun findById(id: UUID): PolicySuite?
 
+    fun findByKey(key: String): PolicySuite?
+
     fun list(): List<PolicySuite>
 }
 

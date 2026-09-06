@@ -26,8 +26,8 @@ class InMemoryPolicyRepositoryTest {
         assertThat(v1.id).isNotEqualTo(v2.id)
         assertThat(v1.version).isEqualTo("0.1")
         assertThat(v2.version).isEqualTo("0.1")
-        assertThat(repo.resolve(PolicyRef.ByName("gate"))).isEqualTo(v2)
-        assertThat(repo.resolve(PolicyRef.ByName("gate", serial = v1.serial))).isEqualTo(v1)
+        assertThat(repo.resolve(PolicyRef.ByKey("gate"))).isEqualTo(v2)
+        assertThat(repo.resolve(PolicyRef.ByKey("gate", serial = v1.serial))).isEqualTo(v1)
         assertThat(repo.resolve(PolicyRef.ById(v1.id))).isEqualTo(v1)
     }
 
@@ -53,6 +53,7 @@ class InMemoryPolicyRepositoryTest {
         val repo = stores.policies
         val saved = repo.save(
             PolicyWrite(
+                key = "gate",
                 name = "gate",
                 engineKind = PolicyEngineKinds.CUSTOM,
                 body = "PASS",
@@ -65,6 +66,7 @@ class InMemoryPolicyRepositoryTest {
         assertThatThrownBy {
             repo.save(
                 PolicyWrite(
+                    key = "x",
                     name = "x",
                     engineKind = PolicyEngineKinds.CUSTOM,
                     body = "PASS",

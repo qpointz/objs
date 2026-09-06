@@ -154,8 +154,8 @@ class SuiteMatcherExpander(
     }
 
     private fun resolveMetadata(matcher: MetadataMatcher): SuiteEffectiveSet {
-        val categoryId = matcher.categorySlug?.trim()?.takeIf { it.isNotEmpty() }?.let { slug ->
-            categories.list().find { it.slug == slug }?.id
+        val categoryId = matcher.categoryKey?.trim()?.takeIf { it.isNotEmpty() }?.let { key ->
+            categories.list().find { it.key == key }?.id
                 ?: return SuiteEffectiveSet(emptyList())
         }
         val matched = policies.query(
@@ -165,12 +165,12 @@ class SuiteMatcherExpander(
                 annotations = matcher.annotations,
             ),
         )
-        // Latest per name among matches (catalog may have multiple serials / ids per name).
-        val latestByName = linkedMapOf<String, Policy>()
+        // Latest per key among matches (catalog may have multiple serials / ids per key).
+        val latestByKey = linkedMapOf<String, Policy>()
         for (p in matched.sortedBy { it.serial }) {
-            latestByName[p.name] = p
+            latestByKey[p.key] = p
         }
-        val list = latestByName.values.toList()
+        val list = latestByKey.values.toList()
         val uniq = linkedMapOf<UUID, Policy>()
         for (p in list) {
             if (uniq.put(p.id, p) != null) {

@@ -17,6 +17,7 @@ class PolicyKnowledgeBaseCacheTest {
         val policy =
             stores.policies.save(
                 PolicyWrite(
+                    key = "bad",
                     name = "bad",
                     engineKind = PolicyEngineKinds.DROOLS,
                     categoryId = categoryId,

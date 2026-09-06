@@ -1,11 +1,10 @@
-package org.poc.objs.policy.core
+package org.poc.objs.policy.api
 
-import org.poc.objs.policy.api.InvalidSuiteException
-import org.poc.objs.policy.api.SuiteFolder
 import java.util.UUID
 
 /**
  * Suite folder DAG: single parent, exactly one root, no cycles, unique keys, parent refs exist.
+ * Shared by in-memory (`:objs-policy-core`) and JPA (`:objs-persistence`) [SuiteRepository] impls.
  */
 object SuiteTreeValidator {
     fun validate(folders: List<SuiteFolder>) {

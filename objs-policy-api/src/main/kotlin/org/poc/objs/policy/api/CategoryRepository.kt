@@ -18,7 +18,7 @@ interface CategoryRepository {
 
     fun findById(id: UUID): Category?
 
-    fun findBySlug(slug: String): Category?
+    fun findByKey(key: String): Category?
 
     fun list(): List<Category>
 }

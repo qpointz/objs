@@ -67,20 +67,20 @@ data class StaticListMatcher(
 ) : SuiteMatcher()
 
 /**
- * Metadata matcher: at least one of [categorySlug], [tags], [annotations] must be set;
+ * Metadata matcher: at least one of [categoryKey], [tags], [annotations] must be set;
  * criteria combine with AND. Resolves to latest matching policies.
  */
 data class MetadataMatcher(
     override val mode: SuiteMatcherMode = SuiteMatcherMode.INCLUDE,
     override val skipMissing: Boolean = false,
-    val categorySlug: String? = null,
+    val categoryKey: String? = null,
     val tags: List<String> = emptyList(),
     val annotations: Map<String, String> = emptyMap(),
 ) : SuiteMatcher() {
     init {
         require(
-            !categorySlug.isNullOrBlank() || tags.isNotEmpty() || annotations.isNotEmpty(),
-        ) { "MetadataMatcher requires at least one of categorySlug, tags, annotations" }
+            !categoryKey.isNullOrBlank() || tags.isNotEmpty() || annotations.isNotEmpty(),
+        ) { "MetadataMatcher requires at least one of categoryKey, tags, annotations" }
     }
 }
 
@@ -105,6 +105,9 @@ data class SuiteFolder(
 
 data class PolicySuite(
     val id: UUID,
+    /** Logical identity (G-P36seed); MERGE / resolve key. */
+    val key: String,
+    /** Display label; defaults to [key] when blank. */
     val name: String,
     /** Which roll-up strategy implementation to use ([SuiteRollUpStrategyKinds]). */
     val rollUpStrategyKind: String = SuiteRollUpStrategyKinds.BUILTIN,
@@ -129,7 +132,10 @@ data class SuiteFolderWrite(
 )
 
 data class PolicySuiteWrite(
-    val name: String,
+    /** Logical identity (G-P36seed); MERGE / resolve key. */
+    val key: String,
+    /** Display label; defaults to [key] when blank. */
+    val name: String = key,
     val rollUpStrategyKind: String = SuiteRollUpStrategyKinds.BUILTIN,
     val executionStrategyKind: String = SuiteExecutionStrategyKinds.DEDUPE,
     val folders: List<SuiteFolderWrite> = emptyList(),

@@ -16,22 +16,24 @@ import kotlin.math.max
 /**
  * Process-local [PolicyRepository]. Each [save] / [update] allocates a new [Policy.serial]
  * using the same timestamp rule as object head versions (`max(nowMillis, previous + 1)`).
- * Requires a known [PolicyWrite.categoryId] in [categories].
+ * Requires a known [PolicyWrite.categoryId] in [categories]. Identity is [Policy.key]
+ * (G-P36seed); [Policy.name] is a separate display label.
  */
 class InMemoryPolicyRepository(
     private val categories: CategoryRepository,
 ) : PolicyRepository {
     private val byId = ConcurrentHashMap<UUID, Policy>()
-    private val serialsByName = ConcurrentHashMap<String, ConcurrentHashMap<Long, Policy>>()
-    private val latestByName = ConcurrentHashMap<String, AtomicLong>()
+    private val serialsByKey = ConcurrentHashMap<String, ConcurrentHashMap<Long, Policy>>()
+    private val latestByKey = ConcurrentHashMap<String, AtomicLong>()
 
     override fun save(write: PolicyWrite): Policy {
         val normalized = normalizeWrite(write)
-        val previous = latestByName[normalized.name]?.get()
+        val previous = latestByKey[normalized.key]?.get()
         val nextSerial = nextSerial(previous)
 
         val stored = Policy(
             id = UUID.randomUUID(),
+            key = normalized.key,
             name = normalized.name,
             serial = nextSerial,
             engineKind = normalized.engineKind,
@@ -59,6 +61,7 @@ class InMemoryPolicyRepository(
         unindex(existing)
 
         val updated = existing.copy(
+            key = normalized.key,
             name = normalized.name,
             serial = nextSerial,
             engineKind = normalized.engineKind,
@@ -87,10 +90,10 @@ class InMemoryPolicyRepository(
     override fun resolve(ref: PolicyRef): Policy? =
         when (ref) {
             is PolicyRef.ById -> findById(ref.id)
-            is PolicyRef.ByName -> {
-                val serials = serialsByName[ref.name] ?: return null
+            is PolicyRef.ByKey -> {
+                val serials = serialsByKey[ref.key] ?: return null
                 if (ref.serial == null) {
-                    val latest = latestByName[ref.name]?.get() ?: return null
+                    val latest = latestByKey[ref.key]?.get() ?: return null
                     serials[latest]
                 } else {
                     serials[ref.serial]
@@ -100,14 +103,15 @@ class InMemoryPolicyRepository(
 
     override fun findById(id: UUID): Policy? = byId[id]
 
-    override fun findByName(name: String): List<Policy> =
-        serialsByName[name]?.values?.sortedBy { it.serial } ?: emptyList()
+    override fun findByKey(key: String): List<Policy> =
+        serialsByKey[key]?.values?.sortedBy { it.serial } ?: emptyList()
 
     override fun list(): List<Policy> =
-        byId.values.sortedWith(compareBy({ it.name }, { it.serial }))
+        byId.values.sortedWith(compareBy({ it.key }, { it.serial }))
 
     override fun query(query: PolicyQuery): List<Policy> {
         val nameNeedle = query.nameContains?.trim()?.takeIf { it.isNotEmpty() }?.lowercase()
+        val keyNeedle = query.keyContains?.trim()?.takeIf { it.isNotEmpty() }?.lowercase()
         val wantTags = PolicyTags.normalize(query.tags)
         return list().filter { p ->
             if (query.categoryId != null && p.categoryId != query.categoryId) return@filter false
@@ -118,34 +122,35 @@ class InMemoryPolicyRepository(
                 }
             }
             if (nameNeedle != null && !p.name.lowercase().contains(nameNeedle)) return@filter false
+            if (keyNeedle != null && !p.key.lowercase().contains(keyNeedle)) return@filter false
             true
         }
     }
 
     private fun index(policy: Policy) {
-        serialsByName
-            .computeIfAbsent(policy.name) { ConcurrentHashMap() }[policy.serial] = policy
-        latestByName.computeIfAbsent(policy.name) { AtomicLong(policy.serial) }
+        serialsByKey
+            .computeIfAbsent(policy.key) { ConcurrentHashMap() }[policy.serial] = policy
+        latestByKey.computeIfAbsent(policy.key) { AtomicLong(policy.serial) }
             .updateAndGet { maxOf(it, policy.serial) }
     }
 
     private fun unindex(policy: Policy) {
-        serialsByName[policy.name]?.remove(policy.serial)
-        if (serialsByName[policy.name].isNullOrEmpty()) {
-            serialsByName.remove(policy.name)
-            latestByName.remove(policy.name)
+        serialsByKey[policy.key]?.remove(policy.serial)
+        if (serialsByKey[policy.key].isNullOrEmpty()) {
+            serialsByKey.remove(policy.key)
+            latestByKey.remove(policy.key)
         } else {
-            val maxLeft = serialsByName[policy.name]!!.keys.maxOrNull()
+            val maxLeft = serialsByKey[policy.key]!!.keys.maxOrNull()
             if (maxLeft != null) {
-                latestByName[policy.name] = AtomicLong(maxLeft)
+                latestByKey[policy.key] = AtomicLong(maxLeft)
             } else {
-                latestByName.remove(policy.name)
+                latestByKey.remove(policy.key)
             }
         }
     }
 
     private fun normalizeWrite(write: PolicyWrite): PolicyWrite {
-        require(write.name.isNotBlank()) { "Policy name must not be blank" }
+        require(write.key.isNotBlank()) { "Policy key must not be blank" }
         require(write.engineKind.isNotBlank()) { "engineKind must not be blank" }
         val version = write.version.trim()
         require(version.isNotEmpty()) { "version must not be blank" }
@@ -153,8 +158,11 @@ class InMemoryPolicyRepository(
             "Unknown categoryId: ${write.categoryId}"
         }
         val tags = PolicyTags.requireNonEmpty(write.tags)
+        val key = write.key.trim()
+        val name = write.name.trim().ifBlank { key }
         return write.copy(
-            name = write.name.trim(),
+            key = key,
+            name = name,
             tags = tags,
             annotations = write.annotations.toMap(),
             version = version,

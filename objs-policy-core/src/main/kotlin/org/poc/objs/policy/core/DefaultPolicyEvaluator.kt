@@ -195,12 +195,12 @@ class DefaultPolicyEvaluator(
     private fun refLabel(ref: PolicyRef): String =
         when (ref) {
             is PolicyRef.ById -> "id=${ref.id}"
-            is PolicyRef.ByName -> ref.name
+            is PolicyRef.ByKey -> ref.key
         }
 
     private fun refSerialHint(ref: PolicyRef): Long =
         when (ref) {
             is PolicyRef.ById -> 0L
-            is PolicyRef.ByName -> ref.serial ?: 0L
+            is PolicyRef.ByKey -> ref.serial ?: 0L
         }
 }

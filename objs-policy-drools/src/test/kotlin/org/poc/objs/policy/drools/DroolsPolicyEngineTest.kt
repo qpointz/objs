@@ -200,6 +200,7 @@ class DroolsPolicyEngineTest {
         val repo = stores.policies
         val saved = repo.save(
             PolicyWrite(
+                key = "critical-component",
                 name = "critical-component",
                 engineKind = PolicyEngineKinds.DROOLS,
                 body = criticalComponentRule,
@@ -214,7 +215,7 @@ class DroolsPolicyEngineTest {
 
         val result = evaluator.evaluate(
             fragmentWithSeverity("CRITICAL").asGraphContents(),
-            listOf(PolicyRef.ByName("critical-component")),
+            listOf(PolicyRef.ByKey("critical-component")),
         )
 
         assertThat(result.outcomes).singleElement().satisfies({ o ->
@@ -246,6 +247,7 @@ class DroolsPolicyEngineTest {
     private fun savedPolicy(body: String) =
         stores.policies.save(
             PolicyWrite(
+                key = "fixture",
                 name = "fixture",
                 engineKind = PolicyEngineKinds.DROOLS,
                 body = body,

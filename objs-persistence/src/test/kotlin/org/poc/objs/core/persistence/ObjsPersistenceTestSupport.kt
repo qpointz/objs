@@ -6,6 +6,17 @@ import org.hibernate.cfg.AvailableSettings
 import org.hibernate.cfg.Configuration
 import org.poc.objs.api.domain.CatalogSupport
 import org.poc.objs.api.versioning.ExplicitOnlyVersioningStrategy
+import org.poc.objs.core.persistence.policy.JpaCategoryRepository
+import org.poc.objs.core.persistence.policy.JpaPolicyRepository
+import org.poc.objs.core.persistence.policy.JpaSuiteRepository
+import org.poc.objs.core.persistence.policy.PolicyCategoryDao
+import org.poc.objs.core.persistence.policy.PolicyCategoryRecord
+import org.poc.objs.core.persistence.policy.PolicyDao
+import org.poc.objs.core.persistence.policy.PolicyRecord
+import org.poc.objs.core.persistence.policy.PolicySuiteDao
+import org.poc.objs.core.persistence.policy.PolicySuiteFolderDao
+import org.poc.objs.core.persistence.policy.PolicySuiteFolderRecord
+import org.poc.objs.core.persistence.policy.PolicySuiteRecord
 import org.poc.objs.core.persistence.tx.EntityManagerUnitOfWork
 import org.poc.objs.core.persistence.tx.UnitOfWork
 import org.poc.objs.core.seed.AllowedEdgeRuleSeedHandler
@@ -48,6 +59,14 @@ class ObjsPersistenceTestSupport private constructor(
     val schemaCatalogDao = SchemaCatalogDao(uow)
     val allowedEdgeRuleDao = AllowedEdgeRuleDao(uow)
     val seedLedgerDao = SeedLedgerDao(uow)
+    val policyCategoryDao = PolicyCategoryDao(uow)
+    val policyDao = PolicyDao(uow)
+    val policySuiteDao = PolicySuiteDao(uow)
+    val policySuiteFolderDao = PolicySuiteFolderDao(uow)
+
+    val policyCategories = JpaCategoryRepository(policyCategoryDao, policyDao, uow)
+    val policies = JpaPolicyRepository(policyDao, policyCategoryDao, uow)
+    val policySuites = JpaSuiteRepository(policySuiteDao, policySuiteFolderDao, uow)
 
     val schemaCatalog = JpaSchemaCatalog(schemaCatalogDao, uow, catalogProperties, catalogTicker)
     val edgeCatalog = JpaAllowedEdgeCatalog(allowedEdgeRuleDao, uow, catalogProperties, catalogTicker)
@@ -217,6 +236,10 @@ class ObjsPersistenceTestSupport private constructor(
             EdgeVersionRecord::class.java,
             GraphVersionMemberRecord::class.java,
             GraphVersionEdgeRecord::class.java,
+            PolicyCategoryRecord::class.java,
+            PolicyRecord::class.java,
+            PolicySuiteRecord::class.java,
+            PolicySuiteFolderRecord::class.java,
         )
     }
 }

@@ -6,12 +6,16 @@ import java.util.UUID
  * Foundation policy artefact: metadata + engine kind + opaque evaluation body
  * (+ optional applicability fields).
  *
- * Identity: [name] + immutable [serial]. User-managed [version] is the major.minor string
- * (e.g. `1.2`). Full display is typically `[version] · [serial]`. [serial] uses the same
- * timestamp allocation as object head versions.
+ * Identity: [key] (human-managed logical identity, G-P36seed) + immutable [serial].
+ * [name] is a separate display label (may equal [key]). User-managed [version] is the
+ * major.minor string (e.g. `1.2`). Full display is typically `[version] · [serial]`.
+ * [serial] uses the same timestamp allocation as object head versions.
  */
 data class Policy(
     val id: UUID,
+    /** Logical identity (G-P36seed); MERGE / resolve key. */
+    val key: String,
+    /** Display label; defaults to [key] in writes when blank. */
     val name: String,
     /** Timestamp serial (object head-version rule); pin / latest key. */
     val serial: Long,
@@ -31,7 +35,10 @@ data class Policy(
 
 /** Write payload for [PolicyRepository.save] — repository allocates id and [Policy.serial]. */
 data class PolicyWrite(
-    val name: String,
+    /** Logical identity (G-P36seed); MERGE / resolve key. */
+    val key: String,
+    /** Display label; defaults to [key] when blank. */
+    val name: String = key,
     val engineKind: String,
     val body: String,
     val categoryId: UUID,

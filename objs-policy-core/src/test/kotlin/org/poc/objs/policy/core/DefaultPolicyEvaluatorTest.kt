@@ -26,7 +26,7 @@ class DefaultPolicyEvaluatorTest {
 
     private val stores = InMemoryPolicyStores()
     private val categoryId = stores.categories.save(
-        org.poc.objs.policy.api.CategoryWrite(displayName = "General", slug = "general"),
+        org.poc.objs.policy.api.CategoryWrite(name = "General", key = "general"),
     ).id
 
     private val entityA = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
@@ -42,7 +42,7 @@ class DefaultPolicyEvaluatorTest {
 
         val result = evaluator.evaluate(
             okFragment(),
-            listOf(PolicyRef.ByName("ok"), PolicyRef.ByName("bad")),
+            listOf(PolicyRef.ByKey("ok"), PolicyRef.ByKey("bad")),
         )
 
         assertThat(result.outcomes).hasSize(2)
@@ -60,7 +60,7 @@ class DefaultPolicyEvaluatorTest {
         val evaluator = DefaultPolicyEvaluator(repo)
 
         assertThatThrownBy {
-            evaluator.evaluate(conflictingFragment(), listOf(PolicyRef.ByName("ok")))
+            evaluator.evaluate(conflictingFragment(), listOf(PolicyRef.ByKey("ok")))
         }.isInstanceOf(PolicyEvaluationException::class.java)
             .hasMessageContaining("Refuse policy evaluate")
     }
@@ -78,7 +78,7 @@ class DefaultPolicyEvaluatorTest {
         )
         val evaluator = DefaultPolicyEvaluator(repository = repo, engines = engines)
 
-        val preview = evaluator.applicability(okFragment(), listOf(PolicyRef.ByName("ok")))
+        val preview = evaluator.applicability(okFragment(), listOf(PolicyRef.ByKey("ok")))
         assertThat(preview).hasSize(1)
         assertThat(preview[0].verdict.decision).isEqualTo(ApplicabilityDecision.IN_SCOPE)
         assertThat(engineCalls).isZero()
@@ -92,6 +92,7 @@ class DefaultPolicyEvaluatorTest {
         repo.save(write("b", "ERROR"))
         repo.save(
             PolicyWrite(
+                key = "c",
                 name = "c",
                 engineKind = "DROOLS",
                 body = "x",
@@ -101,6 +102,7 @@ class DefaultPolicyEvaluatorTest {
         )
         repo.save(
             PolicyWrite(
+                key = "d",
                 name = "d",
                 engineKind = PolicyEngineKinds.CUSTOM,
                 body = "PASS",
@@ -114,10 +116,10 @@ class DefaultPolicyEvaluatorTest {
         val result = evaluator.evaluate(
             okFragment(),
             listOf(
-                PolicyRef.ByName("a"),
-                PolicyRef.ByName("b"),
-                PolicyRef.ByName("c"),
-                PolicyRef.ByName("d"),
+                PolicyRef.ByKey("a"),
+                PolicyRef.ByKey("b"),
+                PolicyRef.ByKey("c"),
+                PolicyRef.ByKey("d"),
             ),
         )
 
@@ -143,9 +145,9 @@ class DefaultPolicyEvaluatorTest {
         val result = evaluator.evaluate(
             okFragment(),
             listOf(
-                PolicyRef.ByName("gate", serial = v1.serial),
-                PolicyRef.ByName("gate"),
-                PolicyRef.ByName("missing"),
+                PolicyRef.ByKey("gate", serial = v1.serial),
+                PolicyRef.ByKey("gate"),
+                PolicyRef.ByKey("missing"),
                 PolicyRef.ById(v2.id),
             ),
         )
@@ -169,7 +171,7 @@ class DefaultPolicyEvaluatorTest {
         }
         val evaluator = DefaultPolicyEvaluator(repository = repo, applicabilitySelector = selector)
 
-        val result = evaluator.evaluate(okFragment(), listOf(PolicyRef.ByName("gate")))
+        val result = evaluator.evaluate(okFragment(), listOf(PolicyRef.ByKey("gate")))
         assertThat(result.outcomes).singleElement().satisfies({
             assertThat(it.status).isEqualTo(PolicyOutcomeStatus.NOT_APPLICABLE)
             assertThat(it.notApplicableReason).isEqualTo("no database")
@@ -205,7 +207,7 @@ class DefaultPolicyEvaluatorTest {
             engines = engines,
         )
 
-        val result = evaluator.evaluate(okFragment(), listOf(PolicyRef.ByName("with-findings")))
+        val result = evaluator.evaluate(okFragment(), listOf(PolicyRef.ByKey("with-findings")))
         assertThat(sawWired).isTrue()
         val outcome = result.outcomes.single()
         assertThat(outcome.status).isEqualTo(PolicyOutcomeStatus.FAIL)
@@ -220,12 +222,13 @@ class DefaultPolicyEvaluatorTest {
         repo.save(write("bare-fail", "FAIL"))
         val evaluator = DefaultPolicyEvaluator(repo)
 
-        val outcome = evaluator.evaluate(okFragment(), listOf(PolicyRef.ByName("bare-fail"))).outcomes.single()
+        val outcome = evaluator.evaluate(okFragment(), listOf(PolicyRef.ByKey("bare-fail"))).outcomes.single()
         assertThat(outcome.status).isEqualTo(PolicyOutcomeStatus.FAIL)
         assertThat(outcome.findings).isEmpty()
     }
 
     private fun write(name: String, body: String) = PolicyWrite(
+        key = name,
         name = name,
         engineKind = PolicyEngineKinds.CUSTOM,
         body = body,

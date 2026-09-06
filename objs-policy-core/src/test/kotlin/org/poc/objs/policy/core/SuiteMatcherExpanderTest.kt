@@ -19,12 +19,13 @@ class SuiteMatcherExpanderTest {
 
     @Test
     fun shouldExpandStaticListAndMetadata() {
-        val (stores, categoryId) = storesWithCategory(slug = "general")
+        val (stores, categoryId) = storesWithCategory(key = "general")
         val p1 = stores.policies.save(write("alpha", "PASS", categoryId, tags = listOf("baseline")))
         val p2 = stores.policies.save(write("beta", "FAIL", categoryId, tags = listOf("other")))
         val rootId = UUID.randomUUID()
         val suite = PolicySuite(
             id = UUID.randomUUID(),
+            key = "s",
             name = "S",
             folders = listOf(
                 SuiteFolder(
@@ -33,7 +34,7 @@ class SuiteMatcherExpanderTest {
                     name = "Root",
                     matchers = listOf(
                         StaticListMatcher(entries = listOf(StaticPolicyEntry(p1.id))),
-                        MetadataMatcher(categorySlug = "general", tags = listOf("other")),
+                        MetadataMatcher(categoryKey = "general", tags = listOf("other")),
                     ),
                 ),
             ),
@@ -50,6 +51,7 @@ class SuiteMatcherExpanderTest {
         val missingId = UUID.randomUUID()
         val suite = PolicySuite(
             id = UUID.randomUUID(),
+            key = "s",
             name = "S",
             folders = listOf(
                 SuiteFolder(
@@ -75,6 +77,7 @@ class SuiteMatcherExpanderTest {
         val childId = UUID.randomUUID()
         val suite = PolicySuite(
             id = UUID.randomUUID(),
+            key = "s",
             name = "S",
             folders = listOf(
                 SuiteFolder(id = rootId, key = "root", name = "Root"),
@@ -102,6 +105,7 @@ class SuiteMatcherExpanderTest {
         val rootId = UUID.randomUUID()
         val suite = PolicySuite(
             id = UUID.randomUUID(),
+            key = "s",
             name = "S",
             folders = listOf(
                 SuiteFolder(
