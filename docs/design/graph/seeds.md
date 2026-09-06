@@ -22,7 +22,7 @@ kind: ObjectSchema | AllowedEdgeRule | Graph | *(application-defined)* | *(plann
 | Field | Required | Notes |
 |-------|----------|--------|
 | `apiVersion` | **yes** | Only `objs.poc.org/v1` is accepted |
-| `kind` | **yes** | Built-in: `ObjectSchema`, `AllowedEdgeRule`, `Graph`. Applications register more via `SeedDocumentHandler` beans. **C-28:** policy seed kinds — see [`docs/design/policy/`](../policy/) and [`policy-seeds-persistence` GAPS](../../workitems/in-progress/policy-seeds-persistence/GAPS.md) |
+| `kind` | **yes** | Built-in: `ObjectSchema`, `AllowedEdgeRule`, `Graph`. Applications register more via `SeedDocumentHandler` beans. **C-28:** policy seed kinds — see [`docs/design/policy/`](../policy/) and [`policy-seeds-persistence` GAPS](../../workitems/completed/20260906-policy-seeds-persistence/GAPS.md) |
 | other root keys | kind-specific | Flat at document root — no Kubernetes-style `metadata` / `spec` |
 
 Seed documents deliberately follow Mill's flat format. `apiVersion` and `kind` are the only
@@ -44,7 +44,7 @@ Unsupported `apiVersion` or `kind` values fail the **whole** resource (no partia
 
 All seed import for **graph/registry kinds** is **MERGE** (upsert). Omission never deletes. There is no `REPLACE` mode in v1 for ObjectSchema / AllowedEdgeRule / Graph.
 
-**C-28 policy catalog kinds** extend the envelope with **apply/MERGE**, **replace**, and **Drop\*** kinds — see [`policy-seeds-persistence/GAPS.md`](../../workitems/in-progress/policy-seeds-persistence/GAPS.md). Identity = **`key`**. Fail whole resource; do not update seed ledger on failure.
+**C-28 policy catalog kinds** extend the envelope with **apply/MERGE**, **replace**, and **Drop\*** kinds — see [`policy-seeds-persistence/GAPS.md`](../../workitems/completed/20260906-policy-seeds-persistence/GAPS.md). Identity = **`key`**. Fail whole resource; do not update seed ledger on failure.
 
 | Kind | Upsert identity | Notes |
 |------|-----------------|-------|

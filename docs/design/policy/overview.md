@@ -491,7 +491,7 @@ flowchart TB
 
 ## 12. Seeds (C-28 locked)
 
-Policies, categories, and suites use the graph-seeds envelope via `SeedDocumentHandler` (`objs-api`). Normative: [`policy-seeds-persistence/GAPS.md`](../../workitems/in-progress/policy-seeds-persistence/GAPS.md).
+Policies, categories, and suites use the graph-seeds envelope via `SeedDocumentHandler` (`objs-api`). Normative: [`policy-seeds-persistence/GAPS.md`](../../workitems/completed/20260906-policy-seeds-persistence/GAPS.md).
 
 **Kinds (independent docs):** `Category`, `Policy`, `PolicySuite`, `DropCategory`, `DropPolicy`, `DropPolicySuite`.
 
@@ -676,7 +676,7 @@ SBOM Application / Portfolio binding stays in the app. Foundation never requires
 | C-31 Workbench Policy play | [`policy-workbench/GAPS.md`](../../workitems/completed/20260904-policy-workbench/GAPS.md) |
 | C-32 Metadata | [`policy-metadata/GAPS.md`](../../workitems/completed/20260905-policy-metadata/GAPS.md) |
 | C-27 Suites | [`policy-suites/GAPS.md`](../../workitems/completed/20260905-policy-suites/GAPS.md) · [`suites.md`](suites.md) |
-| C-28 Seeds + persistence | [`policy-seeds-persistence/GAPS.md`](../../workitems/in-progress/policy-seeds-persistence/GAPS.md) |
+| C-28 Seeds + persistence | [`policy-seeds-persistence/GAPS.md`](../../workitems/completed/20260906-policy-seeds-persistence/GAPS.md) |
 | C-29 Batch | [`policy-batch/GAPS.md`](../../workitems/planned/policy-batch/GAPS.md) |
 | C-30 Example/REST consumer | [`policy-consumer/GAPS.md`](../../workitems/planned/policy-consumer/GAPS.md) |
 

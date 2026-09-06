@@ -57,10 +57,11 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`policy-workbench`](completed/20260904-policy-workbench/STORY.md) — Policy playground UI: `:objs-policy-service` + `/policy` Visual/Data, Check/Evaluate (C-31 / U-9). WI-000…WI-004.
 - [`policy-metadata`](completed/20260905-policy-metadata/STORY.md) — Policy catalog metadata: categories, tags, annotations; `version` + timestamp `serial`; workbench tree navigation (C-32 / U-10). WI-000…WI-004.
 - [`policy-suites`](completed/20260905-policy-suites/STORY.md) — Suite folder trees, matchers, `evaluateSuite` wrapper, Builtin roll-up (folder `rollUpMode`), Suites workbench subnav (C-27). WI-000…WI-006.
+- [`policy-seeds-persistence`](completed/20260906-policy-seeds-persistence/STORY.md) — Policy (+suite) catalog JPA + seeds (`key`, Drop*, REPLACE/workbench export); SBOM Assessment demo (C-28). WI-000…WI-006.
 
 ### In progress
 
-- [`policy-seeds-persistence`](in-progress/policy-seeds-persistence/STORY.md) — Policy (+suite) catalog JPA + seeds (`key`, Drop*, REPLACE/workbench export) (C-28).
+_(none)_
 
 ### Planned
 

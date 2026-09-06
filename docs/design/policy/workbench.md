@@ -58,7 +58,7 @@ Policy route (`/policy`) uses shared chrome with **subnav**:
 
 ## C-28 Persistence + seeds + export
 
-Normative: [`policy-seeds-persistence`](../../workitems/in-progress/policy-seeds-persistence/STORY.md).
+Normative: [`policy-seeds-persistence`](../../workitems/completed/20260906-policy-seeds-persistence/STORY.md).
 
 - Catalog JPA behind the same repository ports when `UnitOfWork` is present (`key` identity).
 - Seed kinds via `SeedDocumentHandler` (`Category` / `Policy` / `PolicySuite` + `Drop*`; apply/replace).

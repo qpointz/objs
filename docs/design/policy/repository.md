@@ -1,6 +1,6 @@
 # Policy repository
 
-**Normative:** G-P19–G-P22 · C-24 GAPS · **C-28** [`policy-seeds-persistence/GAPS.md`](../../workitems/in-progress/policy-seeds-persistence/GAPS.md) (G-P13p, G-P14p, G-P36seed)
+**Normative:** G-P19–G-P22 · C-24 GAPS · **C-28** [`policy-seeds-persistence/GAPS.md`](../../workitems/completed/20260906-policy-seeds-persistence/GAPS.md) (G-P13p, G-P14p, G-P36seed)
 
 ---
 
