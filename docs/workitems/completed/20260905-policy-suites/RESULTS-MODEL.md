@@ -217,7 +217,7 @@ Apps may allocate `evaluationId` before calling foundation, pass it through, and
 
 ## Out of scope here
 
-- Flyway / JPA (C-28+)  
-- Input persist (G-P32s later)  
+- Flyway / JPA for **catalog** (Policy / Category / Suite) — **C-28**  
+- Flyway / JPA for **evaluation results** / input persist — **later** (not mandated by C-28; C-27 deferred G-P11s store + G-P32s)  
 - G-P27s identity field names  
 - Batch header detail (C-29)  

@@ -14,17 +14,19 @@ Extend Policy artefacts so the workbench Policy list can **navigate** larger inv
 | Field | Lock |
 |-------|------|
 | `id` | **UUID** primary |
-| `displayName` | UI label |
-| `slug` | `[a-z]+` only (no spaces, digits, punctuation); unique in registry |
+| `name` | UI / display label |
+| `key` | Human identity (C-28; replaces `slug`); unique in registry |
 
-- Create + rename allowed.
-- **Delete refused** while any policy references the category; delete only when unreferenced.
+- Create + rename of display `name` allowed; `key` is MERGE identity (stable preferred).
+- **Delete refused** while any policy references the category (API); seed **replace** / `DropCategory` may wipe policies then drop category.
 - **Split** `CategoryRepository` (not folded into `PolicyRepository`).
 
 ## Policy fields (additive)
 
 | Field | Lock |
 |-------|------|
+| `key` | Human identity (C-28; was name-as-identity) |
+| `name` | Display label |
 | `categoryId` | UUID — **always required**; must exist in category registry |
 | `tags` | Non-empty `List<String>`; trim + lowercase; dedupe; no max count |
 | `description` | Human-readable text; empty OK |
@@ -32,11 +34,11 @@ Extend Policy artefacts so the workbench Policy list can **navigate** larger inv
 | `version` | User-managed major.minor string (e.g. `1.2`) |
 | `serial` | Timestamp long — same rule as object head versions: `max(nowMillis, previous + 1)` on create/update |
 
-**Display:** `version · serial`. PolicyRef pin / `latest` keyed by **serial**.
+**Display:** `version · serial`. PolicyRef pin / `latest` keyed by **serial** for a given **`key`**.
 
 ## List / query
 
-Filter by category, tag(s), annotation containment/equals; **name** search (case-insensitive substring). **No paging.**
+Filter by category, tag(s), annotation containment/equals; **key** / **name** search (case-insensitive substring). **No paging.**
 
 ## HTTP (`:objs-policy-service`)
 

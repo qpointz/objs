@@ -60,10 +60,10 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 
 ### In progress
 
-_(none)_
+- [`policy-seeds-persistence`](in-progress/policy-seeds-persistence/STORY.md) — Policy (+suite) catalog JPA + seeds (`key`, Drop*, REPLACE/workbench export) (C-28).
 
 ### Planned
 
 - [`store-text-search`](planned/store-text-search/STORY.md) — FB-3 contains/`q`; design first (C-20). Does not block C-18.
-- Policy family after C-27: [`policy-seeds-persistence`](planned/policy-seeds-persistence/STORY.md) (C-28) → [`policy-batch`](planned/policy-batch/STORY.md) (C-29) → [`policy-consumer`](planned/policy-consumer/STORY.md) (C-30).
+- Policy family after C-28: [`policy-batch`](planned/policy-batch/STORY.md) (C-29) → [`policy-consumer`](planned/policy-consumer/STORY.md) (C-30).
 

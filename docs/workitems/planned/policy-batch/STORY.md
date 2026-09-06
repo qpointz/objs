@@ -6,7 +6,7 @@
 **Folder:** [`docs/workitems/planned/policy-batch/`](.)  
 **Backlog:** [C-29](../../BACKLOG.md)  
 **Sequence:** [policy family](../../SEQUENCE.md#policy-family-c-24c-32--normative-order) step **7 / 8**  
-**Before:** [C-28 `policy-seeds-persistence`](../policy-seeds-persistence/STORY.md); suite batch target needs [C-27](../../completed/20260905-policy-suites/STORY.md)  
+**Before:** [C-28 `policy-seeds-persistence`](../../in-progress/policy-seeds-persistence/STORY.md); suite batch target needs [C-27](../../completed/20260905-policy-suites/STORY.md)  
 **Next:** [C-30 `policy-consumer`](../policy-consumer/STORY.md)  
 **Gaps:** [`GAPS.md`](GAPS.md)  
 **Design:** [`docs/design/policy/overview.md`](../../../design/policy/overview.md)

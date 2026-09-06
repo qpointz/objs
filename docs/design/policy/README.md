@@ -60,7 +60,7 @@ C-26 gaps: [`policy-drools/GAPS.md`](../../workitems/completed/20260904-policy-d
 | 3 | C-31 | [`policy-workbench`](../../workitems/completed/20260904-policy-workbench/STORY.md) | **done** (archived) |
 | 4 | C-32 | [`policy-metadata`](../../workitems/completed/20260905-policy-metadata/STORY.md) | **done** |
 | 5 | C-27 | [`policy-suites`](../../workitems/completed/20260905-policy-suites/STORY.md) | **done** |
-| 6 | C-28 | [`policy-seeds-persistence`](../../workitems/planned/policy-seeds-persistence/STORY.md) | planned |
+| 6 | C-28 | [`policy-seeds-persistence`](../../workitems/in-progress/policy-seeds-persistence/STORY.md) | in-progress |
 | 7 | C-29 | [`policy-batch`](../../workitems/planned/policy-batch/STORY.md) | planned |
 | 8 | C-30 | [`policy-consumer`](../../workitems/planned/policy-consumer/STORY.md) | planned (gated) |
 

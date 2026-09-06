@@ -29,31 +29,31 @@ flowchart TB
 
 ---
 
-## Identity and versioning (G-P3)
+## Identity and versioning (G-P3 + C-28 G-P36seed)
 
 | Concept | Lock |
 |---------|------|
-| Logical identity | **name** (string) |
-| Revision | **serial version** — allocated on every **create** and every **update** (immutable revision; object-like serial) |
-| Enabled flag | **None** on Policy — enablement/required belongs to **suites** later (C-27) |
-| Default resolve | **`latest`** serial for that name |
-| Traceability | Every evaluation outcome **must** cite the **executed** policy version |
-| Suite refs (later) | Membership may pin `latest` or a **specific** serial version |
+| Logical identity | **`key`** (string; shared field name with Category / PolicySuite) |
+| Display label | **`name`** (UI; not MERGE identity) |
+| Revision | **serial** — allocated on every **create** and every **update** |
+| Enabled flag | **None** on Policy — enablement belongs to **suites** (C-27) |
+| Default resolve | **`latest`** serial for that **key** |
+| Traceability | Outcomes cite executed policy **key** + serial |
+| Suite refs | May pin `latest` or a **specific** serial |
 
 ```mermaid
 sequenceDiagram
   participant App
   participant Repo as PolicyRepository
-  App->>Repo: save(name=mongo-gate, body=...)
-  Repo-->>App: version=1
-  App->>Repo: save(same name, updated body)
-  Repo-->>App: version=2
-  App->>Repo: resolve(name, latest)
-  Repo-->>App: version=2 revision
-  Note over App: evaluate outcomes record version=2
+  App->>Repo: save(key=mongo-gate, body=...)
+  Repo-->>App: serial=1
+  App->>Repo: save(same key, updated body)
+  Repo-->>App: serial=2
+  App->>Repo: resolve(key, latest)
+  Repo-->>App: serial=2 revision
 ```
 
-**Contrast with free-form version strings:** callers do not invent the serial; the repository does on write.
+**Contrast with free-form version strings:** callers do not invent the serial; the repository does on write. User-managed `version` (major.minor) remains separate (C-32).
 
 ---
 

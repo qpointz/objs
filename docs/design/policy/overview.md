@@ -489,57 +489,44 @@ flowchart TB
 
 ---
 
-## 12. Seeds
+## 12. Seeds (C-28 locked)
 
-Policies and suites **must** have a portable seed format (graph-seeds family).
+Policies, categories, and suites use the graph-seeds envelope via `SeedDocumentHandler` (`objs-api`). Normative: [`policy-seeds-persistence/GAPS.md`](../../workitems/in-progress/policy-seeds-persistence/GAPS.md).
 
-**Draft envelope** (align with [`seeds.md`](../graph/seeds.md) unless `G-P34seed` chooses otherwise):
+**Kinds (independent docs):** `Category`, `Policy`, `PolicySuite`, `DropCategory`, `DropPolicy`, `DropPolicySuite`.
+
+**Modes:** `apply` (MERGE — preserve related) vs `replace` (wipe related then load). Identity = **`key`**.
+
+**Order:** file + document order only (user-owned). Fail whole file → no seed ledger update.
+
+**Export:** REPLACE pack of all present catalog objects + workbench full-setup export (WI-005); policy bodies **inline**.
 
 ```yaml
 apiVersion: objs.poc.org/v1
 kind: Policy
-name: mongo-up-to-date
-version: "1"
+key: mongo-up-to-date
+name: Mongo up to date
+mode: apply
 engineKind: DROOLS
 body: |
   # product DRL — not foundation content
 ---
 apiVersion: objs.poc.org/v1
-kind: PolicySuite
-name: it-governance
-nodes:
-  - key: root
-    name: IT Governance
-    children: [database, api]
-  - key: database
-    name: Database
-    policies: [mongo-up-to-date, no-foxpro]
-  - key: api
-    name: API
-    policies: [registered-in-apigee]
+kind: DropPolicy
+key: obsolete-gate
 ```
 
-```mermaid
-sequenceDiagram
-  participant App as Example app / CLI
-  participant Imp as Policy seed importer
-  participant Repo as PolicyRepository
-  App->>Imp: multi-doc YAML
-  Imp->>Imp: validate all docs
-  Imp->>Repo: MERGE Policy docs
-  Imp->>Repo: MERGE PolicySuite + memberships
-  Note over Imp,Repo: Policies before suite memberships G-P39seed
-```
+Handlers live in **objs-policy\***; no dedicated importer. Content packs stay in examples/apps.
 
-| Concern | Gap |
-|---------|-----|
-| Envelope / kinds / nesting | `G-P34seed`, `G-P35seed` |
-| MERGE identity keys | `G-P36seed` |
-| Inline body vs file ref | `G-P37seed` |
-| `SeedDocumentHandler` vs dedicated importer | `G-P38seed` |
-| Apply order / validation | `G-P39seed`, `G-P40seed` |
-
-**Content** (real governance packs) lives under examples/apps. Foundation owns format + importer only.
+| Concern | Lock |
+|---------|------|
+| Envelope | G-P34seed — `objs.poc.org/v1` |
+| Kinds / Drop* / apply|replace | G-P35seed |
+| `key` identity | G-P36seed |
+| Inline + file/classpath body | G-P37seed |
+| SeedDocumentHandler | G-P38seed |
+| User file/doc order | G-P39seed |
+| Fail file; no ledger on fail | G-P40seed |
 
 ---
 
@@ -689,7 +676,7 @@ SBOM Application / Portfolio binding stays in the app. Foundation never requires
 | C-31 Workbench Policy play | [`policy-workbench/GAPS.md`](../../workitems/completed/20260904-policy-workbench/GAPS.md) |
 | C-32 Metadata | [`policy-metadata/GAPS.md`](../../workitems/completed/20260905-policy-metadata/GAPS.md) |
 | C-27 Suites | [`policy-suites/GAPS.md`](../../workitems/completed/20260905-policy-suites/GAPS.md) · [`suites.md`](suites.md) |
-| C-28 Seeds + persistence | [`policy-seeds-persistence/GAPS.md`](../../workitems/planned/policy-seeds-persistence/GAPS.md) |
+| C-28 Seeds + persistence | [`policy-seeds-persistence/GAPS.md`](../../workitems/in-progress/policy-seeds-persistence/GAPS.md) |
 | C-29 Batch | [`policy-batch/GAPS.md`](../../workitems/planned/policy-batch/GAPS.md) |
 | C-30 Example/REST consumer | [`policy-consumer/GAPS.md`](../../workitems/planned/policy-consumer/GAPS.md) |
 

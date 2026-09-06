@@ -10,7 +10,7 @@
 **MR:** https://gitlab.qpointz.io/sandbox/bom-poc/-/merge_requests/60  
 **Sequence:** [policy family](../../SEQUENCE.md#policy-family-c-24c-32--normative-order) step **5 / 8**  
 **Before:** [C-32 `policy-metadata`](../../completed/20260905-policy-metadata/STORY.md); hard require [C-24](../../completed/20260904-policy-evaluate-core/STORY.md) (+ C-26 for Drools); C-31 workbench shipped  
-**Next:** [C-28 `policy-seeds-persistence`](../../planned/policy-seeds-persistence/STORY.md)  
+**Next:** [C-28 `policy-seeds-persistence`](../../in-progress/policy-seeds-persistence/STORY.md)  
 **Gaps:** [`GAPS.md`](GAPS.md) — **all resolved**  
 **Design:** [`docs/design/policy/suites.md`](../../../../design/policy/suites.md)  
 **Results model (indicative):** [`RESULTS-MODEL.md`](RESULTS-MODEL.md)

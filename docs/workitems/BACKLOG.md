@@ -42,7 +42,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | C-25 | Split `objs-core` (Spring-free persistence) + `objs-autoconfigure`; expand `objs-api` model | refactoring | done | [`completed/20260903-objs-core-spring-split/`](completed/20260903-objs-core-spring-split/STORY.md) |
 | C-26 | `:objs-policy-drools` adapter (fixture DRL only) | feature | done | [`completed/20260904-policy-drools/`](completed/20260904-policy-drools/STORY.md) |
 | C-27 | Policy suites: hierarchy, folder roll-up, evaluateSuite, Suites workbench | feature | done | [`completed/20260905-policy-suites/`](completed/20260905-policy-suites/STORY.md) |
-| C-28 | Policy (+suite) persistence + seed format | feature | planned | [`planned/policy-seeds-persistence/`](planned/policy-seeds-persistence/STORY.md) |
+| C-28 | Policy (+suite) catalog JPA + seeds (`key`, Drop*, REPLACE/workbench export) | feature | in-progress | [`in-progress/policy-seeds-persistence/`](in-progress/policy-seeds-persistence/STORY.md) |
 | C-29 | Thin policy batch / result pack (no matrix) | feature | planned | [`planned/policy-batch/`](planned/policy-batch/STORY.md) |
 | C-30 | Optional policy REST / example consumer (gated; workbench = C-31) | feature | planned | [`planned/policy-consumer/`](planned/policy-consumer/STORY.md) |
 | C-31 | Workbench tactical Policy play UI (after Drools) | feature | done | [`completed/20260904-policy-workbench/`](completed/20260904-policy-workbench/STORY.md), also [U-9](#ui--workbench) |

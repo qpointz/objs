@@ -22,7 +22,7 @@ kind: ObjectSchema | AllowedEdgeRule | Graph | *(application-defined)* | *(plann
 | Field | Required | Notes |
 |-------|----------|--------|
 | `apiVersion` | **yes** | Only `objs.poc.org/v1` is accepted |
-| `kind` | **yes** | Built-in: `ObjectSchema`, `AllowedEdgeRule`, `Graph`. Applications register more via `SeedDocumentHandler` beans. **Planned (C-28):** policy seed kinds — see [`docs/design/policy/`](../policy/) and [`policy-seeds-persistence` GAPS](../../workitems/planned/policy-seeds-persistence/GAPS.md) |
+| `kind` | **yes** | Built-in: `ObjectSchema`, `AllowedEdgeRule`, `Graph`. Applications register more via `SeedDocumentHandler` beans. **C-28:** policy seed kinds — see [`docs/design/policy/`](../policy/) and [`policy-seeds-persistence` GAPS](../../workitems/in-progress/policy-seeds-persistence/GAPS.md) |
 | other root keys | kind-specific | Flat at document root — no Kubernetes-style `metadata` / `spec` |
 
 Seed documents deliberately follow Mill's flat format. `apiVersion` and `kind` are the only
@@ -42,7 +42,9 @@ Unsupported `apiVersion` or `kind` values fail the **whole** resource (no partia
 
 ## Identity and MERGE
 
-All seed import is **MERGE** (upsert). Omission never deletes. There is no `REPLACE` mode in v1.
+All seed import for **graph/registry kinds** is **MERGE** (upsert). Omission never deletes. There is no `REPLACE` mode in v1 for ObjectSchema / AllowedEdgeRule / Graph.
+
+**C-28 policy catalog kinds** extend the envelope with **apply/MERGE**, **replace**, and **Drop\*** kinds — see [`policy-seeds-persistence/GAPS.md`](../../workitems/in-progress/policy-seeds-persistence/GAPS.md). Identity = **`key`**. Fail whole resource; do not update seed ledger on failure.
 
 | Kind | Upsert identity | Notes |
 |------|-----------------|-------|
@@ -52,6 +54,8 @@ All seed import is **MERGE** (upsert). Omission never deletes. There is no `REPL
 | `Graph` header | document `name` (or explicit `id`) | Default graph UUID = UUIDv3 of `graph-seed:<name>` |
 | `Collection` (asset-repository) | collection `name` | Creates `ar_collection` + named graph; MERGE updates metadata |
 | `CollectionObjects` (asset-repository) | `collection` name | Writes objects/relations into that collection |
+| `Category` / `Policy` / `PolicySuite` (C-28) | **`key`** | apply vs replace; handlers in objs-policy* |
+| `DropCategory` / `DropPolicy` / `DropPolicySuite` | **`key`** | Explicit remove (cascades per GAPS) |
 
 Generator implication: re-import updates matching identities; types or rules omitted from a
 later import are **not** removed from the catalog or graph by import alone.

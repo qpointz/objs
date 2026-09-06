@@ -15,7 +15,8 @@ Mirror jgrapht/gremlin:
 - Wire on `:objs-service-app` only
 - OpenAPI tag `policy`
 - `GET …/policy/capabilities` — UI soft-fail when absent (Policy nav stays visible)
-- CRUD policies (in-memory repo default)
+- CRUD policies (JPA when persistence wired; in-memory fallback)
+- `GET …/policy/export?format=seeds` — full catalog REPLACE seed YAML (C-28)
 - `POST …/policy/check` — compile/validate body (DROOLS) → tasks **Policy** tab
 - `POST …/policy/evaluate` — policy × fragment from graph context → **Evaluations** tab
 
@@ -39,8 +40,8 @@ Also: [`metadata.md`](metadata.md) (C-32 list navigation — **shipped** on play
 ## C-32 play extensions
 
 - `GET/POST/PUT/DELETE …/policy/categories`
-- `GET …/policy/policies?categoryId=&tag=&name=&annotation=k=v`
-- Policy create/update require `categoryId`, `tags`, optional `annotations`, `version` (major.minor)
+- `GET …/policy/policies?categoryId=&tag=&key=&annotation=k=v`
+- Policy create/update require `categoryId`, `tags`, `key`, optional `name` / `annotations` / `version` (major.minor)
 
 ## C-27 Suites subnav
 
@@ -54,6 +55,17 @@ Policy route (`/policy`) uses shared chrome with **subnav**:
 - Suites layout is **edit-first**: tree + center editor primary; graph canvas secondary (shared **GraphContextBar** only — no large live graph by default).
 - HTTP (on `:objs-policy-service`): `…/policy/suites` CRUD, `POST …/suites/selection`, `POST …/suites/evaluate`.
 - Design: [`suites.md`](suites.md).
+
+## C-28 Persistence + seeds + export
+
+Normative: [`policy-seeds-persistence`](../../workitems/in-progress/policy-seeds-persistence/STORY.md).
+
+- Catalog JPA behind the same repository ports when `UnitOfWork` is present (`key` identity).
+- Seed kinds via `SeedDocumentHandler` (`Category` / `Policy` / `PolicySuite` + `Drop*`; apply/replace).
+- **`GET …/policy/export?format=seeds`** — REPLACE YAML for full setup (categories, latest policies with inline body, suites).
+- Workbench **Evaluate** toolbar: **Export** downloads that pack.
+
+Evaluation **result** persistence remains out of C-28 (see C-27 `RESULTS-MODEL`).
 
 ## Engine
 

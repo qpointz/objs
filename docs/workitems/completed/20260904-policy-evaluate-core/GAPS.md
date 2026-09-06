@@ -57,7 +57,7 @@ Related: [`STORY.md`](STORY.md) · Design: [`docs/design/policy/`](../../../desi
 | [C-26 `policy-drools`](../20260904-policy-drools/GAPS.md) | G-P18–20 |
 | [C-31 `policy-workbench`](../../completed/20260904-policy-workbench/GAPS.md) | G-P23* |
 | [C-27 `policy-suites`](../../completed/20260905-policy-suites/GAPS.md) | G-P26s–33 |
-| [C-28 `policy-seeds-persistence`](../../planned/policy-seeds-persistence/GAPS.md) | persistence + seeds |
+| [C-28 `policy-seeds-persistence`](../../in-progress/policy-seeds-persistence/GAPS.md) | persistence + seeds |
 | [C-29 `policy-batch`](../../planned/policy-batch/GAPS.md) | G-P41b–43b |
 | [C-30 `policy-consumer`](../../planned/policy-consumer/GAPS.md) | G-P21–22 |
 
