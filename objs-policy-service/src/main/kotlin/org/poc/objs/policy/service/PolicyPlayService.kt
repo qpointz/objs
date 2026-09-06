@@ -24,6 +24,7 @@ import org.poc.objs.policy.api.SuiteEvaluationResult
 import org.poc.objs.policy.api.SuiteEvaluator
 import org.poc.objs.policy.api.SuiteRepository
 import org.poc.objs.policy.drools.PolicyKnowledgeBaseCache
+import org.poc.objs.policy.service.seed.PolicyCatalogSeedExporter
 import org.springframework.stereotype.Service
 import java.util.UUID
 
@@ -51,6 +52,7 @@ class PolicyPlayService(
     private val evaluator: PolicyEvaluator,
     private val suiteEvaluator: SuiteEvaluator,
     private val knowledgeBaseCache: PolicyKnowledgeBaseCache,
+    private val catalogExporter: PolicyCatalogSeedExporter,
 ) {
     fun capabilities(): PolicyCapabilities =
         PolicyCapabilities(
@@ -67,8 +69,12 @@ class PolicyPlayService(
                 "suites",
                 "evaluateSuite",
                 "suiteSelection",
+                "export",
             ),
         )
+
+    /** Full catalog REPLACE seed YAML (WI-005). */
+    fun exportCatalogSeeds(): String = catalogExporter.exportReplaceYaml()
 
     fun list(query: PolicyQuery = PolicyQuery()): List<Policy> =
         if (query == PolicyQuery()) repository.list() else repository.query(query)
@@ -110,6 +116,7 @@ class PolicyPlayService(
         }
         val probe = Policy(
             id = UUID.randomUUID(),
+            key = "check",
             name = "check",
             serial = 1L,
             engineKind = PolicyEngineKinds.DROOLS,
@@ -201,9 +208,11 @@ class PolicyPlayService(
             return stored.copy(body = body, engineKind = engineKind ?: stored.engineKind)
         }
         require(!body.isNullOrBlank()) { "body or policyId is required" }
+        val label = policyName?.takeIf { it.isNotBlank() } ?: "ephemeral"
         return Policy(
             id = UUID.randomUUID(),
-            name = policyName?.takeIf { it.isNotBlank() } ?: "ephemeral",
+            key = label,
+            name = label,
             serial = 0L,
             engineKind = engineKind ?: PolicyEngineKinds.DROOLS,
             body = body,

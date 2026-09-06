@@ -51,6 +51,7 @@ function newId(): string {
 function emptySuite(): PolicySuite {
   const rootId = newId()
   return {
+    key: `suite-${Date.now()}`,
     name: 'New suite',
     rollUpStrategyKind: 'BUILTIN',
     executionStrategyKind: 'DEDUPE',
@@ -548,6 +549,12 @@ export function PolicySuitesPage() {
             <Stack gap="xs" p="xs" style={{ overflow: 'auto' }}>
               <TextInput
                 size="xs"
+                label="Key"
+                value={draft?.key ?? ''}
+                onChange={(e) => draft && markDirty({ ...draft, key: e.currentTarget.value.trim().toLowerCase() })}
+              />
+              <TextInput
+                size="xs"
                 label="Name"
                 value={draft?.name ?? ''}
                 onChange={(e) => draft && markDirty({ ...draft, name: e.currentTarget.value })}
@@ -652,7 +659,7 @@ export function PolicySuitesPage() {
                           {
                             kind: 'METADATA',
                             mode: 'INCLUDE',
-                            categorySlug: 'general',
+                            categoryKey: 'general',
                             tags: [],
                             annotations: {},
                           },
@@ -763,13 +770,13 @@ export function PolicySuitesPage() {
                     <>
                       <TextInput
                         size="xs"
-                        label="Category slug"
-                        value={m.categorySlug ?? ''}
+                        label="Category key"
+                        value={m.categoryKey ?? ''}
                         onChange={(e) => {
                           const next = [...(selectedFolder.matchers ?? [])]
                           next[idx] = {
                             ...m,
-                            categorySlug: e.currentTarget.value.trim() || null,
+                            categoryKey: e.currentTarget.value.trim() || null,
                           }
                           updateMatchers(next)
                         }}

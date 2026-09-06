@@ -1,16 +1,19 @@
 export type Category = {
   id: string
-  displayName: string
-  slug: string
+  name: string
+  key: string
 }
 
 export type CategoryWrite = {
-  displayName: string
-  slug: string
+  name: string
+  key: string
 }
 
 export type Policy = {
   id: string
+  /** Logical identity (G-P36seed). */
+  key: string
+  /** Display label. */
   name: string
   /** Timestamp serial (pin / latest key). */
   serial: number
@@ -28,7 +31,8 @@ export type Policy = {
 }
 
 export type PolicyWrite = {
-  name: string
+  key: string
+  name?: string
   engineKind: string
   body: string
   categoryId: string
@@ -44,7 +48,7 @@ export type PolicyWrite = {
 export type PolicyListQuery = {
   categoryId?: string | null
   tags?: string[]
-  name?: string | null
+  key?: string | null
   annotations?: Record<string, string>
 }
 
@@ -107,7 +111,7 @@ export type SuiteMatcher = {
   mode?: SuiteMatcherMode | string
   skipMissing?: boolean
   entries?: StaticPolicyEntry[]
-  categorySlug?: string | null
+  categoryKey?: string | null
   tags?: string[]
   annotations?: Record<string, string>
 }
@@ -129,6 +133,7 @@ export type SuiteFolder = {
 
 export type PolicySuite = {
   id?: string | null
+  key: string
   name: string
   /** BUILTIN (C-27); later DROOLS etc. */
   rollUpStrategyKind?: string

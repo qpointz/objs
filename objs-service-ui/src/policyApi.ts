@@ -101,7 +101,7 @@ export async function listPolicies(query: PolicyListQuery = {}): Promise<Policy[
   for (const t of query.tags ?? []) {
     if (t.trim()) params.append('tag', t.trim())
   }
-  if (query.name?.trim()) params.set('name', query.name.trim())
+  if (query.key?.trim()) params.set('key', query.key.trim())
   for (const [k, v] of Object.entries(query.annotations ?? {})) {
     params.append('annotation', `${k}=${v}`)
   }
@@ -237,4 +237,14 @@ export async function evaluateSuite(request: {
     }),
   })
   return parseResponse<SuiteEvaluationResult>(res)
+}
+
+/** Download full policy catalog as REPLACE seed YAML (WI-005). */
+export async function exportPolicyCatalogSeeds(): Promise<Blob> {
+  const res = await fetch('/api/v1/objs/policy/export?format=seeds')
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(text || `${res.status} ${res.statusText}`)
+  }
+  return res.blob()
 }

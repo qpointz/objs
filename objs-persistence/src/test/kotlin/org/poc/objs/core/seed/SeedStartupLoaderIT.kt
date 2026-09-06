@@ -81,8 +81,8 @@ class SeedStartupLoaderIT : ObjsPersistenceFixture() {
         )
         assertThat(schemas.get("Org", "1")).isNotNull
         val badKey = SeedResourceIdentity.ledgerKey(badLocation)
-        assertThat(ledger.find(badKey)!!.lastAttemptStatus).isEqualTo(SeedLedgerStatus.FAILED.name)
-        assertThat(ledger.find(badKey)!!.lastSuccessFingerprint).isNull()
+        // G-P40seed: a failed import does not update the ledger at all — no record is created.
+        assertThat(ledger.find(badKey)).isNull()
 
         Files.deleteIfExists(good)
         Files.deleteIfExists(bad)
@@ -119,9 +119,10 @@ class SeedStartupLoaderIT : ObjsPersistenceFixture() {
         assertThatThrownBy { loader.loadConfiguredResources() }
             .isInstanceOf(SeedStartupException::class.java)
 
+        // G-P40seed: a failed import does not touch the ledger — it still reflects the prior success.
         val record = ledger.find(seedKey)!!
         assertThat(record.lastSuccessFingerprint).isEqualTo(successFp)
-        assertThat(record.lastAttemptStatus).isEqualTo(SeedLedgerStatus.FAILED.name)
+        assertThat(record.lastAttemptStatus).isEqualTo(SeedLedgerStatus.SUCCESS.name)
 
         Files.deleteIfExists(file)
     }

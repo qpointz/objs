@@ -39,6 +39,7 @@ import {
   deleteCategory,
   deletePolicy,
   evaluatePolicy,
+  exportPolicyCatalogSeeds,
   fetchPolicyCapabilities,
   listCategories,
   listPolicies,
@@ -303,8 +304,8 @@ export function PolicyPlayPage({ hideChrome = false }: { hideChrome?: boolean })
   const [filterCategoryId, setFilterCategoryId] = useState<string | null>(null)
   const [filterTags, setFilterTags] = useState<string[]>([])
   const [filterName, setFilterName] = useState('')
-  const [catDisplayName, setCatDisplayName] = useState('')
-  const [catSlug, setCatSlug] = useState('')
+  const [catName, setCatName] = useState('')
+  const [catKey, setCatKey] = useState('')
   const [addCategoryOpen, setAddCategoryOpen] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [confirmKind, setConfirmKind] = useState<'discard' | 'delete-policy' | 'delete-category'>('discard')
@@ -423,7 +424,7 @@ export function PolicyPlayPage({ hideChrome = false }: { hideChrome?: boolean })
   const refreshPolicies = useCallback(async () => {
     const rows = await listPolicies({
       tags: filterTags,
-      name: filterName.trim() || null,
+      key: filterName.trim() || null,
     })
     setPolicies(rows)
     return rows
@@ -722,6 +723,25 @@ export function PolicyPlayPage({ hideChrome = false }: { hideChrome?: boolean })
     return all.find((r) => r.id === focusedTaskId) ?? null
   }, [checkRows, evalRows, focusedTaskId])
 
+  async function onExportCatalog() {
+    if (!capable) return
+    setBusy(true)
+    setError(null)
+    try {
+      const blob = await exportPolicyCatalogSeeds()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'policy-catalog-seeds.yaml'
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (ex) {
+      setError(ex instanceof Error ? ex.message : String(ex))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function onAddPolicy() {
     if (!capable) return
     const categoryId =
@@ -732,8 +752,8 @@ export function PolicyPlayPage({ hideChrome = false }: { hideChrome?: boolean })
       null
     if (categoryId == null) {
       setError('Create a category first (Add → Category), then add a policy.')
-      setCatDisplayName('')
-      setCatSlug('')
+      setCatName('')
+      setCatKey('')
       setAddCategoryOpen(true)
       return
     }
@@ -741,6 +761,7 @@ export function PolicyPlayPage({ hideChrome = false }: { hideChrome?: boolean })
     setError(null)
     try {
       const created = await createPolicy({
+        key: `policy-${policies.length + 1}`,
         name: `policy-${policies.length + 1}`,
         engineKind: 'DROOLS',
         body: DEFAULT_DRL,
@@ -821,6 +842,11 @@ export function PolicyPlayPage({ hideChrome = false }: { hideChrome?: boolean })
       setError('Policy name is required')
       return
     }
+    const key = (selectedPolicy.key || name).trim().toLowerCase()
+    if (!key) {
+      setError('Policy key is required')
+      return
+    }
     setBusy(true)
     setError(null)
     try {
@@ -836,6 +862,7 @@ export function PolicyPlayPage({ hideChrome = false }: { hideChrome?: boolean })
         return
       }
       const updated = await updatePolicy(selectedPolicy.id, {
+        key,
         name,
         engineKind: selectedPolicy.engineKind || 'DROOLS',
         body: liveEditorBody(),
@@ -919,18 +946,18 @@ export function PolicyPlayPage({ hideChrome = false }: { hideChrome?: boolean })
   }
 
   async function onCreateCategory() {
-    const displayName = catDisplayName.trim()
-    const slug = catSlug.trim().toLowerCase()
-    if (!displayName || !slug) {
-      setError('Category display name and slug are required')
+    const name = catName.trim()
+    const key = catKey.trim().toLowerCase()
+    if (!name || !key) {
+      setError('Category name and key are required')
       return
     }
     setBusy(true)
     setError(null)
     try {
-      const created = await createCategory({ displayName, slug })
-      setCatDisplayName('')
-      setCatSlug('')
+      const created = await createCategory({ name, key })
+      setCatName('')
+      setCatKey('')
       setAddCategoryOpen(false)
       await refreshCategories()
       applyNav({ kind: 'category', id: created.id })
@@ -1114,7 +1141,7 @@ export function PolicyPlayPage({ hideChrome = false }: { hideChrome?: boolean })
             size={VIEW_ACTION_BUTTON_SIZE}
             clearable
             placeholder="Categories"
-            data={categories.map((c) => ({ value: c.id, label: c.displayName }))}
+            data={categories.map((c) => ({ value: c.id, label: c.name }))}
             value={filterCategoryId}
             onChange={setFilterCategoryId}
             disabled={!capable}
@@ -1165,6 +1192,14 @@ export function PolicyPlayPage({ hideChrome = false }: { hideChrome?: boolean })
           )}
         </Group>
         <Group gap={6} wrap="nowrap" style={{ flexShrink: 0 }}>
+          <Button
+            size={VIEW_ACTION_BUTTON_SIZE}
+            variant="light"
+            disabled={!capable || busy}
+            onClick={() => void onExportCatalog()}
+          >
+            Export
+          </Button>
           <Group gap={0}>
             <Button
               size={VIEW_ACTION_BUTTON_SIZE}
@@ -1195,8 +1230,8 @@ export function PolicyPlayPage({ hideChrome = false }: { hideChrome?: boolean })
                 <Menu.Item onClick={() => void onAddPolicy()}>Policy</Menu.Item>
                 <Menu.Item
                   onClick={() => {
-                    setCatDisplayName('')
-                    setCatSlug('')
+                    setCatName('')
+                    setCatKey('')
                     setAddCategoryOpen(true)
                   }}
                 >
@@ -1372,10 +1407,10 @@ export function PolicyPlayPage({ hideChrome = false }: { hideChrome?: boolean })
                       </Button>
                       <Stack gap={0} style={{ flex: 1, minWidth: 0 }}>
                         <Text size="sm" fw={600} truncate>
-                          {c.displayName}
+                          {c.name}
                         </Text>
                         <Text size="xs" c="dimmed" truncate>
-                          {c.slug} · {kids.length}
+                          {c.key} · {kids.length}
                         </Text>
                       </Stack>
                     </Group>
@@ -1443,10 +1478,10 @@ export function PolicyPlayPage({ hideChrome = false }: { hideChrome?: boolean })
               {nav?.kind === 'category' && selectedCategory ? (
                 <>
                   <Text size="sm" fw={600} mb={2}>
-                    {selectedCategory.displayName}
+                    {selectedCategory.name}
                   </Text>
                   <Text size="xs" c="dimmed" mb="xs">
-                    {selectedCategory.slug} · {policiesInSelectedCategory.length} polic
+                    {selectedCategory.key} · {policiesInSelectedCategory.length} polic
                     {policiesInSelectedCategory.length === 1 ? 'y' : 'ies'}
                   </Text>
                   <ScrollArea style={{ flex: 1, minHeight: 0 }}>
@@ -1584,7 +1619,7 @@ export function PolicyPlayPage({ hideChrome = false }: { hideChrome?: boolean })
                         <Select
                           size="xs"
                           label="Category"
-                          data={categories.map((c) => ({ value: c.id, label: c.displayName }))}
+                          data={categories.map((c) => ({ value: c.id, label: c.name }))}
                           value={editorCategoryId}
                           onChange={(v) => {
                             setEditorCategoryId(v)
@@ -2212,16 +2247,16 @@ export function PolicyPlayPage({ hideChrome = false }: { hideChrome?: boolean })
       >
         <Stack gap="sm">
           <TextInput
-            label="Display name"
-            value={catDisplayName}
-            onChange={(e) => setCatDisplayName(e.currentTarget.value)}
+            label="Name"
+            value={catName}
+            onChange={(e) => setCatName(e.currentTarget.value)}
             disabled={busy}
           />
           <TextInput
-            label="Slug"
+            label="Key"
             description="Lowercase letters only"
-            value={catSlug}
-            onChange={(e) => setCatSlug(e.currentTarget.value)}
+            value={catKey}
+            onChange={(e) => setCatKey(e.currentTarget.value)}
             disabled={busy}
           />
           <Group justify="flex-end" gap="xs">
@@ -2289,7 +2324,7 @@ export function PolicyPlayPage({ hideChrome = false }: { hideChrome?: boolean })
         centered
       >
         <Text size="sm" mb="md">
-          Delete category &quot;{selectedCategory?.displayName}&quot;? Categories with policies cannot
+          Delete category &quot;{selectedCategory?.name}&quot;? Categories with policies cannot
           be deleted.
         </Text>
         <Group justify="flex-end" gap="xs">

@@ -107,7 +107,8 @@ class SeedStartupLoader(
         } catch (ex: SeedImportException) {
             val error = ex.message ?: "Seed import failed"
             val details = ex.result.allErrors().joinToString("; ") { "${it.code} ${it.path}: ${it.message}" }
-            ledger.recordFailure(seedKey, fingerprint, error)
+            // G-P40seed: fail whole resource, but do not update the ledger — a failed import
+            // must not advance (or otherwise touch) lastAttempt/lastSuccess state.
             log.error("Failed seed resource {} ({}): {} {}", seedKey, fingerprint, error, details)
             SeedStartupResourceResult(
                 seedKey = seedKey,
@@ -119,7 +120,7 @@ class SeedStartupLoader(
             )
         } catch (ex: Exception) {
             val error = ex.message ?: ex.javaClass.simpleName
-            ledger.recordFailure(seedKey, fingerprint, error)
+            // G-P40seed: ledger is not updated on failure (see above).
             log.error("Failed seed resource {} ({}): {}", seedKey, fingerprint, error, ex)
             SeedStartupResourceResult(
                 seedKey = seedKey,

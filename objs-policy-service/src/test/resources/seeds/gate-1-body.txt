@@ -1,0 +1,1 @@
+rule body loaded from classpath

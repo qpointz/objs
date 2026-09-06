@@ -78,6 +78,11 @@ class ObjsPolicyControllerTest {
                 stores.categories,
             ),
             knowledgeBaseCache = cache,
+            catalogExporter = org.poc.objs.policy.service.seed.PolicyCatalogSeedExporter(
+                stores.categories,
+                repo,
+                stores.suites,
+            ),
         )
         mockMvc = MockMvcBuilders
             .standaloneSetup(ObjsPolicyController(play))
@@ -92,14 +97,14 @@ class ObjsPolicyControllerTest {
         mockMvc.perform(
             post("/api/v1/objs/policy/categories")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"displayName":"Licensing","slug":"licensing"}"""),
+                .content("""{"name":"Licensing","key":"licensing"}"""),
         )
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.slug").value("licensing"))
+            .andExpect(jsonPath("$.key").value("licensing"))
 
         mockMvc.perform(get("/api/v1/objs/policy/categories"))
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$[?(@.slug=='licensing')]").isNotEmpty)
+            .andExpect(jsonPath("$[?(@.key=='licensing')]").isNotEmpty)
     }
 
     @Test
@@ -118,6 +123,7 @@ class ObjsPolicyControllerTest {
                 .content(
                     """
                     {
+                      "key": "demo",
                       "name": "demo",
                       "engineKind": "DROOLS",
                       "body": "package x\n",
@@ -147,6 +153,7 @@ class ObjsPolicyControllerTest {
                 .content(
                     """
                     {
+                      "key": "demo",
                       "name": "demo",
                       "engineKind": "DROOLS",
                       "body": "package updated\n",
@@ -193,6 +200,7 @@ class ObjsPolicyControllerTest {
         )
         val saved = stores.policies.save(
             PolicyWrite(
+                key = "pass",
                 name = "pass",
                 engineKind = PolicyEngineKinds.DROOLS,
                 body = validDrl,

@@ -41,6 +41,20 @@ class ObjsPolicyController(
     @Operation(summary = "Policy playground capability probe")
     fun capabilities(): PolicyCapabilities = play.capabilities()
 
+    @GetMapping("/export")
+    @Operation(summary = "Export full policy catalog as REPLACE seed YAML")
+    fun exportCatalog(
+        @RequestParam(defaultValue = "seeds") format: String,
+    ): ResponseEntity<String> {
+        if (format != "seeds") {
+            return ResponseEntity.badRequest().body("Only format=seeds is supported")
+        }
+        return ResponseEntity.ok()
+            .header("Content-Disposition", "attachment; filename=\"policy-catalog-seeds.yaml\"")
+            .header("Content-Type", "application/x-yaml")
+            .body(play.exportCatalogSeeds())
+    }
+
     @GetMapping("/categories")
     @Operation(summary = "List policy categories")
     fun listCategories(): List<Category> = play.listCategories()
@@ -77,6 +91,7 @@ class ObjsPolicyController(
         @RequestParam(required = false) categoryId: UUID?,
         @RequestParam(required = false) tag: List<String>?,
         @RequestParam(required = false) name: String?,
+        @RequestParam(required = false) key: String?,
         @RequestParam(required = false) annotation: List<String>?,
     ): List<Policy> {
         val annotations = linkedMapOf<String, String>()
@@ -90,6 +105,7 @@ class ObjsPolicyController(
                 tags = tag.orEmpty(),
                 annotations = annotations,
                 nameContains = name,
+                keyContains = key,
             ),
         )
     }
