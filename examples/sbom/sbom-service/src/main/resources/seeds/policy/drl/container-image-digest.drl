@@ -1,0 +1,48 @@
+package org.poc.objs.policy.sbom.assessment;
+
+import org.poc.objs.policy.drools.EntityFact;
+import org.poc.objs.policy.drools.DroolsEvaluationScratch;
+
+global DroolsEvaluationScratch scratch;
+
+rule "sbom-container-image-digest"
+when
+    $e : EntityFact(
+        type == "Container Image",
+        eval(
+            $e.get("digest") == null ||
+            String.valueOf($e.get("digest")).isBlank()
+        )
+    )
+then
+    String id = $e.getId() != null ? $e.getId().toString() : null;
+    scratch.fail("Container Image missing payload.digest");
+    scratch.finding(
+        "Container Image should declare payload.digest",
+        "WARN",
+        "SBOM_IMAGE_DIGEST",
+        id,
+        null
+    );
+end
+
+rule "sbom-container-image-digest-ok-info"
+when
+    $e : EntityFact(
+        type == "Container Image",
+        eval(
+            $e.get("digest") != null &&
+            !String.valueOf($e.get("digest")).isBlank()
+        )
+    )
+then
+    String id = $e.getId() != null ? $e.getId().toString() : null;
+    scratch.pass("Container Image digest present");
+    scratch.finding(
+        "Container Image declares digest",
+        "INFO",
+        "SBOM_IMAGE_DIGEST_OK",
+        id,
+        null
+    );
+end

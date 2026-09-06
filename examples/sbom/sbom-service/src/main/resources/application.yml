@@ -40,6 +40,7 @@ objs:
       - classpath:seeds/sbom-ontology.yaml
       - classpath:seeds/sbom-demo-graph.yaml
       - classpath:seeds/sbom-demo-portfolios.yaml
+      - classpath:seeds/policy/sbom-assessment-suites.yaml
 
 ---
 spring:

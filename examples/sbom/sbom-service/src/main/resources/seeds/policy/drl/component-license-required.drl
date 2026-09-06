@@ -1,0 +1,39 @@
+package org.poc.objs.policy.sbom.assessment;
+
+import org.poc.objs.policy.drools.EntityFact;
+import org.poc.objs.policy.drools.EdgeFact;
+import org.poc.objs.policy.drools.DroolsEvaluationScratch;
+
+global DroolsEvaluationScratch scratch;
+
+rule "sbom-component-license-required"
+when
+    $c : EntityFact( type == "Component", $cid : id != null )
+    not EdgeFact( role == "LICENSED_UNDER", source == $cid )
+then
+    String id = $c.getId().toString();
+    scratch.fail("Component has no LICENSED_UNDER License");
+    scratch.finding(
+        "Component missing LICENSED_UNDER edge",
+        "ERROR",
+        "SBOM_COMPONENT_LICENSE_MISSING",
+        id,
+        null
+    );
+end
+
+rule "sbom-component-license-present-info"
+when
+    $c : EntityFact( type == "Component", $cid : id != null )
+    EdgeFact( role == "LICENSED_UNDER", source == $cid )
+then
+    String id = $c.getId().toString();
+    scratch.pass("Component declares a license");
+    scratch.finding(
+        "Component has LICENSED_UNDER edge",
+        "INFO",
+        "SBOM_COMPONENT_LICENSE_OK",
+        id,
+        null
+    );
+end

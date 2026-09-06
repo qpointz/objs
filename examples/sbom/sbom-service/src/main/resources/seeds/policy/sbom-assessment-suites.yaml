@@ -1,0 +1,427 @@
+apiVersion: objs.poc.org/v1
+kind: DropCategory
+key: sbom-assessment
+---
+apiVersion: objs.poc.org/v1
+kind: Category
+mode: replace
+key: sbom-licensing
+name: Licensing
+---
+apiVersion: objs.poc.org/v1
+kind: Category
+mode: replace
+key: sbom-supply-chain
+name: Supply chain
+---
+apiVersion: objs.poc.org/v1
+kind: Category
+mode: replace
+key: sbom-security
+name: Security
+---
+apiVersion: objs.poc.org/v1
+kind: Category
+mode: replace
+key: sbom-privacy
+name: Privacy
+---
+apiVersion: objs.poc.org/v1
+kind: Category
+mode: replace
+key: sbom-product
+name: Product
+---
+apiVersion: objs.poc.org/v1
+kind: Category
+mode: replace
+key: sbom-integrity
+name: Integrity
+---
+apiVersion: objs.poc.org/v1
+kind: Policy
+mode: replace
+key: sbom-component-license-required
+name: Component license required
+categoryKey: sbom-licensing
+engineKind: DROOLS
+bodyRef: classpath:seeds/policy/drl/component-license-required.drl
+tags: [licensing]
+version: "0.1"
+---
+apiVersion: objs.poc.org/v1
+kind: Policy
+mode: replace
+key: sbom-no-proprietary-dual-license
+name: No proprietary dual-license
+categoryKey: sbom-licensing
+engineKind: DROOLS
+bodyRef: classpath:seeds/policy/drl/no-proprietary-dual-license.drl
+tags: [licensing]
+version: "0.1"
+---
+apiVersion: objs.poc.org/v1
+kind: Policy
+mode: replace
+key: sbom-license-spdx-required
+name: License SPDX id required
+categoryKey: sbom-licensing
+engineKind: DROOLS
+bodyRef: classpath:seeds/policy/drl/license-spdx-required.drl
+tags: [licensing]
+version: "0.1"
+---
+apiVersion: objs.poc.org/v1
+kind: Policy
+mode: replace
+key: sbom-coordinates-required
+name: Coordinates required
+categoryKey: sbom-supply-chain
+engineKind: DROOLS
+bodyRef: classpath:seeds/policy/drl/coordinates-required.drl
+tags: [supply-chain]
+version: "0.1"
+---
+apiVersion: objs.poc.org/v1
+kind: Policy
+mode: replace
+key: sbom-release-version
+name: Release version
+categoryKey: sbom-supply-chain
+engineKind: DROOLS
+bodyRef: classpath:seeds/policy/drl/release-version.drl
+tags: [supply-chain]
+version: "0.1"
+---
+apiVersion: objs.poc.org/v1
+kind: Policy
+mode: replace
+key: sbom-ecosystem-required
+name: Ecosystem declared
+categoryKey: sbom-supply-chain
+engineKind: DROOLS
+bodyRef: classpath:seeds/policy/drl/ecosystem-required.drl
+tags: [supply-chain]
+version: "0.1"
+---
+apiVersion: objs.poc.org/v1
+kind: Policy
+mode: replace
+key: sbom-component-version-required
+name: Component version required
+categoryKey: sbom-supply-chain
+engineKind: DROOLS
+bodyRef: classpath:seeds/policy/drl/component-version-required.drl
+tags: [supply-chain]
+version: "0.1"
+---
+apiVersion: objs.poc.org/v1
+kind: Policy
+mode: replace
+key: sbom-no-critical-vuln
+name: No CRITICAL vulnerabilities
+categoryKey: sbom-security
+engineKind: DROOLS
+bodyRef: classpath:seeds/policy/drl/no-critical-vuln.drl
+tags: [security]
+version: "0.1"
+---
+apiVersion: objs.poc.org/v1
+kind: Policy
+mode: replace
+key: sbom-no-high-vuln
+name: No HIGH/CRITICAL vulnerabilities
+categoryKey: sbom-security
+engineKind: DROOLS
+bodyRef: classpath:seeds/policy/drl/no-high-vuln.drl
+tags: [security]
+version: "0.1"
+---
+apiVersion: objs.poc.org/v1
+kind: Policy
+mode: replace
+key: sbom-no-known-rce-cves
+name: No Log4Shell/Spring4Shell
+categoryKey: sbom-security
+engineKind: DROOLS
+bodyRef: classpath:seeds/policy/drl/no-known-rce-cves.drl
+tags: [security]
+version: "0.1"
+---
+apiVersion: objs.poc.org/v1
+kind: Policy
+mode: replace
+key: sbom-image-vulns
+name: Image vulnerabilities
+categoryKey: sbom-security
+engineKind: DROOLS
+bodyRef: classpath:seeds/policy/drl/image-vulns.drl
+tags: [security]
+version: "0.1"
+---
+apiVersion: objs.poc.org/v1
+kind: Policy
+mode: replace
+key: sbom-dataset-eu-residency
+name: EU residency when dataset
+categoryKey: sbom-privacy
+engineKind: DROOLS
+bodyRef: classpath:seeds/policy/drl/dataset-eu-residency.drl
+tags: [privacy]
+version: "0.1"
+---
+apiVersion: objs.poc.org/v1
+kind: Policy
+mode: replace
+key: sbom-product-compliance-edge
+name: Compliance edge present
+categoryKey: sbom-product
+engineKind: DROOLS
+bodyRef: classpath:seeds/policy/drl/product-compliance-edge.drl
+tags: [product]
+version: "0.1"
+---
+apiVersion: objs.poc.org/v1
+kind: Policy
+mode: replace
+key: sbom-product-owned-by
+name: Product owned by organization
+categoryKey: sbom-product
+engineKind: DROOLS
+bodyRef: classpath:seeds/policy/drl/product-owned-by.drl
+tags: [product]
+version: "0.1"
+---
+apiVersion: objs.poc.org/v1
+kind: Policy
+mode: replace
+key: sbom-artifact-checksum
+name: Artifact checksum recommended
+categoryKey: sbom-integrity
+engineKind: DROOLS
+bodyRef: classpath:seeds/policy/drl/artifact-checksum.drl
+tags: [integrity]
+version: "0.1"
+---
+apiVersion: objs.poc.org/v1
+kind: Policy
+mode: replace
+key: sbom-container-image-digest
+name: Container image digest recommended
+categoryKey: sbom-integrity
+engineKind: DROOLS
+bodyRef: classpath:seeds/policy/drl/container-image-digest.drl
+tags: [integrity]
+version: "0.1"
+---
+apiVersion: objs.poc.org/v1
+kind: PolicySuite
+mode: replace
+key: sbom-software-quality
+name: Software quality
+rollUpStrategyKind: BUILTIN
+executionStrategyKind: DEDUPE
+folders:
+  - key: root
+    name: Software quality
+    participation: ENABLED
+    rollUpMode: ALL_PASS
+  - key: dim-licensing
+    name: Licensing
+    parentKey: root
+    participation: ENABLED
+    rollUpMode: ALL_PASS
+  - key: measure-spdx
+    name: SPDX / license edge
+    parentKey: dim-licensing
+    participation: ENABLED
+    rollUpMode: ALL_PASS
+    matchers:
+      - kind: STATIC_LIST
+        entries:
+          - policyKey: sbom-component-license-required
+          - policyKey: sbom-license-spdx-required
+  - key: measure-no-proprietary
+    name: No proprietary dual-license
+    parentKey: dim-licensing
+    participation: ENABLED
+    rollUpMode: ALL_PASS
+    matchers:
+      - kind: STATIC_LIST
+        entries:
+          - policyKey: sbom-no-proprietary-dual-license
+  - key: dim-supply-chain
+    name: Supply chain
+    parentKey: root
+    participation: ENABLED
+    rollUpMode: ALL_PASS
+  - key: measure-identity
+    name: Package identity
+    parentKey: dim-supply-chain
+    participation: ENABLED
+    rollUpMode: ALL_PASS
+    matchers:
+      - kind: STATIC_LIST
+        entries:
+          - policyKey: sbom-coordinates-required
+          - policyKey: sbom-ecosystem-required
+          - policyKey: sbom-component-version-required
+  - key: measure-release-version
+    name: Release version
+    parentKey: dim-supply-chain
+    participation: ENABLED
+    rollUpMode: ALL_PASS
+    matchers:
+      - kind: STATIC_LIST
+        entries:
+          - policyKey: sbom-release-version
+  - key: dim-integrity
+    name: Integrity
+    parentKey: root
+    participation: ENABLED
+    rollUpMode: ALL_PASS
+  - key: measure-checksums
+    name: Checksums & digests
+    parentKey: dim-integrity
+    participation: ENABLED
+    rollUpMode: ALL_PASS
+    matchers:
+      - kind: STATIC_LIST
+        entries:
+          - policyKey: sbom-artifact-checksum
+          - policyKey: sbom-container-image-digest
+tags: [sbom, assessment]
+---
+apiVersion: objs.poc.org/v1
+kind: PolicySuite
+mode: replace
+key: sbom-security-posture
+name: Security posture
+rollUpStrategyKind: BUILTIN
+executionStrategyKind: DEDUPE
+folders:
+  - key: root
+    name: Security posture
+    participation: ENABLED
+    rollUpMode: ALL_PASS
+  - key: dim-vulns
+    name: Vulnerabilities
+    parentKey: root
+    participation: ENABLED
+    rollUpMode: ALL_PASS
+  - key: measure-no-critical
+    name: No CRITICAL
+    parentKey: dim-vulns
+    participation: ENABLED
+    rollUpMode: ALL_PASS
+    matchers:
+      - kind: STATIC_LIST
+        entries:
+          - policyKey: sbom-no-critical-vuln
+  - key: measure-no-high
+    name: No HIGH/CRITICAL
+    parentKey: dim-vulns
+    participation: ENABLED
+    rollUpMode: ALL_PASS
+    matchers:
+      - kind: STATIC_LIST
+        entries:
+          - policyKey: sbom-no-high-vuln
+  - key: measure-no-rce
+    name: No Log4Shell/Spring4Shell
+    parentKey: dim-vulns
+    participation: ENABLED
+    rollUpMode: ALL_PASS
+    matchers:
+      - kind: STATIC_LIST
+        entries:
+          - policyKey: sbom-no-known-rce-cves
+  - key: dim-images
+    name: Images
+    parentKey: root
+    participation: ENABLED
+    rollUpMode: ALL_PASS
+  - key: measure-image-vulns
+    name: Image vulns
+    parentKey: dim-images
+    participation: ENABLED
+    rollUpMode: ALL_PASS
+    matchers:
+      - kind: STATIC_LIST
+        entries:
+          - policyKey: sbom-image-vulns
+  - key: measure-image-digest
+    name: Image digest
+    parentKey: dim-images
+    participation: ENABLED
+    rollUpMode: ALL_PASS
+    matchers:
+      - kind: STATIC_LIST
+        entries:
+          - policyKey: sbom-container-image-digest
+tags: [sbom, assessment]
+---
+apiVersion: objs.poc.org/v1
+kind: PolicySuite
+mode: replace
+key: sbom-data-governance
+name: Data governance
+rollUpStrategyKind: BUILTIN
+executionStrategyKind: DEDUPE
+folders:
+  - key: root
+    name: Data governance
+    participation: ENABLED
+    rollUpMode: ALL_PASS
+  - key: dim-privacy
+    name: Privacy
+    parentKey: root
+    participation: ENABLED
+    rollUpMode: ALL_PASS
+  - key: measure-eu-residency
+    name: EU residency when dataset
+    parentKey: dim-privacy
+    participation: ENABLED
+    rollUpMode: ALL_PASS
+    matchers:
+      - kind: STATIC_LIST
+        entries:
+          - policyKey: sbom-dataset-eu-residency
+  - key: dim-product
+    name: Product
+    parentKey: root
+    participation: ENABLED
+    rollUpMode: ALL_PASS
+  - key: measure-compliance
+    name: Compliance edge present
+    parentKey: dim-product
+    participation: ENABLED
+    rollUpMode: ALL_PASS
+    matchers:
+      - kind: STATIC_LIST
+        entries:
+          - policyKey: sbom-product-compliance-edge
+  - key: measure-ownership
+    name: Ownership declared
+    parentKey: dim-product
+    participation: ENABLED
+    rollUpMode: ALL_PASS
+    matchers:
+      - kind: STATIC_LIST
+        entries:
+          - policyKey: sbom-product-owned-by
+  - key: dim-usage
+    name: Usage metadata
+    parentKey: root
+    participation: ENABLED
+    rollUpMode: ALL_PASS
+  - key: measure-ecosystem
+    name: Ecosystem declared
+    parentKey: dim-usage
+    participation: ENABLED
+    rollUpMode: ALL_PASS
+    matchers:
+      - kind: STATIC_LIST
+        entries:
+          - policyKey: sbom-ecosystem-required
+tags: [sbom, assessment]

@@ -1,0 +1,49 @@
+package org.poc.objs.policy.sbom.assessment;
+
+import org.poc.objs.policy.drools.EntityFact;
+import org.poc.objs.policy.drools.DroolsEvaluationScratch;
+
+global DroolsEvaluationScratch scratch;
+
+rule "sbom-ecosystem-required"
+when
+    $e : EntityFact(
+        type == "Component",
+        eval(
+            $e.get("ecosystem") == null ||
+            String.valueOf($e.get("ecosystem")).isBlank()
+        )
+    )
+then
+    String id = $e.getId() != null ? $e.getId().toString() : null;
+    scratch.fail("Component missing payload.ecosystem");
+    scratch.finding(
+        "Component missing required payload.ecosystem",
+        "ERROR",
+        "SBOM_COMPONENT_ECOSYSTEM_REQUIRED",
+        id,
+        null
+    );
+end
+
+rule "sbom-ecosystem-present-info"
+when
+    $e : EntityFact(
+        type == "Component",
+        eval(
+            $e.get("ecosystem") != null &&
+            !String.valueOf($e.get("ecosystem")).isBlank()
+        )
+    )
+then
+    String id = $e.getId() != null ? $e.getId().toString() : null;
+    String eco = String.valueOf($e.get("ecosystem"));
+    scratch.pass("Component ecosystem present");
+    scratch.finding(
+        "Component ecosystem: " + eco,
+        "INFO",
+        "SBOM_COMPONENT_ECOSYSTEM_OK",
+        id,
+        null
+    );
+end

@@ -92,6 +92,13 @@ class ApplicationBomService(
     fun graphIds(versionId: UUID): List<UUID> =
         boms.findByVersionIdOrderBySortOrderAscIdAsc(versionId).map { it.graphId }
 
+    fun graphIds(versionId: UUID, bomIds: List<UUID>?): List<UUID> {
+        val all = boms.findByVersionIdOrderBySortOrderAscIdAsc(versionId)
+        if (bomIds.isNullOrEmpty()) return all.map { it.graphId }
+        val wanted = bomIds.toSet()
+        return all.filter { it.id in wanted }.map { it.graphId }
+    }
+
     @Transactional
     fun create(applicationId: UUID, versionId: UUID, request: CreateBomRequest): BomSummary {
         val app = requireApplication(applicationId)

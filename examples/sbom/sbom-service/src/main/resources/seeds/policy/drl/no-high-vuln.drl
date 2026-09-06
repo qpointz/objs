@@ -1,0 +1,36 @@
+package org.poc.objs.policy.sbom.assessment;
+
+import org.poc.objs.policy.drools.EntityFact;
+import org.poc.objs.policy.drools.EdgeFact;
+import org.poc.objs.policy.drools.DroolsEvaluationScratch;
+
+global DroolsEvaluationScratch scratch;
+
+rule "sbom-no-high-vuln"
+when
+    $c : EntityFact( type == "Component", $cid : id != null )
+    EdgeFact( role == "HAS_VULNERABILITY", source == $cid, $vid : target != null )
+    $v : EntityFact(
+        id == $vid,
+        type == "Vulnerability",
+        eval(
+            get("severity") != null &&
+            (
+              String.valueOf(get("severity")).equalsIgnoreCase("HIGH") ||
+              String.valueOf(get("severity")).equalsIgnoreCase("CRITICAL")
+            )
+        )
+    )
+then
+    String id = $c.getId().toString();
+    String cve = $v.get("cve") != null ? String.valueOf($v.get("cve")) : "?";
+    String sev = String.valueOf($v.get("severity"));
+    scratch.fail(sev + " vulnerability linked: " + cve);
+    scratch.finding(
+        sev + " vulnerability " + cve,
+        "WARN",
+        "SBOM_VULN_HIGH_OR_CRITICAL",
+        id,
+        null
+    );
+end

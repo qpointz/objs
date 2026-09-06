@@ -320,3 +320,72 @@ export type MiReportTable = {
 }
 
 export type MiReportResult = MiReportTable
+
+export type AssessmentSuiteSummary = {
+  id: string
+  key: string
+  name: string
+}
+
+export type AssessmentFindingView = {
+  message: string
+  severity?: string | null
+  code?: string | null
+  entityIds?: string[]
+  policyName?: string | null
+  outcomeStatus?: string | null
+}
+
+export type AssessmentOutcomeView = {
+  policyName: string
+  status: string
+  message?: string | null
+  findings?: AssessmentFindingView[]
+}
+
+export type ApplicationAssessmentResult = {
+  suiteId: string
+  suiteKey: string
+  suiteName: string
+  applicationId: string
+  applicationName: string
+  versionId?: string | null
+  overallStatus?: string | null
+  overallSeverity?: string | null
+  entitySeverities: Record<string, string>
+  findings: AssessmentFindingView[]
+  outcomes: AssessmentOutcomeView[]
+}
+
+export type AssessmentMeasureColumn = {
+  key: string
+  name: string
+}
+
+export type AssessmentDimensionColumn = {
+  key: string
+  name: string
+  measures: AssessmentMeasureColumn[]
+}
+
+export type AssessmentMatrixCell = {
+  applicationId: string
+  measureKey: string
+  status: string
+  severity?: string | null
+}
+
+export type AssessmentMatrixRow = {
+  applicationId: string
+  applicationName: string
+  error?: string | null
+}
+
+export type PortfolioAssessmentMatrix = {
+  suiteId: string
+  suiteKey: string
+  suiteName: string
+  dimensions: AssessmentDimensionColumn[]
+  rows: AssessmentMatrixRow[]
+  cells: AssessmentMatrixCell[]
+}

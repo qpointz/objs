@@ -1,6 +1,7 @@
 import {
   Alert,
   Anchor,
+  Badge,
   Box,
   Button,
   Checkbox,
@@ -8,6 +9,7 @@ import {
   Modal,
   Pagination,
   Paper,
+  Progress,
   ScrollArea,
   Select,
   Stack,
@@ -24,12 +26,15 @@ import { IconChevronDown, IconChevronRight, IconFolder, IconFolderOpen, IconPenc
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { api } from '../api/client'
+import { assessmentCellColor, FindingSeverityPill } from '../FindingSeverityPill'
 import { SearchInput } from '../SearchInput'
 import type {
   ApplicationSummary,
   ApplicationVersionSummary,
+  AssessmentSuiteSummary,
   CategoryAssetPage,
   MiReportTable,
+  PortfolioAssessmentMatrix,
   PortfolioLevelApps,
   PortfolioTreeView,
   SubjectAreaView,
@@ -243,6 +248,10 @@ export function PortfolioWorkspace() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [moveOpen, setMoveOpen] = useState(false)
   const [moveTarget, setMoveTarget] = useState<string | null>('root')
+  const [assessmentSuites, setAssessmentSuites] = useState<AssessmentSuiteSummary[]>([])
+  const [assessmentSuiteId, setAssessmentSuiteId] = useState<string | null>(null)
+  const [assessmentMatrix, setAssessmentMatrix] = useState<PortfolioAssessmentMatrix | null>(null)
+  const [assessmentBusy, setAssessmentBusy] = useState(false)
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set(['root']))
   const [treeWidth, setTreeWidth] = useState(lastTreeWidth)
   const splitHostRef = useRef<HTMLDivElement | null>(null)
@@ -347,11 +356,22 @@ export function PortfolioWorkspace() {
     setReportTable(null)
     setAssetsPage(null)
     setSelectedIds(new Set())
+    setAssessmentMatrix(null)
   }, [level, includeSub, tab])
 
   useEffect(() => {
     setPage(1)
   }, [appQuery])
+
+  useEffect(() => {
+    void api
+      .listAssessmentSuites()
+      .then((suites) => {
+        setAssessmentSuites(suites)
+        setAssessmentSuiteId((prev) => prev ?? suites[0]?.id ?? null)
+      })
+      .catch(() => setAssessmentSuites([]))
+  }, [])
 
   useEffect(() => {
     if (!id || tab !== 'apps') return
@@ -504,6 +524,36 @@ export function PortfolioWorkspace() {
     }
   }
 
+  async function runPortfolioAssessment() {
+    if (!assessmentSuiteId) {
+      setError('Select a policy suite')
+      return
+    }
+    setError(null)
+    setAssessmentBusy(true)
+    try {
+      setAssessmentMatrix(
+        await api.runPortfolioAssessment(id, {
+          suiteId: assessmentSuiteId,
+          level: level || 'root',
+          includeSubcategories: includeSub,
+        }),
+      )
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Assessment failed')
+    } finally {
+      setAssessmentBusy(false)
+    }
+  }
+
+  const assessmentCellLookup = useMemo(() => {
+    const map = new Map<string, { status: string; severity?: string | null }>()
+    for (const cell of assessmentMatrix?.cells ?? []) {
+      map.set(`${cell.applicationId}|${cell.measureKey}`, cell)
+    }
+    return map
+  }, [assessmentMatrix])
+
   const appTotalPages = Math.max(1, Math.ceil((appsPage?.total ?? 0) / 20))
   const assetTotalPages = Math.max(1, Math.ceil((assetsPage?.total ?? 0) / 20))
   const reportTotalPages = Math.max(1, Math.ceil((reportTable?.total ?? 0) / 20))
@@ -643,6 +693,7 @@ export function PortfolioWorkspace() {
             <Tabs.Tab value="apps">Apps</Tabs.Tab>
             <Tabs.Tab value="assets">Assets</Tabs.Tab>
             <Tabs.Tab value="reports">Reports</Tabs.Tab>
+            <Tabs.Tab value="assessment">Assessment</Tabs.Tab>
           </Tabs.List>
           <Tabs.Panel value="apps" pt="sm" style={{ flex: 1, minHeight: 0 }}>
             <Stack gap="sm" h="100%">
@@ -856,6 +907,150 @@ export function PortfolioWorkspace() {
                 onChange={(n) => void runReport(n)}
                 size="sm"
               />
+            </Stack>
+          </Tabs.Panel>
+          <Tabs.Panel value="assessment" pt="sm" style={{ flex: 1, minHeight: 0 }}>
+            <Stack gap="sm" h="100%">
+              <Group gap="xs" wrap="wrap">
+                <Select
+                  size="xs"
+                  w={260}
+                  placeholder="Policy suite"
+                  data={assessmentSuites.map((s) => ({ value: s.id, label: s.name }))}
+                  value={assessmentSuiteId}
+                  onChange={setAssessmentSuiteId}
+                  searchable
+                />
+                <Button
+                  size="xs"
+                  loading={assessmentBusy}
+                  disabled={!assessmentSuiteId}
+                  onClick={() => void runPortfolioAssessment()}
+                >
+                  Run assessment
+                </Button>
+                <Button
+                  size="xs"
+                  variant="default"
+                  disabled={!assessmentMatrix}
+                  onClick={() => setAssessmentMatrix(null)}
+                >
+                  Clear
+                </Button>
+                <Text size="xs" c="dimmed">
+                  Runs for all applications in the current tree selection
+                  {includeSub ? ' (including subcategories)' : ''}.
+                </Text>
+              </Group>
+              {assessmentBusy && (
+                <Stack gap={4}>
+                  <Text size="xs" c="dimmed">
+                    Evaluating applications…
+                  </Text>
+                  <Progress value={100} animated striped />
+                </Stack>
+              )}
+              <ScrollArea
+                style={{ flex: 1, minHeight: 0, minWidth: 0 }}
+                type="auto"
+                offsetScrollbars
+                scrollbarSize={10}
+              >
+                {!assessmentMatrix && !assessmentBusy ? (
+                  <Text size="sm" c="dimmed">
+                    Run a suite to see the Dimension / Measure matrix for the selected applications.
+                  </Text>
+                ) : assessmentMatrix ? (
+                  <Table
+                    striped
+                    highlightOnHover
+                    stickyHeader
+                    style={{ minWidth: 'max-content' }}
+                    styles={{
+                      th: { whiteSpace: 'nowrap' },
+                      td: { whiteSpace: 'nowrap' },
+                    }}
+                  >
+                    <Table.Thead>
+                      <Table.Tr>
+                        <Table.Th
+                          rowSpan={2}
+                          style={{
+                            verticalAlign: 'bottom',
+                            position: 'sticky',
+                            left: 0,
+                            zIndex: 4,
+                            background: 'var(--mantine-color-body)',
+                          }}
+                        >
+                          Application
+                        </Table.Th>
+                        {assessmentMatrix.dimensions.map((dim) => (
+                          <Table.Th
+                            key={dim.key}
+                            colSpan={Math.max(1, dim.measures.length)}
+                            style={{ textAlign: 'center' }}
+                          >
+                            {dim.name}
+                          </Table.Th>
+                        ))}
+                      </Table.Tr>
+                      <Table.Tr>
+                        {assessmentMatrix.dimensions.flatMap((dim) =>
+                          dim.measures.map((m) => (
+                            <Table.Th key={m.key}>{m.name}</Table.Th>
+                          )),
+                        )}
+                      </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {assessmentMatrix.rows.map((row) => (
+                        <Table.Tr key={row.applicationId}>
+                          <Table.Td style={{ position: 'sticky', left: 0, zIndex: 1, background: 'var(--mantine-color-body)' }}>
+                            <Anchor
+                              component={Link}
+                              to={`/applications/${row.applicationId}`}
+                              size="sm"
+                              fw={600}
+                            >
+                              {row.applicationName}
+                            </Anchor>
+                            {row.error ? (
+                              <Text size="xs" c="red">
+                                {row.error}
+                              </Text>
+                            ) : null}
+                          </Table.Td>
+                          {assessmentMatrix.dimensions.flatMap((dim) =>
+                            dim.measures.map((m) => {
+                              const cell = assessmentCellLookup.get(`${row.applicationId}|${m.key}`)
+                              if (row.error || !cell) {
+                                return (
+                                  <Table.Td key={m.key}>
+                                    <Text size="xs" c="dimmed">
+                                      —
+                                    </Text>
+                                  </Table.Td>
+                                )
+                              }
+                              return (
+                                <Table.Td key={m.key}>
+                                  <Badge size="sm" color={assessmentCellColor(cell.status)} variant="light">
+                                    {cell.status}
+                                  </Badge>
+                                  {cell.severity ? (
+                                    <FindingSeverityPill severity={cell.severity} ml={6} />
+                                  ) : null}
+                                </Table.Td>
+                              )
+                            }),
+                          )}
+                        </Table.Tr>
+                      ))}
+                    </Table.Tbody>
+                  </Table>
+                ) : null}
+              </ScrollArea>
             </Stack>
           </Tabs.Panel>
         </Tabs>

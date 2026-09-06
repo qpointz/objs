@@ -1,0 +1,58 @@
+package org.poc.objs.policy.sbom.assessment;
+
+import org.poc.objs.policy.drools.EntityFact;
+import org.poc.objs.policy.drools.EdgeFact;
+import org.poc.objs.policy.drools.DroolsEvaluationScratch;
+
+global DroolsEvaluationScratch scratch;
+
+rule "sbom-no-critical-vuln"
+when
+    $c : EntityFact( type == "Component", $cid : id != null )
+    EdgeFact( role == "HAS_VULNERABILITY", source == $cid, $vid : target != null )
+    $v : EntityFact(
+        id == $vid,
+        type == "Vulnerability",
+        eval(
+            get("severity") != null &&
+            String.valueOf(get("severity")).equalsIgnoreCase("CRITICAL")
+        )
+    )
+then
+    String id = $c.getId().toString();
+    String cve = $v.get("cve") != null ? String.valueOf($v.get("cve")) : "?";
+    scratch.fail("CRITICAL vulnerability linked: " + cve);
+    scratch.finding(
+        "CRITICAL vulnerability " + cve,
+        "ERROR",
+        "SBOM_VULN_CRITICAL",
+        id,
+        null
+    );
+end
+
+rule "sbom-no-critical-vuln-clear-info"
+when
+    $c : EntityFact( type == "Component", $cid : id != null )
+    not (
+        EdgeFact( role == "HAS_VULNERABILITY", source == $cid, $vid : target != null )
+        and EntityFact(
+            id == $vid,
+            type == "Vulnerability",
+            eval(
+                get("severity") != null &&
+                String.valueOf(get("severity")).equalsIgnoreCase("CRITICAL")
+            )
+        )
+    )
+then
+    String id = $c.getId().toString();
+    scratch.pass("No CRITICAL vulnerability on component");
+    scratch.finding(
+        "Component has no CRITICAL vulnerability",
+        "INFO",
+        "SBOM_VULN_CRITICAL_CLEAR",
+        id,
+        null
+    );
+end

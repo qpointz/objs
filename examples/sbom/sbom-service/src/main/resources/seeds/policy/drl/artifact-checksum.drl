@@ -1,0 +1,48 @@
+package org.poc.objs.policy.sbom.assessment;
+
+import org.poc.objs.policy.drools.EntityFact;
+import org.poc.objs.policy.drools.DroolsEvaluationScratch;
+
+global DroolsEvaluationScratch scratch;
+
+rule "sbom-artifact-checksum"
+when
+    $e : EntityFact(
+        type == "Artifact",
+        eval(
+            $e.get("checksum") == null ||
+            String.valueOf($e.get("checksum")).isBlank()
+        )
+    )
+then
+    String id = $e.getId() != null ? $e.getId().toString() : null;
+    scratch.fail("Artifact missing payload.checksum");
+    scratch.finding(
+        "Artifact should declare payload.checksum",
+        "WARN",
+        "SBOM_ARTIFACT_CHECKSUM",
+        id,
+        null
+    );
+end
+
+rule "sbom-artifact-checksum-ok-info"
+when
+    $e : EntityFact(
+        type == "Artifact",
+        eval(
+            $e.get("checksum") != null &&
+            !String.valueOf($e.get("checksum")).isBlank()
+        )
+    )
+then
+    String id = $e.getId() != null ? $e.getId().toString() : null;
+    scratch.pass("Artifact checksum present");
+    scratch.finding(
+        "Artifact declares checksum",
+        "INFO",
+        "SBOM_ARTIFACT_CHECKSUM_OK",
+        id,
+        null
+    );
+end

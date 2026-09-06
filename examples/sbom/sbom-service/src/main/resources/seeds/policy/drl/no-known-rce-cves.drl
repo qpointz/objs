@@ -1,0 +1,35 @@
+package org.poc.objs.policy.sbom.assessment;
+
+import org.poc.objs.policy.drools.EntityFact;
+import org.poc.objs.policy.drools.EdgeFact;
+import org.poc.objs.policy.drools.DroolsEvaluationScratch;
+
+global DroolsEvaluationScratch scratch;
+
+rule "sbom-no-known-rce-cves"
+when
+    $c : EntityFact( type == "Component", $cid : id != null )
+    EdgeFact( role == "HAS_VULNERABILITY", source == $cid, $vid : target != null )
+    $v : EntityFact(
+        id == $vid,
+        type == "Vulnerability",
+        eval(
+            get("cve") != null &&
+            (
+              String.valueOf(get("cve")).equalsIgnoreCase("CVE-2021-44228") ||
+              String.valueOf(get("cve")).equalsIgnoreCase("CVE-2022-22965")
+            )
+        )
+    )
+then
+    String id = $c.getId().toString();
+    String cve = String.valueOf($v.get("cve"));
+    scratch.fail("Known RCE CVE present: " + cve);
+    scratch.finding(
+        "Known RCE CVE " + cve,
+        "ERROR",
+        "SBOM_VULN_KNOWN_RCE",
+        id,
+        null
+    );
+end

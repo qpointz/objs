@@ -3,6 +3,8 @@ import type {
   ApplicationPortalStats,
   ApplicationSummary,
   ApplicationVersionSummary,
+  AssessmentSuiteSummary,
+  ApplicationAssessmentResult,
   AssetDetailView,
   AssetDuplicateGroup,
   AssetRelationshipSpec,
@@ -20,6 +22,7 @@ import type {
   InferredAppDependency,
   CategoryAssetPage,
   MiReportTable,
+  PortfolioAssessmentMatrix,
   PortfolioLevelApps,
   PortfolioSummary,
   PortfolioTreeView,
@@ -380,4 +383,29 @@ export const api = {
     })
     return `${portfolios}/${id}/reports/${encodeURIComponent(report)}.csv?${q}`
   },
+
+  listAssessmentSuites: () => request<AssessmentSuiteSummary[]>(`${schema}/assessment/suites`),
+
+  runApplicationAssessment: (
+    applicationId: string,
+    body: { suiteId: string; versionId?: string | null; bomIds?: string[] | null },
+  ) =>
+    request<ApplicationAssessmentResult>(`${apps}/${applicationId}/assessment/run`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  runPortfolioAssessment: (
+    portfolioId: string,
+    body: {
+      suiteId: string
+      applicationIds?: string[] | null
+      level?: string
+      includeSubcategories?: boolean
+    },
+  ) =>
+    request<PortfolioAssessmentMatrix>(`${portfolios}/${portfolioId}/assessment/run`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
 }

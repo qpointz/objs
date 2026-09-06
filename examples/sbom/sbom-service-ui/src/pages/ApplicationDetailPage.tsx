@@ -32,13 +32,16 @@ import { IconArrowBackUp, IconChevronDown, IconChevronRight, IconChevronsDown, I
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { Link, useBlocker, useParams, useSearchParams } from 'react-router-dom'
 import { DraftStatusPill } from '../DraftStatusPill'
+import { FindingSeverityPill, maxFindingSeverity } from '../FindingSeverityPill'
 import { computeBomDraft, isChanged } from '../bomDraft'
 import { api } from '../api/client'
 import {
   enumCaption,
+  type ApplicationAssessmentResult,
   type ApplicationFingerprintSummary,
   type ApplicationSummary,
   type ApplicationVersionSummary,
+  type AssessmentSuiteSummary,
   type AssetRelationshipSpec,
   type AssetTypeSummary,
   type AssetView,
@@ -303,6 +306,9 @@ export function ApplicationDetailPage() {
   const [roleSpecs, setRoleSpecs] = useState<AssetRelationshipSpec[]>([])
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [assessmentSuites, setAssessmentSuites] = useState<AssessmentSuiteSummary[]>([])
+  const [assessment, setAssessment] = useState<ApplicationAssessmentResult | null>(null)
+  const [assessmentBusy, setAssessmentBusy] = useState(false)
   const [promoteOpen, setPromoteOpen] = useState(false)
   const [promoteName, setPromoteName] = useState('')
   const [addOpen, setAddOpen] = useState(false)
@@ -463,6 +469,7 @@ export function ApplicationDetailPage() {
     setWorkingAssets(view.assets)
     setWorkingRels(view.relations)
     setDirty(false)
+    setAssessment(null)
     setEditTargetVersion(view.version.version ?? '')
     setEditVersionTags(view.version.tags ?? [])
     const oneBom =
@@ -647,6 +654,67 @@ export function ApplicationDetailPage() {
     editPayload != null &&
     JSON.stringify(editPayload) !== JSON.stringify(selectedAsset.payload)
   const versionDirty = dirty || appMetaDirty || versionMetaDirty || bomMetaDirty || stashDirty
+
+  const findingSeverities = useMemo(() => {
+    const map = new Map<string, string>()
+    if (!assessment?.entitySeverities) return map
+    for (const [id, sev] of Object.entries(assessment.entitySeverities)) {
+      map.set(id, sev)
+    }
+    return map
+  }, [assessment])
+
+  const typeFindingSeverities = useMemo(() => {
+    const map = new Map<string, string>()
+    if (findingSeverities.size === 0) return map
+    for (const [type, items] of grouped) {
+      const worst = maxFindingSeverity(...items.map((a) => findingSeverities.get(a.id)))
+      if (worst) map.set(type, worst)
+    }
+    return map
+  }, [grouped, findingSeverities])
+
+  const selectedAssetFindings = useMemo(() => {
+    if (!assessment || !selectedAssetId) return []
+    return assessment.findings.filter((f) => (f.entityIds ?? []).includes(selectedAssetId))
+  }, [assessment, selectedAssetId])
+
+  useEffect(() => {
+    void api
+      .listAssessmentSuites()
+      .then(setAssessmentSuites)
+      .catch(() => setAssessmentSuites([]))
+  }, [])
+
+  async function runAssessment(suiteId: string) {
+    if (!id) return
+    setAssessmentBusy(true)
+    setError(null)
+    try {
+      // Assess the open version with the current BOM selection (multi-BOM aware).
+      // Empty draft → fall back to latest RELEASED (no draft bomIds).
+      const openHasAssets = (workingAssets?.length ?? 0) > 0
+      const released = versions
+        .filter((v) => v.status === 'RELEASED')
+        .sort((a, b) => (b.promotedAt || b.capturedAt).localeCompare(a.promotedAt || a.capturedAt))
+      const assessVersionId =
+        bom?.version.status === 'RELEASED' || openHasAssets
+          ? versionId
+          : released[0]?.id ?? versionId ?? null
+      const assessBomIds =
+        assessVersionId === versionId && selectedBomIds.length > 0 ? selectedBomIds : undefined
+      const result = await api.runApplicationAssessment(id, {
+        suiteId,
+        versionId: assessVersionId || null,
+        bomIds: assessBomIds,
+      })
+      setAssessment(result)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Assessment failed')
+    } finally {
+      setAssessmentBusy(false)
+    }
+  }
 
   const leaveBlocked = editing && (versionDirty || payloadUnapplied)
   const blocker = useBlocker(({ currentLocation, nextLocation }) => {
@@ -2134,8 +2202,73 @@ export function ApplicationDetailPage() {
               Fingerprint
             </Button>
           )}
+          {bom && assessmentSuites.length > 0 && (
+            <Menu position="bottom-end" withinPortal>
+              <Menu.Target>
+                <Button
+                  size="sm"
+                  variant="light"
+                  loading={assessmentBusy}
+                  rightSection={<IconChevronDown size={14} />}
+                >
+                  Assessment
+                  {assessment ? (
+                    <Badge
+                      size="xs"
+                      ml={6}
+                      variant="filled"
+                      color={
+                        assessment.overallStatus === 'PASS'
+                          ? 'teal'
+                          : assessment.overallStatus === 'FAIL' || assessment.overallStatus === 'ERROR'
+                            ? 'red'
+                            : 'gray'
+                      }
+                    >
+                      {assessment.overallStatus || assessment.suiteName}
+                    </Badge>
+                  ) : null}
+                </Button>
+              </Menu.Target>
+              <Menu.Dropdown>
+                {assessmentSuites.map((s) => (
+                  <Menu.Item key={s.id} onClick={() => void runAssessment(s.id)}>
+                    {s.name}
+                  </Menu.Item>
+                ))}
+                <Menu.Divider />
+                <Menu.Item disabled={!assessment} onClick={() => setAssessment(null)}>
+                  Clear
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+          )}
         </Group>
       </Group>
+      {assessment && (
+        <Alert
+          color={
+            assessment.overallStatus === 'PASS'
+              ? 'teal'
+              : assessment.overallStatus === 'FAIL' || assessment.overallStatus === 'ERROR'
+                ? 'red'
+                : 'gray'
+          }
+          title={`${assessment.suiteName}: ${assessment.overallStatus ?? 'done'}`}
+        >
+          <Text size="sm">
+            {(assessment.findings.filter((f) => (f.entityIds?.length ?? 0) > 0).length)} asset finding(s)
+            {' · '}
+            {assessment.outcomes.filter((o) => o.status === 'FAIL' || o.status === 'ERROR').length} failed
+            polic(ies)
+            {assessment.findings.length >
+            assessment.findings.filter((f) => (f.entityIds?.length ?? 0) > 0).length
+              ? ` · ${assessment.findings.length} total notes`
+              : ''}
+            . Clear from the Assessment menu.
+          </Text>
+        </Alert>
+      )}
       {error && <Alert color="red">{error}</Alert>}
       {(versionDirty || payloadUnapplied) && (
         <Text size="xs" c="orange">
@@ -2426,9 +2559,12 @@ export function ApplicationDetailPage() {
                       size="sm"
                       fw={typeIsSelected || typeContainsSelection || (editing && typeChanged) ? 700 : 500}
                       c={editing && typeChanged ? 'blue' : undefined}
+                      style={{ flex: 1, minWidth: 0 }}
+                      truncate
                     >
                       {type} ({items.length})
                     </Text>
+                    <FindingSeverityPill severity={typeFindingSeverities.get(type)} ml={6} />
                   </UnstyledButton>
                   {open &&
                     items.map((a) => {
@@ -2458,6 +2594,8 @@ export function ApplicationDetailPage() {
                         >
                           {a.label}
                         </Text>
+                        <FindingSeverityPill severity={findingSeverities.get(a.id)} ml={6} />
+                        {editing && <DraftStatusPill status={kind} ml={6} />}
                       </UnstyledButton>
                     )})}
                 </div>
@@ -2783,6 +2921,32 @@ export function ApplicationDetailPage() {
                     onRemove={removeRelation}
                     onRevert={revertRelation}
                   />
+                  {assessment && (
+                    <Paper withBorder p="sm" radius="md">
+                      <Text size="sm" fw={600} mb={6}>
+                        Assessment · {assessment.suiteName}
+                      </Text>
+                      {selectedAssetFindings.length === 0 ? (
+                        <Text size="xs" c="dimmed">
+                          No findings bound to this asset.
+                        </Text>
+                      ) : (
+                        <Stack gap={6}>
+                          {selectedAssetFindings.map((f, i) => (
+                            <Group key={i} gap="xs" wrap="nowrap" align="flex-start">
+                              <FindingSeverityPill severity={f.severity ?? f.outcomeStatus} />
+                              <div style={{ minWidth: 0 }}>
+                                <Text size="xs" fw={600}>
+                                  {f.policyName || 'Policy'}
+                                </Text>
+                                <Text size="xs">{f.message}</Text>
+                              </div>
+                            </Group>
+                          ))}
+                        </Stack>
+                      )}
+                    </Paper>
+                  )}
                 </Stack>
               ) : selectedType ? (
                 <Stack gap="sm">
@@ -3182,6 +3346,7 @@ export function ApplicationDetailPage() {
                   assetStatus={editing ? draft.assetStatus : undefined}
                   relationStatus={editing ? draft.relationStatus : undefined}
                   changesOnly={editing && changesOnly}
+                  findingSeverities={findingSeverities}
                   onSelectAsset={(assetId) => {
                     if (!assetId) {
                       writeSelection({ asset: null, type: null })

@@ -7,6 +7,8 @@
 
 Paste into the Policy editor, **Check**, then **Evaluate** against an open SBOM graph (e.g. payments demo or application-bom). These are **playground sketches**, not a compliance pack (G-P38).
 
+**Inventory Assessment (demo):** `:sbom-service` loads a REPLACE seed pack at [`seeds/policy/sbom-assessment-suites.yaml`](../../../examples/sbom/sbom-service/src/main/resources/seeds/policy/sbom-assessment-suites.yaml). Policies are filed under topic categories (**Licensing**, **Supply chain**, **Security**, **Privacy**, **Product**, **Integrity**), not a single “SBOM Assessment” bucket. Suites keep Dimension → Measure folders. The SBOM UI runs Assessment via `/api/v1/inventory/**` only. Results are session-only — not G-P11r persistence.
+
 ---
 
 ## Fact & scratch cheat sheet

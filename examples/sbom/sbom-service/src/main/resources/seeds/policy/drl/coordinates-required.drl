@@ -1,0 +1,48 @@
+package org.poc.objs.policy.sbom.assessment;
+
+import org.poc.objs.policy.drools.EntityFact;
+import org.poc.objs.policy.drools.DroolsEvaluationScratch;
+
+global DroolsEvaluationScratch scratch;
+
+rule "sbom-coordinates-required"
+when
+    $e : EntityFact(
+        type == "Component",
+        eval(
+            $e.get("coordinates") == null ||
+            String.valueOf($e.get("coordinates")).isBlank()
+        )
+    )
+then
+    String id = $e.getId() != null ? $e.getId().toString() : null;
+    scratch.fail("Component missing payload.coordinates");
+    scratch.finding(
+        "Component missing required payload.coordinates",
+        "ERROR",
+        "SBOM_COMPONENT_COORDINATES_REQUIRED",
+        id,
+        null
+    );
+end
+
+rule "sbom-coordinates-present-info"
+when
+    $e : EntityFact(
+        type == "Component",
+        eval(
+            $e.get("coordinates") != null &&
+            !String.valueOf($e.get("coordinates")).isBlank()
+        )
+    )
+then
+    String id = $e.getId() != null ? $e.getId().toString() : null;
+    scratch.pass("Component coordinates present");
+    scratch.finding(
+        "Component declares coordinates",
+        "INFO",
+        "SBOM_COMPONENT_COORDINATES_OK",
+        id,
+        null
+    );
+end

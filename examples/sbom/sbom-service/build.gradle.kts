@@ -29,6 +29,7 @@ dependencies {
     implementation(project(":objs-api"))
     implementation(project(":objs-autoconfigure"))
     implementation(project(":objs-gremlin-core"))
+    implementation(project(":objs-policy-api"))
     implementation(libs.boot.starter.webmvc)
     implementation(libs.springdoc.openapi.starter.webmvc.ui)
     implementation(libs.kotlin.reflect)

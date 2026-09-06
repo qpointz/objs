@@ -1,0 +1,27 @@
+package org.poc.objs.policy.sbom.assessment;
+
+import org.poc.objs.policy.drools.EntityFact;
+import org.poc.objs.policy.drools.DroolsEvaluationScratch;
+
+global DroolsEvaluationScratch scratch;
+
+rule "sbom-license-spdx-required"
+when
+    $e : EntityFact(
+        type == "License",
+        eval(
+            $e.get("spdxId") == null ||
+            String.valueOf($e.get("spdxId")).isBlank()
+        )
+    )
+then
+    String id = $e.getId() != null ? $e.getId().toString() : null;
+    scratch.fail("License missing payload.spdxId");
+    scratch.finding(
+        "License missing required payload.spdxId",
+        "ERROR",
+        "SBOM_LICENSE_SPDX_REQUIRED",
+        id,
+        null
+    );
+end

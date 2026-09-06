@@ -23,6 +23,7 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRe
 import type { AssetView, RelationView } from './api/types'
 import type { DraftKind } from './bomDraft'
 import { DraftStatusPill, draftStatusColor } from './DraftStatusPill'
+import { FindingSeverityPill } from './FindingSeverityPill'
 
 const NODE_W = 188
 const NODE_H = 76
@@ -78,6 +79,7 @@ type Props = {
   assetStatus?: ReadonlyMap<string, DraftKind>
   relationStatus?: ReadonlyMap<string, DraftKind>
   changesOnly?: boolean
+  findingSeverities?: ReadonlyMap<string, string>
 }
 
 type PayloadRow = { key: string; value: string }
@@ -91,6 +93,7 @@ type CardData = {
   viewMode: GraphViewMode
   payloadRows: PayloadRow[]
   draftStatus: DraftKind
+  findingSeverity?: string
 }
 
 const HANDLE_STYLE = {
@@ -175,6 +178,7 @@ function AssetNode({ data, selected }: NodeProps<AssetNodeType>) {
           >
             {data.type}
             <StatusPill status={data.draftStatus} />
+            <FindingSeverityPill severity={data.findingSeverity} ml={6} />
           </div>
           <div style={{ padding: '6px 8px 8px' }}>
             <div style={{ fontSize: 12, fontWeight: 700 }}>{data.label}</div>
@@ -210,6 +214,7 @@ function AssetNode({ data, selected }: NodeProps<AssetNodeType>) {
           <div style={{ fontSize: 10, color: data.color, fontWeight: 700 }}>
             {data.type}
             <StatusPill status={data.draftStatus} />
+            <FindingSeverityPill severity={data.findingSeverity} ml={6} />
           </div>
           <div style={{ fontSize: 12, fontWeight: 600 }}>{data.label}</div>
         </>
@@ -390,6 +395,7 @@ function CanvasInner(
     assetStatus,
     relationStatus,
     changesOnly = false,
+    findingSeverities,
   }: Props,
   ref: Ref<SbomGraphHandle>,
 ) {
@@ -513,6 +519,7 @@ function CanvasInner(
           viewMode,
           payloadRows: payloadRows(a.payload),
           draftStatus: status,
+          findingSeverity: findingSeverities?.get(a.id),
         },
       }
     })
@@ -556,7 +563,7 @@ function CanvasInner(
     const next = { nodes, edges }
     skeletonCache.current = next
     return next
-  }, [assets, relations, viewMode, highlightedTypes, visible, assetStatus, relationStatus, changesOnly])
+  }, [assets, relations, viewMode, highlightedTypes, visible, assetStatus, relationStatus, changesOnly, findingSeverities])
 
   const [nodes, setNodes, onNodesChange] = useNodesState(skeleton.nodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(skeleton.edges)

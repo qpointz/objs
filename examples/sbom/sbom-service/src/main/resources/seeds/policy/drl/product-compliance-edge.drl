@@ -1,0 +1,39 @@
+package org.poc.objs.policy.sbom.assessment;
+
+import org.poc.objs.policy.drools.EntityFact;
+import org.poc.objs.policy.drools.EdgeFact;
+import org.poc.objs.policy.drools.DroolsEvaluationScratch;
+
+global DroolsEvaluationScratch scratch;
+
+rule "sbom-product-compliance-edge"
+when
+    $p : EntityFact( type == "Product", $pid : id != null )
+    not EdgeFact( role == "COMPLIES_WITH", source == $pid )
+then
+    String id = $p.getId().toString();
+    scratch.fail("Product has no COMPLIES_WITH edge");
+    scratch.finding(
+        "Product missing compliance COMPLIES_WITH edge",
+        "WARN",
+        "SBOM_PRODUCT_COMPLIANCE_MISSING",
+        id,
+        null
+    );
+end
+
+rule "sbom-product-compliance-ok-info"
+when
+    $p : EntityFact( type == "Product", $pid : id != null )
+    EdgeFact( role == "COMPLIES_WITH", source == $pid )
+then
+    String id = $p.getId().toString();
+    scratch.pass("Product has compliance linkage");
+    scratch.finding(
+        "Product has COMPLIES_WITH edge",
+        "INFO",
+        "SBOM_PRODUCT_COMPLIANCE_OK",
+        id,
+        null
+    );
+end

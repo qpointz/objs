@@ -1,0 +1,55 @@
+package org.poc.objs.policy.sbom.assessment;
+
+import org.poc.objs.policy.drools.EntityFact;
+import org.poc.objs.policy.drools.DroolsEvaluationScratch;
+
+global DroolsEvaluationScratch scratch;
+
+rule "sbom-release-version"
+when
+    $e : EntityFact(
+        type == "Component",
+        eval(
+            $e.get("version") instanceof String &&
+            (
+              ((String) $e.get("version")).contains("SNAPSHOT") ||
+              ((String) $e.get("version")).equalsIgnoreCase("unknown")
+            )
+        )
+    )
+then
+    String ver = String.valueOf($e.get("version"));
+    String id = $e.getId() != null ? $e.getId().toString() : null;
+    scratch.fail("Component version not release-ready: " + ver);
+    scratch.finding(
+        "Component version not release-ready: " + ver,
+        "ERROR",
+        "SBOM_COMPONENT_VERSION_SNAPSHOT",
+        id,
+        null
+    );
+end
+
+rule "sbom-release-version-ok-info"
+when
+    $e : EntityFact(
+        type == "Component",
+        eval(
+            $e.get("version") instanceof String &&
+            !((String) $e.get("version")).contains("SNAPSHOT") &&
+            !((String) $e.get("version")).equalsIgnoreCase("unknown") &&
+            !String.valueOf($e.get("version")).isBlank()
+        )
+    )
+then
+    String ver = String.valueOf($e.get("version"));
+    String id = $e.getId() != null ? $e.getId().toString() : null;
+    scratch.pass("Component version is release-ready");
+    scratch.finding(
+        "Component release version: " + ver,
+        "INFO",
+        "SBOM_COMPONENT_VERSION_OK",
+        id,
+        null
+    );
+end

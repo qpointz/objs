@@ -376,13 +376,12 @@ class SbomDemoInventorySeeder(
             val from = i * chunk
             val slice = if (i == names.lastIndex) assetIds.drop(from) else assetIds.drop(from).take(chunk)
             val sliceSet = slice.toSet()
-            val sliceRels =
-                if (i == 0) {
-                    rels.filter { it.fromAssetId in sliceSet && it.toAssetId in sliceSet }
-                } else {
-                    emptyList()
-                }
-            versions.replaceBom(applicationId, versionId, ReplaceVersionBomRequest(slice, sliceRels), row.id)
+            // Keep each BOM self-contained for policy evaluate (GraphIdsMatcher unions graphs;
+            // orphan Components without LICENSED_UNDER in a sibling BOM would false-FAIL).
+            val sliceRels = rels.filter { it.fromAssetId in sliceSet || it.toAssetId in sliceSet }
+            val expanded =
+                (sliceSet + sliceRels.flatMap { listOf(it.fromAssetId, it.toAssetId) }).distinct()
+            versions.replaceBom(applicationId, versionId, ReplaceVersionBomRequest(expanded, sliceRels), row.id)
         }
     }
 
@@ -559,9 +558,11 @@ class SbomDemoInventorySeeder(
         link(product.id, runtime.id, SbomRoles.RUNS_ON)
         link(product.id, api.id, SbomRoles.CALLS)
         link(product.id, database.id, SbomRoles.CONNECTS_TO)
-        link(product.id, pool.pci.id, SbomRoles.COMPLIES_WITH)
-        link(product.id, pool.oss.id, SbomRoles.COMPLIES_WITH)
-        if (spec.includeDataset || datasets.isNotEmpty()) {
+        if (!spec.attachVuln) {
+            link(product.id, pool.pci.id, SbomRoles.COMPLIES_WITH)
+            link(product.id, pool.oss.id, SbomRoles.COMPLIES_WITH)
+        }
+        if ((spec.includeDataset || datasets.isNotEmpty()) && !spec.attachVuln) {
             link(product.id, pool.residency.id, SbomRoles.COMPLIES_WITH)
         }
         link(runtime.id, os.id, SbomRoles.RUNS_ON)
@@ -592,14 +593,29 @@ class SbomDemoInventorySeeder(
         }
         if (spec.attachVuln) {
             val target = components.first()
-            val vuln = if (spec.stack == DemoStack.JAVA) pool.log4shell else pool.http2reset
-            link(target.id, vuln.id, SbomRoles.HAS_VULNERABILITY)
+            // Always attach CRITICAL Log4Shell so Security posture fails across stacks.
+            link(target.id, pool.log4shell.id, SbomRoles.HAS_VULNERABILITY)
             if (spec.stack == DemoStack.JAVA) {
                 link(pool.boot(generation).id, pool.spring4shell.id, SbomRoles.HAS_VULNERABILITY)
+            } else {
+                link(target.id, pool.http2reset.id, SbomRoles.HAS_VULNERABILITY)
             }
             link(image.id, pool.http2reset.id, SbomRoles.HAS_VULNERABILITY)
+            link(target.id, pool.proprietary.id, SbomRoles.LICENSED_UNDER)
+            val dirty =
+                create(
+                    "Component",
+                    mapOf(
+                        "name" to "legacy-bridge",
+                        "version" to "1.0.0-SNAPSHOT",
+                        "ecosystem" to "",
+                        "kind" to "library",
+                    ),
+                    spec.name,
+                )
+            link(product.id, dirty.id, SbomRoles.CONTAINS)
+            link(build.id, dirty.id, SbomRoles.USES)
         }
-        components.firstOrNull()?.let { link(it.id, pool.proprietary.id, SbomRoles.LICENSED_UNDER) }
 
         val ids =
             (

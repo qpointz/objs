@@ -1,0 +1,34 @@
+package org.poc.objs.policy.sbom.assessment;
+
+import org.poc.objs.policy.drools.EntityFact;
+import org.poc.objs.policy.drools.EdgeFact;
+import org.poc.objs.policy.drools.DroolsEvaluationScratch;
+
+global DroolsEvaluationScratch scratch;
+
+rule "sbom-dataset-eu-residency"
+when
+    EntityFact( type == "Dataset" )
+    $p : EntityFact( type == "Product", $pid : id != null )
+    not (
+        EdgeFact( role == "COMPLIES_WITH", source == $pid, $tid : target != null )
+        and EntityFact(
+            id == $tid,
+            type == "Policy",
+            eval(
+                get("name") != null &&
+                String.valueOf(get("name")).toLowerCase().contains("residency")
+            )
+        )
+    )
+then
+    String id = $p.getId().toString();
+    scratch.fail("Product missing EU residency COMPLIES_WITH while Dataset present");
+    scratch.finding(
+        "Dataset in graph but Product lacks EU Data Residency compliance edge",
+        "ERROR",
+        "SBOM_EU_RESIDENCY_REQUIRED",
+        id,
+        null
+    );
+end

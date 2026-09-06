@@ -1,0 +1,39 @@
+package org.poc.objs.policy.sbom.assessment;
+
+import org.poc.objs.policy.drools.EntityFact;
+import org.poc.objs.policy.drools.EdgeFact;
+import org.poc.objs.policy.drools.DroolsEvaluationScratch;
+
+global DroolsEvaluationScratch scratch;
+
+rule "sbom-product-owned-by-required"
+when
+    $p : EntityFact( type == "Product", $pid : id != null )
+    not EdgeFact( role == "OWNED_BY", source == $pid )
+then
+    String id = $p.getId().toString();
+    scratch.fail("Product has no OWNED_BY Organization");
+    scratch.finding(
+        "Product missing OWNED_BY edge to Organization",
+        "ERROR",
+        "SBOM_PRODUCT_OWNER_REQUIRED",
+        id,
+        null
+    );
+end
+
+rule "sbom-product-owned-by-ok-info"
+when
+    $p : EntityFact( type == "Product", $pid : id != null )
+    EdgeFact( role == "OWNED_BY", source == $pid )
+then
+    String id = $p.getId().toString();
+    scratch.pass("Product has an owner");
+    scratch.finding(
+        "Product has OWNED_BY Organization",
+        "INFO",
+        "SBOM_PRODUCT_OWNER_OK",
+        id,
+        null
+    );
+end

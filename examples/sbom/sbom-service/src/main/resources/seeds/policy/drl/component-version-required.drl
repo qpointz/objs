@@ -1,0 +1,27 @@
+package org.poc.objs.policy.sbom.assessment;
+
+import org.poc.objs.policy.drools.EntityFact;
+import org.poc.objs.policy.drools.DroolsEvaluationScratch;
+
+global DroolsEvaluationScratch scratch;
+
+rule "sbom-component-version-required"
+when
+    $e : EntityFact(
+        type == "Component",
+        eval(
+            $e.get("version") == null ||
+            String.valueOf($e.get("version")).isBlank()
+        )
+    )
+then
+    String id = $e.getId() != null ? $e.getId().toString() : null;
+    scratch.fail("Component missing payload.version");
+    scratch.finding(
+        "Component missing required payload.version",
+        "ERROR",
+        "SBOM_COMPONENT_VERSION_REQUIRED",
+        id,
+        null
+    );
+end

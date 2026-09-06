@@ -1,0 +1,23 @@
+package org.poc.objs.policy.sbom.assessment;
+
+import org.poc.objs.policy.drools.EntityFact;
+import org.poc.objs.policy.drools.EdgeFact;
+import org.poc.objs.policy.drools.DroolsEvaluationScratch;
+
+global DroolsEvaluationScratch scratch;
+
+rule "sbom-image-vulns"
+when
+    $img : EntityFact( type == "Container Image", $iid : id != null )
+    $edge : EdgeFact( role == "HAS_VULNERABILITY", source == $iid )
+then
+    String id = $img.getId().toString();
+    scratch.fail("Container Image has HAS_VULNERABILITY edge");
+    scratch.finding(
+        "Container Image linked to a vulnerability",
+        "WARN",
+        "SBOM_IMAGE_VULN",
+        id,
+        null
+    );
+end
