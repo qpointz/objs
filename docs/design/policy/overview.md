@@ -677,7 +677,7 @@ SBOM Application / Portfolio binding stays in the app. Foundation never requires
 | C-32 Metadata | [`policy-metadata/GAPS.md`](../../workitems/completed/20260905-policy-metadata/GAPS.md) |
 | C-27 Suites | [`policy-suites/GAPS.md`](../../workitems/completed/20260905-policy-suites/GAPS.md) · [`suites.md`](suites.md) |
 | C-28 Seeds + persistence | [`policy-seeds-persistence/GAPS.md`](../../workitems/completed/20260906-policy-seeds-persistence/GAPS.md) |
-| C-33 Result store | [`policy-results-persistence/GAPS.md`](../../workitems/in-progress/policy-results-persistence/GAPS.md) — **closed**; archive **shipped** |
+| C-33 Result store | [`policy-results-persistence/GAPS.md`](../../workitems/completed/20260907-policy-results-persistence/GAPS.md) — **closed**; archive **shipped** |
 | C-29 Batch | [`policy-batch/GAPS.md`](../../workitems/planned/policy-batch/GAPS.md) |
 | C-30 Example/REST consumer | [`policy-consumer/GAPS.md`](../../workitems/planned/policy-consumer/GAPS.md) |
 

@@ -6,7 +6,7 @@
 **Folder:** [`docs/workitems/planned/policy-consumer/`](.)  
 **Backlog:** [C-30](../../BACKLOG.md)  
 **Sequence:** [policy family](../../SEQUENCE.md#policy-family-c-24c-32--normative-order) step **9 / 9**  
-**Before:** [C-29 `policy-batch`](../policy-batch/STORY.md) (preferred full stack); hard require [C-24](../../completed/20260904-policy-evaluate-core/STORY.md); results store preferred [C-33](../../in-progress/policy-results-persistence/STORY.md)  
+**Before:** [C-29 `policy-batch`](../policy-batch/STORY.md) (preferred full stack); hard require [C-24](../../completed/20260904-policy-evaluate-core/STORY.md); results store preferred [C-33](../../completed/20260907-policy-results-persistence/STORY.md)  
 **Next:** — (end of policy family)  
 **Gaps:** [`GAPS.md`](GAPS.md)  
 **Design:** [`docs/design/policy/overview.md`](../../../design/policy/overview.md)

@@ -47,7 +47,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | C-30 | Optional policy REST / example consumer (gated; workbench = C-31) | feature | planned | [`planned/policy-consumer/`](planned/policy-consumer/STORY.md) |
 | C-31 | Workbench tactical Policy play UI (after Drools) | feature | done | [`completed/20260904-policy-workbench/`](completed/20260904-policy-workbench/STORY.md), also [U-9](#ui--workbench) |
 | C-32 | Policy metadata: tags, user-managed categories, annotations (Policy list navigation) | feature | done | [`completed/20260905-policy-metadata/`](completed/20260905-policy-metadata/STORY.md), also [U-10](#ui--workbench) |
-| C-33 | Evaluation result archives: persist axes, filters, presets, labeling (G-P11r/32r/48r–50r) | feature | in-progress | [`in-progress/policy-results-persistence/`](in-progress/policy-results-persistence/STORY.md) |
+| C-33 | Evaluation result archives: persist axes, filters, presets, labeling (G-P11r/32r/48r–50r) | feature | done | [`completed/20260907-policy-results-persistence/`](completed/20260907-policy-results-persistence/STORY.md) |
 
 ---
 

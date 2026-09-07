@@ -1,7 +1,7 @@
 # Evaluation results — indicative relational model (shared)
 
 **Status:** durable store **shipped** (C-33); relational sketch aligned with APIs  
-**Story:** [`policy-results-persistence`](../../in-progress/policy-results-persistence/STORY.md) · Gaps: [`GAPS.md`](../../in-progress/policy-results-persistence/GAPS.md) · **Concrete store:** [`PERSISTENCE-MODEL.md`](../../in-progress/policy-results-persistence/PERSISTENCE-MODEL.md) · Design: [`suites.md`](../../../../design/policy/suites.md) · Flat results: [`results.md`](../../../../design/policy/results.md)
+**Story:** [`policy-results-persistence`](../../completed/20260907-policy-results-persistence/STORY.md) · Gaps: [`GAPS.md`](../../completed/20260907-policy-results-persistence/GAPS.md) · **Concrete store:** [`PERSISTENCE-MODEL.md`](../../completed/20260907-policy-results-persistence/PERSISTENCE-MODEL.md) · Design: [`suites.md`](../../../../design/policy/suites.md) · Flat results: [`results.md`](../../../../design/policy/results.md)
 
 Sketches a **relational** mental model for evaluation results reused across:
 
@@ -121,7 +121,7 @@ erDiagram
 | `overall_severity` | text null | |
 | `tags` | JSON / JSONB | Array of strings (same shape as policy/suite catalog) |
 | `annotations` | JSON / JSONB | String map (same shape as policy/suite catalog) |
-| `persist_profile` | JSON / JSONB | Extensible PersistSpec projection (axes, filters, preset, name, description, origin, durationMs, …) — see [`PERSISTENCE-MODEL.md`](../../in-progress/policy-results-persistence/PERSISTENCE-MODEL.md) |
+| `persist_profile` | JSON / JSONB | Extensible PersistSpec projection (axes, filters, preset, name, description, origin, durationMs, …) — see [`PERSISTENCE-MODEL.md`](../../completed/20260907-policy-results-persistence/PERSISTENCE-MODEL.md) |
 | `suite_id` / `suite_name` | UUID / text null | **Denormalized optional overlay** when `kind = SUITE` — **not** a catalog FK |
 | `suite_tree` | JSON / JSONB null | Suite reporting tree snapshot when persisted with results |
 
@@ -178,8 +178,8 @@ Apps may allocate `evaluationId` before calling foundation, pass it through, and
 
 ## Persistence API (C-33)
 
-Normative locks: [`policy-results-persistence/GAPS.md`](../../in-progress/policy-results-persistence/GAPS.md) (G-P48r, G-P49r, G-P46r).  
-**Column-level store:** [`PERSISTENCE-MODEL.md`](../../in-progress/policy-results-persistence/PERSISTENCE-MODEL.md).
+Normative locks: [`policy-results-persistence/GAPS.md`](../../completed/20260907-policy-results-persistence/GAPS.md) (G-P48r, G-P49r, G-P46r).  
+**Column-level store:** [`PERSISTENCE-MODEL.md`](../../completed/20260907-policy-results-persistence/PERSISTENCE-MODEL.md).
 
 **Evaluation ≠ suite hard-link:** archives are keyed by `evaluationId` alone. **FLAT / custom policy-set** runs (`evaluate` → `saveFlat`) are **first-class** — no suite catalog row, no `SuiteRepository`, suite overlay columns stay null. **SUITE** runs (`evaluateSuite` → `saveSuite`) add optional denormalized `suite_*` / `suite_tree` on the same evaluation row. Catalog Drop is never blocked by archive FKs (G-P46r).
 
@@ -228,6 +228,6 @@ C-27 shipped EPHEMERAL only. C-33 implements axes, filters, presets, labeling, a
 ## Out of scope here
 
 - Flyway / JPA for **catalog** (Policy / Category / Suite) — **C-28**  
-- Flyway / JPA for **evaluation results** / input persist — **[C-33 `policy-results-persistence`](../../in-progress/policy-results-persistence/STORY.md)** (G-P11r / G-P32r)  
+- Flyway / JPA for **evaluation results** / input persist — **[C-33 `policy-results-persistence`](../../completed/20260907-policy-results-persistence/STORY.md)** (G-P11r / G-P32r)  
 - G-P27s identity field names  
 - Batch header detail (C-29)  

@@ -142,4 +142,4 @@ Suite-level roll-up / reporting tree is **C-27** — see [`suites.md`](suites.md
 
 ## Durable archives (C-33 **shipped**)
 
-Explicit `EvaluationArchive.saveFlat` / `saveSuite` with [`PersistSpec`](../../workitems/in-progress/policy-results-persistence/GAPS.md) (content axes + result filters + labeling/runtime). Presets: EPHEMERAL / STANDARD / FULL. Evaluate paths do **not** auto-persist. Port: `org.poc.objs.policy.api.EvaluationArchive`; JPA in `:objs-persistence`. See RESULTS-MODEL § Persistence API.
+Explicit `EvaluationArchive.saveFlat` / `saveSuite` with [`PersistSpec`](../../workitems/completed/20260907-policy-results-persistence/GAPS.md) (content axes + result filters + labeling/runtime). Presets: EPHEMERAL / STANDARD / FULL. Evaluate paths do **not** auto-persist. Port: `org.poc.objs.policy.api.EvaluationArchive`; JPA in `:objs-persistence`. See RESULTS-MODEL § Persistence API.

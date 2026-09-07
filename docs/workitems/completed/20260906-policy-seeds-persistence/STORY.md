@@ -10,7 +10,7 @@
 **MR:** https://gitlab.qpointz.io/sandbox/bom-poc/-/merge_requests/61  
 **Sequence:** [policy family](../../SEQUENCE.md#policy-family-c-24c-32--normative-order) step **6 / 8**  
 **Before:** [C-27 `policy-suites`](../20260905-policy-suites/STORY.md) (suite seed kinds; result shape locked, **not** result store); hard require [C-24](../20260904-policy-evaluate-core/STORY.md) (+ C-32 categories)  
-**Next:** [C-33 `policy-results-persistence`](../../in-progress/policy-results-persistence/STORY.md)  
+**Next:** [C-33 `policy-results-persistence`](../../completed/20260907-policy-results-persistence/STORY.md)  
 **Gaps:** [`GAPS.md`](GAPS.md) — catalog/seed rows **closed** (WI-001); G-P11r / G-P32r **deferred**  
 **Design:** [`docs/design/policy/overview.md`](../../../design/policy/overview.md), [`docs/design/policy/repository.md`](../../../design/policy/repository.md), [`docs/design/graph/seeds.md`](../../../design/graph/seeds.md), [`docs/design/policy/workbench.md`](../../../design/policy/workbench.md)  
 **C-27 results sketch (not this story):** [`RESULTS-MODEL.md`](../20260905-policy-suites/RESULTS-MODEL.md)

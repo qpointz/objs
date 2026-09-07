@@ -319,7 +319,7 @@ Ordered (or keyed) **`PolicyOutcome`** list from flat `evaluate` after `Executio
 
 ### 3. Input / snapshot persist — **C-33 axes + presets**
 
-C-27 ships **EPHEMERAL only** (`meta` + `tree` + `outcomes`). **C-33 shipped:** `EvaluationArchive` + `PersistSpec` (content axes, filters, presets, labeling, runtime). See [`RESULTS-MODEL.md`](../../workitems/completed/20260905-policy-suites/RESULTS-MODEL.md) § Persistence API and [`policy-results-persistence`](../../workitems/in-progress/policy-results-persistence/STORY.md).
+C-27 ships **EPHEMERAL only** (`meta` + `tree` + `outcomes`). **C-33 shipped:** `EvaluationArchive` + `PersistSpec` (content axes, filters, presets, labeling, runtime). See [`RESULTS-MODEL.md`](../../workitems/completed/20260905-policy-suites/RESULTS-MODEL.md) § Persistence API and [`policy-results-persistence`](../../workitems/completed/20260907-policy-results-persistence/STORY.md).
 
 ### Locked for C-27
 

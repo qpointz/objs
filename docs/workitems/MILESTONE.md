@@ -58,10 +58,11 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`policy-metadata`](completed/20260905-policy-metadata/STORY.md) — Policy catalog metadata: categories, tags, annotations; `version` + timestamp `serial`; workbench tree navigation (C-32 / U-10). WI-000…WI-004.
 - [`policy-suites`](completed/20260905-policy-suites/STORY.md) — Suite folder trees, matchers, `evaluateSuite` wrapper, Builtin roll-up (folder `rollUpMode`), Suites workbench subnav (C-27). WI-000…WI-006.
 - [`policy-seeds-persistence`](completed/20260906-policy-seeds-persistence/STORY.md) — Policy (+suite) catalog JPA + seeds (`key`, Drop*, REPLACE/workbench export); SBOM Assessment demo (C-28). WI-000…WI-006.
+- [`policy-results-persistence`](completed/20260907-policy-results-persistence/STORY.md) — Evaluation archives (`EvaluationArchive` / PersistSpec / `persist_profile`); suite Persist result workbench (C-33). WI-000…WI-004.
 
 ### In progress
 
-- [`policy-results-persistence`](in-progress/policy-results-persistence/STORY.md) — Evaluation archives (`EvaluationArchive` / PersistSpec) (C-33). WI-000…WI-004 done on branch; awaiting story closure.
+_(none)_
 
 ### Planned
 
