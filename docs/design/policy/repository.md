@@ -83,4 +83,4 @@ See [`model.md`](model.md).
 | Suites / membership | C-27 + SuiteRepository |
 | Seed kinds / classpath packs | C-28 + [`../graph/seeds.md`](../graph/seeds.md) |
 | Batch job state | C-29 |
-| Evaluation result store | Deferred (G-P11r) |
+| Evaluation result store | **C-33 shipped** — `EvaluationArchive` + `PersistSpec` (axes / filters / presets); JPA `objs_policy_evaluation*` |

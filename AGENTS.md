@@ -6,14 +6,14 @@ Repository Guidelines
 Gradle multi-module Kotlin project. Foundation leaf modules at the repository root; concrete apps under `examples/`:
 
 - `objs-api` — Foundational model (graph types, catalogs, matcher/JEXL, validation contracts, seed parse, store ports)
-- `objs-persistence` — Spring-free persistence (JPA DAOs, Flyway SQL, seed apply, networknt Validator); packages stay `org.poc.objs.core.*`
+- `objs-persistence` — Spring-free persistence (JPA DAOs, Flyway SQL, seed apply, networknt Validator); packages stay `org.poc.objs.core.*` (policy catalog + evaluation archives)
 - `objs-autoconfigure` — Boot adapter (`spring.datasource` → beans, Spring UoW, objs Flyway ordering)
 - `objs-service` — Spring REST API (library); **foundation side service** (with UI)
 - `objs-service-ui` — Workbench SPA (Vite/React); node-gradle build; JAR packs `static/workbench/`
 - `objs-gremlin-core` — BoM → TinkerGraph materialization + gremlin-lang evaluation (`api(:objs-api)` only)
 - `objs-gremlin-service` — Gremlin REST (`POST /api/v1/objs/graph/traverse/gremlin`) autoconfiguration
 - `objs-jgrapht-core` / `objs-jgrapht-service` — JGraphT analysis (+ optional REST; not default on `:objs-service`)
-- `objs-policy-api` — Policy evaluation contracts (model, SPIs, flat `EvaluationResult`)
+- `objs-policy-api` — Policy evaluation contracts (model, SPIs, flat `EvaluationResult`, `EvaluationArchive` / `PersistSpec`)
 - `objs-policy-core` — In-memory `PolicyRepository` + `DefaultPolicyEvaluator` (CUSTOM stub; not default on `:objs-service`)
 - `objs-policy-drools` — Drools `PolicyEngine` adapter (fixture DRL only; opt-in classpath)
 - `objs-policy-service` — Policy playground REST (`/api/v1/objs/policy/**`); opt-in on `:objs-service-app`

@@ -36,8 +36,9 @@ flowchart TB
 
 | Layer | Types |
 |-------|--------|
-| api | `Policy`, `PolicyWrite`, `PolicyRef`, `Category`, `CategoryWrite`, `CategoryRepository`, `PolicyQuery`, `PolicyEvaluationContext`, `PolicyOutcome` / `EvaluationResult`, `Finding`, `aggregateOverall`, `PolicyContextWirer`, `ApplicabilitySelector`, `PolicyEngine`, `PolicyRepository`, `PolicyEvaluator`, `PolicyEvaluationException`; suite: `PolicySuite`, `SuiteFolder` (+ `rollUpMode`), `SuiteMatcher`, `SuiteRepository`, `SuiteEvaluator`, `SuiteEvaluationResult`, `SuiteRollUpStrategy`, `ExecutionStrategy`; `PolicyEngineKinds.CUSTOM` / `DROOLS` |
+| api | `Policy`, `PolicyWrite`, `PolicyRef`, `Category`, `CategoryWrite`, `CategoryRepository`, `PolicyQuery`, `PolicyEvaluationContext`, `PolicyOutcome` / `EvaluationResult`, `Finding`, `aggregateOverall`, `PolicyContextWirer`, `ApplicabilitySelector`, `PolicyEngine`, `PolicyRepository`, `PolicyEvaluator`, `PolicyEvaluationException`; suite: `PolicySuite`, `SuiteFolder` (+ `rollUpMode`), `SuiteMatcher`, `SuiteRepository`, `SuiteEvaluator`, `SuiteEvaluationResult`, `SuiteRollUpStrategy`, `ExecutionStrategy`; archive: `EvaluationArchive`, `PersistSpec`, `PersistPresets`, `EvaluationArchiveDocument`; `PolicyEngineKinds.CUSTOM` / `DROOLS` |
 | core | `InMemoryPolicyRepository`, `InMemoryCategoryRepository`, `InMemorySuiteRepository`, `InMemoryPolicyStores`, `DefaultPolicyEvaluator`, `DefaultSuiteEvaluator`, `SuiteMatcherExpander`, `BuiltinSuiteRollUpStrategy` / `SuiteStrategies`, `AlwaysApplyApplicabilitySelector`, `CustomPolicyEngine` |
+| persistence | JPA catalog repos (C-28); `JpaEvaluationArchive` + `objs_policy_evaluation*` (C-33) |
 | drools | `DroolsPolicyEngine`, `PolicyKnowledgeBaseCache`, `EntityFact`, `EdgeFact`, `ObjectFact`, `DroolsEvaluationScratch` |
 
 ---

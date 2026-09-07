@@ -1,12 +1,12 @@
 # Policy evaluation (foundation)
 
-**Status:** C-24 S1 **shipped**; C-26 Drools adapter **shipped**; C-31 Policy playground **shipped**; C-32 policy metadata **shipped**; C-27 suites **shipped**; C-28 catalog seeds + JPA **shipped**  
+**Status:** C-24 S1 **shipped**; C-26 Drools adapter **shipped**; C-31 Policy playground **shipped**; C-32 policy metadata **shipped**; C-27 suites **shipped**; C-28 catalog seeds + JPA **shipped**; **C-33** evaluation archives **shipped** (WI-002…003; living docs WI-004)
 **Family:** `objs-policy*` — not “assessment”  
 **Packages:** `org.poc.objs.policy.api` / `org.poc.objs.policy.core` / `org.poc.objs.policy.drools`  
 **Audience:** foundation embedders, example-app authors  
 **Not this folder:** product compliance UX, regulatory catalogs, SBOM Application workflows, suite product content  
 
-**Stories:** [`policy-evaluate-core`](../../workitems/completed/20260904-policy-evaluate-core/STORY.md) · [`policy-drools`](../../workitems/completed/20260904-policy-drools/STORY.md) · [`policy-workbench`](../../workitems/completed/20260904-policy-workbench/STORY.md) · [`policy-metadata`](../../workitems/completed/20260905-policy-metadata/STORY.md) · [`policy-suites`](../../workitems/completed/20260905-policy-suites/STORY.md) · [`policy-seeds-persistence`](../../workitems/completed/20260906-policy-seeds-persistence/STORY.md) · **Order:** [`SEQUENCE.md` § Policy family](../../workitems/SEQUENCE.md#policy-family-c-24c-32--normative-order)
+**Stories:** [`policy-evaluate-core`](../../workitems/completed/20260904-policy-evaluate-core/STORY.md) · [`policy-drools`](../../workitems/completed/20260904-policy-drools/STORY.md) · [`policy-workbench`](../../workitems/completed/20260904-policy-workbench/STORY.md) · [`policy-metadata`](../../workitems/completed/20260905-policy-metadata/STORY.md) · [`policy-suites`](../../workitems/completed/20260905-policy-suites/STORY.md) · [`policy-seeds-persistence`](../../workitems/completed/20260906-policy-seeds-persistence/STORY.md) · [`policy-results-persistence`](../../workitems/in-progress/policy-results-persistence/STORY.md) · **Order:** [`SEQUENCE.md` § Policy family](../../workitems/SEQUENCE.md#policy-family-c-24c-32--normative-order)
 
 ---
 
@@ -61,8 +61,9 @@ C-26 gaps: [`policy-drools/GAPS.md`](../../workitems/completed/20260904-policy-d
 | 4 | C-32 | [`policy-metadata`](../../workitems/completed/20260905-policy-metadata/STORY.md) | **done** |
 | 5 | C-27 | [`policy-suites`](../../workitems/completed/20260905-policy-suites/STORY.md) | **done** |
 | 6 | C-28 | [`policy-seeds-persistence`](../../workitems/completed/20260906-policy-seeds-persistence/STORY.md) | **done** |
-| 7 | C-29 | [`policy-batch`](../../workitems/planned/policy-batch/STORY.md) | planned |
-| 8 | C-30 | [`policy-consumer`](../../workitems/planned/policy-consumer/STORY.md) | planned (gated) |
+| 7 | C-33 | [`policy-results-persistence`](../../workitems/in-progress/policy-results-persistence/STORY.md) | **shipped** (in-progress story; WIs done) |
+| 8 | C-29 | [`policy-batch`](../../workitems/planned/policy-batch/STORY.md) | planned |
+| 9 | C-30 | [`policy-consumer`](../../workitems/planned/policy-consumer/STORY.md) | planned (gated) |
 
 ```mermaid
 flowchart TD
@@ -72,9 +73,10 @@ flowchart TD
   c32[C-32 policy metadata]
   c27[C-27 suites]
   c28[C-28 seeds + JPA]
+  c33[C-33 result store]
   c29[C-29 batch pack]
   c30[C-30 example/REST]
-  c24 --> c26 --> c31 --> c32 --> c27 --> c28 --> c29 --> c30
+  c24 --> c26 --> c31 --> c32 --> c27 --> c28 --> c33 --> c29 --> c30
 ```
 
 ---

@@ -317,19 +317,15 @@ Bottom-up mirror of the suite taxonomy **as executed**:
 
 Ordered (or keyed) **`PolicyOutcome`** list from flat `evaluate` after `ExecutionStrategy`. Tree leaves **reference** these (by stable key: e.g. policy id + serial, or outcome index). Findings live **only** on `outcomes`.
 
-### 3. Input / snapshot persist — **deferred** (C-27 ships **none**)
+### 3. Input / snapshot persist — **C-33 axes + presets**
 
-Regulatory freeze (materialized fragment graph, suite config snapshot, etc.) remains a **later** concern (G-P32s intent stands).
-
-**C-27 implements only a no-input-persist strategy:** `evaluateSuite` returns `meta` + `tree` + `outcomes`. No fragment copy, no snapshot blob, no graph freeze on the result path.
-
-Future pluggable “input persist” strategies (e.g. freeze identical graph) can attach later without changing the reporting layers.
+C-27 ships **EPHEMERAL only** (`meta` + `tree` + `outcomes`). **C-33 shipped:** `EvaluationArchive` + `PersistSpec` (content axes, filters, presets, labeling, runtime). See [`RESULTS-MODEL.md`](../../workitems/completed/20260905-policy-suites/RESULTS-MODEL.md) § Persistence API and [`policy-results-persistence`](../../workitems/in-progress/policy-results-persistence/STORY.md).
 
 ### Locked for C-27
 
 1. Tree leaves **ref** `outcomes`.  
-2. **No** input/snapshot persist in this story (only the no-persist path).  
-3. G-P32s replay-via-full-config remains **intent** for when persist strategies exist — not implemented now.
+2. **No** input/snapshot persist in C-27 (EPHEMERAL only).  
+3. G-P32s replay-via-full-config intent → C-33 axes (`executionContext` / `input`) + STANDARD/FULL presets.
 
 ---
 
