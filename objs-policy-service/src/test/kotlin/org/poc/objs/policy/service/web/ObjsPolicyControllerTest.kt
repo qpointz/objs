@@ -226,4 +226,38 @@ class ObjsPolicyControllerTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.outcomes[0].status").value("PASS"))
     }
+
+    @Test
+    fun shouldReturnServiceUnavailable_whenPersistSuiteWithoutArchive() {
+        mockMvc.perform(
+            post("/api/v1/objs/policy/evaluations/suite")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "result": {
+                        "meta": {
+                          "evaluationId": "11111111-1111-1111-1111-111111111111",
+                          "kind": "SUITE",
+                          "evaluatedAtEpochMs": 1
+                        },
+                        "tree": null,
+                        "outcomes": []
+                      },
+                      "axes": { "results": true, "executionContext": false, "input": false },
+                      "tags": ["ci"],
+                      "annotations": { "k": "v" }
+                    }
+                    """.trimIndent(),
+                ),
+        )
+            .andExpect(status().isServiceUnavailable)
+    }
+
+    @Test
+    fun shouldNotAdvertiseArchive_whenArchiveBeanAbsent() {
+        mockMvc.perform(get("/api/v1/objs/policy/capabilities"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.operations").value(org.hamcrest.Matchers.not(org.hamcrest.Matchers.hasItem("archive"))))
+    }
 }

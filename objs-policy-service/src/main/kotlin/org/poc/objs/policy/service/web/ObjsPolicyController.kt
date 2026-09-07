@@ -10,6 +10,8 @@ import org.poc.objs.policy.api.ApplicabilityKinds
 import org.poc.objs.policy.api.Category
 import org.poc.objs.policy.api.CategoryInUseException
 import org.poc.objs.policy.api.CategoryWrite
+import org.poc.objs.policy.api.PersistPresets
+import org.poc.objs.policy.api.PersistSpec
 import org.poc.objs.policy.api.Policy
 import org.poc.objs.policy.api.PolicyEngineKinds
 import org.poc.objs.policy.api.PolicyQuery
@@ -278,4 +280,101 @@ class ObjsPolicyController(
                 }
             ResponseEntity.status(status).body(ex.message)
         }
+
+    @PostMapping("/evaluations/suite")
+    @Operation(summary = "Persist a suite evaluation archive (explicit save)")
+    fun persistSuiteEvaluation(@RequestBody request: PersistSuiteEvaluationRequest): ResponseEntity<Any> {
+        return try {
+            val axesDto = request.axes
+            val baseSpec =
+                when {
+                    axesDto != null ->
+                        PersistSpec(
+                            axes =
+                                org.poc.objs.policy.api.PersistContentAxes(
+                                    results = axesDto.results,
+                                    executionContext = axesDto.executionContext,
+                                    input = axesDto.input,
+                                ),
+                            presetName = request.presetName,
+                        )
+                    request.presetName.equals(PersistPresets.FULL, ignoreCase = true) ->
+                        PersistPresets.full()
+                    request.presetName.equals(PersistPresets.EPHEMERAL, ignoreCase = true) ->
+                        PersistPresets.ephemeral()
+                    else -> PersistPresets.standard()
+                }
+            val spec =
+                baseSpec.copy(
+                    name = request.name,
+                    description = request.description,
+                    tags = request.tags,
+                    annotations = request.annotations,
+                    evaluationId = request.result.meta.evaluationId,
+                    presetName = request.presetName ?: baseSpec.presetName,
+                )
+            if (!spec.axes.anyDurable) {
+                return ResponseEntity.badRequest().body("No durable content axes selected (EPHEMERAL)")
+            }
+            val executionContext =
+                if (spec.axes.executionContext) {
+                    buildSuiteExecutionContext(request.result)
+                } else {
+                    null
+                }
+            val input =
+                if (spec.axes.input) {
+                    val matcherNode =
+                        request.matcher
+                            ?: tools.jackson.databind.node.JsonNodeFactory.instance.objectNode().put("all", true)
+                    val matcher = matcherDsl.decodeNode(matcherNode, "$.matcher")
+                    play.resolveFragment(
+                        matcher = matcher,
+                        graphId = request.graphId?.let(UUID::fromString),
+                        graphVersion = request.graphVersion,
+                    )
+                } else {
+                    null
+                }
+            val id =
+                play.saveSuiteEvaluation(
+                    result = request.result,
+                    spec = spec,
+                    executionContext = executionContext,
+                    input = input,
+                ) ?: return ResponseEntity.badRequest().body("Archive write returned no id")
+            ResponseEntity.ok(PersistEvaluationResponse(evaluationId = id))
+        } catch (ex: IllegalStateException) {
+            ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(ex.message)
+        } catch (ex: ValidationException) {
+            ResponseEntity.badRequest().body(ex.result)
+        } catch (ex: GraphMaterializationException) {
+            ResponseEntity.badRequest().body(ex.message)
+        } catch (ex: IllegalArgumentException) {
+            ResponseEntity.badRequest().body(ex.message)
+        } catch (ex: GraphException) {
+            ResponseEntity.badRequest().body(ex.message)
+        }
+    }
+
+    private fun buildSuiteExecutionContext(
+        result: org.poc.objs.policy.api.SuiteEvaluationResult,
+    ): Map<String, Any?> =
+        mapOf(
+            "source" to "workbench",
+            "kind" to result.meta.kind,
+            "suiteId" to result.meta.suiteId?.toString(),
+            "suiteName" to result.meta.suiteName,
+            "executionStrategyKind" to result.meta.executionStrategyKind,
+            "rollUpStrategyKind" to result.meta.rollUpStrategyKind,
+            "policies" to
+                result.outcomes.map { o ->
+                    mapOf(
+                        "name" to o.policyName,
+                        "serial" to o.policySerial,
+                        "engineKind" to o.engineKind,
+                        "status" to o.status.name,
+                    )
+                },
+        )
 }

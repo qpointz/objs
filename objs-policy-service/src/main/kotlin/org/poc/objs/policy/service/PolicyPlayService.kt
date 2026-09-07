@@ -9,7 +9,10 @@ import org.poc.objs.policy.api.ApplicabilityKinds
 import org.poc.objs.policy.api.Category
 import org.poc.objs.policy.api.CategoryRepository
 import org.poc.objs.policy.api.CategoryWrite
+import org.poc.objs.policy.api.EvaluationArchive
 import org.poc.objs.policy.api.EvaluationResult
+import org.poc.objs.policy.api.ExecutionContextSnapshot
+import org.poc.objs.policy.api.PersistSpec
 import org.poc.objs.policy.api.Policy
 import org.poc.objs.policy.api.PolicyEngineKinds
 import org.poc.objs.policy.api.PolicySuite
@@ -26,6 +29,7 @@ import org.poc.objs.policy.api.SuiteRepository
 import org.poc.objs.policy.drools.PolicyKnowledgeBaseCache
 import org.poc.objs.policy.service.seed.PolicyCatalogSeedExporter
 import org.springframework.stereotype.Service
+import java.util.Optional
 import java.util.UUID
 
 data class PolicyCheckIssue(
@@ -53,11 +57,11 @@ class PolicyPlayService(
     private val suiteEvaluator: SuiteEvaluator,
     private val knowledgeBaseCache: PolicyKnowledgeBaseCache,
     private val catalogExporter: PolicyCatalogSeedExporter,
+    private val evaluationArchive: Optional<EvaluationArchive> = Optional.empty(),
 ) {
-    fun capabilities(): PolicyCapabilities =
-        PolicyCapabilities(
-            engines = listOf(PolicyEngineKinds.DROOLS),
-            operations = listOf(
+    fun capabilities(): PolicyCapabilities {
+        val ops =
+            mutableListOf(
                 "list",
                 "create",
                 "update",
@@ -70,8 +74,15 @@ class PolicyPlayService(
                 "evaluateSuite",
                 "suiteSelection",
                 "export",
-            ),
+            )
+        if (evaluationArchive.isPresent) {
+            ops.add("archive")
+        }
+        return PolicyCapabilities(
+            engines = listOf(PolicyEngineKinds.DROOLS),
+            operations = ops,
         )
+    }
 
     /** Full catalog REPLACE seed YAML (WI-005). */
     fun exportCatalogSeeds(): String = catalogExporter.exportReplaceYaml()
@@ -193,6 +204,44 @@ class PolicyPlayService(
             )
         }
         return suiteEvaluator.evaluateSuite(resolved, suite, scope)
+    }
+
+    /**
+     * Persist a suite evaluation via [EvaluationArchive.saveSuite].
+     * Returns null when axes are EPHEMERAL (no durable write).
+     */
+    fun saveSuiteEvaluation(
+        result: SuiteEvaluationResult,
+        spec: PersistSpec,
+        executionContext: ExecutionContextSnapshot? = null,
+        input: org.poc.objs.api.domain.GraphFragment? = null,
+    ): UUID? {
+        val archive =
+            evaluationArchive.orElseThrow {
+                IllegalStateException("Evaluation archive is not available (persistence not configured)")
+            }
+        return archive.saveSuite(
+            result = result,
+            spec = spec,
+            executionContext = executionContext,
+            input = input,
+        )
+    }
+
+    fun resolveFragment(
+        matcher: Matcher,
+        graphId: UUID?,
+        graphVersion: Long?,
+    ): org.poc.objs.api.domain.GraphFragment {
+        val contents = selectContents(matcher, graphId, graphVersion)
+        val resolved = fragmentPolicy.resolve(contents)
+        if (resolved.hasErrors()) {
+            throw GraphMaterializationException(
+                resolved.diagnostics.joinToString("; ") { it.message },
+                diagnostics = resolved.diagnostics,
+            )
+        }
+        return resolved
     }
 
     private fun resolveEvaluatePolicy(

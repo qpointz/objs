@@ -2,6 +2,8 @@ import type {
   Category,
   CategoryWrite,
   EvaluationResult,
+  PersistEvaluationResponse,
+  PersistSuiteEvaluationRequest,
   Policy,
   PolicyCapabilities,
   PolicyCheckResult,
@@ -237,6 +239,17 @@ export async function evaluateSuite(request: {
     }),
   })
   return parseResponse<SuiteEvaluationResult>(res)
+}
+
+export async function persistSuiteEvaluation(
+  request: PersistSuiteEvaluationRequest,
+): Promise<PersistEvaluationResponse> {
+  const res = await fetch('/api/v1/objs/policy/evaluations/suite', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  })
+  return parseResponse<PersistEvaluationResponse>(res)
 }
 
 /** Download full policy catalog as REPLACE seed YAML (WI-005). */

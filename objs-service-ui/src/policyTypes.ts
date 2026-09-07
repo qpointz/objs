@@ -188,6 +188,29 @@ export type SuiteEvaluationResult = {
   outcomes: PolicyOutcome[]
 }
 
+export type PersistContentAxes = {
+  results: boolean
+  executionContext: boolean
+  input: boolean
+}
+
+export type PersistSuiteEvaluationRequest = {
+  result: SuiteEvaluationResult
+  name?: string | null
+  description?: string | null
+  tags?: string[]
+  annotations?: Record<string, string>
+  axes?: PersistContentAxes
+  presetName?: string | null
+  graphId?: string | null
+  graphVersion?: number | null
+  matcher?: unknown
+}
+
+export type PersistEvaluationResponse = {
+  evaluationId: string
+}
+
 export type SuiteSelectionResult = {
   policies: Policy[]
   placementByPolicyId?: Record<string, string>
