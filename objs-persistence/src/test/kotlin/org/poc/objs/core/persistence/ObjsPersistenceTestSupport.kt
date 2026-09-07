@@ -7,11 +7,18 @@ import org.hibernate.cfg.Configuration
 import org.poc.objs.api.domain.CatalogSupport
 import org.poc.objs.api.versioning.ExplicitOnlyVersioningStrategy
 import org.poc.objs.core.persistence.policy.JpaCategoryRepository
+import org.poc.objs.core.persistence.policy.JpaEvaluationArchive
 import org.poc.objs.core.persistence.policy.JpaPolicyRepository
 import org.poc.objs.core.persistence.policy.JpaSuiteRepository
 import org.poc.objs.core.persistence.policy.PolicyCategoryDao
 import org.poc.objs.core.persistence.policy.PolicyCategoryRecord
 import org.poc.objs.core.persistence.policy.PolicyDao
+import org.poc.objs.core.persistence.policy.PolicyEvaluationDao
+import org.poc.objs.core.persistence.policy.PolicyEvaluationRecord
+import org.poc.objs.core.persistence.policy.PolicyFindingDao
+import org.poc.objs.core.persistence.policy.PolicyFindingRecord
+import org.poc.objs.core.persistence.policy.PolicyOutcomeDao
+import org.poc.objs.core.persistence.policy.PolicyOutcomeRecord
 import org.poc.objs.core.persistence.policy.PolicyRecord
 import org.poc.objs.core.persistence.policy.PolicySuiteDao
 import org.poc.objs.core.persistence.policy.PolicySuiteFolderDao
@@ -63,10 +70,15 @@ class ObjsPersistenceTestSupport private constructor(
     val policyDao = PolicyDao(uow)
     val policySuiteDao = PolicySuiteDao(uow)
     val policySuiteFolderDao = PolicySuiteFolderDao(uow)
+    val policyEvaluationDao = PolicyEvaluationDao(uow)
+    val policyOutcomeDao = PolicyOutcomeDao(uow)
+    val policyFindingDao = PolicyFindingDao(uow)
 
     val policyCategories = JpaCategoryRepository(policyCategoryDao, policyDao, uow)
     val policies = JpaPolicyRepository(policyDao, policyCategoryDao, uow)
     val policySuites = JpaSuiteRepository(policySuiteDao, policySuiteFolderDao, uow)
+    val evaluationArchives =
+        JpaEvaluationArchive(policyEvaluationDao, policyOutcomeDao, policyFindingDao, uow)
 
     val schemaCatalog = JpaSchemaCatalog(schemaCatalogDao, uow, catalogProperties, catalogTicker)
     val edgeCatalog = JpaAllowedEdgeCatalog(allowedEdgeRuleDao, uow, catalogProperties, catalogTicker)
@@ -240,6 +252,9 @@ class ObjsPersistenceTestSupport private constructor(
             PolicyRecord::class.java,
             PolicySuiteRecord::class.java,
             PolicySuiteFolderRecord::class.java,
+            PolicyEvaluationRecord::class.java,
+            PolicyOutcomeRecord::class.java,
+            PolicyFindingRecord::class.java,
         )
     }
 }

@@ -40,7 +40,7 @@ class ObjsFlywayAutoConfigurationTest {
             assertThat(entityCount).isZero()
 
             val objsFlyway = context.getBean(ObjsFlyway::class.java)
-            assertThat(objsFlyway.flyway.info().current()?.version?.toString()).isEqualTo("7")
+            assertThat(objsFlyway.flyway.info().current()?.version?.toString()).isEqualTo("8")
             assertThat(objsFlyway.flyway.configuration.table).isEqualTo("flyway_schema_history_objs")
             val clocks = jdbc.queryForObject(
                 """

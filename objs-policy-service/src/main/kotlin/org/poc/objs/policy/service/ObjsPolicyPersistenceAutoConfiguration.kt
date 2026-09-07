@@ -1,14 +1,19 @@
 package org.poc.objs.policy.service
 
 import org.poc.objs.core.persistence.policy.JpaCategoryRepository
+import org.poc.objs.core.persistence.policy.JpaEvaluationArchive
 import org.poc.objs.core.persistence.policy.JpaPolicyRepository
 import org.poc.objs.core.persistence.policy.JpaSuiteRepository
 import org.poc.objs.core.persistence.policy.PolicyCategoryDao
 import org.poc.objs.core.persistence.policy.PolicyDao
+import org.poc.objs.core.persistence.policy.PolicyEvaluationDao
+import org.poc.objs.core.persistence.policy.PolicyFindingDao
+import org.poc.objs.core.persistence.policy.PolicyOutcomeDao
 import org.poc.objs.core.persistence.policy.PolicySuiteDao
 import org.poc.objs.core.persistence.policy.PolicySuiteFolderDao
 import org.poc.objs.core.persistence.tx.UnitOfWork
 import org.poc.objs.policy.api.CategoryRepository
+import org.poc.objs.policy.api.EvaluationArchive
 import org.poc.objs.policy.api.PolicyRepository
 import org.poc.objs.policy.api.SuiteRepository
 import org.springframework.boot.autoconfigure.AutoConfiguration
@@ -19,10 +24,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean
 
 /**
- * Wires JPA-backed [CategoryRepository] / [PolicyRepository] / [SuiteRepository] (C-28 WI-002)
- * when a persistence [UnitOfWork] bean is present (i.e. `:objs-persistence` is wired up via
- * `:objs-autoconfigure`). Runs before [ObjsPolicyServiceAutoConfiguration] so its in-memory
- * `@ConditionalOnMissingBean` defaults back off in favour of these JPA repositories.
+ * Wires JPA-backed [CategoryRepository] / [PolicyRepository] / [SuiteRepository] (C-28)
+ * and [EvaluationArchive] (C-33) when a persistence [UnitOfWork] bean is present.
  */
 @AutoConfiguration
 @AutoConfigureBefore(ObjsPolicyServiceAutoConfiguration::class)
@@ -69,4 +72,26 @@ class ObjsPolicyPersistenceAutoConfiguration {
         folderDao: PolicySuiteFolderDao,
         uow: UnitOfWork,
     ): SuiteRepository = JpaSuiteRepository(suiteDao, folderDao, uow)
+
+    @Bean
+    @ConditionalOnMissingBean
+    fun policyEvaluationDao(uow: UnitOfWork): PolicyEvaluationDao = PolicyEvaluationDao(uow)
+
+    @Bean
+    @ConditionalOnMissingBean
+    fun policyOutcomeDao(uow: UnitOfWork): PolicyOutcomeDao = PolicyOutcomeDao(uow)
+
+    @Bean
+    @ConditionalOnMissingBean
+    fun policyFindingDao(uow: UnitOfWork): PolicyFindingDao = PolicyFindingDao(uow)
+
+    @Bean
+    @ConditionalOnMissingBean
+    fun evaluationArchive(
+        evaluationDao: PolicyEvaluationDao,
+        outcomeDao: PolicyOutcomeDao,
+        findingDao: PolicyFindingDao,
+        uow: UnitOfWork,
+    ): EvaluationArchive =
+        JpaEvaluationArchive(evaluationDao, outcomeDao, findingDao, uow)
 }

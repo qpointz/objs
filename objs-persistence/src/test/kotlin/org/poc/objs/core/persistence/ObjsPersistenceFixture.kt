@@ -46,4 +46,5 @@ abstract class ObjsPersistenceFixture {
     protected val policyCategories get() = db.policyCategories
     protected val policies get() = db.policies
     protected val policySuites get() = db.policySuites
+    protected val evaluationArchives get() = db.evaluationArchives
 }
