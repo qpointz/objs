@@ -1,7 +1,7 @@
 # Evaluation results — indicative relational model (shared)
 
-**Status:** indicative (aligned with C-27 APIs; not a persistence schema lock)  
-**Story:** [`STORY.md`](STORY.md) · Gaps: [`GAPS.md`](GAPS.md) (**G-P11s**) · Design: [`suites.md`](../../../../design/policy/suites.md) · Flat results: [`results.md`](../../../../design/policy/results.md)
+**Status:** durable store **shipped** (C-33); relational sketch aligned with APIs  
+**Story:** [`policy-results-persistence`](../../in-progress/policy-results-persistence/STORY.md) · Gaps: [`GAPS.md`](../../in-progress/policy-results-persistence/GAPS.md) · **Concrete store:** [`PERSISTENCE-MODEL.md`](../../in-progress/policy-results-persistence/PERSISTENCE-MODEL.md) · Design: [`suites.md`](../../../../design/policy/suites.md) · Flat results: [`results.md`](../../../../design/policy/results.md)
 
 Sketches a **relational** mental model for evaluation results reused across:
 
@@ -61,64 +61,47 @@ evaluationId  →  PolicyEvaluation (meta, tags, annotations)
 
 ## Entity-relationship (indicative)
 
+**Shipped C-33 shape:** one `objs_policy_evaluation` row (tags/annotations as JSON; optional denormalized `suite_id` / `suite_name` / `suite_tree` when `kind = SUITE`) + outcome/finding children. **No FK** to catalog suite/policy tables (G-P46r). The sketch below keeps a logical suite overlay for readability; implementation flattens that overlay onto the evaluation row.
+
 ```mermaid
 erDiagram
   POLICY_EVALUATION ||--o{ POLICY_OUTCOME : has
-  POLICY_EVALUATION ||--o{ EVALUATION_TAG : tagged
-  POLICY_EVALUATION ||--o{ EVALUATION_ANNOTATION : annotated
   POLICY_OUTCOME ||--o{ FINDING : has
-  FINDING ||--o{ FINDING_ENTITY : binds
-  FINDING ||--o{ FINDING_EDGE : binds
 
-  POLICY_EVALUATION ||--o| SUITE_EVALUATION : suite_meta
-  POLICY_EVALUATION ||--o{ SUITE_FOLDER_RESULT : tree
-  SUITE_FOLDER_RESULT ||--o{ SUITE_FOLDER_RESULT : parent_of
-  SUITE_FOLDER_RESULT ||--o{ SUITE_POLICY_LEAF : places
-  SUITE_FOLDER_RESULT ||--o{ FOLDER_TAG : tagged
-  SUITE_FOLDER_RESULT ||--o{ FOLDER_ANNOTATION : annotated
-  SUITE_POLICY_LEAF }o--|| POLICY_OUTCOME : refs
+  POLICY_EVALUATION ||--o| SUITE_OVERLAY : optional_when_SUITE
 
   POLICY_EVALUATION {
     uuid evaluation_id PK
     string kind
+    json tags
+    json annotations
     timestamptz evaluated_at
     string execution_strategy_kind
     string overall_status
     string overall_severity
   }
 
-  EVALUATION_TAG {
-    uuid evaluation_id FK
-    string tag
-  }
-
-  EVALUATION_ANNOTATION {
-    uuid evaluation_id FK
-    string key
-    string value
-  }
-
-  SUITE_EVALUATION {
-    uuid evaluation_id PK_FK
-    uuid suite_id
+  SUITE_OVERLAY {
+    uuid suite_id "denormalized_no_FK"
     string suite_name
-    string scope_kind
-    string rollup_strategy_kind
+    json suite_tree
   }
 
   POLICY_OUTCOME {
     uuid outcome_id PK
     uuid evaluation_id FK
+    int ordinal
     string policy_name
     long policy_serial
     string status
-    string severity
   }
 
-  SUITE_POLICY_LEAF {
-    uuid leaf_id PK
-    uuid folder_result_id FK
+  FINDING {
+    uuid finding_id PK
     uuid outcome_id FK
+    int idx
+    string message
+    string severity
   }
 ```
 
@@ -136,18 +119,11 @@ erDiagram
 | `execution_strategy_kind` | text null | How policies were executed (dedupe, …); distinct from evaluation id |
 | `overall_status` | text null | Flat optional aggregate; suite = root roll-up |
 | `overall_severity` | text null | |
-| `origin` | text null | Optional: `FOUNDATION` \| `APPLICATION` \| correlation hints |
-
-### `evaluation_tag` / `evaluation_annotation`
-
-Caller- or app-supplied metadata on the **evaluation instance** (same idea as policy/folder tags & annotations; scoped to `evaluationId`).
-
-| Table | Columns | Notes |
-|-------|---------|--------|
-| `evaluation_tag` | `evaluation_id`, `tag` | e.g. trim/lowercase rules as C-32 when locked for this surface |
-| `evaluation_annotation` | `evaluation_id`, `key`, `value` | Objs-shaped map; empty OK |
-
-Use for correlation (env, trigger, ticket, portfolio id), reporting filters, and app-owned runs — independent of suite folder tags.
+| `tags` | JSON / JSONB | Array of strings (same shape as policy/suite catalog) |
+| `annotations` | JSON / JSONB | String map (same shape as policy/suite catalog) |
+| `persist_profile` | JSON / JSONB | Extensible PersistSpec projection (axes, filters, preset, name, description, origin, durationMs, …) — see [`PERSISTENCE-MODEL.md`](../../in-progress/policy-results-persistence/PERSISTENCE-MODEL.md) |
+| `suite_id` / `suite_name` | UUID / text null | **Denormalized optional overlay** when `kind = SUITE` — **not** a catalog FK |
+| `suite_tree` | JSON / JSONB null | Suite reporting tree snapshot when persisted with results |
 
 ### `policy_outcome`
 
@@ -155,6 +131,7 @@ Use for correlation (env, trigger, ticket, portfolio id), reporting filters, and
 |--------|------|--------|
 | `outcome_id` | UUID PK | |
 | **`evaluation_id`** | UUID FK | → `policy_evaluation` |
+| `ordinal` | int | Stable order within the evaluation |
 | `policy_name` / `policy_serial` / `policy_id` | | As G-P27s |
 | `engine_kind` | text | |
 | `status` | text | Flat may include `NOT_APPLICABLE`; suite overlay omits N/A leaves |
@@ -163,34 +140,28 @@ Use for correlation (env, trigger, ticket, portfolio id), reporting filters, and
 
 ### `finding` (+ bindings)
 
-Findings **only** under outcomes; tree leaves **ref** `outcome_id`.
+Findings **only** under outcomes; tree leaves **ref** `outcome_id`. Column `idx` = order within the parent outcome.
 
 ---
 
 ## Suite overlay (only if `kind = SUITE`)
 
-### `suite_evaluation` (1:1 extension)
+Optional — **not** required to persist an evaluation. C-33 stores suite identity + tree as **nullable columns / JSON on `policy_evaluation`** (no separate suite-result tables; no catalog FK).
 
-| Column | Type | Notes |
-|--------|------|--------|
-| **`evaluation_id`** | UUID PK/FK | |
-| `suite_id` / `suite_name` | | |
-| `scope_kind` / `scope_payload_json` | | |
-| `rollup_strategy_kind` | text | |
-
-### `suite_folder_result` · tags/annotations · `suite_policy_leaf`
-
-Same semantics as before: DISABLED omitted; IGNORED present with `votes = false`; leaves FK → `policy_outcome`. Dedupe ⇒ many leaves, one `outcome_id`.
+| Logical field | Shipped as | Notes |
+|---------------|------------|--------|
+| `suite_id` / `suite_name` | columns on evaluation | Denormalized labels for suite runs only |
+| folder / leaf tree | `suite_tree` JSON | DISABLED omitted; IGNORED with `votes = false`; leaves ref outcomes by index |
+| `rollup_strategy_kind` | column on evaluation | From suite meta when present |
 
 ---
 
 ## Mapping to in-memory APIs
 
-| Relational | Flat | Suite |
-|------------|------|--------|
-| `evaluation_id` + `policy_evaluation` (+ tags/annotations) | Optional wrapper / app correlation | `SuiteEvaluationResult.meta` incl. tags/annotations |
-| `suite_evaluation` | — | suite id, scope, rollup kind |
-| folder / leaf overlay | — | `tree` with `outcomeRef` |
+| Relational | Flat / custom policy set | Suite |
+|------------|--------------------------|--------|
+| `evaluation_id` + `policy_evaluation` (+ tags/annotations) | `saveFlat` — first-class; suite columns null | `SuiteEvaluationResult.meta` incl. tags/annotations |
+| `suite_id` / `suite_name` / `suite_tree` | — | denormalized overlay on same row |
 | `policy_outcome` + `finding` | `EvaluationResult.outcomes` | `outcomes` |
 
 Apps may allocate `evaluationId` before calling foundation, pass it through, and persist the same relational shape outside objs-policy.
@@ -202,6 +173,45 @@ Apps may allocate `evaluationId` before calling foundation, pass it through, and
 - All outcomes: `WHERE evaluation_id = ?`  
 - Suite tree: overlay tables for that `evaluation_id`  
 - App report: join on `evaluation_id` without caring if suite overlay exists  
+
+---
+
+## Persistence API (C-33)
+
+Normative locks: [`policy-results-persistence/GAPS.md`](../../in-progress/policy-results-persistence/GAPS.md) (G-P48r, G-P49r, G-P46r).  
+**Column-level store:** [`PERSISTENCE-MODEL.md`](../../in-progress/policy-results-persistence/PERSISTENCE-MODEL.md).
+
+**Evaluation ≠ suite hard-link:** archives are keyed by `evaluationId` alone. **FLAT / custom policy-set** runs (`evaluate` → `saveFlat`) are **first-class** — no suite catalog row, no `SuiteRepository`, suite overlay columns stay null. **SUITE** runs (`evaluateSuite` → `saveSuite`) add optional denormalized `suite_*` / `suite_tree` on the same evaluation row. Catalog Drop is never blocked by archive FKs (G-P46r).
+
+**Content axes** (combine freely):
+
+| Axis | Persists |
+|------|----------|
+| `results` | `meta` + `outcomes` [+ suite `tree`], subject to filters below |
+| `executionContext` | Policies executed, matchers, bodies / suite config at T₀ |
+| `input` | Replay pack (frozen fragment) |
+
+**Result filters** — fine-tune which sets persist when `results` is on (independent include-sets):
+
+| Filter | Include independently |
+|--------|------------------------|
+| Outcome status | `PASS`, `FAIL`, `ERROR`, `NOT_APPLICABLE` |
+| Finding severity | `INFO`, `WARNING`, `ERROR`, `UNSPECIFIED` (null severity) |
+
+**Named presets** (convenience; default filters = all statuses + all severities incl. UNSPECIFIED):
+
+```text
+EPHEMERAL  — no content axes
+STANDARD   — results + executionContext
+FULL       — results + executionContext + input
+```
+
+- Caller may use a preset and still narrow filters (e.g. FULL but only `FAIL`/`ERROR` outcomes).
+- Archive with `results`+`executionContext` **usable as STANDARD** even if `input` is stored.
+- Persist options may set **name**, **description**, **tags**, **annotations**, plus run metadata **`evaluatedAt`** and **`durationMs`**.
+- Software/engine version is **not** required on the `input` pack.
+
+C-27 shipped EPHEMERAL only. C-33 implements axes, filters, presets, labeling, and runtime metadata (see story GAPS — WI-001 closed).
 
 ---
 
@@ -218,6 +228,6 @@ Apps may allocate `evaluationId` before calling foundation, pass it through, and
 ## Out of scope here
 
 - Flyway / JPA for **catalog** (Policy / Category / Suite) — **C-28**  
-- Flyway / JPA for **evaluation results** / input persist — **later** (not mandated by C-28; C-27 deferred G-P11s store + G-P32s)  
+- Flyway / JPA for **evaluation results** / input persist — **[C-33 `policy-results-persistence`](../../in-progress/policy-results-persistence/STORY.md)** (G-P11r / G-P32r)  
 - G-P27s identity field names  
 - Batch header detail (C-29)  

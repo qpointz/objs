@@ -61,10 +61,10 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 
 ### In progress
 
-_(none)_
+- [`policy-results-persistence`](in-progress/policy-results-persistence/STORY.md) — Evaluation archives (`EvaluationArchive` / PersistSpec) (C-33). WI-000…WI-004 done on branch; awaiting story closure.
 
 ### Planned
 
 - [`store-text-search`](planned/store-text-search/STORY.md) — FB-3 contains/`q`; design first (C-20). Does not block C-18.
-- Policy family after C-28: [`policy-batch`](planned/policy-batch/STORY.md) (C-29) → [`policy-consumer`](planned/policy-consumer/STORY.md) (C-30).
+- Policy family after C-33: [`policy-batch`](planned/policy-batch/STORY.md) (C-29) → [`policy-consumer`](planned/policy-consumer/STORY.md) (C-30).
 

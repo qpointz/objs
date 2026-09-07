@@ -65,7 +65,7 @@ Normative: [`policy-seeds-persistence`](../../workitems/completed/20260906-polic
 - **`GET …/policy/export?format=seeds`** — REPLACE YAML for full setup (categories, latest policies with inline body, suites).
 - Workbench **Evaluate** toolbar: **Export** downloads that pack.
 
-Evaluation **result** persistence remains out of C-28 (see C-27 `RESULTS-MODEL`).
+Evaluation **result** persistence is **[C-33 `policy-results-persistence`](../../workitems/in-progress/policy-results-persistence/STORY.md)** (out of C-28; see C-27 `RESULTS-MODEL`).
 
 ## Engine
 

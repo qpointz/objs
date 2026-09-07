@@ -23,8 +23,8 @@ It is **not** evaluation-result persistence. C-27 locked result **API shape** an
 
 | # | Topic | Status | Notes |
 |---|--------|--------|-------|
-| G-P11r | Evaluation result persistence | **deferred** | C-27 G-P11s shape shipped in-memory only; no Flyway for `evaluationId` / outcomes / suite tree. Later story (not catalog C-28). |
-| G-P32r | Input / full-config replay persist | **deferred** | C-27 G-P32s **intent** only; fragment freeze / execution archive when results are persisted. Later story. |
+| G-P11r | Evaluation result persistence | **deferred** | Owned by [C-33 `policy-results-persistence`](../../in-progress/policy-results-persistence/GAPS.md). C-27 G-P11s shape shipped in-memory only; no Flyway for `evaluationId` / outcomes / suite tree in C-28. |
+| G-P32r | Input / full-config replay persist | **deferred** | Owned by [C-33](../../in-progress/policy-results-persistence/GAPS.md). C-27 G-P32s **intent** only; fragment freeze / execution archive when results are persisted. |
 
 ## Philosophy (inherited)
 
