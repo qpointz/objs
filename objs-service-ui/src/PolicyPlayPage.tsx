@@ -53,7 +53,7 @@ import {
   type PolicyGraphModel,
   type PolicyGraphOutputColumnHandle,
 } from './PolicyGraphOutputColumn'
-import { SeverityMessageRow } from './SuiteEvaluationTree'
+import { PolicyEvaluationTable } from './SuiteEvaluationTree'
 import { clamp, maxSidePaneWidth } from './sidePaneSplit'
 import { SyntaxCodeEditor, type SyntaxCodeEditorHandle } from './SyntaxCodeEditor'
 import type { BoMSchema, GraphSelection } from './types'
@@ -124,7 +124,7 @@ function findingsFromResult(result: EvaluationResult | null): TaskRow[] {
       rows.push({
         kind: 'finding',
         id: `o-${oi}`,
-        finding: { message: o.message || o.status, severity: o.status === 'PASS' ? 'OK' : o.status },
+        finding: { message: o.message || o.status, severity: undefined },
         status: o.status,
         policyName: o.policyName,
       })
@@ -1319,23 +1319,29 @@ export function PolicyPlayPage({
                               : 'No findings.'}
                         </Text>
                       ) : (
-                        <Stack gap={4}>
-                          {evalListRows.map((row) =>
-                            row.kind === 'finding' ? (
-                              <SeverityMessageRow
-                                key={row.id}
-                                severity={row.finding.severity ?? row.status}
-                                depth={0}
-                                active={focusedTaskId === row.id}
-                                onClick={() => onTaskClick(row)}
-                              >
-                                <Text size="sm" style={{ wordBreak: 'break-word' }}>
-                                  {row.policyName}: {row.finding.message}
-                                </Text>
-                              </SeverityMessageRow>
-                            ) : null,
-                          )}
-                        </Stack>
+                        <PolicyEvaluationTable
+                          result={evalResult!}
+                          graphSelection={selection}
+                          focusedFindingId={focusedTaskId}
+                          onFocusFinding={({ id, finding }) => {
+                            const row = evalRows.find((r) => r.kind === 'finding' && r.id === id)
+                            onTaskClick(
+                              row ?? {
+                                kind: 'finding',
+                                id,
+                                finding,
+                                status: '',
+                                policyName: '',
+                              },
+                            )
+                          }}
+                          rootLabel={
+                            editorName.trim() ||
+                            selectedPolicy?.name ||
+                            'Policy evaluation'
+                          }
+                          durationMs={evalStats?.durationMs}
+                        />
                       )}
                     </Tabs.Panel>
                     <Tabs.Panel value="object" style={{ flex: 1, minHeight: 0, overflow: 'auto' }} p="xs">

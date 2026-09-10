@@ -97,11 +97,11 @@ const VIEW_SIZE = {
 type ViewTokens = (typeof VIEW_SIZE)[EntityPayloadViewSize]
 
 const FINDING_PILL: Record<string, { bg: string; label: string }> = {
-  ERROR: { bg: '#fa5252', label: 'ERROR' },
-  WARN: { bg: '#fd7e14', label: 'WARN' },
-  WARNING: { bg: '#fd7e14', label: 'WARN' },
-  OK: { bg: '#12b886', label: 'OK' },
-  INFO: { bg: '#228be6', label: 'INFO' },
+  CRITICAL: { bg: '#c92a2a', label: 'Critical' },
+  HIGH: { bg: '#fa5252', label: 'High' },
+  MEDIUM: { bg: '#fd7e14', label: 'Medium' },
+  LOW: { bg: '#fab005', label: 'Low' },
+  INFO: { bg: '#228be6', label: 'Info' },
 }
 
 function FindingSeverityPill({ severity }: { severity: string | undefined }) {

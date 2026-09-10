@@ -104,7 +104,7 @@ export type GraphNode = {
   dimmed?: boolean
   /** Failing latest Validate — red blink until result cleared/revalidated. */
   validationError?: boolean
-  /** Policy evaluation highest severity for this node (OK / WARN / ERROR / …). */
+  /** Policy evaluation highest finding severity for this node (CRITICAL…INFO). */
   findingSeverity?: string
 }
 

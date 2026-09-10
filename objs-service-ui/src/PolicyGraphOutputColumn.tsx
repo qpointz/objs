@@ -67,13 +67,15 @@ const DATA_SEVERITY_NONE = { value: 'NONE', label: 'None' } as const
 
 function severityBadgeColor(raw: string | null | undefined): string {
   switch ((raw ?? '').trim().toUpperCase()) {
-    case 'ERROR':
+    case 'CRITICAL':
+    case 'HIGH':
+    case 'EXEC_ERROR':
     case 'FAIL':
       return 'red'
-    case 'WARN':
-    case 'WARNING':
+    case 'MEDIUM':
       return 'orange'
-    case 'OK':
+    case 'LOW':
+      return 'yellow'
     case 'PASS':
       return 'green'
     case 'INFO':
@@ -322,11 +324,14 @@ export const PolicyGraphOutputColumn = forwardRef<
     ;(outcomes ?? []).forEach((o) => {
       ;(o.findings ?? []).forEach((f) => {
         const sev = f.severity?.toUpperCase()
+        if (!sev) return
         ;(f.entities ?? []).forEach((id) => {
-          sevByEntity.set(id, maxSeverity(sevByEntity.get(id), sev) ?? sev ?? 'OK')
+          const next = maxSeverity(sevByEntity.get(id), sev) ?? sev
+          sevByEntity.set(id, next)
         })
         ;(f.edges ?? []).forEach((id) => {
-          sevByEdge.set(id, maxSeverity(sevByEdge.get(id), sev) ?? sev ?? 'OK')
+          const next = maxSeverity(sevByEdge.get(id), sev) ?? sev
+          sevByEdge.set(id, next)
         })
       })
     })

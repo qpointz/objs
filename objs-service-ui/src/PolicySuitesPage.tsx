@@ -9,7 +9,6 @@ import {
 } from 'react'
 import {
   Alert,
-  Badge,
   Box,
   Button,
   Checkbox,
@@ -98,24 +97,6 @@ function saveNum(key: string, value: number) {
   }
 }
 
-function severityBadgeColor(raw: string | null | undefined): string {
-  switch ((raw ?? '').trim().toUpperCase()) {
-    case 'ERROR':
-    case 'FAIL':
-      return 'red'
-    case 'WARN':
-    case 'WARNING':
-      return 'orange'
-    case 'OK':
-    case 'PASS':
-      return 'green'
-    case 'INFO':
-      return 'cyan'
-    default:
-      return 'gray'
-  }
-}
-
 type NavSel =
   | { kind: 'suite'; id: string }
   | { kind: 'folder'; suiteId: string; folderId: string }
@@ -170,6 +151,7 @@ export function PolicySuitesPage({
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
   const [selection, setSelection] = useState<SuiteSelectionResult | null>(null)
   const [evalResult, setEvalResult] = useState<SuiteEvaluationResult | null>(null)
+  const [evalDurationMs, setEvalDurationMs] = useState<number | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [persistOpen, setPersistOpen] = useState(false)
   const [persistName, setPersistName] = useState('')
@@ -350,6 +332,7 @@ export function PolicySuitesPage({
     setNav(next)
     setSelection(null)
     setEvalResult(null)
+    setEvalDurationMs(null)
     setGraphSelection(null)
     setFocusedFindingId(null)
     if (next?.kind === 'suite' || next?.kind === 'folder') {
@@ -504,12 +487,14 @@ export function PolicySuitesPage({
         setDirty(false)
       }
       const scope = policyFragmentMatcher(context)
+      const started = performance.now()
       const result = await evaluateSuite({
         suiteId: saved.id!,
         ...scope,
         scope: nav?.kind === 'folder' ? 'SUBFOLDER' : 'FULL',
         folderId: nav?.kind === 'folder' ? nav.folderId : null,
       })
+      setEvalDurationMs(performance.now() - started)
       setEvalResult(result)
       setPersistSavedId(null)
       setOutputTab('evaluation')
@@ -1251,30 +1236,28 @@ export function PolicySuitesPage({
                         </Text>
                       )}
                       <Group gap="xs" wrap="wrap">
-                        <Badge
-                          size="sm"
-                          variant="light"
-                          color={severityBadgeColor(
-                            evalResult.meta.overallSeverity ?? evalResult.meta.overallStatus,
-                          )}
-                        >
-                          {evalResult.meta.overallStatus ?? '—'}
-                          {evalResult.meta.overallSeverity
-                            ? ` @ ${evalResult.meta.overallSeverity}`
-                            : ''}
-                        </Badge>
                         <Text size="xs" c="dimmed">
                           {evalResult.meta.evaluationId}
+                          {evalDurationMs != null
+                            ? ` · ${evalDurationMs < 1000 ? `${Math.round(evalDurationMs)}ms` : `${(evalDurationMs / 1000).toFixed(2)}s`}`
+                            : ''}
                         </Text>
                       </Group>
                       {prunedEvalTree ? (
                         <SuiteEvaluationTree
                           node={prunedEvalTree}
-                          depth={0}
                           outcomes={evalResult.outcomes}
                           graphSelection={graphSelection}
                           focusedFindingId={focusedFindingId}
                           onFocusFinding={onFocusFinding}
+                          rootLabel={
+                            evalResult.meta.suiteName?.trim() ||
+                            draft?.name ||
+                            'Suite evaluation'
+                          }
+                          rootStatus={evalResult.meta.overallStatus}
+                          rootSeverity={evalResult.meta.overallSeverity}
+                          durationMs={evalDurationMs}
                         />
                       ) : (
                         <Text size="sm" c="dimmed">

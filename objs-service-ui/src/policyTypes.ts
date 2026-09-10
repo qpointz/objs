@@ -218,16 +218,16 @@ export type SuiteSelectionResult = {
 }
 
 export const SEVERITY_RANK: Record<string, number> = {
-  ERROR: 40,
-  WARN: 30,
-  WARNING: 30,
-  INFO: 20,
-  OK: 10,
+  CRITICAL: 50,
+  HIGH: 40,
+  MEDIUM: 30,
+  LOW: 20,
+  INFO: 10,
 }
 
 export function severityRank(raw: string | null | undefined): number {
   if (!raw) return 0
-  return SEVERITY_RANK[raw.trim().toUpperCase()] ?? 5
+  return SEVERITY_RANK[raw.trim().toUpperCase()] ?? 0
 }
 
 export function maxSeverity(a: string | undefined, b: string | undefined): string | undefined {
