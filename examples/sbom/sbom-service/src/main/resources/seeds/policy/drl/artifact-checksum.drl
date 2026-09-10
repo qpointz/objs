@@ -19,7 +19,7 @@ then
     scratch.fail("Artifact missing payload.checksum");
     scratch.finding(
         "Artifact should declare payload.checksum",
-        "WARN",
+        "MEDIUM",
         "SBOM_ARTIFACT_CHECKSUM",
         id,
         null

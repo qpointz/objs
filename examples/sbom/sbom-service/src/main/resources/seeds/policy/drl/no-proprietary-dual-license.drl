@@ -23,7 +23,7 @@ then
     scratch.fail("Component licensed under proprietary LicenseRef-Meridian");
     scratch.finding(
         "Proprietary dual-license edge present",
-        "WARN",
+        "MEDIUM",
         "SBOM_PROPRIETARY_LICENSE",
         id,
         null

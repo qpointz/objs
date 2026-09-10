@@ -26,7 +26,7 @@ then
     scratch.fail("Product missing EU residency COMPLIES_WITH while Dataset present");
     scratch.finding(
         "Dataset in graph but Product lacks EU Data Residency compliance edge",
-        "ERROR",
+        "HIGH",
         "SBOM_EU_RESIDENCY_REQUIRED",
         id,
         null

@@ -159,7 +159,7 @@ class DroolsPolicyEngineTest {
 
         assertThat(result.status).isEqualTo(PolicyOutcomeStatus.PASS)
         assertThat(result.findings).singleElement().satisfies({ f ->
-            assertThat(f.severity).isEqualTo("OK")
+            assertThat(f.severity).isNull()
             assertThat(f.message).isEqualTo("[component-present] component ok")
             assertThat(f.extras[DroolsEvaluationScratch.EXTRA_RULE]).isEqualTo("component-present")
         })
@@ -172,7 +172,7 @@ class DroolsPolicyEngineTest {
 
         val result = engine.evaluate(PolicyEvaluationContext(okFragment()), policy)
 
-        assertThat(result.status).isEqualTo(PolicyOutcomeStatus.ERROR)
+        assertThat(result.status).isEqualTo(PolicyOutcomeStatus.EXEC_ERROR)
         assertThat(result.message).containsIgnoringCase("compile")
     }
 

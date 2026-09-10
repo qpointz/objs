@@ -8,7 +8,7 @@ import java.util.UUID
  */
 data class Finding(
     val message: String,
-    val severity: String? = null,
+    val severity: FindingSeverity? = null,
     val code: String? = null,
     val entities: List<UUID> = emptyList(),
     val edges: List<UUID> = emptyList(),

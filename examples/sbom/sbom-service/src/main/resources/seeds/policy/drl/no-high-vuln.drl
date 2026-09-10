@@ -28,7 +28,7 @@ then
     scratch.fail(sev + " vulnerability linked: " + cve);
     scratch.finding(
         sev + " vulnerability " + cve,
-        "WARN",
+        "MEDIUM",
         "SBOM_VULN_HIGH_OR_CRITICAL",
         id,
         null

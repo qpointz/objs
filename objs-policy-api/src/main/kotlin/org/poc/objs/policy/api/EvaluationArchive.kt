@@ -13,9 +13,11 @@ data class PersistContentAxes(
 }
 
 /**
- * Fine-tune which outcome/finding sets persist when [PersistContentAxes.results] is on (G-P49r).
+ * Fine-tune which outcome/finding sets persist when [PersistContentAxes.results] is on (G-P49r / G-P54v).
  * Null set = all values. Empty set = persist none of that kind.
  * Finding severity [UNSPECIFIED] matches findings with null severity.
+ * Finding severity filter tokens: CRITICAL…INFO; dual-read legacy ERROR→HIGH, WARNING→MEDIUM, OK→null.
+ * Outcome status filter: dual-read legacy ERROR→EXEC_ERROR via [PolicyOutcomeStatus.parseToken].
  */
 data class PersistResultFilters(
     val outcomeStatuses: Set<PolicyOutcomeStatus>? = null,

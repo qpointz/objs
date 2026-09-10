@@ -27,7 +27,7 @@ then
     scratch.fail("Known RCE CVE present: " + cve);
     scratch.finding(
         "Known RCE CVE " + cve,
-        "ERROR",
+        "HIGH",
         "SBOM_VULN_KNOWN_RCE",
         id,
         null

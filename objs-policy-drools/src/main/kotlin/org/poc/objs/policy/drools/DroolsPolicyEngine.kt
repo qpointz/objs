@@ -20,7 +20,7 @@ class DroolsPolicyEngine(
     override fun evaluate(context: PolicyEvaluationContext, policy: Policy): PolicyEngineResult {
         if (policy.body.isBlank()) {
             return PolicyEngineResult(
-                status = PolicyOutcomeStatus.ERROR,
+                status = PolicyOutcomeStatus.EXEC_ERROR,
                 message = "DROOLS body is empty",
             )
         }
@@ -29,7 +29,7 @@ class DroolsPolicyEngine(
             knowledgeBaseCache.containerFor(policy)
         } catch (ex: Exception) {
             return PolicyEngineResult(
-                status = PolicyOutcomeStatus.ERROR,
+                status = PolicyOutcomeStatus.EXEC_ERROR,
                 message = sanitizeDroolsMessage(
                     ex.message ?: ex.cause?.message ?: "Drools compile failed",
                 ),
@@ -46,7 +46,7 @@ class DroolsPolicyEngine(
             scratch.toResult()
         } catch (ex: Exception) {
             PolicyEngineResult(
-                status = PolicyOutcomeStatus.ERROR,
+                status = PolicyOutcomeStatus.EXEC_ERROR,
                 message = sanitizeDroolsMessage(ex.message ?: ex::class.simpleName ?: "Drools error"),
             )
         } finally {

@@ -21,6 +21,7 @@ import org.poc.objs.policy.api.SuiteFolderParticipation
 import org.poc.objs.policy.api.SuiteFolderResult
 import org.poc.objs.policy.api.SuitePolicyLeafResult
 import org.poc.objs.policy.api.SuiteSelectionException
+import org.poc.objs.policy.api.SuiteStrategy
 import java.util.UUID
 
 /**
@@ -42,7 +43,8 @@ class DefaultSuiteEvaluator(
         evaluatedAtEpochMs: Long,
     ): SuiteEvaluationResult {
         val selection = expander.resolveSelection(suite, scope)
-        val execution = SuiteStrategies.execution(suite.executionStrategyKind)
+        val strategy = SuiteStrategies.suite(suite.resolvedSuiteStrategyKind())
+        val execution = strategy.selectExecution(suite.executionStrategyKind)
         val toRun = execution.selectForEvaluate(selection.policies)
         val flat = if (toRun.isEmpty()) {
             org.poc.objs.policy.api.EvaluationResult(emptyList(), PolicyOutcomeStatus.NOT_APPLICABLE)
@@ -64,7 +66,6 @@ class DefaultSuiteEvaluator(
 
         val byId = suite.folders.associateBy { it.id }
         val rootFolderIds = rootFolderIdsForScope(suite, scope, byId)
-        val rollUp = SuiteStrategies.rollUp(suite.rollUpStrategyKind)
 
         val roots = rootFolderIds.mapNotNull { fid ->
             buildFolderResult(
@@ -72,7 +73,7 @@ class DefaultSuiteEvaluator(
                 byId = byId,
                 selectedIds = selection.policies.map { it.id }.toSet(),
                 outcomesById = outcomesById,
-                rollUp = rollUp,
+                strategy = strategy,
             )
         }
 
@@ -82,7 +83,7 @@ class DefaultSuiteEvaluator(
             else -> synthesizeMultiRoot(
                 roots = roots,
                 suite = suite,
-                rollUp = rollUp,
+                strategy = strategy,
             )
         }
 
@@ -141,7 +142,7 @@ class DefaultSuiteEvaluator(
         byId: Map<UUID, SuiteFolder>,
         selectedIds: Set<UUID>,
         outcomesById: Map<UUID, IndexedOutcome>,
-        rollUp: org.poc.objs.policy.api.SuiteRollUpStrategy,
+        strategy: SuiteStrategy,
     ): SuiteFolderResult? {
         if (folder.participation == SuiteFolderParticipation.DISABLED) {
             return null
@@ -151,7 +152,7 @@ class DefaultSuiteEvaluator(
             .filter { it.parentId == folder.id }
             .sortedBy { it.name.lowercase() }
             .mapNotNull { child ->
-                buildFolderResult(child, byId, selectedIds, outcomesById, rollUp)
+                buildFolderResult(child, byId, selectedIds, outcomesById, strategy)
             }
 
         // Direct leaves: policies from this folder's own matchers that were selected and ran.
@@ -168,7 +169,7 @@ class DefaultSuiteEvaluator(
                     policySerial = indexed.outcome.policySerial,
                     policyVersion = policy.version,
                     status = indexed.outcome.status,
-                    severity = leafSeverity(indexed.outcome),
+                    severity = strategy.leafReportedSeverity(indexed.outcome),
                     outcomeIndex = indexed.index,
                 )
             }
@@ -183,7 +184,7 @@ class DefaultSuiteEvaluator(
             votingChildren += RollUpChild(leaf.status, leaf.severity)
         }
 
-        val rolled = rollUp.rollUp(folder, votingChildren)
+        val rolled = strategy.rollUp(folder, votingChildren)
         val votes = folder.participation == SuiteFolderParticipation.ENABLED
 
         return SuiteFolderResult(
@@ -220,7 +221,7 @@ class DefaultSuiteEvaluator(
     private fun synthesizeMultiRoot(
         roots: List<SuiteFolderResult>,
         suite: PolicySuite,
-        rollUp: org.poc.objs.policy.api.SuiteRollUpStrategy,
+        strategy: SuiteStrategy,
     ): SuiteFolderResult {
         val synthetic = SuiteFolder(
             id = UUID.randomUUID(),
@@ -229,7 +230,7 @@ class DefaultSuiteEvaluator(
             participation = SuiteFolderParticipation.ENABLED,
         )
         val voting = roots.filter { it.votes }.map { RollUpChild(it.status, it.severity) }
-        val rolled = rollUp.rollUp(synthetic, voting)
+        val rolled = strategy.rollUp(synthetic, voting)
         return SuiteFolderResult(
             folderId = synthetic.id,
             key = synthetic.key,
@@ -259,15 +260,4 @@ class DefaultSuiteEvaluator(
         val outcome: PolicyOutcome,
         val policy: Policy,
     )
-
-    companion object {
-        fun leafSeverity(outcome: PolicyOutcome): String? {
-            val fromFindings = outcome.findings.mapNotNull { it.severity }.maxByOrNull { SeverityRank.rank(it) }
-            if (fromFindings != null) return fromFindings
-            return when (outcome.status) {
-                PolicyOutcomeStatus.ERROR -> "HIGH"
-                else -> null
-            }
-        }
-    }
 }

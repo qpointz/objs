@@ -1,6 +1,7 @@
 package org.poc.objs.policy.drools
 
 import org.poc.objs.policy.api.Finding
+import org.poc.objs.policy.api.FindingSeverity
 import org.poc.objs.policy.api.PolicyEngineResult
 import org.poc.objs.policy.api.PolicyOutcomeStatus
 import java.util.UUID
@@ -31,7 +32,7 @@ class DroolsEvaluationScratch {
 
     @JvmOverloads
     fun fail(message: String, rule: String? = null) {
-        if (status != PolicyOutcomeStatus.ERROR) {
+        if (status != PolicyOutcomeStatus.EXEC_ERROR) {
             status = PolicyOutcomeStatus.FAIL
         }
         findings += findingOf(message = message, severity = null, code = null, rule = rule)
@@ -39,8 +40,8 @@ class DroolsEvaluationScratch {
 
     @JvmOverloads
     fun error(message: String, rule: String? = null) {
-        status = PolicyOutcomeStatus.ERROR
-        findings += findingOf(message = message, severity = "ERROR", code = null, rule = rule)
+        status = PolicyOutcomeStatus.EXEC_ERROR
+        findings += findingOf(message = message, severity = null, code = null, rule = rule)
     }
 
     @JvmOverloads
@@ -54,7 +55,7 @@ class DroolsEvaluationScratch {
     ) {
         findings += findingOf(
             message = message,
-            severity = severity,
+            severity = FindingSeverity.parseOrNull(severity),
             code = code,
             entityId = entityId,
             edgeId = edgeId,
@@ -67,7 +68,7 @@ class DroolsEvaluationScratch {
     fun pass(message: String = "ok", rule: String? = null) {
         findings += findingOf(
             message = message,
-            severity = "OK",
+            severity = null,
             code = null,
             rule = rule,
         )
@@ -82,7 +83,7 @@ class DroolsEvaluationScratch {
 
     private fun findingOf(
         message: String,
-        severity: String?,
+        severity: FindingSeverity?,
         code: String?,
         entityId: String? = null,
         edgeId: String? = null,

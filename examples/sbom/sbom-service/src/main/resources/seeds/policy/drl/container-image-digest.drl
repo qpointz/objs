@@ -19,7 +19,7 @@ then
     scratch.fail("Container Image missing payload.digest");
     scratch.finding(
         "Container Image should declare payload.digest",
-        "WARN",
+        "MEDIUM",
         "SBOM_IMAGE_DIGEST",
         id,
         null

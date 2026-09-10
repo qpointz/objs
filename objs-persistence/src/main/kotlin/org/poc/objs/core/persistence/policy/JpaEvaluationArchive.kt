@@ -10,6 +10,7 @@ import org.poc.objs.policy.api.EvaluationArchiveDocument
 import org.poc.objs.policy.api.EvaluationResult
 import org.poc.objs.policy.api.ExecutionContextSnapshot
 import org.poc.objs.policy.api.Finding
+import org.poc.objs.policy.api.FindingSeverity
 import org.poc.objs.policy.api.PersistContentAxes
 import org.poc.objs.policy.api.PersistResultFilters
 import org.poc.objs.policy.api.PersistSpec
@@ -142,7 +143,7 @@ class JpaEvaluationArchive(
                     executionStrategyKind = meta.executionStrategyKind,
                     rollupStrategyKind = meta.rollUpStrategyKind,
                     overallStatus = (overall ?: meta.overallStatus)?.name,
-                    overallSeverity = meta.overallSeverity,
+                    overallSeverity = meta.overallSeverity?.name,
                     suiteId = meta.suiteId,
                     suiteName = meta.suiteName,
                     tags = labels.toMutableList(),
@@ -187,7 +188,7 @@ class JpaEvaluationArchive(
                                 outcomeId = outcomeId,
                                 idx = fIdx,
                                 message = finding.message,
-                                severity = finding.severity,
+                                severity = finding.severity?.name,
                                 code = finding.code,
                                 entityIds = finding.entities.map { it.toString() }.toMutableList(),
                                 edgeIds = finding.edges.map { it.toString() }.toMutableList(),
@@ -214,14 +215,14 @@ class JpaEvaluationArchive(
                     policyName = o.policyName,
                     policySerial = o.policySerial,
                     engineKind = o.engineKind,
-                    status = PolicyOutcomeStatus.valueOf(o.status),
+                    status = PolicyOutcomeStatus.parseToken(o.status),
                     notApplicableReason = o.notApplicableReason,
                     message = o.message,
                     findings =
                         findingsByOutcome[o.outcomeId].orEmpty().map { f ->
                             Finding(
                                 message = f.message,
-                                severity = f.severity,
+                                severity = FindingSeverity.parseLegacyOrNull(f.severity),
                                 code = f.code,
                                 entities = f.entityIds.map(UUID::fromString),
                                 edges = f.edgeIds.map(UUID::fromString),
@@ -239,8 +240,8 @@ class JpaEvaluationArchive(
                 evaluatedAtEpochMs = record.evaluatedAt.toEpochMilli(),
                 executionStrategyKind = record.executionStrategyKind,
                 rollUpStrategyKind = record.rollupStrategyKind,
-                overallStatus = record.overallStatus?.let { PolicyOutcomeStatus.valueOf(it) },
-                overallSeverity = record.overallSeverity,
+                overallStatus = record.overallStatus?.let { PolicyOutcomeStatus.parseToken(it) },
+                overallSeverity = FindingSeverity.parseLegacyOrNull(record.overallSeverity),
                 tags = tags,
                 annotations = annotations,
                 suiteId = record.suiteId,
@@ -315,7 +316,7 @@ internal fun persistProfileFromMap(raw: Map<String, Any?>): ParsedPersistProfile
     val filtersRaw = raw[PersistProfileKeys.FILTERS] as? Map<*, *>
     val statuses =
         (filtersRaw?.get(PersistProfileKeys.FILTER_OUTCOME_STATUSES) as? List<*>)
-            ?.mapNotNull { (it as? String)?.let(PolicyOutcomeStatus::valueOf) }
+            ?.mapNotNull { (it as? String)?.let(PolicyOutcomeStatus::parseToken) }
             ?.toSet()
     val severities =
         (filtersRaw?.get(PersistProfileKeys.FILTER_FINDING_SEVERITIES) as? List<*>)
@@ -358,7 +359,10 @@ internal fun filterOutcomes(
                         if (sev == null) {
                             PersistResultFilters.UNSPECIFIED in severitySet
                         } else {
-                            sev in severitySet
+                            sev.name in severitySet ||
+                                severitySet.any { token ->
+                                    FindingSeverity.parseLegacyOrNull(token) == sev
+                                }
                         }
                     }
             }
@@ -396,7 +400,7 @@ internal fun suiteTreeToMap(tree: SuiteFolderResult): MutableMap<String, Any?> =
         "parentFolderId" to tree.parentFolderId?.toString(),
         "participation" to tree.participation.name,
         "status" to tree.status.name,
-        "severity" to tree.severity,
+        "severity" to tree.severity?.name,
         "votes" to tree.votes,
         "tags" to tree.tags,
         "annotations" to tree.annotations,
@@ -409,7 +413,7 @@ internal fun suiteTreeToMap(tree: SuiteFolderResult): MutableMap<String, Any?> =
                     "policySerial" to it.policySerial,
                     "policyVersion" to it.policyVersion,
                     "status" to it.status.name,
-                    "severity" to it.severity,
+                    "severity" to it.severity?.name,
                     "outcomeIndex" to it.outcomeIndex,
                 )
             },
@@ -429,8 +433,8 @@ internal fun suiteTreeFromMap(raw: Map<String, Any?>): SuiteFolderResult {
                 policyName = m["policyName"] as String,
                 policySerial = (m["policySerial"] as Number).toLong(),
                 policyVersion = m["policyVersion"] as String,
-                status = PolicyOutcomeStatus.valueOf(m["status"] as String),
-                severity = m["severity"] as? String,
+                status = PolicyOutcomeStatus.parseToken(m["status"] as String),
+                severity = FindingSeverity.parseLegacyOrNull(m["severity"] as? String),
                 outcomeIndex = (m["outcomeIndex"] as Number).toInt(),
             )
         }
@@ -440,8 +444,8 @@ internal fun suiteTreeFromMap(raw: Map<String, Any?>): SuiteFolderResult {
         name = raw["name"] as String,
         parentFolderId = (raw["parentFolderId"] as? String)?.let(UUID::fromString),
         participation = SuiteFolderParticipation.valueOf(raw["participation"] as String),
-        status = PolicyOutcomeStatus.valueOf(raw["status"] as String),
-        severity = raw["severity"] as? String,
+        status = PolicyOutcomeStatus.parseToken(raw["status"] as String),
+        severity = FindingSeverity.parseLegacyOrNull(raw["severity"] as? String),
         votes = raw["votes"] as? Boolean ?: true,
         tags = (raw["tags"] as? List<*>).orEmpty().filterIsInstance<String>(),
         annotations =

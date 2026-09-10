@@ -15,7 +15,7 @@ then
     scratch.fail("Product has no COMPLIES_WITH edge");
     scratch.finding(
         "Product missing compliance COMPLIES_WITH edge",
-        "WARN",
+        "MEDIUM",
         "SBOM_PRODUCT_COMPLIANCE_MISSING",
         id,
         null

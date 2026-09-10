@@ -15,9 +15,9 @@ class AggregateOverallTest {
         val outcomes = listOf(
             outcome(PolicyOutcomeStatus.PASS),
             outcome(PolicyOutcomeStatus.FAIL),
-            outcome(PolicyOutcomeStatus.ERROR),
+            outcome(PolicyOutcomeStatus.EXEC_ERROR),
         )
-        assertThat(aggregateOverall(outcomes)).isEqualTo(PolicyOutcomeStatus.ERROR)
+        assertThat(aggregateOverall(outcomes)).isEqualTo(PolicyOutcomeStatus.EXEC_ERROR)
     }
 
     @Test

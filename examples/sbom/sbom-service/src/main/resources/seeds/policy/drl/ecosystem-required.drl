@@ -19,7 +19,7 @@ then
     scratch.fail("Component missing payload.ecosystem");
     scratch.finding(
         "Component missing required payload.ecosystem",
-        "ERROR",
+        "HIGH",
         "SBOM_COMPONENT_ECOSYSTEM_REQUIRED",
         id,
         null

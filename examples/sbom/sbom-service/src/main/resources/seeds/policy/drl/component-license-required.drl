@@ -15,7 +15,7 @@ then
     scratch.fail("Component has no LICENSED_UNDER License");
     scratch.finding(
         "Component missing LICENSED_UNDER edge",
-        "ERROR",
+        "HIGH",
         "SBOM_COMPONENT_LICENSE_MISSING",
         id,
         null

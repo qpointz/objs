@@ -15,7 +15,7 @@ then
     scratch.fail("Container Image has HAS_VULNERABILITY edge");
     scratch.finding(
         "Container Image linked to a vulnerability",
-        "WARN",
+        "MEDIUM",
         "SBOM_IMAGE_VULN",
         id,
         null

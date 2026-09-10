@@ -125,14 +125,14 @@ class DefaultPolicyEvaluatorTest {
 
         assertThat(result.outcomes.map { it.status }).containsExactly(
             PolicyOutcomeStatus.PASS,
-            PolicyOutcomeStatus.ERROR,
-            PolicyOutcomeStatus.ERROR,
-            PolicyOutcomeStatus.ERROR,
+            PolicyOutcomeStatus.EXEC_ERROR,
+            PolicyOutcomeStatus.EXEC_ERROR,
+            PolicyOutcomeStatus.EXEC_ERROR,
         )
         assertThat(result.outcomes[0].policySerial).isEqualTo(aLatest.serial)
         assertThat(result.outcomes[2].message).contains("engineKind")
         assertThat(result.outcomes[3].message).contains("applicabilityKind")
-        assertThat(result.overall).isEqualTo(PolicyOutcomeStatus.ERROR)
+        assertThat(result.overall).isEqualTo(PolicyOutcomeStatus.EXEC_ERROR)
     }
 
     @Test
@@ -156,7 +156,7 @@ class DefaultPolicyEvaluatorTest {
         assertThat(result.outcomes[0].policySerial).isEqualTo(v1.serial)
         assertThat(result.outcomes[1].status).isEqualTo(PolicyOutcomeStatus.PASS)
         assertThat(result.outcomes[1].policySerial).isEqualTo(v2.serial)
-        assertThat(result.outcomes[2].status).isEqualTo(PolicyOutcomeStatus.ERROR)
+        assertThat(result.outcomes[2].status).isEqualTo(PolicyOutcomeStatus.EXEC_ERROR)
         assertThat(result.outcomes[2].message).contains("not found")
         assertThat(result.outcomes[3].status).isEqualTo(PolicyOutcomeStatus.PASS)
         assertThat(result.outcomes[3].policySerial).isEqualTo(v2.serial)

@@ -128,6 +128,8 @@ class JpaSuiteRepository(
             folders = folders,
             tags = record.tags.toList(),
             annotations = record.annotations.toMap(),
+            // No separate DB column yet — pack kind aliases roll-up kind (BUILTIN).
+            suiteStrategyKind = record.rollUpStrategyKind,
         )
     }
 
@@ -142,6 +144,12 @@ class JpaSuiteRepository(
                 "Unknown rollUpStrategyKind '$rollUpKind' (C-27 supports BUILTIN only)",
             )
         }
+        val packKind = write.suiteStrategyKind.trim().ifBlank { rollUpKind }
+        if (packKind != org.poc.objs.policy.api.SuiteStrategyKinds.BUILTIN) {
+            throw InvalidSuiteException(
+                "Unknown suiteStrategyKind '$packKind' (supports BUILTIN only)",
+            )
+        }
         val key = write.key.trim().ifBlank { throw InvalidSuiteException("Suite key is required") }
         return PolicySuite(
             id = id,
@@ -154,6 +162,7 @@ class JpaSuiteRepository(
             folders = folders,
             tags = write.tags,
             annotations = write.annotations,
+            suiteStrategyKind = packKind,
         )
     }
 

@@ -23,7 +23,7 @@ data class PolicyEvaluationMeta(
     val executionStrategyKind: String? = null,
     val rollUpStrategyKind: String? = null,
     val overallStatus: PolicyOutcomeStatus? = null,
-    val overallSeverity: String? = null,
+    val overallSeverity: FindingSeverity? = null,
     val tags: List<String> = emptyList(),
     val annotations: Map<String, String> = emptyMap(),
     val suiteId: UUID? = null,
@@ -42,7 +42,7 @@ data class SuiteFolderResult(
     val parentFolderId: UUID? = null,
     val participation: SuiteFolderParticipation,
     val status: PolicyOutcomeStatus,
-    val severity: String? = null,
+    val severity: FindingSeverity? = null,
     val votes: Boolean,
     val tags: List<String> = emptyList(),
     val annotations: Map<String, String> = emptyMap(),
@@ -56,7 +56,7 @@ data class SuitePolicyLeafResult(
     val policySerial: Long,
     val policyVersion: String,
     val status: PolicyOutcomeStatus,
-    val severity: String? = null,
+    val severity: FindingSeverity? = null,
     /** Index into [SuiteEvaluationResult.outcomes]. */
     val outcomeIndex: Int,
 )
@@ -83,12 +83,12 @@ interface SuiteRollUpStrategy {
 
 data class RollUpChild(
     val status: PolicyOutcomeStatus,
-    val severity: String?,
+    val severity: FindingSeverity?,
 )
 
 data class RollUpResult(
     val status: PolicyOutcomeStatus,
-    val severity: String?,
+    val severity: FindingSeverity?,
 )
 
 /**

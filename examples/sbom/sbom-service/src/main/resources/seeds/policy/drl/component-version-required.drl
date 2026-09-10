@@ -19,7 +19,7 @@ then
     scratch.fail("Component missing payload.version");
     scratch.finding(
         "Component missing required payload.version",
-        "ERROR",
+        "HIGH",
         "SBOM_COMPONENT_VERSION_REQUIRED",
         id,
         null

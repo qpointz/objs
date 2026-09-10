@@ -3,6 +3,7 @@ package org.poc.objs.policy.core
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
+import org.poc.objs.policy.api.FindingSeverity
 import org.poc.objs.policy.api.PolicyOutcomeStatus
 import org.poc.objs.policy.api.RollUpChild
 import org.poc.objs.policy.api.SuiteFolder
@@ -20,12 +21,12 @@ class SuiteStrategiesTest {
         val r = BuiltinSuiteRollUpStrategy.rollUp(
             f,
             listOf(
-                RollUpChild(PolicyOutcomeStatus.PASS, "LOW"),
-                RollUpChild(PolicyOutcomeStatus.FAIL, "MEDIUM"),
+                RollUpChild(PolicyOutcomeStatus.PASS, FindingSeverity.LOW),
+                RollUpChild(PolicyOutcomeStatus.FAIL, FindingSeverity.MEDIUM),
             ),
         )
         assertThat(r.status).isEqualTo(PolicyOutcomeStatus.FAIL)
-        assertThat(r.severity).isEqualTo("MEDIUM")
+        assertThat(r.severity).isEqualTo(FindingSeverity.MEDIUM)
     }
 
     @Test
@@ -34,12 +35,12 @@ class SuiteStrategiesTest {
         val r = BuiltinSuiteRollUpStrategy.rollUp(
             f,
             listOf(
-                RollUpChild(PolicyOutcomeStatus.PASS, "HIGH"),
-                RollUpChild(PolicyOutcomeStatus.FAIL, "LOW"),
+                RollUpChild(PolicyOutcomeStatus.PASS, FindingSeverity.HIGH),
+                RollUpChild(PolicyOutcomeStatus.FAIL, FindingSeverity.LOW),
             ),
         )
         assertThat(r.status).isEqualTo(PolicyOutcomeStatus.PASS)
-        assertThat(r.severity).isEqualTo("HIGH")
+        assertThat(r.severity).isEqualTo(FindingSeverity.HIGH)
     }
 
     @Test
@@ -50,9 +51,9 @@ class SuiteStrategiesTest {
         )
         val r = BuiltinSuiteRollUpStrategy.rollUp(
             f,
-            listOf(RollUpChild(PolicyOutcomeStatus.FAIL, "LOW")),
+            listOf(RollUpChild(PolicyOutcomeStatus.FAIL, FindingSeverity.LOW)),
         )
-        assertThat(r.severity).isEqualTo("CRITICAL")
+        assertThat(r.severity).isEqualTo(FindingSeverity.CRITICAL)
     }
 
     @Test

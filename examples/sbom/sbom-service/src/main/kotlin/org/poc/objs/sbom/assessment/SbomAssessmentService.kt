@@ -198,7 +198,7 @@ class SbomAssessmentService(
                 applicationId = applicationId,
                 measureKey = folder.key,
                 status = (fr?.status ?: PolicyOutcomeStatus.NOT_APPLICABLE).name,
-                severity = fr?.severity,
+                severity = fr?.severity?.name,
             )
         }
     }
@@ -282,7 +282,7 @@ class SbomAssessmentService(
             applicationName = target.applicationName,
             versionId = target.versionId,
             overallStatus = result.meta.overallStatus?.name,
-            overallSeverity = result.meta.overallSeverity,
+            overallSeverity = result.meta.overallSeverity?.name,
             entitySeverities = entitySeverities,
             findings = findings,
             outcomes =
@@ -308,30 +308,14 @@ class SbomAssessmentService(
     }
 
     /**
-     * Normalize Drools scratch severities for UI:
-     * - OK / INFO → INFO (tree pills)
-     * - null + entity locus → ERROR when policy FAIL/ERROR, else INFO
-     * - policy-level notes (no entity) keep null (not shown on tree)
+     * Map closed-set finding severity to UI string. Does not synthesize severity from outcome status
+     * (C-34 / VOCAB-MATRIX §10.4).
      */
     private fun effectiveSeverity(
-        raw: String?,
-        status: PolicyOutcomeStatus,
-        hasEntity: Boolean,
-    ): String? {
-        val key = raw?.trim()?.uppercase().orEmpty()
-        return when (key) {
-            "OK", "INFO" -> "INFO"
-            "WARN", "WARNING" -> "WARN"
-            "ERROR", "FAIL" -> "ERROR"
-            "" ->
-                when {
-                    !hasEntity -> null
-                    status == PolicyOutcomeStatus.FAIL || status == PolicyOutcomeStatus.ERROR -> "ERROR"
-                    else -> "INFO"
-                }
-            else -> key
-        }
-    }
+        raw: org.poc.objs.policy.api.FindingSeverity?,
+        @Suppress("UNUSED_PARAMETER") status: PolicyOutcomeStatus,
+        @Suppress("UNUSED_PARAMETER") hasEntity: Boolean,
+    ): String? = raw?.name
 
     private fun flattenFolderResults(root: SuiteFolderResult?): List<SuiteFolderResult> {
         if (root == null) return emptyList()
@@ -355,19 +339,18 @@ class SbomAssessmentService(
     companion object {
         private val SEVERITY_RANK =
             mapOf(
-                "ERROR" to 40,
-                "FAIL" to 40,
-                "WARN" to 30,
-                "WARNING" to 30,
-                "INFO" to 20,
-                "OK" to 10,
+                "CRITICAL" to 50,
+                "HIGH" to 40,
+                "MEDIUM" to 30,
+                "LOW" to 20,
+                "INFO" to 10,
             )
 
         fun maxSeverity(a: String?, b: String?): String? {
             if (a == null) return b
             if (b == null) return a
-            val ra = SEVERITY_RANK[a.trim().uppercase()] ?: 5
-            val rb = SEVERITY_RANK[b.trim().uppercase()] ?: 5
+            val ra = SEVERITY_RANK[a.trim().uppercase()] ?: 0
+            val rb = SEVERITY_RANK[b.trim().uppercase()] ?: 0
             return if (ra >= rb) a else b
         }
     }

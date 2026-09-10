@@ -2220,7 +2220,7 @@ export function ApplicationDetailPage() {
                       color={
                         assessment.overallStatus === 'PASS'
                           ? 'teal'
-                          : assessment.overallStatus === 'FAIL' || assessment.overallStatus === 'ERROR'
+                          : assessment.overallStatus === 'FAIL' || assessment.overallStatus === 'EXEC_ERROR'
                             ? 'red'
                             : 'gray'
                       }
@@ -2250,7 +2250,7 @@ export function ApplicationDetailPage() {
           color={
             assessment.overallStatus === 'PASS'
               ? 'teal'
-              : assessment.overallStatus === 'FAIL' || assessment.overallStatus === 'ERROR'
+              : assessment.overallStatus === 'FAIL' || assessment.overallStatus === 'EXEC_ERROR'
                 ? 'red'
                 : 'gray'
           }
@@ -2259,7 +2259,7 @@ export function ApplicationDetailPage() {
           <Text size="sm">
             {(assessment.findings.filter((f) => (f.entityIds?.length ?? 0) > 0).length)} asset finding(s)
             {' · '}
-            {assessment.outcomes.filter((o) => o.status === 'FAIL' || o.status === 'ERROR').length} failed
+            {assessment.outcomes.filter((o) => o.status === 'FAIL' || o.status === 'EXEC_ERROR').length} failed
             polic(ies)
             {assessment.findings.length >
             assessment.findings.filter((f) => (f.entityIds?.length ?? 0) > 0).length
@@ -2934,7 +2934,7 @@ export function ApplicationDetailPage() {
                         <Stack gap={6}>
                           {selectedAssetFindings.map((f, i) => (
                             <Group key={i} gap="xs" wrap="nowrap" align="flex-start">
-                              <FindingSeverityPill severity={f.severity ?? f.outcomeStatus} />
+                              <FindingSeverityPill severity={f.severity} />
                               <div style={{ minWidth: 0 }}>
                                 <Text size="xs" fw={600}>
                                   {f.policyName || 'Policy'}

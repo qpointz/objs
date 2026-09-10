@@ -1,13 +1,11 @@
-/** Severity pill for assessment findings (mirrors workbench FindingSeverityPill). */
+/** Severity pill for assessment findings (C-34 closed set). */
 
 const FINDING_PILL: Record<string, { bg: string; label: string }> = {
-  ERROR: { bg: '#fa5252', label: 'ERROR' },
-  FAIL: { bg: '#fa5252', label: 'FAIL' },
-  WARN: { bg: '#fd7e14', label: 'WARN' },
-  WARNING: { bg: '#fd7e14', label: 'WARN' },
-  OK: { bg: '#228be6', label: 'INFO' },
-  INFO: { bg: '#228be6', label: 'INFO' },
-  PASS: { bg: '#12b886', label: 'PASS' },
+  CRITICAL: { bg: '#c92a2a', label: 'Critical' },
+  HIGH: { bg: '#fa5252', label: 'High' },
+  MEDIUM: { bg: '#fd7e14', label: 'Medium' },
+  LOW: { bg: '#fab005', label: 'Low' },
+  INFO: { bg: '#228be6', label: 'Info' },
 }
 
 export function FindingSeverityPill({
@@ -44,30 +42,29 @@ export function FindingSeverityPill({
   )
 }
 
+/** Outcome status cell color (Axis A) — not finding severity. */
 export function assessmentCellColor(status: string | undefined | null): string {
   const key = (status ?? '').trim().toUpperCase()
   if (key === 'PASS') return 'teal'
-  if (key === 'FAIL' || key === 'ERROR') return 'red'
-  if (key === 'WARN' || key === 'WARNING') return 'orange'
+  if (key === 'FAIL' || key === 'EXEC_ERROR' || key === 'ERROR') return 'red'
+  if (key === 'NOT_APPLICABLE') return 'gray'
   return 'gray'
 }
 
 const SEVERITY_RANK: Record<string, number> = {
-  ERROR: 40,
-  FAIL: 40,
-  WARN: 30,
-  WARNING: 30,
-  INFO: 20,
-  OK: 10,
-  PASS: 10,
+  CRITICAL: 50,
+  HIGH: 40,
+  MEDIUM: 30,
+  LOW: 20,
+  INFO: 10,
 }
 
 export function severityRank(raw: string | null | undefined): number {
   if (!raw) return 0
-  return SEVERITY_RANK[raw.trim().toUpperCase()] ?? 5
+  return SEVERITY_RANK[raw.trim().toUpperCase()] ?? 0
 }
 
-/** Worst finding severity (ERROR > WARN > …). */
+/** Worst finding severity (CRITICAL > … > INFO). */
 export function maxFindingSeverity(
   ...values: Array<string | null | undefined>
 ): string | undefined {

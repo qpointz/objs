@@ -109,13 +109,22 @@ data class PolicySuite(
     val key: String,
     /** Display label; defaults to [key] when blank. */
     val name: String,
-    /** Which roll-up strategy implementation to use ([SuiteRollUpStrategyKinds]). */
+    /** Legacy roll-up strategy kind; still written to evaluation meta. */
     val rollUpStrategyKind: String = SuiteRollUpStrategyKinds.BUILTIN,
     val executionStrategyKind: String = SuiteExecutionStrategyKinds.DEDUPE,
     val folders: List<SuiteFolder> = emptyList(),
     val tags: List<String> = emptyList(),
     val annotations: Map<String, String> = emptyMap(),
-)
+    /**
+     * Suite compute pack ([SuiteStrategyKinds]). When blank, falls back to [rollUpStrategyKind]
+     * (legacy alias, one release).
+     */
+    val suiteStrategyKind: String = SuiteStrategyKinds.BUILTIN,
+) {
+    /** Resolved pack kind: [suiteStrategyKind] if set, else legacy [rollUpStrategyKind]. */
+    fun resolvedSuiteStrategyKind(): String =
+        suiteStrategyKind.trim().ifEmpty { rollUpStrategyKind.trim().ifEmpty { SuiteStrategyKinds.BUILTIN } }
+}
 
 data class SuiteFolderWrite(
     val id: UUID? = null,
@@ -141,4 +150,5 @@ data class PolicySuiteWrite(
     val folders: List<SuiteFolderWrite> = emptyList(),
     val tags: List<String> = emptyList(),
     val annotations: Map<String, String> = emptyMap(),
+    val suiteStrategyKind: String = SuiteStrategyKinds.BUILTIN,
 )

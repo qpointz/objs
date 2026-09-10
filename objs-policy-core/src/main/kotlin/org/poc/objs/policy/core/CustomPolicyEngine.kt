@@ -12,7 +12,7 @@ import java.util.UUID
  * CUSTOM stub engine for tests and embedders.
  *
  * Body protocol (first line = status token, case-insensitive):
- * - `PASS` / `FAIL` / `ERROR`
+ * - `PASS` / `FAIL` / `ERROR` (authoring sugar → [PolicyOutcomeStatus.EXEC_ERROR]) / `EXEC_ERROR`
  * - Optional following lines: `FINDING|<message>|<entityUuid?>|<edgeUuid?>`
  */
 object CustomPolicyEngine : PolicyEngine {
@@ -20,7 +20,7 @@ object CustomPolicyEngine : PolicyEngine {
         val lines = policy.body.lines().map { it.trim() }.filter { it.isNotEmpty() }
         if (lines.isEmpty()) {
             return PolicyEngineResult(
-                status = PolicyOutcomeStatus.ERROR,
+                status = PolicyOutcomeStatus.EXEC_ERROR,
                 message = "CUSTOM body is empty",
             )
         }
@@ -29,10 +29,10 @@ object CustomPolicyEngine : PolicyEngine {
         val status = when (statusToken) {
             "PASS" -> PolicyOutcomeStatus.PASS
             "FAIL" -> PolicyOutcomeStatus.FAIL
-            "ERROR" -> PolicyOutcomeStatus.ERROR
+            "ERROR", "EXEC_ERROR" -> PolicyOutcomeStatus.EXEC_ERROR
             else -> {
                 return PolicyEngineResult(
-                    status = PolicyOutcomeStatus.ERROR,
+                    status = PolicyOutcomeStatus.EXEC_ERROR,
                     message = "Unrecognized CUSTOM body status '$statusToken'",
                 )
             }
@@ -42,7 +42,7 @@ object CustomPolicyEngine : PolicyEngine {
         return PolicyEngineResult(
             status = status,
             findings = findings,
-            message = if (status == PolicyOutcomeStatus.ERROR) "CUSTOM engine ERROR body" else null,
+            message = if (status == PolicyOutcomeStatus.EXEC_ERROR) "CUSTOM engine ERROR body" else null,
         )
     }
 

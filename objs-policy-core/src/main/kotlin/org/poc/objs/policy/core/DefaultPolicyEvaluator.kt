@@ -112,7 +112,7 @@ class DefaultPolicyEvaluator(
                 policyName = refLabel(ref),
                 policySerial = refSerialHint(ref),
                 engineKind = "",
-                status = PolicyOutcomeStatus.ERROR,
+                status = PolicyOutcomeStatus.EXEC_ERROR,
                 message = "Policy not found: ${refLabel(ref)}",
             )
         }
@@ -126,7 +126,7 @@ class DefaultPolicyEvaluator(
                 policyName = policy.name,
                 policySerial = policy.serial,
                 engineKind = policy.engineKind,
-                status = PolicyOutcomeStatus.ERROR,
+                status = PolicyOutcomeStatus.EXEC_ERROR,
                 message = "Unsupported applicabilityKind '${policy.applicabilityKind}'",
             )
         }
@@ -148,7 +148,7 @@ class DefaultPolicyEvaluator(
                 policyName = policy.name,
                 policySerial = policy.serial,
                 engineKind = policy.engineKind,
-                status = PolicyOutcomeStatus.ERROR,
+                status = PolicyOutcomeStatus.EXEC_ERROR,
                 message = "No PolicyEngine registered for engineKind '${policy.engineKind}'",
             )
         }
@@ -158,9 +158,9 @@ class DefaultPolicyEvaluator(
             val status = when (result.status) {
                 PolicyOutcomeStatus.PASS,
                 PolicyOutcomeStatus.FAIL,
-                PolicyOutcomeStatus.ERROR,
+                PolicyOutcomeStatus.EXEC_ERROR,
                 -> result.status
-                PolicyOutcomeStatus.NOT_APPLICABLE -> PolicyOutcomeStatus.ERROR
+                PolicyOutcomeStatus.NOT_APPLICABLE -> PolicyOutcomeStatus.EXEC_ERROR
             }
             PolicyOutcome(
                 policyName = policy.name,
@@ -179,7 +179,7 @@ class DefaultPolicyEvaluator(
                 policyName = policy.name,
                 policySerial = policy.serial,
                 engineKind = policy.engineKind,
-                status = PolicyOutcomeStatus.ERROR,
+                status = PolicyOutcomeStatus.EXEC_ERROR,
                 message = ex.message ?: ex::class.simpleName,
             )
         }

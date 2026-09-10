@@ -15,7 +15,7 @@ then
     scratch.fail("Product has no OWNED_BY Organization");
     scratch.finding(
         "Product missing OWNED_BY edge to Organization",
-        "ERROR",
+        "HIGH",
         "SBOM_PRODUCT_OWNER_REQUIRED",
         id,
         null

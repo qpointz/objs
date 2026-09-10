@@ -19,7 +19,7 @@ then
     scratch.fail("License missing payload.spdxId");
     scratch.finding(
         "License missing required payload.spdxId",
-        "ERROR",
+        "HIGH",
         "SBOM_LICENSE_SPDX_REQUIRED",
         id,
         null

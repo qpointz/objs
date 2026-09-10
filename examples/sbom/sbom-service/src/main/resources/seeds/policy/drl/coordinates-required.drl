@@ -19,7 +19,7 @@ then
     scratch.fail("Component missing payload.coordinates");
     scratch.finding(
         "Component missing required payload.coordinates",
-        "ERROR",
+        "HIGH",
         "SBOM_COMPONENT_COORDINATES_REQUIRED",
         id,
         null

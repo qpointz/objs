@@ -54,6 +54,7 @@ data class PolicySuiteDto(
     val folders: List<SuiteFolderDto> = emptyList(),
     val tags: List<String> = emptyList(),
     val annotations: Map<String, String> = emptyMap(),
+    val suiteStrategyKind: String = org.poc.objs.policy.api.SuiteStrategyKinds.BUILTIN,
 )
 
 data class SuiteEvaluateRequest(
@@ -85,6 +86,7 @@ object SuiteHttpMapping {
             folders = dto.folders.map { toFolderWrite(it) },
             tags = dto.tags,
             annotations = dto.annotations,
+            suiteStrategyKind = dto.suiteStrategyKind,
         )
 
     fun toDto(suite: PolicySuite): PolicySuiteDto =
@@ -97,6 +99,7 @@ object SuiteHttpMapping {
             folders = suite.folders.map { toFolderDto(it) },
             tags = suite.tags,
             annotations = suite.annotations,
+            suiteStrategyKind = suite.suiteStrategyKind,
         )
 
     fun parseScope(

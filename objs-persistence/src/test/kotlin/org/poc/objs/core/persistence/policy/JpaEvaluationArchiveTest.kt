@@ -7,6 +7,7 @@ import org.poc.objs.api.domain.GraphContents
 import org.poc.objs.core.persistence.ObjsPersistenceFixture
 import org.poc.objs.policy.api.EvaluationResult
 import org.poc.objs.policy.api.Finding
+import org.poc.objs.policy.api.FindingSeverity
 import org.poc.objs.policy.api.PersistContentAxes
 import org.poc.objs.policy.api.PersistPresets
 import org.poc.objs.policy.api.PersistResultFilters
@@ -48,7 +49,7 @@ class JpaEvaluationArchiveTest : ObjsPersistenceFixture() {
                             policySerial = 1,
                             engineKind = "CUSTOM",
                             status = PolicyOutcomeStatus.PASS,
-                            findings = listOf(Finding("info", severity = "INFO")),
+                            findings = listOf(Finding("info", severity = FindingSeverity.INFO)),
                         ),
                         PolicyOutcome(
                             policyName = "bad",
@@ -57,8 +58,8 @@ class JpaEvaluationArchiveTest : ObjsPersistenceFixture() {
                             status = PolicyOutcomeStatus.FAIL,
                             findings =
                                 listOf(
-                                    Finding("warn", severity = "WARNING", entities = listOf(entityId)),
-                                    Finding("err", severity = "ERROR"),
+                                    Finding("warn", severity = FindingSeverity.MEDIUM, entities = listOf(entityId)),
+                                    Finding("err", severity = FindingSeverity.HIGH),
                                 ),
                         ),
                     ),
@@ -73,7 +74,7 @@ class JpaEvaluationArchiveTest : ObjsPersistenceFixture() {
                 filters =
                     PersistResultFilters(
                         outcomeStatuses = setOf(PolicyOutcomeStatus.FAIL),
-                        findingSeverities = setOf("ERROR", "WARNING"),
+                        findingSeverities = setOf("HIGH", "MEDIUM"),
                     ),
             )
         val context = mapOf("policies" to listOf(mapOf("key" to "bad", "serial" to 2)))
@@ -101,7 +102,8 @@ class JpaEvaluationArchiveTest : ObjsPersistenceFixture() {
         assertThat(loaded.axes.input).isFalse()
         assertThat(loaded.outcomes).hasSize(1)
         assertThat(loaded.outcomes.single().policyName).isEqualTo("bad")
-        assertThat(loaded.outcomes.single().findings).extracting("severity").containsExactly("WARNING", "ERROR")
+        assertThat(loaded.outcomes.single().findings).extracting("severity")
+            .containsExactly(FindingSeverity.MEDIUM, FindingSeverity.HIGH)
         assertThat(loaded.executionContext).isEqualTo(context)
         assertThat(loaded.input).isNull()
     }
@@ -244,5 +246,37 @@ class JpaEvaluationArchiveTest : ObjsPersistenceFixture() {
         assertThat(loaded.axes.executionContext).isFalse()
         assertThat(loaded.executionContext).isNull()
         assertThat(loaded.outcomes).hasSize(1)
+    }
+
+    @Test
+    fun shouldDualReadLegacyFindingSeverityFilterTokens() {
+        val result =
+            EvaluationResult(
+                outcomes =
+                    listOf(
+                        PolicyOutcome(
+                            policyName = "p",
+                            policySerial = 1,
+                            engineKind = "CUSTOM",
+                            status = PolicyOutcomeStatus.FAIL,
+                            findings = listOf(Finding("legacy-mapped", severity = FindingSeverity.HIGH)),
+                        ),
+                    ),
+            )
+        val id =
+            evaluationArchives.saveFlat(
+                result = result,
+                spec =
+                    PersistPresets.standard().copy(
+                        filters =
+                            PersistResultFilters(
+                                outcomeStatuses = setOf(PolicyOutcomeStatus.FAIL),
+                                findingSeverities = setOf("ERROR"),
+                            ),
+                    ),
+            )!!
+        val loaded = evaluationArchives.load(id)!!
+        assertThat(loaded.outcomes.single().findings).extracting("severity")
+            .containsExactly(FindingSeverity.HIGH)
     }
 }

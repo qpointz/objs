@@ -4,8 +4,19 @@ package org.poc.objs.policy.api
 enum class PolicyOutcomeStatus {
     PASS,
     FAIL,
-    ERROR,
+    /** Could not execute correctly (engine/body/unknown-kind/runtime). Formerly `ERROR`. */
+    EXEC_ERROR,
     NOT_APPLICABLE,
+    ;
+
+    companion object {
+        /** Parse status token; legacy archive `ERROR` → [EXEC_ERROR] (G-P54v). */
+        fun parseToken(raw: String): PolicyOutcomeStatus {
+            val t = raw.trim().uppercase()
+            if (t == "ERROR") return EXEC_ERROR
+            return valueOf(t)
+        }
+    }
 }
 
 /**
@@ -31,15 +42,15 @@ data class EvaluationResult(
 )
 
 /**
- * Optional flat aggregate: `ERROR > FAIL > PASS > NOT_APPLICABLE`.
+ * Optional flat aggregate: `EXEC_ERROR > FAIL > PASS > NOT_APPLICABLE`.
  * Empty list → `NOT_APPLICABLE`.
  */
 fun aggregateOverall(outcomes: List<PolicyOutcome>): PolicyOutcomeStatus {
     if (outcomes.isEmpty()) {
         return PolicyOutcomeStatus.NOT_APPLICABLE
     }
-    if (outcomes.any { it.status == PolicyOutcomeStatus.ERROR }) {
-        return PolicyOutcomeStatus.ERROR
+    if (outcomes.any { it.status == PolicyOutcomeStatus.EXEC_ERROR }) {
+        return PolicyOutcomeStatus.EXEC_ERROR
     }
     if (outcomes.any { it.status == PolicyOutcomeStatus.FAIL }) {
         return PolicyOutcomeStatus.FAIL

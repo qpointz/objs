@@ -24,7 +24,7 @@ then
     scratch.fail("CRITICAL vulnerability linked: " + cve);
     scratch.finding(
         "CRITICAL vulnerability " + cve,
-        "ERROR",
+        "HIGH",
         "SBOM_VULN_CRITICAL",
         id,
         null
