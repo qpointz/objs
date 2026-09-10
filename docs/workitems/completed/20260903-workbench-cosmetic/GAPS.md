@@ -4,7 +4,7 @@
 |----|-------|--------|-------|
 | G-WC-objload | Objects results blank while `searchBusy` | **resolved** | Explorer-style overlay on results pane while busy (WI-001). |
 | G-WC-objgraphs | Entity inspect: live graphs containing object | **resolved** | Versions-style Graphs section; HEAD only; WI-002. |
-| G-WC-intake | Further cosmetic issues | **deferred** | Story closed with WI-000…WI-002; further cosmetics can open a new story. |
+| G-WC-intake | Further cosmetic issues | **deferred** | Story closed with WI-000…WI-002; continued in [`workbench-ui-improve-2`](../20260910-workbench-ui-improve-2/STORY.md) (U-11). |
 | G-WC-opengraph | Open graph dialog polish | **resolved** | Note2: recent when empty; neutral rows; click-to-open; bar pills. |
 
 ## Detail

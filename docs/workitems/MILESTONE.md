@@ -59,6 +59,7 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`policy-suites`](completed/20260905-policy-suites/STORY.md) — Suite folder trees, matchers, `evaluateSuite` wrapper, Builtin roll-up (folder `rollUpMode`), Suites workbench subnav (C-27). WI-000…WI-006.
 - [`policy-seeds-persistence`](completed/20260906-policy-seeds-persistence/STORY.md) — Policy (+suite) catalog JPA + seeds (`key`, Drop*, REPLACE/workbench export); SBOM Assessment demo (C-28). WI-000…WI-006.
 - [`policy-results-persistence`](completed/20260907-policy-results-persistence/STORY.md) — Evaluation archives (`EvaluationArchive` / PersistSpec / `persist_profile`); suite Persist result workbench (C-33). WI-000…WI-004.
+- [`workbench-ui-improve-2`](completed/20260910-workbench-ui-improve-2/STORY.md) — Workbench polish after U-8: Policy/Suites shared chrome, compact context, canvas layout/filter overlays, Data column funnels, Composer toolbar (U-11). WI-000…WI-009.
 
 ### In progress
 
@@ -68,4 +69,6 @@ _(none)_
 
 - [`store-text-search`](planned/store-text-search/STORY.md) — FB-3 contains/`q`; design first (C-20). Does not block C-18.
 - Policy family after C-33: [`policy-batch`](planned/policy-batch/STORY.md) (C-29) → [`policy-consumer`](planned/policy-consumer/STORY.md) (C-30).
+- [`policy-status-severity-vocab`](planned/policy-status-severity-vocab/STORY.md) — status vs finding severity vocab (C-34); independent of C-29/C-30.
+- [`codegen-schema-evolution`](planned/codegen-schema-evolution/STORY.md) — typed multi-version deserialize + hand migrations (C-35); design first after C-23.
 

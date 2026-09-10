@@ -48,6 +48,8 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | C-31 | Workbench tactical Policy play UI (after Drools) | feature | done | [`completed/20260904-policy-workbench/`](completed/20260904-policy-workbench/STORY.md), also [U-9](#ui--workbench) |
 | C-32 | Policy metadata: tags, user-managed categories, annotations (Policy list navigation) | feature | done | [`completed/20260905-policy-metadata/`](completed/20260905-policy-metadata/STORY.md), also [U-10](#ui--workbench) |
 | C-33 | Evaluation result archives: persist axes, filters, presets, labeling (G-P11r/32r/48r–50r) | feature | done | [`completed/20260907-policy-results-persistence/`](completed/20260907-policy-results-persistence/STORY.md) |
+| C-34 | Disambiguate outcome status ERROR vs finding severity ERROR (API / engines / SeverityRank) | refactoring | planned | [`planned/policy-status-severity-vocab/`](planned/policy-status-severity-vocab/STORY.md) |
+| C-35 | Typed multi-version deserialize + hand migrations (latest OM codegen; Lane B snapshots) | feature | planned | [`planned/codegen-schema-evolution/`](planned/codegen-schema-evolution/STORY.md), [`DESIGN.md`](planned/codegen-schema-evolution/DESIGN.md) |
 
 ---
 
@@ -65,6 +67,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | U-8 | Workbench cosmetic polish (loading feedback + visual polish) | improvement | done | [`completed/20260903-workbench-cosmetic/`](completed/20260903-workbench-cosmetic/STORY.md) |
 | U-9 | Tactical Policy play UI in workbench (same as C-31) | feature | done | [`completed/20260904-policy-workbench/`](completed/20260904-policy-workbench/STORY.md), [C-31](#core--entity--graph-core) |
 | U-10 | Policy list navigation (categories / tags / annotations; same as C-32) | feature | done | [`completed/20260905-policy-metadata/`](completed/20260905-policy-metadata/STORY.md), [C-32](#core--entity--graph-core) |
+| U-11 | Workbench UI improve 2 (further polish after U-8) | improvement | done | [`completed/20260910-workbench-ui-improve-2/`](completed/20260910-workbench-ui-improve-2/STORY.md) |
 
 ---
 
@@ -99,6 +102,6 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | Status | Count |
 |--------|------:|
 | backlog | 2 |
-| planned | 2 |
-| in-progress | 1 |
-| done | 40 |
+| planned | 5 |
+| in-progress | 0 |
+| done | 41 |
