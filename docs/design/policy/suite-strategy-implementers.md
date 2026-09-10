@@ -264,4 +264,4 @@ When changing Builtin behavior or adding a pack:
 | [`business-indicators.md`](business-indicators.md) | Operator-facing meaning of the same outputs |
 | [`suites.md`](suites.md) | Normative suite model + matrices |
 | [`results.md`](results.md) | Outcome / finding vocabulary |
-| [VOCAB-MATRIX](../../workitems/in-progress/policy-status-severity-vocab/VOCAB-MATRIX.md) | C-34 token + UI locks |
+| [VOCAB-MATRIX](../../workitems/completed/20260911-policy-status-severity-vocab/VOCAB-MATRIX.md) | C-34 token + UI locks |

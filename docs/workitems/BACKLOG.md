@@ -48,7 +48,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | C-31 | Workbench tactical Policy play UI (after Drools) | feature | done | [`completed/20260904-policy-workbench/`](completed/20260904-policy-workbench/STORY.md), also [U-9](#ui--workbench) |
 | C-32 | Policy metadata: tags, user-managed categories, annotations (Policy list navigation) | feature | done | [`completed/20260905-policy-metadata/`](completed/20260905-policy-metadata/STORY.md), also [U-10](#ui--workbench) |
 | C-33 | Evaluation result archives: persist axes, filters, presets, labeling (G-P11r/32r/48r–50r) | feature | done | [`completed/20260907-policy-results-persistence/`](completed/20260907-policy-results-persistence/STORY.md) |
-| C-34 | Disambiguate outcome status ERROR vs finding severity ERROR (API / engines / SeverityRank) | refactoring | planned | [`planned/policy-status-severity-vocab/`](planned/policy-status-severity-vocab/STORY.md) |
+| C-34 | Disambiguate outcome status ERROR vs finding severity ERROR (API / engines / SeverityRank) | refactoring | done | [`completed/20260911-policy-status-severity-vocab/`](completed/20260911-policy-status-severity-vocab/STORY.md) |
 | C-35 | Typed multi-version deserialize + hand migrations (latest OM codegen; Lane B snapshots) | feature | planned | [`planned/codegen-schema-evolution/`](planned/codegen-schema-evolution/STORY.md), [`DESIGN.md`](planned/codegen-schema-evolution/DESIGN.md) |
 
 ---

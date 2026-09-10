@@ -52,7 +52,7 @@ C-24 flat evaluate
 
 | Id | Story | Status | Notes |
 |----|--------|--------|-------|
-| **C-34** | [`policy-status-severity-vocab`](planned/policy-status-severity-vocab/STORY.md) | planned | Disambiguate status `ERROR` vs finding severity `ERROR`; after C-33; **independent of** C-29 / C-30 |
+| **C-34** | [`policy-status-severity-vocab`](completed/20260911-policy-status-severity-vocab/STORY.md) | done | Disambiguate status `ERROR`→`EXEC_ERROR` vs finding severity; SuiteStrategy pack; after C-33; **independent of** C-29 / C-30 |
 
 ---
 

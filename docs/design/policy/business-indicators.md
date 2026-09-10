@@ -2,7 +2,7 @@
 
 **Audience:** product owners, compliance leads, risk / assessment operators  
 **Purpose:** Explain — without API jargon — how **policies**, **findings**, and **suite folders** turn into the **Pass / Fail / Exec error** badges and **Critical…Info** severity signals you see on applications and portfolios.  
-**Technical detail (implementers):** [`suite-strategy-implementers.md`](suite-strategy-implementers.md) · [`results.md`](results.md) · [`suites.md`](suites.md) · [VOCAB-MATRIX §10 UI labels](../../workitems/in-progress/policy-status-severity-vocab/VOCAB-MATRIX.md#10-ui-presentation-normative-for-wi-002--consumers)
+**Technical detail (implementers):** [`suite-strategy-implementers.md`](suite-strategy-implementers.md) · [`results.md`](results.md) · [`suites.md`](suites.md) · [VOCAB-MATRIX §10 UI labels](../../workitems/completed/20260911-policy-status-severity-vocab/VOCAB-MATRIX.md#10-ui-presentation-normative-for-wi-002--consumers)
 
 ---
 

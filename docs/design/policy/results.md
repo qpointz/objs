@@ -1,6 +1,6 @@
 # Policy results and findings
 
-**Normative:** G-P11–G-P14, G-P16–G-P18 · C-34 G-P50v–G-P56v · [`GAPS.md`](../../workitems/in-progress/policy-status-severity-vocab/GAPS.md)
+**Normative:** G-P11–G-P14, G-P16–G-P18 · C-34 G-P50v–G-P56v · [`GAPS.md`](../../workitems/completed/20260911-policy-status-severity-vocab/GAPS.md)
 
 ---
 

@@ -2,12 +2,13 @@
 
 **Slug:** `policy-status-severity-vocab`  
 **Branch:** `policy-status-severity-vocab`  
-**Status:** in-progress (all WIs complete; awaiting story closure)  
-**Folder:** [`docs/workitems/in-progress/policy-status-severity-vocab/`](.)  
+**Status:** completed  
+**Closed:** 2026-09-11  
+**Folder:** [`docs/workitems/completed/20260911-policy-status-severity-vocab/`](.)  
 **Backlog:** [C-34](../../BACKLOG.md)  
 **Base:** `origin/dev`  
-**Before:** [C-33 `policy-results-persistence`](../../completed/20260907-policy-results-persistence/STORY.md)  
-**Independent of:** [C-29 `policy-batch`](../policy-batch/STORY.md), [C-30 `policy-consumer`](../policy-consumer/STORY.md)  
+**Before:** [C-33 `policy-results-persistence`](../20260907-policy-results-persistence/STORY.md)  
+**Independent of:** [C-29 `policy-batch`](../../planned/policy-batch/STORY.md), [C-30 `policy-consumer`](../../planned/policy-consumer/STORY.md)  
 **Gaps:** [`GAPS.md`](GAPS.md) (G-P50v–G-P56v **resolved**)  
 **Normative picture:** [`VOCAB-MATRIX.md`](VOCAB-MATRIX.md) · **UI labels:** [`VOCAB-MATRIX.md` §10](VOCAB-MATRIX.md#10-ui-presentation-normative-for-wi-002--consumers) · **Business guide:** [`business-indicators.md`](../../../design/policy/business-indicators.md) · **Strategy implementers:** [`suite-strategy-implementers.md`](../../../design/policy/suite-strategy-implementers.md)  
 **Design:** [`results.md`](../../../design/policy/results.md) · [`suites.md`](../../../design/policy/suites.md)  
