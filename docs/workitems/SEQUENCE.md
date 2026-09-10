@@ -45,3 +45,21 @@ C-24 flat evaluate
 **Do not** start a story’s WI-002+ until that story’s own WI-001 closes its GAPS. Do not pull later-story gaps into an earlier design lock.
 
 **Next to work now:** C-29 [`policy-batch`](planned/policy-batch/STORY.md) (planned) — after C-33 archives.
+
+---
+
+## Policy follow-ups (outside family chain)
+
+| Id | Story | Status | Notes |
+|----|--------|--------|-------|
+| **C-34** | [`policy-status-severity-vocab`](planned/policy-status-severity-vocab/STORY.md) | planned | Disambiguate status `ERROR` vs finding severity `ERROR`; after C-33; **independent of** C-29 / C-30 |
+
+---
+
+## Codegen / schema evolution (outside policy chain)
+
+| Id | Story | Status | Notes |
+|----|--------|--------|-------|
+| **C-35** | [`codegen-schema-evolution`](planned/codegen-schema-evolution/STORY.md) | planned | After **C-23**. Typed upgrade-to-latest hydrate; Lane A latest OM + Lane B snapshot DTOs; hand migrations. **Design first** ([`DESIGN.md`](planned/codegen-schema-evolution/DESIGN.md)). Independent of C-20 and policy family. Does not block C-29/C-30. |
+
+Do not start C-35 implementation until C-35 WI-001 closes open GAPS.
