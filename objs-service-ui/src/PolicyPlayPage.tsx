@@ -1,14 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState, memo, type PointerEvent as ReactPointerEvent } from 'react'
 import {
   Alert,
-  Badge,
   Box,
   Button,
-  Code,
   Group,
   Menu,
   Modal,
-  MultiSelect,
   Paper,
   ScrollArea,
   Select,
@@ -22,16 +19,8 @@ import {
   Tooltip,
 } from '@mantine/core'
 import { IconChevronDown, IconChevronRight, IconPlus } from '@tabler/icons-react'
-import { getGraph, getGraphVersion, listSchemas, queryAddObjects, toGraphData } from './api'
-import { GraphCanvas, type GraphCanvasHandle, type GraphLayout } from './GraphCanvas'
-import { GraphContextBar } from './GraphContextBar'
+import { listSchemas } from './api'
 import { useGraphContext } from './GraphContextProvider'
-import {
-  GraphGoToContextMenu,
-  buildGraphNeighborIndex,
-  type GraphGoToTarget,
-} from './graphGoToNav'
-import { ObjectInspectPane } from './ObjectInspectPane'
 import {
   checkPolicy,
   createCategory,
@@ -45,11 +34,10 @@ import {
   listPolicies,
   updatePolicy,
 } from './policyApi'
+import { ObjectInspectPane } from './ObjectInspectPane'
+import { PolicyModeTabs, type PolicyWorkbenchMode } from './PolicyModeTabs'
 import {
-  findingRuleName,
-  maxSeverity,
   formatPolicyVersion,
-  severityRank,
   type Category,
   type EvaluationResult,
   type Finding,
@@ -57,114 +45,29 @@ import {
   type PolicyCheckResult,
 } from './policyTypes'
 import { KeyValueRowsEditor, rowsToStringMap, stringMapToRows, type KeyValueRow } from './KeyValueRowsEditor'
-import { formatObjectCell, scalarPayloadColumns } from './ObjectResultsTable'
-import { objectDisplayTitle } from './objectViewerTitle'
 import { payloadFieldKindsByTypeVersion } from './payloadFieldKinds'
 import { policyFragmentMatcher } from './queryGraphContext'
-import { EXPLORER_NODE_CAP } from './graphContextVersions'
 import { formatQueryDuration, type QueryExecStats } from './queryExecStats'
-import { QueryResultGrid } from './QueryResultGrid'
 import {
-  IdLink,
-  QUERY_STRUCT_EDGE_ROLE_COL_WIDTH,
-  QUERY_STRUCT_EDGE_SOURCE_COL_WIDTH,
-  QUERY_STRUCT_ID_COL_WIDTH,
-  QUERY_STRUCT_TYPE_COL_WIDTH,
-} from './QueryStructColumns'
-import {
-  structuredEdgeRows,
-  structuredVertexRows,
-} from './queryStructuredModel'
+  PolicyGraphOutputColumn,
+  type PolicyGraphModel,
+  type PolicyGraphOutputColumnHandle,
+} from './PolicyGraphOutputColumn'
+import { SeverityMessageRow } from './SuiteEvaluationTree'
 import { clamp, maxSidePaneWidth } from './sidePaneSplit'
 import { SyntaxCodeEditor, type SyntaxCodeEditorHandle } from './SyntaxCodeEditor'
-import type {
-  BoMEdge,
-  BoMEntity,
-  BoMGraphContents,
-  BoMSchema,
-  GraphLink,
-  GraphNode,
-  GraphSelection,
-} from './types'
-import { VIEW_ACTION_BUTTON_SIZE } from './viewActionButtons'
+import type { BoMSchema, GraphSelection } from './types'
+import { VIEW_ACTION_BUTTON_SIZE, VIEW_ACTION_VARIANT, VIEW_TITLE_PROPS } from './viewActionButtons'
 
 const LEFT_WIDTH_KEY = 'objs.ui.policy.leftPaneWidth'
-const RIGHT_WIDTH_KEY = 'objs.ui.policy.rightPaneWidth'
 const EDITOR_FRAC_KEY = 'objs.ui.policy.editorFrac'
-const TASKS_HEIGHT_KEY = 'objs.ui.policy.tasksHeight'
 const SPLITTER = 8
 /** Absolute floor; effective min is max(this, host/8). */
 const MIN_SIDE_ABS = 160
-const MIN_TASKS_ABS = 140
 
 function sidePaneMin(hostWidth: number): number {
   return Math.max(MIN_SIDE_ABS, Math.floor(hostWidth / 8))
 }
-
-function tasksPaneMin(hostHeight: number): number {
-  return Math.max(MIN_TASKS_ABS, Math.floor(hostHeight / 8))
-}
-
-function severityBadgeColor(raw: string | null | undefined): string {
-  switch ((raw ?? '').trim().toUpperCase()) {
-    case 'ERROR':
-    case 'FAIL':
-      return 'red'
-    case 'WARN':
-    case 'WARNING':
-      return 'orange'
-    case 'OK':
-    case 'PASS':
-      return 'green'
-    case 'INFO':
-      return 'cyan'
-    default:
-      return 'gray'
-  }
-}
-
-function entityToGraphNode(entity: BoMEntity): GraphNode {
-  const name =
-    entity.payload != null && typeof entity.payload.name === 'string'
-      ? entity.payload.name
-      : null
-  return {
-    id: entity.id,
-    name: objectDisplayTitle(name, entity.type, entity.id),
-    type: entity.type,
-    schemaVersion: entity.schemaVersion ?? '?',
-    color: '#868e96',
-    payload: entity.payload ?? {},
-    annotations: entity.annotations ?? {},
-    headVersion: entity.headVersion ?? null,
-  }
-}
-
-function edgeToGraphLink(edge: BoMEdge, index: number): GraphLink {
-  return {
-    id: edge.id ?? `e-${edge.source}-${edge.target}-${edge.role}-${index}`,
-    source: edge.source,
-    target: edge.target,
-    role: edge.role,
-    type: edge.type ?? null,
-    schemaVersion: edge.schemaVersion ?? null,
-    properties: edge.properties ?? {},
-    headVersion: edge.headVersion ?? null,
-  }
-}
-
-function passesSeverityFilter(
-  findingSeverity: string | undefined,
-  severityFilter: Set<string>,
-): boolean {
-  if (severityFilter.size === 0) return true
-  if (findingSeverity == null || findingSeverity === '') {
-    return severityFilter.has('NONE')
-  }
-  return severityFilter.has(findingSeverity.toUpperCase())
-}
-
-const DATA_SEVERITY_NONE = { value: 'NONE', label: 'None' } as const
 
 type PolicyEvalStats = QueryExecStats & { findings: number }
 
@@ -173,13 +76,6 @@ function formatPolicyEvalStats(stats: PolicyEvalStats): string {
     stats.findings === 1 ? '' : 's'
   } · ${stats.nodes} nodes · ${stats.edges} edges`
 }
-
-const GRAPH_LAYOUTS: { value: GraphLayout; label: string }[] = [
-  { value: 'TB', label: 'Top to bottom' },
-  { value: 'LR', label: 'Left to right' },
-  { value: 'BT', label: 'Bottom to top' },
-  { value: 'RL', label: 'Right to left' },
-]
 
 const DEFAULT_DRL = `package org.poc.objs.policy.playground
 import org.poc.objs.policy.drools.DroolsEvaluationScratch;
@@ -281,9 +177,15 @@ const PolicyDrlEditor = memo(function PolicyDrlEditor({
   )
 })
 
-export function PolicyPlayPage({ hideChrome = false }: { hideChrome?: boolean }) {
+export function PolicyPlayPage({
+  mode = 'policies',
+  onModeChange,
+}: {
+  mode?: PolicyWorkbenchMode
+  onModeChange?: (mode: PolicyWorkbenchMode) => void
+}) {
   const { context } = useGraphContext()
-  const canvasRef = useRef<GraphCanvasHandle>(null)
+  const graphRef = useRef<PolicyGraphOutputColumnHandle>(null)
   const editorRef = useRef<SyntaxCodeEditorHandle>(null)
   const splitHostRef = useRef<HTMLDivElement>(null)
 
@@ -301,8 +203,6 @@ export function PolicyPlayPage({ hideChrome = false }: { hideChrome?: boolean })
   const [editorVersion, setEditorVersion] = useState('0.1')
   const [editorTab, setEditorTab] = useState<string | null>('general')
   const [categories, setCategories] = useState<Category[]>([])
-  const [filterCategoryId, setFilterCategoryId] = useState<string | null>(null)
-  const [filterTags, setFilterTags] = useState<string[]>([])
   const [filterName, setFilterName] = useState('')
   const [catName, setCatName] = useState('')
   const [catKey, setCatKey] = useState('')
@@ -314,38 +214,25 @@ export function PolicyPlayPage({ hideChrome = false }: { hideChrome?: boolean })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const [nodes, setNodes] = useState<GraphNode[]>([])
-  const [links, setLinks] = useState<GraphLink[]>([])
-  /** Full fragment for Data tab (kept even when Visual canvas is cleared for over-cap). */
-  const [fragmentContents, setFragmentContents] = useState<BoMGraphContents | null>(null)
-  /** Entity count of last loaded fragment (even when canvas is cleared for over-cap). */
-  const [fragmentNodeCount, setFragmentNodeCount] = useState(0)
   const [schemas, setSchemas] = useState<BoMSchema[]>([])
   const [selection, setSelection] = useState<GraphSelection | null>(null)
-  const [layout, setLayout] = useState<GraphLayout>('TB')
-  const [goToMenu, setGoToMenu] = useState<{ x: number; y: number; target: GraphGoToTarget } | null>(
-    null,
-  )
-  const [graphViewTab, setGraphViewTab] = useState<string | null>('visual')
-  const [structVeTab, setStructVeTab] = useState<string | null>('vertices')
+  const [graphModel, setGraphModel] = useState<PolicyGraphModel | null>(null)
 
   const [checkResult, setCheckResult] = useState<PolicyCheckResult | null>(null)
   const [evalResult, setEvalResult] = useState<EvaluationResult | null>(null)
   const [evalStats, setEvalStats] = useState<PolicyEvalStats | null>(null)
   const [tasksTab, setTasksTab] = useState<string | null>('policy')
-  const [inspectTab, setInspectTab] = useState<string | null>('object')
   const [focusedTaskId, setFocusedTaskId] = useState<string | null>(null)
-  const [severityFilter, setSeverityFilter] = useState<Set<string>>(() => new Set())
 
   const [leftWidth, setLeftWidth] = useState(() => loadNum(LEFT_WIDTH_KEY, 240))
-  const [rightWidth, setRightWidth] = useState(() => loadNum(RIGHT_WIDTH_KEY, 300))
   const [editorFrac, setEditorFrac] = useState(() => {
     const v = loadNum(EDITOR_FRAC_KEY, 50)
     return Math.min(80, Math.max(20, v)) / 100
   })
-  const [tasksHeight, setTasksHeight] = useState(() =>
-    Math.max(MIN_TASKS_ABS, loadNum(TASKS_HEIGHT_KEY, 180)),
-  )
+
+  const onGraphModel = useCallback((model: PolicyGraphModel) => {
+    setGraphModel(model)
+  }, [])
 
   const selectedPolicy =
     nav?.kind === 'policy' ? (policies.find((p) => p.id === nav.id) ?? null) : null
@@ -359,14 +246,11 @@ export function PolicyPlayPage({ hideChrome = false }: { hideChrome?: boolean })
   }, [policies, selectedCategory])
 
   const treeCategories = useMemo(() => {
-    const cats = filterCategoryId
-      ? categories.filter((c) => c.id === filterCategoryId)
-      : categories
-    return cats.map((c) => ({
+    return categories.map((c) => ({
       category: c,
       policies: policies.filter((p) => p.categoryId === c.id),
     }))
-  }, [categories, policies, filterCategoryId])
+  }, [categories, policies])
 
   const markEditorDirty = useCallback(() => setDirty(true), [])
 
@@ -375,31 +259,17 @@ export function PolicyPlayPage({ hideChrome = false }: { hideChrome?: boolean })
     [editorBody],
   )
 
-  // Enforce ≥ 1/8 host for side panes + tasks (Note1): fix tiny first-open / stale localStorage.
+  // Enforce ≥ 1/8 host for side panes (Note1): fix tiny first-open / stale localStorage.
   useEffect(() => {
     const el = splitHostRef.current
     if (!el) return
     const apply = () => {
       const hostW = el.clientWidth
-      const hostH = el.clientHeight
       if (hostW >= 200) {
         const min = sidePaneMin(hostW)
         setLeftWidth((w) => {
           const next = Math.max(w, min)
           if (next !== w) saveNum(LEFT_WIDTH_KEY, next)
-          return next
-        })
-        setRightWidth((w) => {
-          const next = Math.max(w, min)
-          if (next !== w) saveNum(RIGHT_WIDTH_KEY, next)
-          return next
-        })
-      }
-      if (hostH >= 200) {
-        const minH = tasksPaneMin(hostH)
-        setTasksHeight((h) => {
-          const next = Math.max(h, minH)
-          if (next !== h) saveNum(TASKS_HEIGHT_KEY, next)
           return next
         })
       }
@@ -410,11 +280,6 @@ export function PolicyPlayPage({ hideChrome = false }: { hideChrome?: boolean })
     return () => ro.disconnect()
   }, [])
 
-  const fieldKindsByTypeVersion = useMemo(
-    () => payloadFieldKindsByTypeVersion(schemas),
-    [schemas],
-  )
-
   const refreshCategories = useCallback(async () => {
     const rows = await listCategories()
     setCategories(rows)
@@ -423,12 +288,11 @@ export function PolicyPlayPage({ hideChrome = false }: { hideChrome?: boolean })
 
   const refreshPolicies = useCallback(async () => {
     const rows = await listPolicies({
-      tags: filterTags,
       key: filterName.trim() || null,
     })
     setPolicies(rows)
     return rows
-  }, [filterTags, filterName])
+  }, [filterName])
 
   function seedEditor(p: Policy | null) {
     if (!p) {
@@ -507,67 +371,8 @@ export function PolicyPlayPage({ hideChrome = false }: { hideChrome?: boolean })
   }, [capable, refreshPolicies])
 
   useEffect(() => {
-    if (!filterCategoryId) return
-    if (dirty) return
-    applyNav({ kind: 'category', id: filterCategoryId })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterCategoryId])
-
-  useEffect(() => {
     void listSchemas().then(setSchemas).catch(() => setSchemas([]))
   }, [])
-
-  const loadCanvas = useCallback(async () => {
-    if (context.kind === 'empty') {
-      setNodes([])
-      setLinks([])
-      setFragmentContents(null)
-      setFragmentNodeCount(0)
-      return
-    }
-    try {
-      let contents: BoMGraphContents
-      if (context.kind === 'graph' && context.graphId) {
-        const res =
-          context.graphVersion != null
-            ? await getGraphVersion(context.graphId, context.graphVersion)
-            : await getGraph(context.graphId)
-        contents = res.graph
-      } else if (context.kind === 'matcher' && context.matcherBody != null) {
-        const { matcher } = policyFragmentMatcher(context)
-        contents = await queryAddObjects(matcher, null)
-      } else {
-        setNodes([])
-        setLinks([])
-        setFragmentContents(null)
-        setFragmentNodeCount(0)
-        return
-      }
-      const entityCount = contents.entities?.length ?? 0
-      setFragmentContents(contents)
-      setFragmentNodeCount(entityCount)
-      setSelection(null)
-      if (entityCount > EXPLORER_NODE_CAP) {
-        setNodes([])
-        setLinks([])
-        setGraphViewTab('data')
-        return
-      }
-      const data = toGraphData(contents, schemas)
-      setNodes(data.nodes)
-      setLinks(data.links)
-    } catch (ex) {
-      setError(ex instanceof Error ? ex.message : String(ex))
-      setNodes([])
-      setLinks([])
-      setFragmentContents(null)
-      setFragmentNodeCount(0)
-    }
-  }, [context, schemas])
-
-  useEffect(() => {
-    void loadCanvas()
-  }, [loadCanvas])
 
   const checkRows: TaskRow[] = useMemo(() => {
     const issues = checkResult?.issues
@@ -591,120 +396,23 @@ export function PolicyPlayPage({ hideChrome = false }: { hideChrome?: boolean })
   }, [checkResult])
   const evalRows = useMemo(() => findingsFromResult(evalResult), [evalResult])
 
-  const severitiesPresent = useMemo(() => {
-    const s = new Set<string>()
-    evalRows.forEach((r) => {
-      if (r.kind === 'finding' && r.finding.severity) s.add(r.finding.severity.toUpperCase())
-    })
-    return [...s].sort((a, b) => severityRank(b) - severityRank(a))
-  }, [evalRows])
-
-  const dataSeverityOptions = useMemo(() => {
-    const options = severitiesPresent.map((sev) => ({ value: sev, label: sev }))
-    options.push({ value: DATA_SEVERITY_NONE.value, label: DATA_SEVERITY_NONE.label })
-    return options
-  }, [severitiesPresent])
-
-  const findingSeverityMaps = useMemo(() => {
-    const sevByEntity = new Map<string, string>()
-    const sevByEdge = new Map<string, string>()
-    evalRows.forEach((r) => {
-      if (r.kind !== 'finding') return
-      const sev = r.finding.severity?.toUpperCase()
-      ;(r.finding.entities ?? []).forEach((id) => {
-        sevByEntity.set(id, maxSeverity(sevByEntity.get(id), sev) ?? sev ?? 'OK')
-      })
-      ;(r.finding.edges ?? []).forEach((id) => {
-        sevByEdge.set(id, maxSeverity(sevByEdge.get(id), sev) ?? sev ?? 'OK')
-      })
-    })
-    return { sevByEntity, sevByEdge }
-  }, [evalRows])
-
-  const annotatedGraph = useMemo(() => {
-    const { sevByEntity, sevByEdge } = findingSeverityMaps
-    const filtering = severityFilter.size > 0
-    const nodesOut = nodes.map((n) => {
-      const findingSeverity = sevByEntity.get(n.id)
-      const dimmed = filtering && !passesSeverityFilter(findingSeverity, severityFilter)
-      return { ...n, findingSeverity, dimmed }
-    })
-    const linksOut = links.map((l) => {
-      const findingSeverity = sevByEdge.get(l.id)
-      const dimmed = filtering && !passesSeverityFilter(findingSeverity, severityFilter)
-      return { ...l, findingSeverity, dimmed }
-    })
-    return { nodes: nodesOut, links: linksOut }
-  }, [findingSeverityMaps, links, nodes, severityFilter])
-
-  const annotatedVertexRows = useMemo(() => {
-    if (fragmentContents == null) return []
-    return structuredVertexRows(fragmentContents)
-      .map((row) => ({
-        ...row,
-        findingSeverity: findingSeverityMaps.sevByEntity.get(row.id),
-      }))
-      .filter((row) => passesSeverityFilter(row.findingSeverity, severityFilter))
-  }, [findingSeverityMaps, fragmentContents, severityFilter])
-
-  const annotatedEdgeRows = useMemo(() => {
-    if (fragmentContents == null) return []
-    return structuredEdgeRows(fragmentContents)
-      .map((row) => ({
-        ...row,
-        findingSeverity: findingSeverityMaps.sevByEdge.get(row.id),
-      }))
-      .filter((row) => passesSeverityFilter(row.findingSeverity, severityFilter))
-  }, [findingSeverityMaps, fragmentContents, severityFilter])
-
-  const vertexPayloadCols = useMemo(
-    () => scalarPayloadColumns(annotatedVertexRows.map((r) => r.entity)),
-    [annotatedVertexRows],
+  const fieldKindsByTypeVersion = useMemo(
+    () => payloadFieldKindsByTypeVersion(schemas),
+    [schemas],
   )
 
+  const fragmentContents = graphModel?.fragmentContents ?? null
   const inspectNodes = useMemo(() => {
-    if (annotatedGraph.nodes.length > 0) return annotatedGraph.nodes
-    if (fragmentContents?.entities == null) return []
-    return fragmentContents.entities.map((entity) => {
-      const node = entityToGraphNode(entity)
-      const findingSeverity = findingSeverityMaps.sevByEntity.get(entity.id)
-      return { ...node, findingSeverity }
-    })
-  }, [annotatedGraph.nodes, findingSeverityMaps, fragmentContents])
+    if (graphModel?.annotatedNodes && graphModel.annotatedNodes.length > 0) {
+      return graphModel.annotatedNodes
+    }
+    return []
+  }, [graphModel])
 
-  const neighborIndex = useMemo(
-    () => buildGraphNeighborIndex(annotatedGraph.nodes, annotatedGraph.links),
-    [annotatedGraph.nodes, annotatedGraph.links],
-  )
-
-  const canvasOverCap =
-    fragmentNodeCount > EXPLORER_NODE_CAP ||
-    context.nodeCount > EXPLORER_NODE_CAP ||
-    nodes.length > EXPLORER_NODE_CAP
-  const canvasNodeTotal = Math.max(fragmentNodeCount, context.nodeCount, nodes.length)
-  const canvasNonEmpty = !canvasOverCap && (annotatedGraph.nodes.length > 0 || annotatedGraph.links.length > 0)
-  const dataNonEmpty =
-    (fragmentContents?.entities?.length ?? 0) > 0 || (fragmentContents?.edges?.length ?? 0) > 0
-
-  const selectFromDataNode = useCallback(
-    (entity: BoMEntity) => {
-      const node = entityToGraphNode(entity)
-      const findingSeverity = findingSeverityMaps.sevByEntity.get(entity.id)
-      setSelection({ kind: 'node', node: { ...node, findingSeverity } })
-      setInspectTab('object')
-    },
-    [findingSeverityMaps],
-  )
-
-  const selectFromDataEdge = useCallback(
-    (edge: BoMEdge, index: number) => {
-      const link = edgeToGraphLink(edge, index)
-      const findingSeverity = findingSeverityMaps.sevByEdge.get(link.id)
-      setSelection({ kind: 'edge', edge: { ...link, findingSeverity } })
-      setInspectTab('object')
-    },
-    [findingSeverityMaps],
-  )
+  const selectGraphSelection = useCallback((next: GraphSelection | null, openObject = true) => {
+    setSelection(next)
+    if (next != null && openObject) setTasksTab('object')
+  }, [])
 
   const selectionTaskRows = useMemo(() => {
     if (!selection) return evalRows
@@ -718,10 +426,7 @@ export function PolicyPlayPage({ hideChrome = false }: { hideChrome?: boolean })
     )
   }, [evalRows, selection])
 
-  const focusedTask = useMemo(() => {
-    const all = [...checkRows, ...evalRows]
-    return all.find((r) => r.id === focusedTaskId) ?? null
-  }, [checkRows, evalRows, focusedTaskId])
+  const evalListRows = selection ? selectionTaskRows : evalRows
 
   async function onExportCatalog() {
     if (!capable) return
@@ -747,7 +452,6 @@ export function PolicyPlayPage({ hideChrome = false }: { hideChrome?: boolean })
     const categoryId =
       (nav?.kind === 'category' ? nav.id : null) ??
       (nav?.kind === 'policy' ? selectedPolicy?.categoryId : null) ??
-      filterCategoryId ??
       categories[0]?.id ??
       null
     if (categoryId == null) {
@@ -817,7 +521,6 @@ export function PolicyPlayPage({ hideChrome = false }: { hideChrome?: boolean })
     setConfirmOpen(false)
     try {
       await deleteCategory(selectedCategory.id)
-      if (filterCategoryId === selectedCategory.id) setFilterCategoryId(null)
       await refreshCategories()
       await refreshPolicies()
       applyNav(null)
@@ -923,12 +626,10 @@ export function PolicyPlayPage({ hideChrome = false }: { hideChrome?: boolean })
       setEvalStats({
         durationMs,
         findings,
-        nodes: fragmentContents?.entities?.length ?? fragmentNodeCount,
-        edges: fragmentContents?.edges?.length ?? 0,
+        nodes: fragmentContents?.entities?.length ?? graphModel?.nodes.length ?? 0,
+        edges: fragmentContents?.edges?.length ?? graphModel?.links.length ?? 0,
       })
       setTasksTab('evaluations')
-      setSeverityFilter(new Set())
-      await loadCanvas()
     } catch (ex) {
       setEvalStats(null)
       setError(ex instanceof Error ? ex.message : String(ex))
@@ -971,54 +672,20 @@ export function PolicyPlayPage({ hideChrome = false }: { hideChrome?: boolean })
 
   function onTaskClick(row: TaskRow) {
     setFocusedTaskId(row.id)
-    setInspectTab('tasks')
+    setTasksTab('evaluations')
     if (row.kind !== 'finding') return
     const entityId = row.finding.entities?.[0]
     const edgeId = row.finding.edges?.[0]
     if (entityId) {
-      const node = annotatedGraph.nodes.find((n) => n.id === entityId)
+      const node = graphModel?.annotatedNodes.find((n) => n.id === entityId)
       if (node) {
-        setSelection({ kind: 'node', node })
-        canvasRef.current?.focusNode?.(node.id)
+        selectGraphSelection({ kind: 'node', node }, false)
+        graphRef.current?.focusNode(node.id)
       }
     } else if (edgeId) {
-      const edge = annotatedGraph.links.find((l) => l.id === edgeId)
-      if (edge) setSelection({ kind: 'edge', edge })
+      const edge = graphModel?.annotatedLinks.find((l) => l.id === edgeId)
+      if (edge) selectGraphSelection({ kind: 'edge', edge }, false)
     }
-  }
-
-  function changeLayout(next: GraphLayout) {
-    setLayout(next)
-    canvasRef.current?.applyLayout(next)
-  }
-
-  function selectNodeFromCanvas(nodeId: string) {
-    const node = annotatedGraph.nodes.find((n) => n.id === nodeId)
-    if (!node) return
-    setSelection({ kind: 'node', node })
-    requestAnimationFrame(() => canvasRef.current?.focusNode?.(nodeId))
-  }
-
-  function onCanvasNodeContextMenu(
-    event: { preventDefault: () => void; clientX: number; clientY: number },
-    node: GraphNode,
-  ) {
-    event.preventDefault()
-    setSelection({ kind: 'node', node })
-    setGoToMenu({ x: event.clientX, y: event.clientY, target: { kind: 'node', nodeId: node.id } })
-  }
-
-  function onCanvasEdgeContextMenu(
-    event: { preventDefault: () => void; clientX: number; clientY: number },
-    edge: GraphLink,
-  ) {
-    event.preventDefault()
-    setSelection({ kind: 'edge', edge })
-    setGoToMenu({
-      x: event.clientX,
-      y: event.clientY,
-      target: { kind: 'edge', sourceId: edge.source, targetId: edge.target },
-    })
   }
 
   const dragLeft = useCallback(
@@ -1068,133 +735,26 @@ export function PolicyPlayPage({ hideChrome = false }: { hideChrome?: boolean })
     [editorFrac],
   )
 
-  const onTasksSplit = useCallback(
-    (e: ReactPointerEvent<HTMLDivElement>) => {
-      e.currentTarget.setPointerCapture(e.pointerId)
-      const startY = e.clientY
-      const startH = tasksHeight
-      let latest = startH
-      const onMove = (ev: PointerEvent) => {
-        const host = splitHostRef.current?.clientHeight ?? 600
-        const min = tasksPaneMin(host)
-        const max = Math.max(min + 40, Math.floor(host * 0.55))
-        latest = clamp(startH - (ev.clientY - startY), min, max)
-        setTasksHeight(latest)
-      }
-      const onUp = () => {
-        window.removeEventListener('pointermove', onMove)
-        window.removeEventListener('pointerup', onUp)
-        saveNum(TASKS_HEIGHT_KEY, latest)
-      }
-      window.addEventListener('pointermove', onMove)
-      window.addEventListener('pointerup', onUp)
-    },
-    [tasksHeight],
-  )
-
-  const onRightSplit = useCallback(
-    (e: ReactPointerEvent<HTMLDivElement>) => {
-      e.currentTarget.setPointerCapture(e.pointerId)
-      const startX = e.clientX
-      const startW = rightWidth
-      let latest = startW
-      const onMove = (ev: PointerEvent) => {
-        const host = splitHostRef.current?.clientWidth ?? 1200
-        const min = sidePaneMin(host)
-        latest = clamp(startW - (ev.clientX - startX), min, maxSidePaneWidth(host, min))
-        setRightWidth(latest)
-      }
-      const onUp = () => {
-        window.removeEventListener('pointermove', onMove)
-        window.removeEventListener('pointerup', onUp)
-        saveNum(RIGHT_WIDTH_KEY, latest)
-      }
-      window.addEventListener('pointermove', onMove)
-      window.addEventListener('pointerup', onUp)
-    },
-    [rightWidth],
-  )
-
   return (
     <Stack gap="sm" style={{ flex: 1, minHeight: 0, height: '100%' }}>
-      {!hideChrome && (
-        <Group align="center" wrap="nowrap" gap="md" style={{ flexShrink: 0 }}>
-          <Title order={3} style={{ flexShrink: 0 }}>
-            Policy
-          </Title>
-          <Box style={{ flex: 1, minWidth: 0 }}>
-            <GraphContextBar />
-          </Box>
-        </Group>
-      )}
-
-      <Group
-        justify="space-between"
-        align="center"
-        wrap="wrap"
-        gap="xs"
-        style={{ flexShrink: 0 }}
-        data-tour="policy-view-actions"
-      >
-        <Group gap={6} wrap="wrap" style={{ flex: 1, minWidth: 0 }} align="center">
-          <Select
-            size={VIEW_ACTION_BUTTON_SIZE}
-            clearable
-            placeholder="Categories"
-            data={categories.map((c) => ({ value: c.id, label: c.name }))}
-            value={filterCategoryId}
-            onChange={setFilterCategoryId}
-            disabled={!capable}
-            w={180}
-          />
-          <MultiSelect
-            size={VIEW_ACTION_BUTTON_SIZE}
-            clearable
-            searchable
-            placeholder="Tags"
-            data={Array.from(
-              new Set(policies.flatMap((p) => p.tags ?? []).concat(filterTags)),
-            ).map((t) => ({ value: t, label: t }))}
-            value={filterTags}
-            onChange={setFilterTags}
-            disabled={!capable}
-            w={220}
-          />
+      <Group align="center" wrap="nowrap" gap="sm" style={{ flexShrink: 0 }}>
+        <Title {...VIEW_TITLE_PROPS}>Policy</Title>
+        <Group
+          justify="flex-end"
+          align="center"
+          wrap="wrap"
+          gap="xs"
+          style={{ flex: 1, minWidth: 0 }}
+          data-tour="policy-view-actions"
+        >
+        <Box style={{ flex: 1, minWidth: 0 }} aria-hidden />
+        <Group gap={6} wrap="nowrap" style={{ flexShrink: 0 }} align="center">
           <Text size="xs" c="dimmed" style={{ alignSelf: 'center' }}>
             {evalStats != null ? formatPolicyEvalStats(evalStats) : dirty ? 'unsaved' : '\u00a0'}
           </Text>
-          {severitiesPresent.map((sev) => {
-            const active = severityFilter.has(sev)
-            const color = severityBadgeColor(sev)
-            return (
-              <Badge
-                key={sev}
-                variant={active ? 'filled' : 'outline'}
-                color={color}
-                style={{ cursor: 'pointer' }}
-                onClick={() =>
-                  setSeverityFilter((prev) => {
-                    const next = new Set(prev)
-                    if (next.has(sev)) next.delete(sev)
-                    else next.add(sev)
-                    return next
-                  })
-                }
-              >
-                {sev}
-              </Badge>
-            )
-          })}
-          {severityFilter.size > 0 && (
-            <Button size="compact-xs" variant="subtle" onClick={() => setSeverityFilter(new Set())}>
-              Clear
-            </Button>
-          )}
-        </Group>
-        <Group gap={6} wrap="nowrap" style={{ flexShrink: 0 }}>
           <Button
             size={VIEW_ACTION_BUTTON_SIZE}
-            variant="light"
+            variant={VIEW_ACTION_VARIANT}
             disabled={!capable || busy}
             onClick={() => void onExportCatalog()}
           >
@@ -1242,7 +802,7 @@ export function PolicyPlayPage({ hideChrome = false }: { hideChrome?: boolean })
           </Group>
           <Button
             size={VIEW_ACTION_BUTTON_SIZE}
-            variant="light"
+            variant={VIEW_ACTION_VARIANT}
             color="red"
             onClick={() => onDeleteClick()}
             disabled={!capable || !nav || busy}
@@ -1258,7 +818,7 @@ export function PolicyPlayPage({ hideChrome = false }: { hideChrome?: boolean })
           </Button>
           <Button
             size={VIEW_ACTION_BUTTON_SIZE}
-            variant="light"
+            variant={VIEW_ACTION_VARIANT}
             loading={busy}
             disabled={!capable}
             onClick={() => void onCheck()}
@@ -1283,58 +843,7 @@ export function PolicyPlayPage({ hideChrome = false }: { hideChrome?: boolean })
               Evaluate
             </Button>
           </Tooltip>
-          <Group gap={0}>
-            <Button
-              size={VIEW_ACTION_BUTTON_SIZE}
-              variant="light"
-              disabled={!canvasNonEmpty || graphViewTab !== 'visual'}
-              onClick={() => canvasRef.current?.applyLayout()}
-              style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
-            >
-              Apply layout
-            </Button>
-            <Menu position="bottom-end" withinPortal>
-              <Menu.Target>
-                <Button
-                  size={VIEW_ACTION_BUTTON_SIZE}
-                  variant="light"
-                  disabled={!canvasNonEmpty || graphViewTab !== 'visual'}
-                  aria-label="Choose graph layout"
-                  px="xs"
-                  style={{
-                    borderTopLeftRadius: 0,
-                    borderBottomLeftRadius: 0,
-                    borderLeft: '1px solid var(--mantine-color-default-border)',
-                  }}
-                >
-                  <IconChevronDown size={14} />
-                </Button>
-              </Menu.Target>
-              <Menu.Dropdown>
-                <Menu.Label>Layout direction</Menu.Label>
-                {GRAPH_LAYOUTS.map((option) => (
-                  <Menu.Item
-                    key={option.value}
-                    onClick={() => {
-                      if (option.value === layout) {
-                        canvasRef.current?.applyLayout()
-                      } else {
-                        changeLayout(option.value)
-                      }
-                    }}
-                  >
-                    {option.value === layout ? '✓ ' : ''}
-                    {option.label}
-                  </Menu.Item>
-                ))}
-              </Menu.Dropdown>
-            </Menu>
-          </Group>
-          {evalResult?.overall && (
-            <Badge variant="light" color={severityBadgeColor(evalResult.overall)}>
-              {evalResult.overall}
-            </Badge>
-          )}
+        </Group>
         </Group>
       </Group>
 
@@ -1362,9 +871,7 @@ export function PolicyPlayPage({ hideChrome = false }: { hideChrome?: boolean })
             overflow: 'hidden',
           }}
         >
-          <Text size="sm" fw={600} mb="xs">
-            Policies
-          </Text>
+          {onModeChange && <PolicyModeTabs mode={mode} onModeChange={onModeChange} />}
           <TextInput
             size="xs"
             placeholder="Search name"
@@ -1461,8 +968,7 @@ export function PolicyPlayPage({ hideChrome = false }: { hideChrome?: boolean })
           style={{ width: SPLITTER, cursor: 'col-resize', flexShrink: 0 }}
         />
 
-        <Stack gap={0} style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden' }}>
-          <Group align="stretch" gap={0} wrap="nowrap" style={{ flex: 1, minHeight: 0, minWidth: 0, overflow: 'hidden' }}>
+        <Group align="stretch" gap={0} wrap="nowrap" style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden' }}>
             <Paper
               withBorder
               p="xs"
@@ -1726,517 +1232,148 @@ export function PolicyPlayPage({ hideChrome = false }: { hideChrome?: boolean })
               style={{ width: SPLITTER, cursor: 'col-resize', flexShrink: 0 }}
             />
 
-            <Paper
-              withBorder
-              p="xs"
+            <Box
               style={{
                 flex: 1 - editorFrac,
                 minWidth: 0,
                 minHeight: 0,
                 display: 'flex',
-                flexDirection: 'column',
                 overflow: 'hidden',
               }}
             >
-              <Tabs
-                value={graphViewTab}
-                onChange={setGraphViewTab}
-                style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}
-              >
-                <Tabs.List style={{ flexShrink: 0 }}>
-                  <Tabs.Tab value="visual">Visual</Tabs.Tab>
-                  <Tabs.Tab value="data">Data</Tabs.Tab>
-                </Tabs.List>
-
-                <Tabs.Panel
-                  value="visual"
-                  pt="xs"
-                  style={{ flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative' }}
-                >
-                  {canvasOverCap ? (
-                    <Stack align="center" justify="center" gap="sm" p="md" h="100%">
-                      <Alert color="yellow" title="Graph canvas disabled">
-                        This context has {canvasNodeTotal} nodes (cap {EXPLORER_NODE_CAP}). Use the
-                        Data tab to browse objects and edges. Check and Evaluate still run against
-                        the full fragment.
-                      </Alert>
-                    </Stack>
-                  ) : annotatedGraph.nodes.length === 0 ? (
-                    <Text size="sm" c="dimmed" p="md">
-                      Open a graph or matcher (Matcher / All) in the shared context to preview
-                      findings.
-                    </Text>
-                  ) : (
-                    <GraphCanvas
-                      ref={canvasRef}
-                      nodes={annotatedGraph.nodes}
-                      links={annotatedGraph.links}
-                      selection={selection}
-                      onSelect={setSelection}
-                      onNodeContextMenu={onCanvasNodeContextMenu}
-                      onEdgeContextMenu={onCanvasEdgeContextMenu}
-                      layout={layout}
-                      autoLayoutOnDataChange={false}
-                    />
-                  )}
-                  {!canvasOverCap && (
-                    <GraphGoToContextMenu
-                      opened={goToMenu != null}
-                      x={goToMenu?.x ?? 0}
-                      y={goToMenu?.y ?? 0}
-                      onClose={() => setGoToMenu(null)}
-                      target={goToMenu?.target ?? null}
-                      nodes={annotatedGraph.nodes}
-                      index={neighborIndex}
-                      onGoTo={selectNodeFromCanvas}
-                    />
-                  )}
-                </Tabs.Panel>
-
-                <Tabs.Panel
-                  value="data"
-                  pt="xs"
-                  style={{
-                    flex: 1,
-                    minHeight: 0,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    overflow: 'hidden',
-                  }}
-                >
-                  {!dataNonEmpty ? (
-                    <Text size="sm" c="dimmed" p="md">
-                      Open a graph or matcher (Matcher / All) in the shared context to browse
-                      objects and edges.
-                    </Text>
-                  ) : (
-                    <Stack gap="xs" style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-                      <MultiSelect
-                        size="xs"
-                        label="Severity"
-                        placeholder={
-                          severitiesPresent.length === 0
-                            ? 'Evaluate to annotate, or filter None'
-                            : 'All severities'
-                        }
-                        data={dataSeverityOptions}
-                        value={[...severityFilter]}
-                        onChange={(vals) => setSeverityFilter(new Set(vals.map((v) => v.toUpperCase())))}
-                        clearable
-                        searchable={false}
-                        comboboxProps={{ withinPortal: true }}
-                        style={{ flexShrink: 0, maxWidth: 360 }}
-                      />
-                      <Tabs
-                        value={structVeTab}
-                        onChange={(v) => {
-                          setStructVeTab(v)
-                          setSelection(null)
-                        }}
-                        style={{
-                          flex: 1,
-                          minHeight: 0,
-                          display: 'flex',
-                          flexDirection: 'column',
-                        }}
-                      >
-                      <Tabs.List style={{ flexShrink: 0, alignSelf: 'flex-start' }}>
-                        <Tabs.Tab
-                          value="vertices"
-                          style={{ fontSize: 'var(--mantine-font-size-xs)' }}
-                        >
-                          Vertices ({annotatedVertexRows.length})
-                        </Tabs.Tab>
-                        <Tabs.Tab
-                          value="edges"
-                          style={{ fontSize: 'var(--mantine-font-size-xs)' }}
-                        >
-                          Edges ({annotatedEdgeRows.length})
-                        </Tabs.Tab>
-                      </Tabs.List>
-                      <Tabs.Panel
-                        value="vertices"
-                        pt="xs"
-                        style={{
-                          flex: 1,
-                          minHeight: 0,
-                          display: 'flex',
-                          flexDirection: 'column',
-                        }}
-                      >
-                        <QueryResultGrid
-                          rows={annotatedVertexRows}
-                          rowKey={(r) => r.id}
-                          selectedKey={
-                            selection?.kind === 'node' ? selection.node.id : null
-                          }
-                          onRowSelect={(row) => selectFromDataNode(row.entity)}
-                          empty={
-                            <Text size="sm" c="dimmed">
-                              {severityFilter.size > 0
-                                ? 'No vertices match the severity filter.'
-                                : 'No vertices in this context.'}
+              <PolicyGraphOutputColumn
+                ref={graphRef}
+                selection={selection}
+                onSelectionChange={selectGraphSelection}
+                outcomes={evalResult?.outcomes}
+                onGraphModel={onGraphModel}
+                output={
+                  <Tabs
+                    value={tasksTab}
+                    onChange={setTasksTab}
+                    style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}
+                  >
+                    <Tabs.List>
+                      <Tabs.Tab value="policy">Policy</Tabs.Tab>
+                      <Tabs.Tab value="evaluations">
+                        Evaluations
+                        {selection ? ` (${selectionTaskRows.length})` : ''}
+                      </Tabs.Tab>
+                      <Tabs.Tab value="object">Object</Tabs.Tab>
+                    </Tabs.List>
+                    <Tabs.Panel value="policy" style={{ flex: 1, minHeight: 0, overflow: 'auto' }} p="xs">
+                      {checkRows.length === 0 ? (
+                        <Text size="sm" c="dimmed">
+                          Run Check to list compile/validation messages.
+                        </Text>
+                      ) : (
+                        <Stack gap={4}>
+                          {checkRows.map((row) => (
+                            <Text
+                              key={row.id}
+                              size="sm"
+                              style={{ cursor: 'pointer', wordBreak: 'break-word' }}
+                              c={checkResult?.ok ? undefined : 'red'}
+                              fw={focusedTaskId === row.id ? 600 : undefined}
+                              onClick={() => {
+                                setFocusedTaskId(row.id)
+                                if (row.kind === 'check' && row.line != null) {
+                                  editorRef.current?.revealLine(row.line, row.column)
+                                }
+                              }}
+                            >
+                              {row.kind === 'check' ? row.message : row.finding.message}
                             </Text>
-                          }
-                          columns={[
-                            {
-                              key: 'severity',
-                              header: 'Severity',
-                              width: '10ch',
-                              render: (row) =>
-                                row.findingSeverity ? (
-                                  <Badge
-                                    size="xs"
-                                    color={severityBadgeColor(row.findingSeverity)}
-                                  >
-                                    {row.findingSeverity}
-                                  </Badge>
-                                ) : (
-                                  <Text size="xs" c="dimmed">
-                                    —
-                                  </Text>
-                                ),
-                            },
-                            {
-                              key: 'id',
-                              header: 'Id',
-                              width: QUERY_STRUCT_ID_COL_WIDTH,
-                              render: (row) => (
-                                <IdLink
-                                  id={row.id}
-                                  onOpen={() => selectFromDataNode(row.entity)}
-                                />
-                              ),
-                            },
-                            {
-                              key: 'type',
-                              header: 'Type',
-                              width: QUERY_STRUCT_TYPE_COL_WIDTH,
-                              render: (row) => (
-                                <Text size="xs" truncate title={row.type}>
-                                  {row.type}
-                                </Text>
-                              ),
-                            },
-                            ...vertexPayloadCols.map((col) => ({
-                              key: `payload:${col}`,
-                              header: col,
-                              render: (row: (typeof annotatedVertexRows)[number]) =>
-                                formatObjectCell(row.entity.payload?.[col]),
-                            })),
-                          ]}
-                        />
-                      </Tabs.Panel>
-                      <Tabs.Panel
-                        value="edges"
-                        pt="xs"
-                        style={{
-                          flex: 1,
-                          minHeight: 0,
-                          display: 'flex',
-                          flexDirection: 'column',
-                        }}
-                      >
-                        <QueryResultGrid
-                          rows={annotatedEdgeRows}
-                          rowKey={(r) => r.id}
-                          selectedKey={
-                            selection?.kind === 'edge' ? selection.edge.id : null
-                          }
-                          onRowSelect={(row) => selectFromDataEdge(row.edge, 0)}
-                          empty={
-                            <Text size="sm" c="dimmed">
-                              {severityFilter.size > 0
-                                ? 'No edges match the severity filter.'
-                                : 'No edges in this context.'}
-                            </Text>
-                          }
-                          columns={[
-                            {
-                              key: 'severity',
-                              header: 'Severity',
-                              width: '10ch',
-                              render: (row) =>
-                                row.findingSeverity ? (
-                                  <Badge
-                                    size="xs"
-                                    color={severityBadgeColor(row.findingSeverity)}
-                                  >
-                                    {row.findingSeverity}
-                                  </Badge>
-                                ) : (
-                                  <Text size="xs" c="dimmed">
-                                    —
-                                  </Text>
-                                ),
-                            },
-                            {
-                              key: 'id',
-                              header: 'Id',
-                              width: QUERY_STRUCT_ID_COL_WIDTH,
-                              render: (row) => (
-                                <IdLink
-                                  id={row.id}
-                                  onOpen={() => selectFromDataEdge(row.edge, 0)}
-                                />
-                              ),
-                            },
-                            {
-                              key: 'type',
-                              header: 'Type',
-                              width: QUERY_STRUCT_TYPE_COL_WIDTH,
-                              render: (row) => (
-                                <Text size="xs" truncate title={row.type}>
-                                  {row.type}
-                                </Text>
-                              ),
-                            },
-                            {
-                              key: 'sourceName',
-                              header: 'Source name',
-                              width: QUERY_STRUCT_EDGE_SOURCE_COL_WIDTH,
-                              render: (row) => (
-                                <Text size="xs" truncate title={row.sourceName}>
-                                  {row.sourceName}
-                                </Text>
-                              ),
-                            },
-                            {
-                              key: 'role',
-                              header: 'Role',
-                              width: QUERY_STRUCT_EDGE_ROLE_COL_WIDTH,
-                              render: (row) => (
-                                <Text size="xs" truncate title={row.role}>
-                                  {row.role}
-                                </Text>
-                              ),
-                            },
-                            {
-                              key: 'targetName',
-                              header: 'Target name',
-                              render: (row) => row.targetName,
-                            },
-                          ]}
-                        />
-                      </Tabs.Panel>
-                    </Tabs>
-                    </Stack>
-                  )}
-                </Tabs.Panel>
-              </Tabs>
-            </Paper>
-
-            <Box
-              role="separator"
-              aria-orientation="vertical"
-              onPointerDown={onRightSplit}
-              style={{ width: SPLITTER, cursor: 'col-resize', flexShrink: 0 }}
-            />
-
-            <Paper
-              withBorder
-              style={{
-                width: rightWidth,
-                flexShrink: 0,
-                minHeight: 0,
-                display: 'flex',
-                flexDirection: 'column',
-                overflow: 'hidden',
-              }}
-            >
-              <Tabs value={inspectTab} onChange={setInspectTab} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-                <Tabs.List>
-                  <Tabs.Tab value="object">Object</Tabs.Tab>
-                  <Tabs.Tab value="tasks">
-                    <Text
-                      span
-                      fw={selectionTaskRows.length > 0 ? 800 : 500}
-                      size="sm"
-                    >
-                      Tasks ({selectionTaskRows.length})
-                    </Text>
-                  </Tabs.Tab>
-                </Tabs.List>
-                <Tabs.Panel value="object" style={{ flex: 1, minHeight: 0, overflow: 'auto' }} p="xs">
-                  <ObjectInspectPane
-                    selection={selection}
-                    nodes={inspectNodes}
-                    graphContext={
-                      context.kind === 'graph' && context.graphId
-                        ? {
-                            graphId: context.graphId,
-                            graphVersion: context.graphVersion,
-                            annotations: context.annotations ?? {},
-                            entityCount:
-                              fragmentContents?.entities?.length ?? inspectNodes.length,
-                            edgeCount:
-                              fragmentContents?.edges?.length ?? annotatedGraph.links.length,
-                          }
-                        : null
-                    }
-                    fieldKindsByTypeVersion={fieldKindsByTypeVersion}
-                    onSelectNode={(nodeId) => {
-                      const node = inspectNodes.find((n) => n.id === nodeId)
-                      if (node) setSelection({ kind: 'node', node })
-                    }}
-                    onClearSelection={() => setSelection(null)}
-                    endpointLabel={(nodeId) => {
-                      const node = inspectNodes.find((n) => n.id === nodeId)
-                      return node ? `${node.name} (${node.type})` : nodeId
-                    }}
-                  />
-                </Tabs.Panel>
-                <Tabs.Panel value="tasks" style={{ flex: 1, minHeight: 0, overflow: 'auto' }} p="xs">
-                  {focusedTask?.kind === 'finding' ? (
-                    <Stack gap="xs">
-                      <Group gap="xs">
-                        <Badge
-                          size="sm"
-                          color={severityBadgeColor(focusedTask.finding.severity ?? focusedTask.status)}
-                        >
-                          {focusedTask.finding.severity ?? focusedTask.status}
-                        </Badge>
-                        {findingRuleName(focusedTask.finding) && (
-                          <Badge size="sm" variant="outline">
-                            {findingRuleName(focusedTask.finding)}
-                          </Badge>
-                        )}
-                      </Group>
-                      <Text size="sm" fw={600}>
-                        {focusedTask.policyName}
-                      </Text>
-                      <Text size="sm" style={{ wordBreak: 'break-word' }}>
-                        {focusedTask.finding.message}
-                      </Text>
-                      {focusedTask.finding.code && <Code>{focusedTask.finding.code}</Code>}
-                      <Text size="xs" c="dimmed">
-                        entities: {(focusedTask.finding.entities ?? []).join(', ') || '—'}
-                      </Text>
-                      <Text size="xs" c="dimmed">
-                        edges: {(focusedTask.finding.edges ?? []).join(', ') || '—'}
-                      </Text>
-                    </Stack>
-                  ) : selectionTaskRows.length === 0 ? (
-                    <Text size="sm" c="dimmed">
-                      No tasks for the current selection.
-                    </Text>
-                  ) : (
-                    <Stack gap={6}>
-                      {selectionTaskRows.map((row) =>
-                        row.kind === 'finding' ? (
-                          <Paper
-                            key={row.id}
-                            withBorder
-                            p="xs"
-                            style={{ cursor: 'pointer' }}
-                            onClick={() => onTaskClick(row)}
-                          >
-                            <Group gap={6} wrap="nowrap">
-                              <Badge
-                                size="xs"
-                                color={severityBadgeColor(row.finding.severity ?? row.status)}
-                              >
-                                {row.finding.severity ?? row.status}
-                              </Badge>
-                              <Text size="xs" lineClamp={2} style={{ minWidth: 0 }}>
-                                {row.finding.message}
-                              </Text>
-                            </Group>
-                          </Paper>
-                        ) : null,
+                          ))}
+                        </Stack>
                       )}
-                    </Stack>
-                  )}
-                </Tabs.Panel>
-              </Tabs>
-            </Paper>
-          </Group>
-
-          <Box
-            role="separator"
-            aria-orientation="horizontal"
-            onPointerDown={onTasksSplit}
-            style={{ height: SPLITTER, cursor: 'row-resize', flexShrink: 0 }}
-          />
-
-          <Paper
-            withBorder
-            style={{
-              height: tasksHeight,
-              minHeight: tasksHeight,
-              flexShrink: 0,
-              flexGrow: 0,
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden',
-            }}
-          >
-            <Tabs value={tasksTab} onChange={setTasksTab} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-              <Tabs.List>
-                <Tabs.Tab value="policy">Policy</Tabs.Tab>
-                <Tabs.Tab value="evaluations">Evaluations</Tabs.Tab>
-              </Tabs.List>
-              <Tabs.Panel value="policy" style={{ flex: 1, minHeight: 0, overflow: 'auto' }} p="xs">
-                {checkRows.length === 0 ? (
-                  <Text size="sm" c="dimmed">
-                    Run Check to list compile/validation messages.
-                  </Text>
-                ) : (
-                  <Stack gap={4}>
-                    {checkRows.map((row) => (
-                      <Text
-                        key={row.id}
-                        size="sm"
-                        style={{ cursor: 'pointer', wordBreak: 'break-word' }}
-                        c={checkResult?.ok ? undefined : 'red'}
-                        onClick={() => {
-                          setFocusedTaskId(row.id)
-                          setInspectTab('tasks')
-                          if (row.kind === 'check' && row.line != null) {
-                            editorRef.current?.revealLine(row.line, row.column)
-                          }
-                        }}
-                      >
-                        {row.kind === 'check' ? row.message : row.finding.message}
-                      </Text>
-                    ))}
-                  </Stack>
-                )}
-              </Tabs.Panel>
-              <Tabs.Panel value="evaluations" style={{ flex: 1, minHeight: 0, overflow: 'auto' }} p="xs">
-                {evalRows.length === 0 ? (
-                  <Text size="sm" c="dimmed">
-                    Run Evaluate to list outcomes and findings.
-                  </Text>
-                ) : (
-                  <Stack gap={4}>
-                    {evalRows.map((row) =>
-                      row.kind === 'finding' ? (
-                        <Group
-                          key={row.id}
-                          gap={8}
-                          wrap="nowrap"
-                          style={{ cursor: 'pointer' }}
-                          onClick={() => onTaskClick(row)}
-                        >
-                          <Badge
-                            size="xs"
-                            color={severityBadgeColor(row.finding.severity ?? row.status)}
-                          >
-                            {row.finding.severity ?? row.status}
-                          </Badge>
-                          <Text size="sm" lineClamp={2} style={{ minWidth: 0 }}>
-                            {row.policyName}: {row.finding.message}
+                    </Tabs.Panel>
+                    <Tabs.Panel
+                      value="evaluations"
+                      style={{ flex: 1, minHeight: 0, overflow: 'auto' }}
+                      p="xs"
+                    >
+                      {selection != null && evalRows.length > 0 && (
+                        <Group gap="xs" mb="xs" wrap="nowrap">
+                          <Text size="xs" c="dimmed" style={{ flex: 1, minWidth: 0 }}>
+                            Filtered to current graph selection
                           </Text>
+                          <Button
+                            size="compact-xs"
+                            variant="subtle"
+                            onClick={() => {
+                              selectGraphSelection(null, false)
+                              setFocusedTaskId(null)
+                            }}
+                          >
+                            Reset filter
+                          </Button>
                         </Group>
-                      ) : null,
-                    )}
-                  </Stack>
-                )}
-              </Tabs.Panel>
-            </Tabs>
-          </Paper>
-        </Stack>
+                      )}
+                      {evalListRows.length === 0 ? (
+                        <Text size="sm" c="dimmed">
+                          {evalRows.length === 0
+                            ? 'Run Evaluate to list outcomes and findings.'
+                            : selection
+                              ? 'No findings for the current selection.'
+                              : 'No findings.'}
+                        </Text>
+                      ) : (
+                        <Stack gap={4}>
+                          {evalListRows.map((row) =>
+                            row.kind === 'finding' ? (
+                              <SeverityMessageRow
+                                key={row.id}
+                                severity={row.finding.severity ?? row.status}
+                                depth={0}
+                                active={focusedTaskId === row.id}
+                                onClick={() => onTaskClick(row)}
+                              >
+                                <Text size="sm" style={{ wordBreak: 'break-word' }}>
+                                  {row.policyName}: {row.finding.message}
+                                </Text>
+                              </SeverityMessageRow>
+                            ) : null,
+                          )}
+                        </Stack>
+                      )}
+                    </Tabs.Panel>
+                    <Tabs.Panel value="object" style={{ flex: 1, minHeight: 0, overflow: 'auto' }} p="xs">
+                      <ObjectInspectPane
+                        selection={selection}
+                        nodes={inspectNodes}
+                        graphContext={
+                          context.kind === 'graph' && context.graphId
+                            ? {
+                                graphId: context.graphId,
+                                graphVersion: context.graphVersion,
+                                annotations: context.annotations ?? {},
+                                entityCount:
+                                  fragmentContents?.entities?.length ?? inspectNodes.length,
+                                edgeCount:
+                                  fragmentContents?.edges?.length ??
+                                  graphModel?.annotatedLinks.length ??
+                                  0,
+                              }
+                            : null
+                        }
+                        fieldKindsByTypeVersion={fieldKindsByTypeVersion}
+                        onSelectNode={(nodeId) => {
+                          const node = inspectNodes.find((n) => n.id === nodeId)
+                          if (node) selectGraphSelection({ kind: 'node', node })
+                        }}
+                        onClearSelection={() => selectGraphSelection(null, false)}
+                        endpointLabel={(nodeId) => {
+                          const node = inspectNodes.find((n) => n.id === nodeId)
+                          return node ? `${node.name} (${node.type})` : nodeId
+                        }}
+                      />
+                    </Tabs.Panel>
+                  </Tabs>
+                }
+              />
+            </Box>
+        </Group>
       </Group>
 
       <Modal

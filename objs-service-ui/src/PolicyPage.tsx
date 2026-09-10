@@ -1,36 +1,20 @@
 import { useState } from 'react'
-import { Box, Group, SegmentedControl, Stack, Title } from '@mantine/core'
-import { GraphContextBar } from './GraphContextBar'
+import { Stack } from '@mantine/core'
 import { PolicyPlayPage } from './PolicyPlayPage'
 import { PolicySuitesPage } from './PolicySuitesPage'
+import type { PolicyWorkbenchMode } from './PolicyModeTabs'
 
-type PolicySubnav = 'evaluate' | 'suites'
-
-/** Policy workbench shell: Evaluate | Suites subnav + shared graph context. */
+/** Policy workbench shell: Policies | Suites mode pages (each owns title + actions + context). */
 export function PolicyPage() {
-  const [subnav, setSubnav] = useState<PolicySubnav>('evaluate')
+  const [mode, setMode] = useState<PolicyWorkbenchMode>('policies')
 
   return (
     <Stack gap="sm" style={{ flex: 1, minHeight: 0, height: '100%' }}>
-      <Group align="center" wrap="nowrap" gap="md" style={{ flexShrink: 0 }}>
-        <Title order={3} style={{ flexShrink: 0 }}>
-          Policy
-        </Title>
-        <SegmentedControl
-          size="xs"
-          value={subnav}
-          onChange={(v) => setSubnav(v as PolicySubnav)}
-          data={[
-            { label: 'Evaluate', value: 'evaluate' },
-            { label: 'Suites', value: 'suites' },
-          ]}
-          data-tour="policy-subnav"
-        />
-        <Box style={{ flex: 1, minWidth: 0 }}>
-          <GraphContextBar />
-        </Box>
-      </Group>
-      {subnav === 'evaluate' ? <PolicyPlayPage hideChrome /> : <PolicySuitesPage />}
+      {mode === 'policies' ? (
+        <PolicyPlayPage mode={mode} onModeChange={setMode} />
+      ) : (
+        <PolicySuitesPage mode={mode} onModeChange={setMode} />
+      )}
     </Stack>
   )
 }

@@ -17,25 +17,29 @@ Mirror jgrapht/gremlin:
 - `GET …/policy/capabilities` — UI soft-fail when absent (Policy nav stays visible)
 - CRUD policies (JPA when persistence wired; in-memory fallback)
 - `GET …/policy/export?format=seeds` — full catalog REPLACE seed YAML (C-28)
-- `POST …/policy/check` — compile/validate body (DROOLS) → tasks **Policy** tab
-- `POST …/policy/evaluate` — policy × fragment from graph context → **Evaluations** tab
+- `POST …/policy/check` — compile/validate body (DROOLS) → **Output** pane
+- `POST …/policy/evaluate` — policy × fragment from graph context → **Output** pane
 
 ## UI chrome
 
 ```text
-Policies | Editor | Visual | Data | Object | Tasks(N)
-         |        |← shared tabs →| +------ tabs -----+
-         +======== tasks: Policy | Evaluations ======+
+[Policies|Suites] | Editor (full height) | Visual | Data
+                  |                      |== Policy|Evaluations|Object ==|
+                  |                      | (Suites: Selection|Evaluation|Object) |
 ```
 
 - Nav **Policy** after Query, before Composer (`/policy`)
-- Graph pane: **Visual** (canvas; disabled over node cap) | **Data** (vertices/edges grid) share one content area
-- Data rows show evaluation **Severity** and respect the same severity filter badges as Visual
+- Left pane: **Policies | Suites** mode tabs (not top Evaluate|Suites subnav)
+- Graph pane: **Visual** (canvas; disabled over node cap) | **Data** (vertices/edges grid)
+- Visual: hover **Filter** toolbar (Types / Edges / Severity / Reset) + Apply layout / Fit to view; filters dim the canvas
+- Data: Vertices — Severity and Type **column funnel** menus (shared type/severity sets with Visual). Edges — Severity; **Type** funnel = edge schema types only; **Source Type** / **Target Type** / **Role** funnels (Role shared with Visual Edges filter); Source/Target name columns.
+- Data rows show evaluation **Severity** and respect the same severity/type filters as Visual
 - Add = blank DROOLS policy then edit; trash deletes; explicit **Save**; Check/Evaluate use editor buffer
-- Right pane: **Object** (Explorer inspect) | **Tasks (N)** (findings for selection)
-- Bottom click → pan/select node/edge + focus Tasks detail; no bottom selection-filter
+- Title row: eval/exec stats sit left of actions (spacer from title); no overall PASS/FAIL pill on Policy
+- Under Visual/Data (splitter): **Policy | Evaluations | Object** (Suites: **Selection | Evaluation | Object**). Selecting on Visual/Data opens **Object**. **Evaluations** is selection-sensitive (findings for the selected node/edge). Finding click pans/selects and stays on Evaluations.
+- No Categories/Tags toolbar filters (tree search remains). No separate Object/Tasks side column.
 
-Also: [`metadata.md`](metadata.md) (C-32 list navigation — **shipped** on play UI: category/tag filters; General \| Code tabs).
+Also: [`metadata.md`](metadata.md) (C-32 list navigation — **shipped**; General \| Code tabs. Toolbar category/tag filters removed in U-11).
 
 ## C-32 play extensions
 
@@ -43,16 +47,16 @@ Also: [`metadata.md`](metadata.md) (C-32 list navigation — **shipped** on play
 - `GET …/policy/policies?categoryId=&tag=&key=&annotation=k=v`
 - Policy create/update require `categoryId`, `tags`, `key`, optional `name` / `annotations` / `version` (major.minor)
 
-## C-27 Suites subnav
+## C-27 Suites mode
 
-Policy route (`/policy`) uses shared chrome with **subnav**:
+Policy route (`/policy`) uses left **Policies | Suites** mode tabs:
 
 | Item | Role |
 |------|------|
-| **Evaluate** | Existing Policy play (C-31/C-32) — unchanged |
-| **Suites** | Suite/folder/matcher authoring, selection examine, `evaluateSuite` |
+| **Policies** | Policy play (C-31/C-32) |
+| **Suites** | Suite/folder/matcher authoring, Examine selection, `evaluateSuite` |
 
-- Suites layout is **edit-first**: tree + center editor primary; graph canvas secondary (shared **GraphContextBar** only — no large live graph by default).
+- Suites share the same layout: tree + full-height editor + Visual/Data + **Output**.
 - HTTP (on `:objs-policy-service`): `…/policy/suites` CRUD, `POST …/suites/selection`, `POST …/suites/evaluate`.
 - Design: [`suites.md`](suites.md).
 
