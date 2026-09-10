@@ -17,8 +17,8 @@ import {
   IconWorld,
 } from '@tabler/icons-react'
 import { notifications } from '@mantine/notifications'
+import { AnnotationsCountLabel } from './AnnotationsCountLabel'
 import { execMatcher } from './api'
-import { AnnotationSplitPill } from './EntityCardNode'
 import { shortId } from './graphContext'
 import { useGraphContext } from './GraphContextProvider'
 import {
@@ -31,7 +31,6 @@ import { OpenGraphModal } from './OpenGraphModal'
 import { OpenMatcherModal } from './OpenMatcherModal'
 import type { BoMGraphResponse } from './types'
 
-const ANN_MAX = 4
 const ALL_MATCHER = { all: true } as const
 
 function isAllMatcher(body: unknown): boolean {
@@ -48,7 +47,8 @@ type Props = {
 }
 
 /**
- * Slim shared graph-context chrome (Note 1 Pic4/Pic5) for Explorer / Objects / Query.
+ * Slim shared graph-context chrome for Explorer / Objects / Query / Policy.
+ * Content-sized and right-aligned by hosts (Note 2).
  */
 export function GraphContextBar({ onMatcherApplied, onGraphOpened }: Props) {
   const { context, setGraph, setMatcher } = useGraphContext()
@@ -90,16 +90,11 @@ export function GraphContextBar({ onMatcherApplied, onGraphOpened }: Props) {
 
   const graphAnn = Object.entries(context.annotations).filter(
     ([k, v]) => k.trim().length > 0 && v.trim().length > 0,
-  )
-  const shownGraphAnn = graphAnn.slice(0, ANN_MAX)
-  const moreGraphAnn = graphAnn.length - shownGraphAnn.length
-
+  ) as [string, string][]
   const versionAnn =
     context.kind === 'graph'
-      ? Object.entries(nonEmptyAnnotations(context.graphVersionAnnotations))
+      ? (Object.entries(nonEmptyAnnotations(context.graphVersionAnnotations)) as [string, string][])
       : []
-  const shownVersionAnn = versionAnn.slice(0, ANN_MAX)
-  const moreVersionAnn = versionAnn.length - shownVersionAnn.length
   const versionCreated =
     context.kind === 'graph' && context.graphVersion != null
       ? parseGraphVersionTime(context.graphVersionCreatedAt ?? undefined, context.graphVersion)
@@ -107,9 +102,16 @@ export function GraphContextBar({ onMatcherApplied, onGraphOpened }: Props) {
 
   return (
     <>
-      <Paper withBorder px="sm" py={6} radius="md" data-tour="graph-context">
-        <Group gap="sm" wrap="nowrap" justify="space-between" align="center">
-          <Group gap="xs" wrap="nowrap" style={{ flex: 1, minWidth: 0 }} align="center">
+      <Paper
+        withBorder
+        px="sm"
+        py={6}
+        radius="md"
+        data-tour="graph-context"
+        style={{ width: 'max-content', maxWidth: '100%' }}
+      >
+        <Group gap="sm" wrap="nowrap" justify="flex-start" align="center">
+          <Group gap="xs" wrap="nowrap" style={{ flexShrink: 0 }} align="center">
             {context.kind === 'graph' && context.graphId ? (
               <>
                 <Tooltip label="Graph context" withArrow>
@@ -135,62 +137,30 @@ export function GraphContextBar({ onMatcherApplied, onGraphOpened }: Props) {
                   onCopy={() => void copyText('Graph id', context.graphId!)}
                 />
 
-                <Group gap={6} wrap="nowrap" style={{ flex: 1, minWidth: 0 }} align="center">
-                  <Group
-                    gap={4}
-                    wrap="nowrap"
-                    style={{ minWidth: 0, overflow: 'hidden' }}
-                    align="center"
-                  >
-                    {shownGraphAnn.length === 0 ? (
-                      <Text size="xs" c="dimmed" fs="italic">
-                        none
-                      </Text>
-                    ) : (
-                      <>
-                        {shownGraphAnn.map(([k, v]) => (
-                          <AnnotationSplitPill key={`g-${k}`} k={k} v={v} size="bar" />
-                        ))}
-                        {moreGraphAnn > 0 && (
-                          <Text size="xs" c="dimmed" style={{ flexShrink: 0 }}>
-                            +{moreGraphAnn}
-                          </Text>
-                        )}
-                      </>
-                    )}
-                  </Group>
+                <AnnotationsCountLabel
+                  entries={graphAnn}
+                  dataTour="graph-context-annotations"
+                />
 
-                  <Text size="xs" c="dimmed" fw={700} style={{ flexShrink: 0, opacity: 0.55 }}>
-                    |
-                  </Text>
+                <Text size="xs" c="dimmed" fw={700} style={{ flexShrink: 0, opacity: 0.55 }}>
+                  |
+                </Text>
 
-                  <Text size="xs" c="dimmed" fw={600} style={{ flexShrink: 0 }}>
-                    Version:
+                <Text size="xs" c="dimmed" fw={600} style={{ flexShrink: 0 }}>
+                  Version:
+                </Text>
+                <GraphContextVersionControl />
+                {versionCreated && (
+                  <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
+                    {versionCreated.toLocaleDateString()} {versionCreated.toLocaleTimeString()}
                   </Text>
-                  <GraphContextVersionControl />
-                  {versionCreated && (
-                    <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
-                      {versionCreated.toLocaleDateString()} {versionCreated.toLocaleTimeString()}
-                    </Text>
-                  )}
-                  {shownVersionAnn.length > 0 && (
-                    <Group
-                      gap={4}
-                      wrap="nowrap"
-                      style={{ minWidth: 0, overflow: 'hidden' }}
-                      align="center"
-                    >
-                      {shownVersionAnn.map(([k, v]) => (
-                        <AnnotationSplitPill key={`v-${k}`} k={k} v={v} size="bar" />
-                      ))}
-                      {moreVersionAnn > 0 && (
-                        <Text size="xs" c="dimmed" style={{ flexShrink: 0 }}>
-                          +{moreVersionAnn}
-                        </Text>
-                      )}
-                    </Group>
-                  )}
-                </Group>
+                )}
+                {versionAnn.length > 0 && (
+                  <AnnotationsCountLabel
+                    entries={versionAnn}
+                    dataTour="graph-context-version-annotations"
+                  />
+                )}
               </>
             ) : context.kind === 'matcher' && isAllMatcher(context.matcherBody) ? (
               <>
@@ -222,7 +192,7 @@ export function GraphContextBar({ onMatcherApplied, onGraphOpened }: Props) {
                     size="sm"
                     ff="monospace"
                     lineClamp={1}
-                    style={{ flex: 1, minWidth: 0 }}
+                    style={{ maxWidth: 220, flexShrink: 1, minWidth: 0 }}
                     data-tour="graph-context-matcher"
                   >
                     {context.matcherLine?.trim() || '(empty matcher)'}
@@ -253,7 +223,7 @@ export function GraphContextBar({ onMatcherApplied, onGraphOpened }: Props) {
                 style={{ whiteSpace: 'nowrap' }}
                 data-tour="graph-context-stats"
               >
-                Nodes {context.nodeCount} / Edges {context.edgeCount}
+                N/E: {context.nodeCount}/{context.edgeCount}
               </Text>
             )}
             <Menu shadow="md" width={160} position="bottom-end">

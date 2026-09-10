@@ -1,11 +1,13 @@
-import { Button, Checkbox, Group, Text } from '@mantine/core'
+import { Button, Checkbox, Group, Stack, Text } from '@mantine/core'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { ColumnFilterHeader } from './ColumnFilterHeader'
+import { passesColumnFilter, toggleInSet, uniqueSortedOptions } from './columnFilterUtils'
 import {
   IdLink,
   QUERY_STRUCT_ID_COL_WIDTH,
   QUERY_STRUCT_TYPE_COL_WIDTH,
 } from './QueryStructColumns'
-import { QUERY_STRUCT_PAGE_SIZE, QueryResultGrid } from './QueryResultGrid'
+import { QueryResultGrid } from './QueryResultGrid'
 import type { BoMEntity } from './types'
 
 const MAX_PAYLOAD_COLS = 6
@@ -84,6 +86,16 @@ export function ObjectResultsTable({
 }: ObjectResultsTableProps) {
   const [selectedIdsInternal, setSelectedIdsInternal] = useState<Set<string>>(() => new Set())
   const selectedIds = selectedIdsProp ?? selectedIdsInternal
+  const [typeFilter, setTypeFilter] = useState<Set<string>>(() => new Set())
+
+  const typeOptions = useMemo(
+    () => uniqueSortedOptions(results.map((e) => e.type)),
+    [results],
+  )
+  const filteredResults = useMemo(
+    () => results.filter((e) => passesColumnFilter(e.type, typeFilter)),
+    [results, typeFilter],
+  )
 
   const applySelectedIds = useCallback(
     (update: Set<string> | ((prev: Set<string>) => Set<string>)) => {
@@ -102,6 +114,15 @@ export function ObjectResultsTable({
   )
   const [pageRows, setPageRows] = useState<BoMEntity[]>([])
   const payloadCols = useMemo(() => scalarPayloadColumns(results), [results])
+
+  useEffect(() => {
+    setTypeFilter((prev) => {
+      if (prev.size === 0) return prev
+      const valid = new Set(typeOptions.map((o) => o.value))
+      const next = new Set([...prev].filter((t) => valid.has(t)))
+      return next.size === prev.size ? prev : next
+    })
+  }, [typeOptions])
 
   useEffect(() => {
     applySelectedIds((prev) => {
@@ -133,14 +154,9 @@ export function ObjectResultsTable({
   }
 
   return (
-    <Group
-      gap="xs"
-      align="stretch"
-      wrap="nowrap"
-      style={{ flex: 1, minWidth: 0, minHeight: 0, flexDirection: 'column' }}
-    >
+    <Stack gap="xs" style={{ flex: 1, minWidth: 0, minHeight: 0, height: '100%' }}>
       {!hideBulkActions && (
-        <Group justify={summary != null ? 'space-between' : 'flex-end'} wrap="wrap" gap={4}>
+        <Group justify={summary != null ? 'space-between' : 'flex-end'} wrap="wrap" gap={4} style={{ flexShrink: 0 }}>
           {summary != null && (
             <Text size="xs" c="dimmed">
               {summary}
@@ -180,10 +196,16 @@ export function ObjectResultsTable({
       )}
 
       <QueryResultGrid
-        rows={results}
-        pageSize={QUERY_STRUCT_PAGE_SIZE}
+        rows={filteredResults}
         rowKey={(entity) => entity.id}
         onPageRowsChange={onPageRowsChange}
+        empty={
+          typeFilter.size > 0 ? (
+            <Text size="sm" c="dimmed">
+              No objects match the Type filter.
+            </Text>
+          ) : undefined
+        }
         columns={[
           {
             key: 'select',
@@ -232,7 +254,16 @@ export function ObjectResultsTable({
           },
           {
             key: 'type',
-            header: 'Type',
+            header: (
+              <ColumnFilterHeader
+                label="Type"
+                options={typeOptions}
+                selected={typeFilter}
+                onToggle={(type) => setTypeFilter((prev) => toggleInSet(prev, type))}
+                onClear={() => setTypeFilter(new Set())}
+                menuWidth={280}
+              />
+            ),
             width: QUERY_STRUCT_TYPE_COL_WIDTH,
             render: (entity) => entity.type,
           },
@@ -271,6 +302,6 @@ export function ObjectResultsTable({
           },
         ]}
       />
-    </Group>
+    </Stack>
   )
 }

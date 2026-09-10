@@ -8,8 +8,8 @@ and authoring object-schema DSL definitions.
 There is **no global graph** and **no pack chrome**. Graphs are durable `objs_graph` headers with
 member entities and graph-local edges (see [`graph/model.md`](graph/model.md)).
 
-**Explorer · Objects · Query** share one **graph context** (`GraphContextProvider`). Changing context
-in any of those three updates all three. **Composer** and **Schema** do **not** bind to it.
+**Explorer · Objects · Query · Policy** share one **graph context** (`GraphContextProvider`). Changing context
+in any of those updates the others that bind. **Composer** and **Schema** do **not** bind to it.
 
 | Context kind | Meaning |
 |--------------|---------|
@@ -33,20 +33,32 @@ Explorer no longer has a left **Versions** pane — version pin lives on the sha
 
 ### Chrome layout (all product views)
 
-| Row | Explorer / Objects / Query | Composer / Schema |
-|-----|---------------------------|-------------------|
-| **1** | `Title order={3}` + shared or local context bar (Paper) | Same pattern |
-| **2** | View actions at **`sm`** (`VIEW_ACTION_BUTTON_SIZE`) | Same |
-| **3** | Workspace (canvas, grid, script, catalog, …) | Same |
+| Row | Explorer / Objects / Query / Policy | Composer / Schema |
+|-----|-------------------------------------|-------------------|
+| **Header** | L0 nav + shared **`GraphContextBar`** (Explorer/Objects/Query/Policy) or **`ComposerGraphBar`** (Composer) | L0 nav only on Schema |
+| **1** | Quiet title + **right-aligned** view actions | Same |
+| **2** | Optional secondary (rarely used) | — |
+| **3** | Workspace | Same (row 2 if no filters) |
 
-In-tab / canvas toolbars use **`xs`** (Schema Format/Lint, Query script area, Composer Visual toolbar).
+**Chrome (Note 2 + Note 3):** Context bars live on the **AppShell header** with main navigation.
+Page title row is quiet `Title order={4}` with view actions **right-aligned**. Composer bar is
+draft-local (not shared graph context) but same header placement. **Schema has no context bar.**
+
+
+In-tab / canvas toolbars: Schema Format/Lint and Query script area use **`xs`**; Composer Visual
+toolbar uses **`compact-xs`** (one step under title-row `xs`, Note 8) with the same primary/secondary
+variants as view actions. Composer Visual L2: **Changes only** immediately left of right-aligned
+draft actions; no “N on canvas” badge. Composer Text L2: **YAML | JSON** immediately left of
+Format / Rollback / New UUID (`compact-xs`, same secondary chrome); no border around the editor.
 
 | Level | Role |
 |-------|------|
 | **L0** | App view nav (`AppLayout`) |
 | **L1–L3** | As above |
 
-**Size baseline:** view-level actions `sm`; in-panel / canvas toolbars `xs`.
+**Size baseline:** view-level actions `xs`; in-panel / canvas toolbars stay `xs`. Title-row
+**primary** CTAs are filled blue (create / save / run / main handoff); **secondary** use bordered
+`default`.
 
 ## Start and open
 
@@ -73,11 +85,12 @@ dark/light toggle on the right:
 |------|------|---------|
 | **Explorer** | `/workbench/explorer` | Read-only explore: Graph mode or Selection mode; hand off to Composer / Query |
 | **Objects** | `/workbench/objects` | Pool object search + shelf; **New graph from shelf** → Composer |
-| **Composer** | `/workbench/composer` | Draft workspace: Visual/Text edit, Validate / Save / Create version / Clone |
 | **Query** | `/workbench/query` | Gremlin script + Visual / Data / Raw results (shared context) |
+| **Policy** | `/workbench/policy` | Policies \| Suites mode tabs; editor + Visual/Data + tabbed Policy\|Evaluations (selection-sensitive) — see [`policy/workbench.md`](policy/workbench.md) |
+| **Composer** | `/workbench/composer` | Draft workspace: Visual/Text edit, Validate / Save / Create version / Clone |
 | **Schema** | `/workbench/model` | Browse and edit object/edge schemas |
 
-L0 header order: **Explorer · Objects · Query · Composer · Schema**.
+L0 header order: **Explorer · Objects · Query · Policy · Composer · Schema**.
 
 A **product tour** starts on first visit (`localStorage`: `objs.ui.workbench.tour.v2`). Replay from
 the header help icon. Steps follow nav order: shared graph context → each view’s chrome → Schema.
@@ -90,11 +103,9 @@ Objects (`/workbench/objects`) lists entities from the **shared graph context** 
 
 **Layout**
 
-1. Row 1 — **Objects** title + `GraphContextBar`
-2. Row 2 — exec stats (left); **Add selected to shelf**, **Remove selected from shelf**, **Clear
-   shelf**, **New graph from shelf** (right, `sm`)
-3. Row 3 — results grid (Query Data-style chrome, page size **25**, virtualize **>200** rows) +
-   vertical splitter + right pane
+1. Row 1 — quiet **Objects** title + **right-aligned** view actions (shelf). Shared context in header.
+2. Row 2 — results grid (Query Data-style chrome, fills height, page size control, virtualize
+   **>200** rows; **Type** column funnel) + vertical splitter + right pane
 
 **Right pane**
 
@@ -113,15 +124,13 @@ Explorer is **read-only** for the shared graph context.
 
 **Layout**
 
-1. Row 1 — **Explorer** title + `GraphContextBar` (Open ▾ Graph | Matcher | All; version pin in graph
-   mode)
-2. Row 2 — type **pills** (click to dim non-matching nodes; × clears); **Analyze cycles** when the
-   optional algorithm service is present (violet highlight on cycle regions; × clears); **Open in
-   Composer** (graph context) or **New graph from selection** (matcher/all); **Apply layout ▾**
-3. Row 3 — canvas (disabled above ~300 nodes) + splitter + **object inspect** pane
+1. Row 1 — quiet **Explorer** title + **right-aligned** view actions (**Analyze cycles**, Open in
+   Composer / New from selection). Shared `GraphContextBar` is in the **header**. **Apply layout**
+   is a hover-reveal toolbar on the canvas (top-right) and on canvas right-click — not on view actions.
+   **Filter** is a matching hover toolbar (top-left): Types, Edges (by role), Reset.
+2. Row 2 — canvas (disabled above ~300 nodes) + splitter + **object inspect** pane
 
-**Type pills** — filter highlight on canvas; non-selected types render dimmed (pills stay full
-opacity).
+**Type / edge filters** — Filter toolbar on the canvas; non-matching nodes/edges render dimmed.
 
 **Inspect** — node, edge, or empty canvas (graph header in graph mode). Sectioned **Object viewer**
 (Node / Payload / Annotations / Versions; entities also **Graphs** for live HEAD membership when
@@ -147,14 +156,16 @@ Query runs a **gremlin-lang** script against the **shared graph context**
 
 **Layout**
 
-1. Row 1 — **Query** title + `GraphContextBar`
-2. Row 2 — last **Exec** stats (left); **Open in Composer**, **Exec**, **Options** cog (right)
-3. Row 3 — script editor (Ctrl/Cmd+Enter) + horizontal splitter + result tabs
+1. Row 1 — quiet **Query** title + **right-aligned** view actions (stats, Open in Composer, **Exec ▾**
+   with Options in the split menu). Shared context in header.
+2. Row 2 — script editor (Ctrl/Cmd+Enter) + horizontal splitter + result tabs
 
 **Results** — **Visual** (graph canvas + in-tab object viewer; disabled above ~300 nodes), **Data**
-(Structured vertices/edges grids, page **25**), **Raw** (full JSON).
+(Structured vertices/edges grids fill height; page size Select 10/25/50/100; Vertices **Type** funnel
+shared with Visual Types; Edges **Type** = edge schema type, plus **Source Type** / **Target Type** /
+**Role** funnels), **Raw** (full JSON).
 
-**Options** popover — eval timeout only (`traversalOptions.timeoutSeconds`). No Matcher tab and no
+**Exec ▾ → Options** — eval timeout only (`traversalOptions.timeoutSeconds`). No Matcher tab and no
 right Options pane (removed in Note 6).
 
 **Open in Composer** — when the last result includes graph contents under the node cap, seeds a new
@@ -164,17 +175,17 @@ Script height: `objs.ui.query.topPaneHeight`. Default script: `objs.ui.query.scr
 
 ## Schemas
 
-Schemas is a single workbench for browsing and editing catalog types. Page chrome matches other views
-(Note 9): **Schema** title + context bar, then view actions at **`sm`**, then the type list and main
-workspace. Schema does **not** bind to shared graph context.
+Schemas is a single workbench for browsing and editing catalog types. Page chrome: quiet **Schema**
+title + **right-aligned** view actions (no context bar). Then the type list and main workspace.
+Schema does **not** bind to shared graph context.
 
 ### Full schema (overview)
 
 Opening **Schemas** without a type selected shows the catalog overview in the main pane:
 
-- context bar: **Schema catalog** with type / edge-rule counts;
-- view actions: **Apply layout** (with direction menu: TB / LR / BT / RL), **Export** (YAML seeding
+- view actions: **Export** (YAML seeding
   format, JSON Schema, or JSON Schema codegen), **Import**, and **Create ▾**;
+  **Apply layout** / **Fit to view** live on the Visual canvas (top-right hover toolbar + pane context menu);
 
 - ontology graph of all **ENTITY** object types and allow-list edges (wildcard `*` as one node);
 - **Visual** / **Text** tabs: Visual shows the ontology graph; Text is a read-only catalog export with
@@ -189,7 +200,7 @@ Opening **Schemas** without a type selected shows the catalog overview in the ma
 - click a type node (or a row in the type list) to open that type’s latest version;
 - nodes are draggable; positions and layout direction are kept in `localStorage`
   (`objs.ui.fullSchema.layout`) and restored on return (new types still use auto layout until moved);
-- **Apply layout** (with direction menu: TB / LR / BT / RL) re-runs automatic layout and clears
+- **Apply layout** (toolbar / context menu; direction: TB / LR / BT / RL) re-runs automatic layout and clears
   saved node positions;
 - **Export** menu downloads catalog seed YAML (`GET …/export?format=seeds`), full-catalog JSON Schema
   (`…?format=json-schema`), or POJO-ready JSON Schema (`…?format=json-schema-codegen`) using the
@@ -464,9 +475,11 @@ context — `ComposerGraphBar` matches the visual chrome only.
 
 **Layout**
 
-1. Row 1 — **Composer** title + `ComposerGraphBar` (**New ▾** Blank | Matcher, **Open**, stats)
-2. Row 2 — **Reset**, **Clear**, **Validate**, **Save**, **Create version**, **Clone** (`sm`)
-3. Row 3 — Visual / Text tabs + resizable side pane (`objs.ui.composer.sidePaneWidth`)
+1. Row 1 — quiet **Composer** title + **right-aligned** view actions (**New ▾** Blank \| Matcher,
+   Reset, Clear, Validate, Save, Create version, Clone). `ComposerGraphBar` (Open, `N/E:`,
+   `Annotations: N`) is in the **header**.
+2. Row 2 — Visual / Text tabs + resizable side pane (`objs.ui.composer.sidePaneWidth`). Visual canvas
+   has Apply layout / Fit to view (top-right hover toolbar + canvas context menu) and a filter toolbar (top-left).
 
 | Action | Behaviour |
 |--------|-----------|
@@ -499,7 +512,7 @@ Returning to Composer / Explorer with a persisted current graph id **reloads** t
 
 | Tab | Role |
 |-----|------|
-| **Visual** | React Flow canvas with resizable right side pane (edit form or Add objects); canvas toolbar create/draft actions + layout |
+| **Visual** | React Flow canvas with resizable right side pane (edit form or Add objects); L2 toolbar = Changes only + right-aligned draft actions (`compact-xs`); Apply layout / Fit on canvas overlay + context menu |
 | **Text** | YAML/JSON of the **mutation only** (kind-first `entities`/`edges` × `set`/`unset`). Unchanged baseline objects stay on Visual but are omitted from Text until edited, created, or deleted. |
 
 Invalid Text blocks switching to Visual; the last good draft is preserved.

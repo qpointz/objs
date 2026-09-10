@@ -5,6 +5,7 @@ import {
   useImperativeHandle,
   useMemo,
   useRef,
+  useState,
   type MouseEvent as ReactMouseEvent,
 } from 'react'
 import dagre from '@dagrejs/dagre'
@@ -23,8 +24,10 @@ import {
   type XYPosition,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
+import { Menu } from '@mantine/core'
 import { EntityCardNode, type EntityCardData } from './EntityCardNode'
 import { closestHandleIds, type NodeBox } from './graphEdgeHandles'
+import { GraphLayoutMenuItems, GraphLayoutToolbar, type GraphLayoutDirection } from './GraphLayoutToolbar'
 import type { GraphLink, GraphNode, GraphSelection } from './types'
 
 export type GraphNodePositions = Record<string, { x: number; y: number }>
@@ -52,12 +55,23 @@ type Props = {
   onNodeContextMenu?: (event: ReactMouseEvent, node: GraphNode) => void
   onEdgeContextMenu?: (event: ReactMouseEvent, edge: GraphLink) => void
   onPaneContextMenu?: (event: ReactMouseEvent | MouseEvent) => void
+  /**
+   * When set, show Note 4 layout toolbar. Parent should update `layout` state.
+   * Built-in pane context menu (Apply layout) appears only when [onPaneContextMenu] is unset;
+   * hosts with their own pane menu should include [GraphLayoutMenuItems] instead.
+   */
+  onLayoutChange?: (layout: GraphLayout) => void
+  /** Hide built-in layout toolbar (default false). */
+  hideLayoutToolbar?: boolean
 }
 
-export type GraphLayout = 'TB' | 'LR' | 'BT' | 'RL'
+export type GraphLayout = GraphLayoutDirection
+
 
 export type GraphCanvasHandle = {
   applyLayout: (layout?: GraphLayout) => void
+  /** Fit viewport to all nodes, or non-dimmed only when a filter is active. */
+  fitToView: () => void
   /** Pan/zoom so [nodeId] is centered in the viewport. */
   focusNode: (nodeId: string) => void
 }
@@ -319,10 +333,13 @@ function GraphCanvasInner(
     onNodeContextMenu,
     onEdgeContextMenu,
     onPaneContextMenu,
+    onLayoutChange,
+    hideLayoutToolbar = false,
   }: Props,
   ref: React.Ref<GraphCanvasHandle>,
 ) {
   const { fitView, setCenter, getZoom } = useReactFlow()
+  const [paneMenu, setPaneMenu] = useState<{ x: number; y: number } | null>(null)
   const initial = useMemo(
     () => toFlowElements(entities, links, selection),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -464,6 +481,21 @@ function GraphCanvasInner(
     [edges, emitPositions, fitView, layout, setEdges, setNodes],
   )
 
+  /** Fit viewport to all nodes, or only non-dimmed when a filter is active. */
+  const fitToView = useCallback(() => {
+    const curr = nodesRef.current
+    if (curr.length === 0) return
+    const hasDimmed = curr.some((n) => (n.data as EntityCardData).entity.dimmed === true)
+    const visible = hasDimmed
+      ? curr.filter((n) => (n.data as EntityCardData).entity.dimmed !== true)
+      : curr
+    fitView({
+      padding: 0.15,
+      duration: 400,
+      ...(hasDimmed && visible.length > 0 ? { nodes: visible } : {}),
+    })
+  }, [fitView])
+
   const refreshEdgeHandles = useCallback(
     (rfNodes: Node<EntityCardData>[]) => {
       setEdges((curr) => withClosestHandles(curr, rfNodes))
@@ -485,55 +517,129 @@ function GraphCanvasInner(
     [getZoom, setCenter],
   )
 
-  useImperativeHandle(ref, () => ({ applyLayout, focusNode }), [applyLayout, focusNode])
+  useImperativeHandle(ref, () => ({ applyLayout, fitToView, focusNode }), [
+    applyLayout,
+    fitToView,
+    focusNode,
+  ])
+
+  const showLayoutUi = !hideLayoutToolbar && onLayoutChange != null
+  const layoutDisabled = entities.length === 0
+
+  const handlePaneContextMenu = useCallback(
+    (event: ReactMouseEvent | MouseEvent) => {
+      event.preventDefault()
+      // Hosts with onPaneContextMenu own the menu (include GraphLayoutMenuItems there).
+      if (showLayoutUi && !layoutDisabled && onPaneContextMenu == null) {
+        setPaneMenu({ x: event.clientX, y: event.clientY })
+      }
+      onPaneContextMenu?.(event)
+    },
+    [layoutDisabled, onPaneContextMenu, showLayoutUi],
+  )
+
+  const handleLayoutChange = useCallback(
+    (next: GraphLayout) => {
+      onLayoutChange?.(next)
+      // Parent updates `layout` async; apply immediately with chosen direction.
+      applyLayout(next)
+    },
+    [applyLayout, onLayoutChange],
+  )
 
   return (
-    <ReactFlow
-      style={{ width: '100%', height: '100%' }}
-      nodes={nodes}
-      edges={edges}
-      onNodesChange={onNodesChange}
-      onEdgesChange={onEdgesChange}
-      nodeTypes={nodeTypes}
-      fitView
-      fitViewOptions={{ padding: 0.15 }}
-      minZoom={0.15}
-      maxZoom={1.5}
-      edgesFocusable
-      elementsSelectable
-      nodesDraggable
-      onNodeDrag={(_event, _node, dragged) => refreshEdgeHandles(dragged)}
-      onNodeDragStop={(_event, _node, dragged) => {
-        refreshEdgeHandles(dragged)
-        emitPositions(dragged)
-      }}
-      onNodeClick={(event, node) =>
-        onSelect(
-          { kind: 'node', node: (node.data as EntityCardData).entity },
-          { additive: event.ctrlKey || event.metaKey },
-        )
-      }
-      onEdgeClick={(_, edge) => {
-        const data = edge.data as EdgeData | undefined
-        if (data?.edge) onSelect({ kind: 'edge', edge: data.edge })
-      }}
-      onPaneClick={() => onSelect(null)}
-      onNodeContextMenu={(event, node) => {
-        event.preventDefault()
-        onNodeContextMenu?.(event, (node.data as EntityCardData).entity)
-      }}
-      onEdgeContextMenu={(event, edge) => {
-        event.preventDefault()
-        const data = edge.data as EdgeData | undefined
-        if (data?.edge) onEdgeContextMenu?.(event, data.edge)
-      }}
-      onPaneContextMenu={(event) => onPaneContextMenu?.(event)}
-      proOptions={{ hideAttribution: true }}
-    >
-      <Background gap={16} size={1} />
-      <Controls showInteractive={false} />
-      <MiniMap zoomable pannable />
-    </ReactFlow>
+    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+      <ReactFlow
+        style={{ width: '100%', height: '100%' }}
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        nodeTypes={nodeTypes}
+        fitView
+        fitViewOptions={{ padding: 0.15 }}
+        minZoom={0.15}
+        maxZoom={1.5}
+        edgesFocusable
+        elementsSelectable
+        nodesDraggable
+        onNodeDrag={(_event, _node, dragged) => refreshEdgeHandles(dragged)}
+        onNodeDragStop={(_event, _node, dragged) => {
+          refreshEdgeHandles(dragged)
+          emitPositions(dragged)
+        }}
+        onNodeClick={(event, node) =>
+          onSelect(
+            { kind: 'node', node: (node.data as EntityCardData).entity },
+            { additive: event.ctrlKey || event.metaKey },
+          )
+        }
+        onEdgeClick={(_, edge) => {
+          const data = edge.data as EdgeData | undefined
+          if (data?.edge) onSelect({ kind: 'edge', edge: data.edge })
+        }}
+        onPaneClick={() => onSelect(null)}
+        onNodeContextMenu={(event, node) => {
+          event.preventDefault()
+          onNodeContextMenu?.(event, (node.data as EntityCardData).entity)
+        }}
+        onEdgeContextMenu={(event, edge) => {
+          event.preventDefault()
+          const data = edge.data as EdgeData | undefined
+          if (data?.edge) onEdgeContextMenu?.(event, data.edge)
+        }}
+        onPaneContextMenu={handlePaneContextMenu}
+        proOptions={{ hideAttribution: true }}
+      >
+        <Background gap={16} size={1} />
+        <Controls showInteractive={false} />
+        <MiniMap zoomable pannable />
+      </ReactFlow>
+      {showLayoutUi && (
+        <GraphLayoutToolbar
+          layout={layout}
+          disabled={layoutDisabled}
+          onApply={() => applyLayout()}
+          onLayoutChange={handleLayoutChange}
+          onFitView={fitToView}
+        />
+      )}
+      {showLayoutUi && (
+        <Menu
+          opened={paneMenu != null}
+          onChange={(next) => {
+            if (!next) setPaneMenu(null)
+          }}
+          position="bottom-start"
+          offset={0}
+          withinPortal
+          shadow="md"
+        >
+          <Menu.Target>
+            <div
+              style={{
+                position: 'fixed',
+                left: paneMenu?.x ?? 0,
+                top: paneMenu?.y ?? 0,
+                width: 1,
+                height: 1,
+                pointerEvents: 'none',
+              }}
+            />
+          </Menu.Target>
+          <Menu.Dropdown>
+            <GraphLayoutMenuItems
+              layout={layout}
+              disabled={layoutDisabled}
+              onApply={() => applyLayout()}
+              onLayoutChange={handleLayoutChange}
+              onFitView={fitToView}
+              onDone={() => setPaneMenu(null)}
+            />
+          </Menu.Dropdown>
+        </Menu>
+      )}
+    </div>
   )
 }
 
@@ -541,7 +647,7 @@ const GraphCanvasForward = forwardRef(GraphCanvasInner)
 
 export const GraphCanvas = forwardRef<GraphCanvasHandle, Props>(function GraphCanvas(props, ref) {
   return (
-    <div style={{ width: '100%', height: '100%', minHeight: 0 }}>
+    <div style={{ width: '100%', height: '100%', minHeight: 0, position: 'relative' }}>
       <ReactFlowProvider>
         <GraphCanvasForward {...props} ref={ref} />
       </ReactFlowProvider>

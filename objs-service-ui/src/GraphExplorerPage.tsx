@@ -2,12 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as
 import {
   ActionIcon,
   Alert,
-  Badge,
   Box,
   Button,
   Group,
   Loader,
-  Menu,
   Paper,
   Stack,
   Text,
@@ -36,7 +34,7 @@ import {
   listSchemas,
   toGraphData,
 } from './api'
-import { GraphContextBar } from './GraphContextBar'
+import { useRegisterGraphContextBarExplorerHandlers } from './GraphContextBarBridge'
 import { useGraphContext } from './GraphContextProvider'
 import { EXPLORER_NODE_CAP } from './graphContextVersions'
 import { ObjectInspectPane } from './ObjectInspectPane'
@@ -51,10 +49,11 @@ import type {
   GraphNode,
   GraphSelection,
 } from './types'
-import { applyTypeHighlightDimming, toggleTypeInSet } from './typeHighlightDimming'
+import { applyGraphCanvasFilters, toggleTypeInSet, uniqueSortedRoles } from './graphFilterDimming'
+import { GraphFilterToolbar } from './GraphFilterToolbar'
 import { clamp, maxSidePaneWidth } from './sidePaneSplit'
 import { newGraphQueryId, useGraphSelectionHistory } from './useGraphSelectionHistory'
-import { VIEW_ACTION_BUTTON_SIZE } from './viewActionButtons'
+import { VIEW_ACTION_BUTTON_SIZE, VIEW_ACTION_VARIANT, VIEW_TITLE_PROPS } from './viewActionButtons'
 import {
   cycleAnalysisHighlights,
   supportsGenericCycleAnalysis,
@@ -68,13 +67,6 @@ const MIN_SIDE_WIDTH = 240
 const SPLITTER_WIDTH = 8
 
 type ExploreMode = 'graph' | 'selection'
-
-const GRAPH_LAYOUTS: { value: GraphLayout; label: string }[] = [
-  { value: 'TB', label: 'Top to bottom' },
-  { value: 'LR', label: 'Left to right' },
-  { value: 'BT', label: 'Bottom to top' },
-  { value: 'RL', label: 'Right to left' },
-]
 
 type StoredGraphSession = {
   nodes: GraphNode[]
@@ -195,6 +187,7 @@ export function GraphExplorerPage() {
   queryIdRef.current = queryId
 
   const [highlightedTypes, setHighlightedTypes] = useState<Set<string>>(() => new Set())
+  const [highlightedEdgeRoles, setHighlightedEdgeRoles] = useState<Set<string>>(() => new Set())
   const [schemas, setSchemas] = useState<BoMSchema[]>([])
   const [sideWidth, setSideWidth] = useState(loadSideWidth)
   const [algorithmCapabilities, setAlgorithmCapabilities] = useState<GraphAlgorithmCapabilities | null>(
@@ -434,8 +427,12 @@ export function GraphExplorerPage() {
   )
 
   const displayGraph = useMemo(
-    () => applyTypeHighlightDimming(nodesWithKinds, links, highlightedTypes),
-    [highlightedTypes, links, nodesWithKinds],
+    () =>
+      applyGraphCanvasFilters(nodesWithKinds, links, {
+        types: highlightedTypes,
+        edgeRoles: highlightedEdgeRoles,
+      }),
+    [highlightedEdgeRoles, highlightedTypes, links, nodesWithKinds],
   )
 
   const neighborIndex = useMemo(
@@ -447,6 +444,13 @@ export function GraphExplorerPage() {
     if (highlightedTypes.size === 0) return undefined
     return displayGraph.nodes.filter((n) => highlightedTypes.has(n.type)).map((n) => n.id)
   }, [highlightedTypes, displayGraph.nodes])
+
+  const edgeRoleOptions = useMemo(() => uniqueSortedRoles(links), [links])
+
+  const typeFilterOptions = useMemo(
+    () => types.map(([value, color]) => ({ value, label: value, color })),
+    [types],
+  )
 
   const cycleHighlights = useMemo(
     () => (cycleAnalysis ? cycleAnalysisHighlights(cycleAnalysis) : { nodeIds: [], edgeIds: [] }),
@@ -462,8 +466,9 @@ export function GraphExplorerPage() {
     !canvasOverCap &&
     context.kind !== 'empty'
 
-  const clearTypeHighlight = useCallback(() => {
+  const clearCanvasFilters = useCallback(() => {
     setHighlightedTypes((prev) => (prev.size === 0 ? prev : new Set()))
+    setHighlightedEdgeRoles((prev) => (prev.size === 0 ? prev : new Set()))
   }, [])
 
   async function onAnalyzeCycles() {
@@ -514,6 +519,10 @@ export function GraphExplorerPage() {
 
   function toggleTypeHighlight(type: string) {
     setHighlightedTypes((prev) => toggleTypeInSet(prev, type))
+  }
+
+  function toggleEdgeRoleHighlight(role: string) {
+    setHighlightedEdgeRoles((prev) => toggleTypeInSet(prev, role))
   }
 
   function persistSession(
@@ -590,6 +599,21 @@ export function GraphExplorerPage() {
     }
   }
 
+  function onGraphOpened(id: string, resolved: BoMGraphResponse) {
+    const graph = toGraphData(resolved.graph, schemas)
+    setNodes(graph.nodes)
+    setLinks(graph.links)
+    setHighlightedTypes(new Set())
+    clearCycleAnalysis()
+    clearStoredGraphSession()
+    const qid = beginQueryResult()
+    persistSession(graph.nodes, graph.links, layout, qid)
+    setCanvasEpoch((n) => n + 1)
+    loadedGraphIdRef.current = id
+  }
+
+  useRegisterGraphContextBarExplorerHandlers({ onMatcherApplied, onGraphOpened })
+
   function onOpenInComposer() {
     if (exploreMode !== 'graph' || !currentGraphId) return
     navigate('/composer', {
@@ -607,25 +631,6 @@ export function GraphExplorerPage() {
         graphContents: graphContentsFromGraphView(nodes, links),
       },
     })
-  }
-
-  function onGraphOpened(id: string, resolved: BoMGraphResponse) {
-    const graph = toGraphData(resolved.graph, schemas)
-    setNodes(graph.nodes)
-    setLinks(graph.links)
-    setHighlightedTypes(new Set())
-    clearCycleAnalysis()
-    clearStoredGraphSession()
-    const qid = beginQueryResult()
-    persistSession(graph.nodes, graph.links, layout, qid)
-    setCanvasEpoch((n) => n + 1)
-    loadedGraphIdRef.current = id
-  }
-
-  function changeLayout(next: GraphLayout) {
-    setLayout(next)
-    layoutRef.current = next
-    graphRef.current?.applyLayout(next)
   }
 
   function selectNodeFromCanvas(nodeId: string) {
@@ -658,70 +663,20 @@ export function GraphExplorerPage() {
 
   return (
     <Stack gap="sm" style={{ flex: 1, minHeight: 0 }}>
-      <Group align="center" wrap="nowrap" gap="md" style={{ flexShrink: 0 }}>
-        <Title order={3} style={{ flexShrink: 0 }}>
-          Explorer
-        </Title>
-        <Box style={{ flex: 1, minWidth: 0 }}>
-          <GraphContextBar onGraphOpened={onGraphOpened} onMatcherApplied={onMatcherApplied} />
-        </Box>
-      </Group>
-
-      <Group
-        align="flex-start"
-        wrap="nowrap"
-        gap="md"
-        style={{ flexShrink: 0 }}
-        data-tour="explorer-type-actions"
-      >
-        <Group gap="xs" wrap="wrap" style={{ flex: 1, minWidth: 0 }}>
-          {!error &&
-            canvasNonEmpty &&
-            types.map(([type, color]) => {
-              const active = highlightedTypes.has(type)
-              return (
-                <Badge
-                  key={type}
-                  variant={active ? 'filled' : 'outline'}
-                  color="gray"
-                  leftSection={
-                    active ? undefined : (
-                      <span style={{ color, lineHeight: 1, fontWeight: 700 }}>+</span>
-                    )
-                  }
-                  onClick={() => toggleTypeHighlight(type)}
-                  style={{
-                    cursor: 'pointer',
-                    background: active ? color : undefined,
-                    borderColor: color,
-                    color: active ? '#fff' : color,
-                    userSelect: 'none',
-                  }}
-                >
-                  {type}
-                </Badge>
-              )
-            })}
-          {!error && canvasNonEmpty && highlightedTypes.size > 0 && (
-            <Tooltip label="Clear type highlight" withArrow>
-              <ActionIcon
-                size="sm"
-                variant="subtle"
-                color="gray"
-                aria-label="Clear type highlight"
-                onClick={clearTypeHighlight}
-              >
-                <IconX size={14} />
-              </ActionIcon>
-            </Tooltip>
-          )}
-        </Group>
-        <Group gap={6} wrap="nowrap" data-tour="explorer-view-actions" style={{ flexShrink: 0 }}>
+      <Group align="center" wrap="nowrap" gap="sm" style={{ flexShrink: 0 }}>
+        <Title {...VIEW_TITLE_PROPS}>Explorer</Title>
+        <Group
+          gap={6}
+          wrap="nowrap"
+          data-tour="explorer-view-actions"
+          style={{ flex: 1, minWidth: 0, justifyContent: 'flex-end' }}
+          justify="flex-end"
+        >
           {canAnalyzeCycles && (
             <>
               <Button
                 size={VIEW_ACTION_BUTTON_SIZE}
-                variant="light"
+                variant={VIEW_ACTION_VARIANT}
                 color="violet"
                 loading={cycleAnalysisLoading}
                 onClick={onAnalyzeCycles}
@@ -746,7 +701,6 @@ export function GraphExplorerPage() {
           {exploreMode === 'graph' ? (
             <Button
               size={VIEW_ACTION_BUTTON_SIZE}
-              variant="light"
               disabled={!currentGraphId}
               onClick={onOpenInComposer}
             >
@@ -755,60 +709,12 @@ export function GraphExplorerPage() {
           ) : (
             <Button
               size={VIEW_ACTION_BUTTON_SIZE}
-              variant="light"
               disabled={!canvasNonEmpty}
               onClick={onNewGraphFromSelection}
             >
               New graph from selection
             </Button>
           )}
-          <Group gap={0}>
-            <Button
-              size={VIEW_ACTION_BUTTON_SIZE}
-              variant="light"
-              disabled={nodes.length === 0}
-              onClick={() => graphRef.current?.applyLayout()}
-              style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
-            >
-              Apply layout
-            </Button>
-            <Menu position="bottom-end" withinPortal>
-              <Menu.Target>
-                <Button
-                  size={VIEW_ACTION_BUTTON_SIZE}
-                  variant="light"
-                  disabled={nodes.length === 0}
-                  aria-label="Choose graph layout"
-                  px="xs"
-                  style={{
-                    borderTopLeftRadius: 0,
-                    borderBottomLeftRadius: 0,
-                    borderLeft: '1px solid var(--mantine-color-default-border)',
-                  }}
-                >
-                  ▾
-                </Button>
-              </Menu.Target>
-              <Menu.Dropdown>
-                <Menu.Label>Layout direction</Menu.Label>
-                {GRAPH_LAYOUTS.map((option) => (
-                  <Menu.Item
-                    key={option.value}
-                    onClick={() => {
-                      if (option.value === layout) {
-                        graphRef.current?.applyLayout()
-                      } else {
-                        changeLayout(option.value)
-                      }
-                    }}
-                  >
-                    {option.value === layout ? '✓ ' : ''}
-                    {option.label}
-                  </Menu.Item>
-                ))}
-              </Menu.Dropdown>
-            </Menu>
-          </Group>
         </Group>
       </Group>
 
@@ -870,22 +776,37 @@ export function GraphExplorerPage() {
               Open a graph or press Exec to load a selection.
             </Text>
           ) : !canvasOverCap ? (
-            <GraphCanvas
-              key={canvasEpoch}
-              ref={graphRef}
-              nodes={displayGraph.nodes}
-              links={displayGraph.links}
-              selection={selection}
-              onSelect={handleSelect}
-              onNodeContextMenu={onCanvasNodeContextMenu}
-              onEdgeContextMenu={onCanvasEdgeContextMenu}
-              layout={layout}
-              autoLayoutOnDataChange={false}
-              onPositionsChange={onPositionsChange}
-              highlightedNodeIds={typeHighlightNodeIds}
-              analysisHighlightedNodeIds={cycleHighlights.nodeIds}
-              analysisHighlightedEdgeIds={cycleHighlights.edgeIds}
-            />
+            <>
+              <GraphCanvas
+                key={canvasEpoch}
+                ref={graphRef}
+                nodes={displayGraph.nodes}
+                links={displayGraph.links}
+                selection={selection}
+                onSelect={handleSelect}
+                onNodeContextMenu={onCanvasNodeContextMenu}
+                onEdgeContextMenu={onCanvasEdgeContextMenu}
+                layout={layout}
+                onLayoutChange={(next) => {
+                  setLayout(next)
+                  layoutRef.current = next
+                }}
+                autoLayoutOnDataChange={false}
+                onPositionsChange={onPositionsChange}
+                highlightedNodeIds={typeHighlightNodeIds}
+                analysisHighlightedNodeIds={cycleHighlights.nodeIds}
+                analysisHighlightedEdgeIds={cycleHighlights.edgeIds}
+              />
+              <GraphFilterToolbar
+                types={typeFilterOptions}
+                selectedTypes={highlightedTypes}
+                onToggleType={toggleTypeHighlight}
+                edgeRoles={edgeRoleOptions}
+                selectedEdgeRoles={highlightedEdgeRoles}
+                onToggleEdgeRole={toggleEdgeRoleHighlight}
+                onReset={clearCanvasFilters}
+              />
+            </>
           ) : null}
           <GraphGoToContextMenu
             opened={goToMenu != null}

@@ -179,6 +179,7 @@ export const SyntaxCodeEditor = forwardRef<SyntaxCodeEditorHandle, SyntaxCodeEdi
         }}
       >
         <CodeMirror
+          key={language}
           ref={cmRef}
           value={value}
           height={editorHeight}

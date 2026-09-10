@@ -59,8 +59,10 @@ export type StructuredVertexRow = {
 export type StructuredEdgeRow = {
   id: string
   type: string
+  sourceType: string
   sourceName: string
   role: string
+  targetType: string
   targetName: string
   edge: BoMEdge
 }
@@ -76,14 +78,20 @@ export function structuredVertexRows(contents: BoMGraphContents): StructuredVert
 
 export function structuredEdgeRows(contents: BoMGraphContents): StructuredEdgeRow[] {
   const byId = new Map((contents.entities ?? []).map((e) => [e.id, e]))
-  return (contents.edges ?? []).map((edge, i) => ({
-    id: edge.id ?? `e-${edge.source}-${edge.target}-${edge.role}-${i}`,
-    type: edge.type ?? '—',
-    sourceName: endpointDisplayName(edge.source, byId),
-    role: edge.role,
-    targetName: endpointDisplayName(edge.target, byId),
-    edge,
-  }))
+  return (contents.edges ?? []).map((edge, i) => {
+    const source = byId.get(edge.source)
+    const target = byId.get(edge.target)
+    return {
+      id: edge.id ?? `e-${edge.source}-${edge.target}-${edge.role}-${i}`,
+      type: edge.type ?? '—',
+      sourceType: source?.type ?? '—',
+      sourceName: endpointDisplayName(edge.source, byId),
+      role: edge.role,
+      targetType: target?.type ?? '—',
+      targetName: endpointDisplayName(edge.target, byId),
+      edge,
+    }
+  })
 }
 
 export function hasOpenInComposerGraph(result: BoMGremlinResult | null): boolean {

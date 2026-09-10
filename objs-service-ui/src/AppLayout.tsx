@@ -1,4 +1,4 @@
-import { AppShell, ActionIcon, Group, Text, Tooltip, UnstyledButton, useMantineColorScheme } from '@mantine/core'
+import { AppShell, ActionIcon, Box, Group, Text, Tooltip, UnstyledButton, useMantineColorScheme } from '@mantine/core'
 import {
   IconAffiliate,
   IconBox,
@@ -13,8 +13,25 @@ import {
 } from '@tabler/icons-react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import type { ReactNode } from 'react'
+import { GraphContextBar } from './GraphContextBar'
+import {
+  GraphContextBarBridgeProvider,
+  useGraphContextBarBridge,
+} from './GraphContextBarBridge'
+import {
+  ComposerGraphBarHeaderProvider,
+  HeaderComposerGraphBar,
+} from './ComposerGraphBarSlot'
 import { GraphContextProvider } from './GraphContextProvider'
 import { useWorkbenchTour, WorkbenchTourProvider } from './WorkbenchTour'
+
+const SHARED_GRAPH_CONTEXT_ROUTES = ['/explorer', '/objects', '/query', '/policy'] as const
+
+function showsSharedGraphContext(pathname: string): boolean {
+  return SHARED_GRAPH_CONTEXT_ROUTES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  )
+}
 
 function HeaderNavLink({
   to,
@@ -89,10 +106,28 @@ function ColorSchemeToggle() {
   )
 }
 
+function HeaderGraphContextBar() {
+  const location = useLocation()
+  const { getHandlers } = useGraphContextBarBridge()
+  if (!showsSharedGraphContext(location.pathname)) return null
+  return (
+    <Box style={{ flexShrink: 0, maxWidth: 'min(720px, 48vw)' }}>
+      <GraphContextBar
+        onMatcherApplied={(contents, body) =>
+          getHandlers()?.onMatcherApplied?.(contents, body)
+        }
+        onGraphOpened={(graphId, resolved) => getHandlers()?.onGraphOpened?.(graphId, resolved)}
+      />
+    </Box>
+  )
+}
+
 export function AppLayout() {
   return (
     <WorkbenchTourProvider>
     <GraphContextProvider>
+    <GraphContextBarBridgeProvider>
+    <ComposerGraphBarHeaderProvider>
     <AppShell
       header={{ height: 56 }}
       padding="md"
@@ -108,8 +143,8 @@ export function AppLayout() {
       }}
     >
       <AppShell.Header>
-        <Group h="100%" px="md" justify="space-between" wrap="nowrap">
-          <Group gap={0} wrap="nowrap" style={{ flexShrink: 0 }}>
+        <Group h="100%" px="md" justify="space-between" wrap="nowrap" gap="md">
+          <Group gap={0} wrap="nowrap" style={{ flexShrink: 0, minWidth: 0 }}>
             <UnstyledButton
               component={Link}
               to="/"
@@ -180,7 +215,9 @@ export function AppLayout() {
             </Group>
           </Group>
 
-          <Group gap={4} wrap="nowrap">
+          <Group gap="sm" wrap="nowrap" style={{ flexShrink: 0 }} justify="flex-end">
+            <HeaderGraphContextBar />
+            <HeaderComposerGraphBar />
             <TourReplayButton />
             <ColorSchemeToggle />
           </Group>
@@ -202,6 +239,8 @@ export function AppLayout() {
         </div>
       </AppShell.Main>
     </AppShell>
+    </ComposerGraphBarHeaderProvider>
+    </GraphContextBarBridgeProvider>
     </GraphContextProvider>
     </WorkbenchTourProvider>
   )

@@ -45,8 +45,7 @@ import {
 } from './KeyValueRowsEditor'
 import { JsonYamlEditor, type JsonYamlEditorHandle } from './JsonYamlEditor'
 import { ObjectEdgesEditor } from './ObjectEdgesEditor'
-import { SchemaCatalogOverview, SCHEMA_CATALOG_LAYOUTS, type SchemaCatalogActionState, type SchemaCatalogOverviewHandle } from './SchemaCatalogOverview'
-import { SchemaContextBar } from './SchemaContextBar'
+import { SchemaCatalogOverview, type SchemaCatalogActionState, type SchemaCatalogOverviewHandle } from './SchemaCatalogOverview'
 import { parseSchemaExpertDocument, type SchemaExpertDocument } from './SchemaLinterPage'
 import {
   allowedEdgeKey,
@@ -61,7 +60,7 @@ import { SchemaVisualBuilder } from './SchemaVisualBuilder'
 import { emptyObjectSchema, type EditorFormat } from './schemaDsl'
 import { SyntaxCodeEditor } from './SyntaxCodeEditor'
 import { NewUuidButton } from './NewUuidButton'
-import { VIEW_ACTION_BUTTON_SIZE } from './viewActionButtons'
+import { VIEW_ACTION_BUTTON_SIZE, VIEW_ACTION_VARIANT, VIEW_TITLE_PROPS } from './viewActionButtons'
 import { clamp, maxSidePaneWidth } from './sidePaneSplit'
 import type {
   BoMAllowedEdgeRule,
@@ -790,10 +789,7 @@ export function SchemaExplorerPage() {
     }
   }
 
-  const schemaContextMode = isNewDraft ? 'new-draft' : selectedType ? 'detail' : 'catalog'
-  const detailKind = primaryKind(usage)
   const catalogIoBusy = catalogActionState.ioBusy || catalogActionState.catalogBusy
-  const latestTypeVersion = typeVersions.length > 0 ? latestVersion(typeVersions) : version
 
   const onSplitterPointerDown = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>) => {
@@ -841,93 +837,23 @@ export function SchemaExplorerPage() {
     return () => ro.disconnect()
   }, [])
 
-  function onSchemaVersionChange(nextVersion: string) {
-    if (!selectedType) return
-    if (createVersionMode && nextVersion === version) return
-    requestNavigate(schemaDetailPath(selectedType, nextVersion))
-  }
-
   return (
     <Stack gap="sm" style={{ flex: 1, minHeight: 0, height: '100%' }}>
-      <Group align="center" wrap="nowrap" gap="md" style={{ flexShrink: 0 }}>
-        <Title order={3} style={{ flexShrink: 0 }}>
-          Schema
-        </Title>
-        <Box style={{ flex: 1, minWidth: 0 }}>
-          <SchemaContextBar
-            mode={schemaContextMode}
-            typeName={typeName}
-            version={version}
-            kind={detailKind}
-            tags={schemaTags}
-            attributes={schemaAttributeRows}
-            typeCount={grouped.length}
-            edgeRuleCount={catalogActionState.edgeRuleCount}
-            unsaved={hasUnsavedChanges}
-            createVersionDraft={createVersionMode}
-            typeVersions={typeVersions}
-            latestTypeVersion={latestTypeVersion}
-            onVersionChange={
-              selectedType && !isNewDraft ? onSchemaVersionChange : undefined
-            }
-          />
-        </Box>
-      </Group>
-
-      <Group
-        justify="flex-end"
-        align="center"
-        wrap="wrap"
-        gap="xs"
-        style={{ flexShrink: 0 }}
-        data-tour="schema-view-actions"
-      >
+      <Group align="center" wrap="nowrap" gap="sm" style={{ flexShrink: 0 }}>
+        <Title {...VIEW_TITLE_PROPS}>Schema</Title>
+        <Group
+          justify="flex-end"
+          align="center"
+          wrap="wrap"
+          gap="xs"
+          style={{ flex: 1, minWidth: 0 }}
+          data-tour="schema-view-actions"
+        >
         {!selectedType && !isNewDraft && (
           <>
-            <Group gap={0}>
-              <Button
-                size={VIEW_ACTION_BUTTON_SIZE}
-                variant="light"
-                disabled={!catalogActionState.canApplyLayout}
-                onClick={() => catalogOverviewRef.current?.applyLayout()}
-                style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
-              >
-                Apply layout
-              </Button>
-              <Menu position="bottom-end" withinPortal>
-                <Menu.Target>
-                  <Button
-                    size={VIEW_ACTION_BUTTON_SIZE}
-                    variant="light"
-                    disabled={!catalogActionState.canApplyLayout}
-                    aria-label="Choose catalog layout"
-                    px="xs"
-                    style={{
-                      borderTopLeftRadius: 0,
-                      borderBottomLeftRadius: 0,
-                      borderLeft: '1px solid var(--mantine-color-default-border)',
-                    }}
-                  >
-                    ▾
-                  </Button>
-                </Menu.Target>
-                <Menu.Dropdown>
-                  <Menu.Label>Layout direction</Menu.Label>
-                  {SCHEMA_CATALOG_LAYOUTS.map((option) => (
-                    <Menu.Item
-                      key={option.value}
-                      onClick={() => catalogOverviewRef.current?.applyLayout(option.value)}
-                    >
-                      {option.value === catalogActionState.layout ? '✓ ' : ''}
-                      {option.label}
-                    </Menu.Item>
-                  ))}
-                </Menu.Dropdown>
-              </Menu>
-            </Group>
             <Menu position="bottom-end">
               <Menu.Target>
-                <Button size={VIEW_ACTION_BUTTON_SIZE} variant="light" loading={catalogIoBusy}>
+                <Button size={VIEW_ACTION_BUTTON_SIZE} variant={VIEW_ACTION_VARIANT} loading={catalogIoBusy}>
                   Export
                 </Button>
               </Menu.Target>
@@ -963,7 +889,7 @@ export function SchemaExplorerPage() {
         {selectedType && !isNewDraft && (
           <>
             {!createVersionMode && (
-              <Button size={VIEW_ACTION_BUTTON_SIZE} variant="light" onClick={onStartCreateVersion}>
+              <Button size={VIEW_ACTION_BUTTON_SIZE} variant={VIEW_ACTION_VARIANT} onClick={onStartCreateVersion}>
                 Create version
               </Button>
             )}
@@ -990,7 +916,7 @@ export function SchemaExplorerPage() {
                     <Group gap={0}>
                       <Button
                         size={VIEW_ACTION_BUTTON_SIZE}
-                        variant="light"
+                        variant={VIEW_ACTION_VARIANT}
                         color="red"
                         component="span"
                         style={{
@@ -1003,7 +929,7 @@ export function SchemaExplorerPage() {
                       </Button>
                       <Button
                         size={VIEW_ACTION_BUTTON_SIZE}
-                        variant="light"
+                        variant={VIEW_ACTION_VARIANT}
                         color="red"
                         component="span"
                         px="xs"
@@ -1046,7 +972,7 @@ export function SchemaExplorerPage() {
                 <Badge color="yellow" variant="filled">
                   Unsaved changes
                 </Badge>
-                <Button size={VIEW_ACTION_BUTTON_SIZE} variant="subtle" onClick={rollbackUnsaved}>
+                <Button size={VIEW_ACTION_BUTTON_SIZE} variant={VIEW_ACTION_VARIANT} onClick={rollbackUnsaved}>
                   Rollback
                 </Button>
               </>
@@ -1105,6 +1031,7 @@ export function SchemaExplorerPage() {
             <Menu.Item onClick={() => requestNavigate(schemaCreatePath('edge'))}>Edge</Menu.Item>
           </Menu.Dropdown>
         </Menu>
+        </Group>
       </Group>
 
       <Group

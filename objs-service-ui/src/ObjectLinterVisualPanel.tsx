@@ -10,7 +10,6 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from 'react'
 import {
-  ActionIcon,
   Alert,
   Anchor,
   Badge,
@@ -30,7 +29,6 @@ import {
   Text,
   Tooltip,
 } from '@mantine/core'
-import { IconX } from '@tabler/icons-react'
 import {
   GraphGoToMenuItems,
   buildGraphNeighborIndex,
@@ -60,7 +58,8 @@ import {
 } from './SchemaInstanceForm'
 import { projectIdentityPaths } from './identityProjection'
 import { clamp, maxSidePaneWidth } from './sidePaneSplit'
-import { applyTypeHighlightDimming, toggleTypeInSet } from './typeHighlightDimming'
+import { applyGraphCanvasFilters, toggleTypeInSet, uniqueSortedRoles } from './graphFilterDimming'
+import { GraphFilterToolbar } from './GraphFilterToolbar'
 import type {
   BoMAllowedEdgeRule,
   BoMEdge,
@@ -70,13 +69,11 @@ import type {
   GraphNode,
   GraphSelection,
 } from './types'
+import { GraphLayoutMenuItems } from './GraphLayoutToolbar'
+import { VIEW_ACTION_VARIANT } from './viewActionButtons'
 
-const GRAPH_LAYOUTS: { value: GraphLayout; label: string }[] = [
-  { value: 'TB', label: 'Top to bottom' },
-  { value: 'BT', label: 'Bottom to top' },
-  { value: 'LR', label: 'Left to right' },
-  { value: 'RL', label: 'Right to left' },
-]
+/** Composer Visual L2 toolbar — one step under title-row `xs` (Note 8). */
+const CANVAS_ACTION_SIZE = 'compact-xs' as const
 
 const SIDE_PANE_WIDTH_KEY = 'objs.ui.composer.sidePaneWidth'
 const DEFAULT_SIDE_PANE_WIDTH = 360
@@ -270,6 +267,7 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
   const liveDocument = draftState.document
   const [changesOnly, setChangesOnly] = useState(false)
   const [highlightedTypes, setHighlightedTypes] = useState<Set<string>>(() => new Set())
+  const [highlightedEdgeRoles, setHighlightedEdgeRoles] = useState<Set<string>>(() => new Set())
   const graphRef = useRef<GraphCanvasHandle>(null)
   const splitHostRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<{ startX: number; startWidth: number } | null>(null)
@@ -360,19 +358,31 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
   }, [graphView.nodes])
   const displayGraph = useMemo(() => {
     const withChanges = applyChangesOnlyDimming(graphView.nodes, graphView.links, changesOnly)
-    return applyTypeHighlightDimming(withChanges.nodes, withChanges.links, highlightedTypes, {
-      compose: true,
-    })
-  }, [changesOnly, graphView, highlightedTypes])
+    return applyGraphCanvasFilters(
+      withChanges.nodes,
+      withChanges.links,
+      { types: highlightedTypes, edgeRoles: highlightedEdgeRoles },
+      { compose: true },
+    )
+  }, [changesOnly, graphView, highlightedEdgeRoles, highlightedTypes])
   const neighborIndex = useMemo(
     () => buildGraphNeighborIndex(displayGraph.nodes, displayGraph.links),
     [displayGraph],
   )
-  const clearTypeHighlight = useCallback(() => {
+  const edgeRoleOptions = useMemo(() => uniqueSortedRoles(graphView.links), [graphView.links])
+  const typeFilterOptions = useMemo(
+    () => types.map(([value, color]) => ({ value, label: value, color })),
+    [types],
+  )
+  const clearCanvasFilters = useCallback(() => {
     setHighlightedTypes((prev) => (prev.size === 0 ? prev : new Set()))
+    setHighlightedEdgeRoles((prev) => (prev.size === 0 ? prev : new Set()))
   }, [])
   const toggleTypeHighlight = useCallback((type: string) => {
     setHighlightedTypes((prev) => toggleTypeInSet(prev, type))
+  }, [])
+  const toggleEdgeRoleHighlight = useCallback((role: string) => {
+    setHighlightedEdgeRoles((prev) => toggleTypeInSet(prev, role))
   }, [])
   const [addOpen, setAddOpen] = useState(false)
   const [linkOpen, setLinkOpen] = useState(false)
@@ -437,15 +447,13 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
   useEffect(() => {
     if (prevSelectionKeyRef.current === selectionKey) return
     prevSelectionKeyRef.current = selectionKey
-    clearTypeHighlight()
-  }, [clearTypeHighlight, selectionKey])
+  }, [selectionKey])
 
   const pairIdsRef = useRef(pairIds)
   pairIdsRef.current = pairIds
 
   const handleSelect = useCallback(
     (sel: GraphSelection | null, meta?: { additive?: boolean }) => {
-      clearTypeHighlight()
       if (!sel) {
         setPairIds([])
         onSelect(null)
@@ -467,16 +475,15 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
         onSelect(sel)
       }
     },
-    [clearTypeHighlight, document.entities, onSelect],
+    [document.entities, onSelect],
   )
 
   const selectEntityAlone = useCallback(
     (entity: BoMEntity) => {
-      clearTypeHighlight()
       setPairIds([entity.id])
       onSelect({ kind: 'node', node: entityToGraphNode(entity) })
     },
-    [clearTypeHighlight, onSelect],
+    [onSelect],
   )
 
   const selectAndFocusEntity = useCallback(
@@ -774,7 +781,6 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
 
   const onCanvasEdgeContextMenu = useCallback(
     (event: ReactMouseEvent, edge: GraphLink) => {
-      clearTypeHighlight()
       setPairIds([])
       onSelect({ kind: 'edge', edge })
       openCanvasMenuAt(event, {
@@ -784,7 +790,7 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
         goTo: { kind: 'edge', sourceId: edge.source, targetId: edge.target },
       })
     },
-    [clearTypeHighlight, onSelect, openCanvasMenuAt],
+    [onSelect, openCanvasMenuAt],
   )
 
   const onCanvasPaneContextMenu = useCallback(
@@ -1008,243 +1014,149 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
 
   return (
     <Stack gap="sm" style={{ flex: 1, minHeight: 0, height: '100%' }}>
-      <Group justify="space-between" align="center" wrap="wrap" style={{ flexShrink: 0 }}>
-        <Group gap="xs" wrap="wrap">
-        <Group gap={0} wrap="nowrap" style={{ display: 'inline-flex' }}>
-          <Button
-            size="xs"
-            onClick={() => setAddOpen(true)}
-            style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
-          >
-            New
-          </Button>
-          <Menu shadow="md" width={180} position="bottom-end" withinPortal>
-            <Menu.Target>
-              <Button
-                size="xs"
-                aria-label="New options"
-                px="xs"
-                style={{
-                  borderTopLeftRadius: 0,
-                  borderBottomLeftRadius: 0,
-                  borderLeft: '1px solid var(--mantine-color-default-border)',
-                }}
-              >
-                ▾
-              </Button>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Item onClick={() => setAddOpen(true)}>New</Menu.Item>
-              <Menu.Item
-                disabled={!canNewLinked}
-                title={newLinkedTooltip}
-                onClick={() => void openLink()}
-              >
-                New linked
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
-        </Group>
-        <Tooltip label={linkTooltip} disabled={!linkTooltip} withArrow>
-          <span style={{ display: 'inline-flex' }}>
-            <Button
-              size="xs"
-              variant="light"
-              disabled={!canLink}
-              onClick={() => void openConnect()}
-            >
-              Link
-            </Button>
-          </span>
-        </Tooltip>
-        {onToggleAddObjects && (
-          <Button size="xs" variant="light" onClick={onToggleAddObjects}>
-            {addObjectsOpen ? 'Hide add objects' : 'Add objects…'}
-          </Button>
-        )}
-        <Button
-          size="xs"
-          variant="light"
-          disabled={!canExcludeFromDraft}
-          onClick={excludeSelection}
-        >
-          Remove from draft
-        </Button>
-        <Button
-          size="xs"
-          variant="light"
-          color="red"
-          disabled={pairIds.length === 0 && !selectedEdge}
-          onClick={deleteSelection}
-        >
-          Delete
-        </Button>
-        <Menu shadow="md" width={180} position="bottom-end" withinPortal>
-          <Menu.Target>
-            <Group gap={0} wrap="nowrap" style={{ display: 'inline-flex' }}>
-              <Button
-                size="xs"
-                variant="light"
-                disabled={!annotationsMenuEnabled}
-                style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
-              >
-                Annotations
-              </Button>
-              <Button
-                size="xs"
-                variant="light"
-                disabled={!annotationsMenuEnabled}
-                aria-label="Annotation actions"
-                px="xs"
-                style={{
-                  borderTopLeftRadius: 0,
-                  borderBottomLeftRadius: 0,
-                  borderLeft: '1px solid var(--mantine-color-default-border)',
-                }}
-              >
-                ▾
-              </Button>
-            </Group>
-          </Menu.Target>
-          <Menu.Dropdown>
-            <Menu.Item
-              disabled={!annotationsMenuEnabled}
-              onClick={copySelectedAnnotations}
-            >
-              Copy
-            </Menu.Item>
-            <Menu.Item
-              disabled={!annotationPasteEnabled}
-              onClick={pasteSelectedAnnotations}
-            >
-              Paste
-            </Menu.Item>
-            <Menu.Item
-              disabled={!annotationPasteEnabled}
-              onClick={pasteMergeSelectedAnnotations}
-            >
-              Paste Merge
-            </Menu.Item>
-          </Menu.Dropdown>
-        </Menu>
-        <Group gap={0}>
-          <Button
-            size="xs"
-            variant="light"
-            disabled={displayGraph.nodes.length === 0}
-            onClick={() => graphRef.current?.applyLayout(layout)}
-            style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
-          >
-            Apply layout
-          </Button>
-          <Menu position="bottom-end" withinPortal>
-            <Menu.Target>
-              <Button
-                size="xs"
-                variant="light"
-                disabled={displayGraph.nodes.length === 0}
-                aria-label="Choose graph layout"
-                px="xs"
-                style={{
-                  borderTopLeftRadius: 0,
-                  borderBottomLeftRadius: 0,
-                  borderLeft: '1px solid var(--mantine-color-default-border)',
-                }}
-              >
-                ▾
-              </Button>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Label>Layout direction</Menu.Label>
-              {GRAPH_LAYOUTS.map((option) => (
-                <Menu.Item
-                  key={option.value}
-                  onClick={() => {
-                    setLayout(option.value)
-                    if (option.value === layout) {
-                      graphRef.current?.applyLayout(option.value)
-                    } else {
-                      requestAnimationFrame(() => graphRef.current?.applyLayout(option.value))
-                    }
-                  }}
-                >
-                  {option.value === layout ? '✓ ' : ''}
-                  {option.label}
-                </Menu.Item>
-              ))}
-            </Menu.Dropdown>
-          </Menu>
-        </Group>
-        {pairIds.length === 2 && (
-          <Text size="xs" c="dimmed">
-            2 selected (Ctrl+click to adjust)
-          </Text>
-        )}
-        </Group>
-        <Group gap="xs" wrap="wrap" align="center" style={{ flexShrink: 0 }}>
-          <Badge variant="light" size="sm">
-            {document.entities.length} on canvas
-          </Badge>
+      <Group justify="flex-end" align="center" wrap="wrap" gap="sm" style={{ flexShrink: 0 }}>
+        <Group gap="xs" wrap="wrap" align="center" style={{ marginRight: 'auto' }}>
           {addObjectsStats != null && (
             <Badge variant="outline" size="sm">
               last search {addObjectsStats.nodes} nodes
             </Badge>
           )}
-          <Switch
-            size="xs"
-            label="Changes only"
-            checked={changesOnly}
-            onChange={(e) => setChangesOnly(e.currentTarget.checked)}
-          />
-        </Group>
-      </Group>
-
-      {graphView.nodes.length > 0 && (
-        <Group gap="xs" wrap="wrap">
-          <Text size="xs" c="dimmed">
-            {graphView.nodes.length} nodes / {graphView.links.length} edges
-          </Text>
-          {types.map(([type, color]) => {
-            const active = highlightedTypes.has(type)
-            const filtering = highlightedTypes.size > 0
-            return (
-              <Badge
-                key={type}
-                size="sm"
-                variant={active ? 'filled' : 'outline'}
-                color="gray"
-                leftSection={
-                  <span style={{ color: active ? '#fff' : color, lineHeight: 1 }}>●</span>
-                }
-                onClick={() => toggleTypeHighlight(type)}
-                style={{
-                  cursor: 'pointer',
-                  background: active ? color : undefined,
-                  borderColor: color,
-                  color: active ? '#fff' : undefined,
-                  opacity: filtering && !active ? 0.45 : 1,
-                  userSelect: 'none',
-                }}
-              >
-                {type}
-              </Badge>
-            )
-          })}
-          {highlightedTypes.size > 0 && (
-            <Tooltip label="Clear type highlight" withArrow>
-              <ActionIcon
-                size="sm"
-                variant="subtle"
-                color="gray"
-                aria-label="Clear type highlight"
-                onClick={clearTypeHighlight}
-              >
-                <IconX size={14} />
-              </ActionIcon>
-            </Tooltip>
+          {pairIds.length === 2 && (
+            <Text size="xs" c="dimmed">
+              2 selected (Ctrl+click to adjust)
+            </Text>
           )}
         </Group>
-      )}
+        <Switch
+          size="xs"
+          label="Changes only"
+          checked={changesOnly}
+          onChange={(e) => setChangesOnly(e.currentTarget.checked)}
+        />
+        <Group gap="xs" wrap="wrap" justify="flex-end">
+          <Group gap={0} wrap="nowrap" style={{ display: 'inline-flex' }}>
+            <Button
+              size={CANVAS_ACTION_SIZE}
+              onClick={() => setAddOpen(true)}
+              style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
+            >
+              New
+            </Button>
+            <Menu shadow="md" width={180} position="bottom-end" withinPortal>
+              <Menu.Target>
+                <Button
+                  size={CANVAS_ACTION_SIZE}
+                  aria-label="New options"
+                  px="xs"
+                  style={{
+                    borderTopLeftRadius: 0,
+                    borderBottomLeftRadius: 0,
+                    borderLeft: '1px solid var(--mantine-color-default-border)',
+                  }}
+                >
+                  ▾
+                </Button>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item onClick={() => setAddOpen(true)}>New</Menu.Item>
+                <Menu.Item
+                  disabled={!canNewLinked}
+                  title={newLinkedTooltip}
+                  onClick={() => void openLink()}
+                >
+                  New linked
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+          </Group>
+          <Tooltip label={linkTooltip} disabled={!linkTooltip} withArrow>
+            <span style={{ display: 'inline-flex' }}>
+              <Button
+                size={CANVAS_ACTION_SIZE}
+                variant={VIEW_ACTION_VARIANT}
+                disabled={!canLink}
+                onClick={() => void openConnect()}
+              >
+                Link
+              </Button>
+            </span>
+          </Tooltip>
+          {onToggleAddObjects && (
+            <Button
+              size={CANVAS_ACTION_SIZE}
+              variant={VIEW_ACTION_VARIANT}
+              onClick={onToggleAddObjects}
+            >
+              {addObjectsOpen ? 'Hide add objects' : 'Add objects…'}
+            </Button>
+          )}
+          <Button
+            size={CANVAS_ACTION_SIZE}
+            variant={VIEW_ACTION_VARIANT}
+            disabled={!canExcludeFromDraft}
+            onClick={excludeSelection}
+          >
+            Remove from draft
+          </Button>
+          <Button
+            size={CANVAS_ACTION_SIZE}
+            variant={VIEW_ACTION_VARIANT}
+            color="red"
+            disabled={pairIds.length === 0 && !selectedEdge}
+            onClick={deleteSelection}
+          >
+            Delete
+          </Button>
+          <Menu shadow="md" width={180} position="bottom-end" withinPortal>
+            <Menu.Target>
+              <Group gap={0} wrap="nowrap" style={{ display: 'inline-flex' }}>
+                <Button
+                  size={CANVAS_ACTION_SIZE}
+                  variant={VIEW_ACTION_VARIANT}
+                  disabled={!annotationsMenuEnabled}
+                  style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
+                >
+                  Annotations
+                </Button>
+                <Button
+                  size={CANVAS_ACTION_SIZE}
+                  variant={VIEW_ACTION_VARIANT}
+                  disabled={!annotationsMenuEnabled}
+                  aria-label="Annotation actions"
+                  px="xs"
+                  style={{
+                    borderTopLeftRadius: 0,
+                    borderBottomLeftRadius: 0,
+                    borderLeft: '1px solid var(--mantine-color-default-border)',
+                  }}
+                >
+                  ▾
+                </Button>
+              </Group>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Item
+                disabled={!annotationsMenuEnabled}
+                onClick={copySelectedAnnotations}
+              >
+                Copy
+              </Menu.Item>
+              <Menu.Item
+                disabled={!annotationPasteEnabled}
+                onClick={pasteSelectedAnnotations}
+              >
+                Paste
+              </Menu.Item>
+              <Menu.Item
+                disabled={!annotationPasteEnabled}
+                onClick={pasteMergeSelectedAnnotations}
+              >
+                Paste Merge
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
+        </Group>
+      </Group>
 
       {schemasError && (
         <Alert color="red" title="Cannot load schemas">
@@ -1291,19 +1203,31 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
               </Text>
             </Stack>
           ) : displayGraph.nodes.length === 0 ? null : (
-            <GraphCanvas
-              ref={graphRef}
-              nodes={displayGraph.nodes}
-              links={displayGraph.links}
-              selection={selection}
-              onSelect={handleSelect}
-              layout={layout}
-              autoLayoutOnDataChange={false}
-              highlightedNodeIds={pairIds}
-              onNodeContextMenu={onCanvasNodeContextMenu}
-              onEdgeContextMenu={onCanvasEdgeContextMenu}
-              onPaneContextMenu={onCanvasPaneContextMenu}
-            />
+            <>
+              <GraphCanvas
+                ref={graphRef}
+                nodes={displayGraph.nodes}
+                links={displayGraph.links}
+                selection={selection}
+                onSelect={handleSelect}
+                layout={layout}
+                onLayoutChange={setLayout}
+                autoLayoutOnDataChange={false}
+                highlightedNodeIds={pairIds}
+                onNodeContextMenu={onCanvasNodeContextMenu}
+                onEdgeContextMenu={onCanvasEdgeContextMenu}
+                onPaneContextMenu={onCanvasPaneContextMenu}
+              />
+              <GraphFilterToolbar
+                types={typeFilterOptions}
+                selectedTypes={highlightedTypes}
+                onToggleType={toggleTypeHighlight}
+                edgeRoles={edgeRoleOptions}
+                selectedEdgeRoles={highlightedEdgeRoles}
+                onToggleEdgeRole={toggleEdgeRoleHighlight}
+                onReset={clearCanvasFilters}
+              />
+            </>
           )}
         </Paper>
 
@@ -1444,14 +1368,16 @@ export const ObjectLinterVisualPanel = forwardRef<ObjectLinterVisualPanelHandle,
             {displayGraph.nodes.length > 0 && (
               <>
                 <Menu.Divider />
-                <Menu.Item
-                  onClick={() => {
-                    closeCanvasMenu()
-                    graphRef.current?.applyLayout(layout)
+                <GraphLayoutMenuItems
+                  layout={layout}
+                  onApply={() => graphRef.current?.applyLayout(layout)}
+                  onLayoutChange={(next) => {
+                    setLayout(next)
+                    requestAnimationFrame(() => graphRef.current?.applyLayout(next))
                   }}
-                >
-                  Apply layout
-                </Menu.Item>
+                  onFitView={() => graphRef.current?.fitToView()}
+                  onDone={closeCanvasMenu}
+                />
               </>
             )}
             {canvasMenu?.goTo && graphGoToAvailable(neighborIndex, canvasMenu.goTo) && (

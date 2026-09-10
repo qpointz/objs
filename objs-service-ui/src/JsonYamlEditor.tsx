@@ -4,6 +4,10 @@ import { Button, Group, SegmentedControl, Stack, Text } from '@mantine/core'
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml'
 import { SyntaxCodeEditor } from './SyntaxCodeEditor'
 import type { EditorFormat } from './schemaDsl'
+import { VIEW_ACTION_VARIANT } from './viewActionButtons'
+
+/** Match Composer Visual L2 toolbar (Note 8 / Text mode parity). */
+const EDITOR_ACTION_SIZE = 'compact-xs' as const
 
 function normalizeParsedForWire(parsed: unknown, sourceFormat: EditorFormat): unknown {
   if (sourceFormat !== 'yaml') return parsed
@@ -142,10 +146,7 @@ export const JsonYamlEditor = forwardRef<JsonYamlEditorHandle, JsonYamlEditorPro
         }}
       >
         {showToolbar && (
-          <Group
-            justify={hideFormatToggle ? 'flex-end' : 'space-between'}
-            style={{ flexShrink: 0 }}
-          >
+          <Group justify="flex-end" align="center" wrap="wrap" gap="xs" style={{ flexShrink: 0 }}>
             {!hideFormatToggle && (
               <SegmentedControl
                 size="xs"
@@ -157,15 +158,13 @@ export const JsonYamlEditor = forwardRef<JsonYamlEditorHandle, JsonYamlEditorPro
                 ]}
               />
             )}
-            <Group gap="xs">
-              <Button size="xs" variant="light" onClick={formatDocument}>
-                Format
-              </Button>
-              <Button size="xs" variant="subtle" onClick={rollback}>
-                Rollback
-              </Button>
-              {extraActions}
-            </Group>
+            <Button size={EDITOR_ACTION_SIZE} onClick={formatDocument}>
+              Format
+            </Button>
+            <Button size={EDITOR_ACTION_SIZE} variant={VIEW_ACTION_VARIANT} onClick={rollback}>
+              Rollback
+            </Button>
+            {extraActions}
           </Group>
         )}
         {parseError && (

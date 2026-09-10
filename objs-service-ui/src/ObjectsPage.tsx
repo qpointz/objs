@@ -17,7 +17,6 @@ import {
 import { IconTrash } from '@tabler/icons-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { listSchemas, queryAddObjects } from './api'
-import { GraphContextBar } from './GraphContextBar'
 import { useGraphContext } from './GraphContextProvider'
 import {
   MatcherQueryForm,
@@ -34,7 +33,7 @@ import { formatQueryExecStats, type QueryExecStats } from './queryExecStats'
 import { clamp, maxSidePaneWidth } from './sidePaneSplit'
 import type { BoMEntity, BoMSchema, GraphNode, GraphSelection } from './types'
 import { shelfToComposerNavState, useObjectShelf } from './useObjectShelf'
-import { VIEW_ACTION_BUTTON_SIZE } from './viewActionButtons'
+import { VIEW_ACTION_BUTTON_SIZE, VIEW_ACTION_VARIANT, VIEW_TITLE_PROPS } from './viewActionButtons'
 
 const SIDE_PANE_WIDTH_KEY = 'objs.ui.objects.sidePaneWidth'
 const DEFAULT_SIDE_WIDTH = 320
@@ -286,60 +285,55 @@ export function ObjectsPage() {
 
   return (
     <Stack gap="sm" style={{ flex: 1, minHeight: 0, height: '100%' }}>
-      <Group align="center" wrap="nowrap" gap="md" style={{ flexShrink: 0 }}>
-        <Title order={3} style={{ flexShrink: 0 }}>
-          Objects
-        </Title>
-        <Box style={{ flex: 1, minWidth: 0 }}>
-          <GraphContextBar />
-        </Box>
-      </Group>
-
-      <Group
-        justify="space-between"
-        align="center"
-        wrap="wrap"
-        style={{ flexShrink: 0 }}
-        gap="xs"
-        data-tour="objects-view-actions"
-      >
-        <Text size="xs" c="dimmed" style={{ alignSelf: 'center' }}>
-          {stats != null ? formatObjectsStats(results.length, stats) : '\u00a0'}
-        </Text>
-        <Group gap="xs" wrap="nowrap">
-          <Button
-            size={VIEW_ACTION_BUTTON_SIZE}
-            variant="default"
-            disabled={!canAddSelected}
-            onClick={addSelectedToShelf}
-          >
-            Add selected to shelf
-          </Button>
-          <Button
-            size={VIEW_ACTION_BUTTON_SIZE}
-            variant="default"
-            disabled={!canRemoveSelected}
-            onClick={removeSelectedFromShelf}
-          >
-            Remove selected from shelf
-          </Button>
-          <Button
-            size={VIEW_ACTION_BUTTON_SIZE}
-            variant="default"
-            disabled={shelfCount === 0}
-            onClick={() => shelf.clear()}
-            data-tour="objects-clear-shelf"
-          >
-            Clear shelf
-          </Button>
-          <Button
-            size={VIEW_ACTION_BUTTON_SIZE}
-            disabled={shelfCount === 0}
-            onClick={onNewGraphFromShelf}
-            data-tour="objects-new-graph"
-          >
-            New graph from shelf
-          </Button>
+      <Group align="center" wrap="nowrap" gap="sm" style={{ flexShrink: 0 }}>
+        <Title {...VIEW_TITLE_PROPS}>Objects</Title>
+        <Group
+          justify="flex-end"
+          align="center"
+          wrap="wrap"
+          style={{ flex: 1, minWidth: 0 }}
+          gap="xs"
+          data-tour="objects-view-actions"
+        >
+          <Box style={{ flex: 1, minWidth: 0 }} aria-hidden />
+          <Text size="xs" c="dimmed" style={{ alignSelf: 'center' }}>
+            {stats != null ? formatObjectsStats(results.length, stats) : '\u00a0'}
+          </Text>
+          <Group gap="xs" wrap="nowrap">
+            <Button
+              size={VIEW_ACTION_BUTTON_SIZE}
+              variant={VIEW_ACTION_VARIANT}
+              disabled={!canAddSelected}
+              onClick={addSelectedToShelf}
+            >
+              Add selected to shelf
+            </Button>
+            <Button
+              size={VIEW_ACTION_BUTTON_SIZE}
+              variant={VIEW_ACTION_VARIANT}
+              disabled={!canRemoveSelected}
+              onClick={removeSelectedFromShelf}
+            >
+              Remove selected from shelf
+            </Button>
+            <Button
+              size={VIEW_ACTION_BUTTON_SIZE}
+              variant={VIEW_ACTION_VARIANT}
+              disabled={shelfCount === 0}
+              onClick={() => shelf.clear()}
+              data-tour="objects-clear-shelf"
+            >
+              Clear shelf
+            </Button>
+            <Button
+              size={VIEW_ACTION_BUTTON_SIZE}
+              disabled={shelfCount === 0}
+              onClick={onNewGraphFromShelf}
+              data-tour="objects-new-graph"
+            >
+              New graph from shelf
+            </Button>
+          </Group>
         </Group>
       </Group>
 
@@ -352,7 +346,7 @@ export function ObjectsPage() {
       >
         <Stack
           gap="xs"
-          style={{ flex: 1, minWidth: 0, minHeight: 280, position: 'relative' }}
+          style={{ flex: 1, minWidth: 0, minHeight: 0, position: 'relative' }}
           data-tour="objects-results"
         >
           {searchBusy && (
@@ -380,20 +374,22 @@ export function ObjectsPage() {
             </Alert>
           )}
           {results.length > 0 ? (
-            <ObjectResultsTable
-              results={results}
-              memberIds={shelf.ids}
-              statusColumnLabel="Shelf"
-              memberButtonLabel="On shelf"
-              nonMemberButtonLabel="Add"
-              onToggleMember={(entity) => shelf.toggle(entity)}
-              onAddSelected={(entities) => shelf.add(entities)}
-              onRemoveSelected={(ids) => shelf.remove(ids)}
-              onOpenId={openEntityInspect}
-              selectedIds={selectedIds}
-              onSelectedIdsChange={setSelectedIds}
-              hideBulkActions
-            />
+            <Box style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+              <ObjectResultsTable
+                results={results}
+                memberIds={shelf.ids}
+                statusColumnLabel="Shelf"
+                memberButtonLabel="On shelf"
+                nonMemberButtonLabel="Add"
+                onToggleMember={(entity) => shelf.toggle(entity)}
+                onAddSelected={(entities) => shelf.add(entities)}
+                onRemoveSelected={(ids) => shelf.remove(ids)}
+                onOpenId={openEntityInspect}
+                selectedIds={selectedIds}
+                onSelectedIdsChange={setSelectedIds}
+                hideBulkActions
+              />
+            </Box>
           ) : (
             !searchBusy &&
             (stats != null ? (

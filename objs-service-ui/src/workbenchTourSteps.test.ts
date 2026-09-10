@@ -18,6 +18,7 @@ describe('workbench tour steps', () => {
       'query',
       'query-actions',
       'query-options',
+      'policy',
       'composer',
       'composer-graph-bar',
       'composer-version',

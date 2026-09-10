@@ -16,6 +16,7 @@ import {
   Title,
   Tooltip,
 } from '@mantine/core'
+import { IconChevronDown, IconFile, IconFilter } from '@tabler/icons-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { mutationShapeError, normalizeGraphMutation } from './graphDraft'
 import {
@@ -28,7 +29,7 @@ import {
   toGraphData,
   type GraphMutationBody,
 } from './api'
-import { ComposerGraphBar } from './ComposerGraphBar'
+import { useRegisterComposerGraphBar } from './ComposerGraphBarSlot'
 import { JsonYamlEditor, type JsonYamlEditorHandle } from './JsonYamlEditor'
 import { NewGraphModal } from './NewGraphModal'
 import { NewUuidButton } from './NewUuidButton'
@@ -55,7 +56,7 @@ import {
   entityIdsFromValidationIssues,
   validationTargetFromIssue,
 } from './validationIssueTargets'
-import { VIEW_ACTION_BUTTON_SIZE } from './viewActionButtons'
+import { VIEW_ACTION_BUTTON_SIZE, VIEW_ACTION_VARIANT, VIEW_TITLE_PROPS } from './viewActionButtons'
 
 export { graphShapeError, mutationShapeError } from './graphDraft'
 
@@ -574,40 +575,73 @@ export function ObjectLinterPage() {
 
   const valid = result != null && result.issues.length === 0
 
+  const openComposerGraphModal = useCallback(() => setOpenGraphOpen(true), [])
+
+  useRegisterComposerGraphBar({
+    graphId: currentGraphId,
+    annotations: graphAnnotations,
+    versionLabel: currentGraphId != null ? 'Latest' : null,
+    nodeCount: graphView.nodes.length,
+    edgeCount: graphView.links.length,
+    onOpenGraph: openComposerGraphModal,
+  })
+
   return (
     <Stack gap="sm" style={{ flex: 1, minHeight: 0, height: '100%' }}>
-      <Group align="center" wrap="nowrap" gap="md" style={{ flexShrink: 0 }}>
-        <Title order={3} style={{ flexShrink: 0 }}>
-          Composer
-        </Title>
-        <Box style={{ flex: 1, minWidth: 0 }}>
-          <ComposerGraphBar
-            graphId={currentGraphId}
-            annotations={graphAnnotations}
-            versionLabel={currentGraphId != null ? 'Latest' : null}
-            nodeCount={graphView.nodes.length}
-            edgeCount={graphView.links.length}
-            onBlank={onNewGraphChrome}
-            onOpenMatcher={() => setOpenMatcherForNew(true)}
-            onOpenGraph={() => setOpenGraphOpen(true)}
-          />
-        </Box>
-      </Group>
-
-      <Group
-        justify="flex-end"
-        align="center"
-        wrap="wrap"
-        style={{ flexShrink: 0 }}
-        gap="xs"
-        data-tour="composer-view-actions"
-      >
-        <Button size={VIEW_ACTION_BUTTON_SIZE} variant="default" onClick={resetToRollback}>
+      <Group align="center" wrap="nowrap" gap="sm" style={{ flexShrink: 0 }}>
+        <Title {...VIEW_TITLE_PROPS}>Composer</Title>
+        <Group
+          justify="flex-end"
+          align="center"
+          wrap="wrap"
+          style={{ flex: 1, minWidth: 0 }}
+          gap="xs"
+          data-tour="composer-view-actions"
+        >
+        <Group gap={0}>
+          <Button
+            size={VIEW_ACTION_BUTTON_SIZE}
+            leftSection={<IconFile size={14} />}
+            onClick={onNewGraphChrome}
+            style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
+            data-tour="composer-new"
+          >
+            New
+          </Button>
+          <Menu position="bottom-end" withinPortal>
+            <Menu.Target>
+              <Button
+                size={VIEW_ACTION_BUTTON_SIZE}
+                px="xs"
+                aria-label="New blank or from matcher"
+                style={{
+                  borderTopLeftRadius: 0,
+                  borderBottomLeftRadius: 0,
+                  borderLeft: '1px solid var(--mantine-color-default-border)',
+                }}
+              >
+                <IconChevronDown size={14} />
+              </Button>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Item leftSection={<IconFile size={14} />} onClick={onNewGraphChrome}>
+                Blank
+              </Menu.Item>
+              <Menu.Item
+                leftSection={<IconFilter size={14} />}
+                onClick={() => setOpenMatcherForNew(true)}
+              >
+                Matcher
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
+        </Group>
+        <Button size={VIEW_ACTION_BUTTON_SIZE} variant={VIEW_ACTION_VARIANT} onClick={resetToRollback}>
           Reset
         </Button>
         <Button
           size={VIEW_ACTION_BUTTON_SIZE}
-          variant="default"
+          variant={VIEW_ACTION_VARIANT}
           color="red"
           onClick={() => {
             clearDraft()
@@ -620,7 +654,7 @@ export function ObjectLinterPage() {
         <Button
           size={VIEW_ACTION_BUTTON_SIZE}
           loading={busy}
-          variant="light"
+          variant={VIEW_ACTION_VARIANT}
           onClick={() => void validate()}
         >
           Validate
@@ -680,7 +714,7 @@ export function ObjectLinterPage() {
           <span style={{ display: 'inline-flex' }} data-tour="composer-version">
             <Button
               size={VIEW_ACTION_BUTTON_SIZE}
-              variant="light"
+              variant={VIEW_ACTION_VARIANT}
               disabled={!snapshotEnabled}
               onClick={() => setSnapshotOpen(true)}
             >
@@ -700,7 +734,7 @@ export function ObjectLinterPage() {
           <span style={{ display: 'inline-flex' }}>
             <Button
               size={VIEW_ACTION_BUTTON_SIZE}
-              variant="light"
+              variant={VIEW_ACTION_VARIANT}
               disabled={!snapshotEnabled}
               onClick={() => setCloneOpen(true)}
             >
@@ -721,6 +755,7 @@ export function ObjectLinterPage() {
             {pendingDeleteCount} pending delete{pendingDeleteCount === 1 ? '' : 's'}
           </Badge>
         )}
+        </Group>
       </Group>
 
       <Tabs
@@ -785,31 +820,20 @@ export function ObjectLinterPage() {
           pt="sm"
           style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}
         >
-          <Paper
-            withBorder
-            p="sm"
-            style={{
-              flex: 1,
-              minHeight: 0,
-              display: 'flex',
-              flexDirection: 'column',
+          <JsonYamlEditor
+            ref={editorRef}
+            value={mutationBody}
+            rollbackValue={emptyMutation}
+            minHeight={240}
+            fillHeight
+            onDraftParsed={onDraftParsed}
+            onRollback={() => {
+              resetToRollback()
+              setTextError(null)
+              setResult(null)
             }}
-          >
-            <JsonYamlEditor
-              ref={editorRef}
-              value={mutationBody}
-              rollbackValue={emptyMutation}
-              minHeight={240}
-              fillHeight
-              onDraftParsed={onDraftParsed}
-              onRollback={() => {
-                resetToRollback()
-                setTextError(null)
-                setResult(null)
-              }}
-              extraActions={<NewUuidButton />}
-            />
-          </Paper>
+            extraActions={<NewUuidButton />}
+          />
           {textError && (
             <Alert mt="sm" color="orange" title="Text parse error" style={{ flexShrink: 0 }}>
               {textError}

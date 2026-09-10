@@ -62,7 +62,10 @@ describe('structured rows', () => {
     }
     expect(structuredVertexRows(contents)[0].name).toBe('pandas')
     const edge = structuredEdgeRows(contents)[0]
+    expect(edge.type).toBe('Dep')
+    expect(edge.sourceType).toBe('Component')
     expect(edge.sourceName).toBe('pandas')
+    expect(edge.targetType).toBe('Component')
     expect(edge.targetName).toBe('numpy')
     expect(edge.role).toBe('dependsOn')
   })

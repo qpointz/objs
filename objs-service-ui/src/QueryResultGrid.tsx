@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode, type UIEvent } from 'react'
-import { Box, Code, Group, Pagination, Stack, Table, Text } from '@mantine/core'
+import { Box, Code, Group, Pagination, Select, Stack, Table, Text } from '@mantine/core'
 import { QUERY_STRUCT_VIRTUALIZE_THRESHOLD } from './queryStructuredModel'
 
 const ROW_HEIGHT = 28
@@ -8,11 +8,14 @@ const OVERSCAN = 8
 /** Default page size for Structured Vertices / Edges grids. */
 export const QUERY_STRUCT_PAGE_SIZE = 25
 
+export const QUERY_STRUCT_PAGE_SIZE_OPTIONS = ['10', '25', '50', '100'] as const
+
 export const queryResultTableProps = {
   striped: true,
   highlightOnHover: true,
   withTableBorder: true,
   withColumnBorders: true,
+  stickyHeader: true,
   horizontalSpacing: 6 as const,
   verticalSpacing: 3 as const,
   style: { fontSize: 'var(--mantine-font-size-xs)' },
@@ -32,7 +35,11 @@ type Props<T> = {
   rowKey: (row: T) => string
   onRowSelect?: (row: T) => void
   empty?: ReactNode
-  /** Rows per page; default {@link QUERY_STRUCT_PAGE_SIZE}. Pass `0` to disable paging. */
+  /**
+   * Rows per page. Default {@link QUERY_STRUCT_PAGE_SIZE}.
+   * Pass `0` to disable paging (virtualize when rows > 200).
+   * When paging is on, the footer Select changes size (starts from this value).
+   */
   pageSize?: number
   /** Notified when the visible page slice changes (for page-scoped bulk actions). */
   onPageRowsChange?: (pageRows: T[]) => void
@@ -40,7 +47,7 @@ type Props<T> = {
 
 /**
  * Shared Structured / Objects-like grid chrome.
- * Pages by default (25); virtualizes only when paging is off and rows > 200.
+ * Fills parent height; pages by default; virtualizes only when paging is off and rows > 200.
  */
 export function QueryResultGrid<T>({
   rows,
@@ -49,27 +56,36 @@ export function QueryResultGrid<T>({
   rowKey,
   onRowSelect,
   empty,
-  pageSize = QUERY_STRUCT_PAGE_SIZE,
+  pageSize: pageSizeProp = QUERY_STRUCT_PAGE_SIZE,
   onPageRowsChange,
 }: Props<T>) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [scrollTop, setScrollTop] = useState(0)
   const [page, setPage] = useState(1)
-  const paging = pageSize > 0
-  const pageCount = paging ? Math.max(1, Math.ceil(rows.length / pageSize)) : 1
+  const paging = pageSizeProp !== 0
+  const [pageSize, setPageSize] = useState(
+    () => (pageSizeProp > 0 ? pageSizeProp : QUERY_STRUCT_PAGE_SIZE),
+  )
+
+  useEffect(() => {
+    if (pageSizeProp > 0) setPageSize(pageSizeProp)
+  }, [pageSizeProp])
+
+  const effectivePageSize = paging ? pageSize : 0
+  const pageCount = paging ? Math.max(1, Math.ceil(rows.length / Math.max(1, effectivePageSize))) : 1
   const safePage = Math.min(page, pageCount)
 
   useEffect(() => {
     setPage(1)
     setScrollTop(0)
     if (scrollRef.current) scrollRef.current.scrollTop = 0
-  }, [rows, pageSize])
+  }, [rows, effectivePageSize])
 
   const pagedRows = useMemo(() => {
     if (!paging) return rows
-    const start = (safePage - 1) * pageSize
-    return rows.slice(start, start + pageSize)
-  }, [rows, paging, safePage, pageSize])
+    const start = (safePage - 1) * effectivePageSize
+    return rows.slice(start, start + effectivePageSize)
+  }, [rows, paging, safePage, effectivePageSize])
 
   useEffect(() => {
     onPageRowsChange?.(pagedRows)
@@ -93,18 +109,34 @@ export function QueryResultGrid<T>({
     }
   }, [pagedRows.length, scrollTop, virtualize])
 
-  if (rows.length === 0) {
-    return empty ?? null
-  }
-
   const slice = pagedRows.slice(start, end)
+  const emptyBody =
+    rows.length === 0
+      ? (empty ?? (
+          <Text size="sm" c="dimmed">
+            No rows.
+          </Text>
+        ))
+      : null
 
   function onScroll(e: UIEvent<HTMLDivElement>) {
     setScrollTop(e.currentTarget.scrollTop)
   }
 
+  const from = rows.length === 0 ? 0 : (safePage - 1) * effectivePageSize + 1
+  const to = rows.length === 0 ? 0 : Math.min(rows.length, safePage * effectivePageSize)
+
   return (
-    <Stack gap="xs" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+    <Stack
+      gap="xs"
+      style={{
+        flex: 1,
+        minHeight: 0,
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
       <Box
         ref={scrollRef}
         onScroll={virtualize ? onScroll : undefined}
@@ -112,79 +144,119 @@ export function QueryResultGrid<T>({
           flex: 1,
           minHeight: 0,
           overflow: 'auto',
-          maxHeight: '100%',
         }}
       >
-        <Table.ScrollContainer minWidth={280}>
-          <Table {...queryResultTableProps}>
-            <Table.Thead>
+        <Table {...queryResultTableProps}>
+          <Table.Thead>
+            <Table.Tr>
+              {columns.map((col) => (
+                <Table.Th
+                  key={col.key}
+                  w={col.width}
+                  style={
+                    col.width != null
+                      ? { width: col.width, maxWidth: col.width, minWidth: col.width }
+                      : undefined
+                  }
+                >
+                  {col.header}
+                </Table.Th>
+              ))}
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {emptyBody != null ? (
               <Table.Tr>
-                {columns.map((col) => (
-                  <Table.Th
-                    key={col.key}
-                    w={col.width}
-                    style={
-                      col.width != null
-                        ? { width: col.width, maxWidth: col.width, minWidth: col.width }
-                        : undefined
-                    }
-                  >
-                    {col.header}
-                  </Table.Th>
-                ))}
+                <Table.Td colSpan={Math.max(1, columns.length)} py="sm">
+                  {emptyBody}
+                </Table.Td>
               </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {virtualize && padTop > 0 && (
-                <Table.Tr aria-hidden>
-                  <Table.Td colSpan={columns.length} p={0} style={{ height: padTop, border: 0 }} />
-                </Table.Tr>
-              )}
-              {slice.map((row, i) => {
-                const key = rowKey(row)
-                const selected = selectedKey != null && selectedKey === key
-                const absIndex = (paging ? (safePage - 1) * pageSize : 0) + start + i
-                return (
-                  <Table.Tr
-                    key={key}
-                    style={{
-                      cursor: onRowSelect ? 'pointer' : undefined,
-                      background: selected ? 'var(--mantine-color-blue-light)' : undefined,
-                      height: virtualize ? ROW_HEIGHT : undefined,
-                    }}
-                    onClick={onRowSelect ? () => onRowSelect(row) : undefined}
-                  >
-                    {columns.map((col) => (
-                      <Table.Td
-                        key={col.key}
-                        style={
-                          col.width != null
-                            ? { width: col.width, maxWidth: col.width, minWidth: col.width }
-                            : undefined
-                        }
-                      >
-                        {col.render(row, absIndex)}
-                      </Table.Td>
-                    ))}
+            ) : (
+              <>
+                {virtualize && padTop > 0 && (
+                  <Table.Tr aria-hidden>
+                    <Table.Td colSpan={columns.length} p={0} style={{ height: padTop, border: 0 }} />
                   </Table.Tr>
-                )
-              })}
-              {virtualize && padBottom > 0 && (
-                <Table.Tr aria-hidden>
-                  <Table.Td
-                    colSpan={columns.length}
-                    p={0}
-                    style={{ height: padBottom, border: 0 }}
-                  />
-                </Table.Tr>
-              )}
-            </Table.Tbody>
-          </Table>
-        </Table.ScrollContainer>
+                )}
+                {slice.map((row, i) => {
+                  const key = rowKey(row)
+                  const selected = selectedKey != null && selectedKey === key
+                  const absIndex = (paging ? (safePage - 1) * effectivePageSize : 0) + start + i
+                  return (
+                    <Table.Tr
+                      key={key}
+                      style={{
+                        cursor: onRowSelect ? 'pointer' : undefined,
+                        background: selected ? 'var(--mantine-color-blue-light)' : undefined,
+                        height: virtualize ? ROW_HEIGHT : undefined,
+                      }}
+                      onClick={onRowSelect ? () => onRowSelect(row) : undefined}
+                    >
+                      {columns.map((col) => (
+                        <Table.Td
+                          key={col.key}
+                          style={
+                            col.width != null
+                              ? { width: col.width, maxWidth: col.width, minWidth: col.width }
+                              : undefined
+                          }
+                        >
+                          {col.render(row, absIndex)}
+                        </Table.Td>
+                      ))}
+                    </Table.Tr>
+                  )
+                })}
+                {virtualize && padBottom > 0 && (
+                  <Table.Tr aria-hidden>
+                    <Table.Td
+                      colSpan={columns.length}
+                      p={0}
+                      style={{ height: padBottom, border: 0 }}
+                    />
+                  </Table.Tr>
+                )}
+              </>
+            )}
+          </Table.Tbody>
+        </Table>
       </Box>
-      {paging && pageCount > 1 && (
-        <Group justify="flex-start" style={{ flexShrink: 0 }}>
-          <Pagination size="sm" value={safePage} onChange={setPage} total={pageCount} />
+      {paging && (
+        <Group
+          justify="space-between"
+          align="center"
+          wrap="wrap"
+          gap="xs"
+          style={{ flexShrink: 0 }}
+        >
+          <Group gap="xs" wrap="nowrap" align="center">
+            {pageCount > 1 && (
+              <Pagination size="sm" value={safePage} onChange={setPage} total={pageCount} />
+            )}
+            <Select
+              size="xs"
+              w={72}
+              allowDeselect={false}
+              data={[...QUERY_STRUCT_PAGE_SIZE_OPTIONS]}
+              value={String(pageSize)}
+              onChange={(v) => {
+                if (v == null) return
+                const n = Number(v)
+                if (!Number.isFinite(n) || n <= 0) return
+                setPageSize(n)
+                setPage(1)
+              }}
+              aria-label="Rows per page"
+            />
+            <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>
+              per page
+            </Text>
+          </Group>
+          <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>
+            {rows.length === 0
+              ? '0 rows'
+              : `${from}–${to} of ${rows.length}`}
+          </Text>
         </Group>
       )}
     </Stack>

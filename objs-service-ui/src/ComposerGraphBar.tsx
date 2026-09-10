@@ -3,7 +3,6 @@ import {
   ActionIcon,
   Button,
   Group,
-  Menu,
   Paper,
   Text,
   Tooltip,
@@ -11,16 +10,11 @@ import {
 import {
   IconAffiliate,
   IconCheck,
-  IconChevronDown,
   IconCopy,
-  IconFile,
-  IconFilter,
 } from '@tabler/icons-react'
 import { notifications } from '@mantine/notifications'
-import { AnnotationSplitPill } from './EntityCardNode'
+import { AnnotationsCountLabel } from './AnnotationsCountLabel'
 import { shortId } from './graphContext'
-
-const ANN_MAX = 4
 
 export type ComposerGraphBarProps = {
   graphId: string | null
@@ -29,14 +23,12 @@ export type ComposerGraphBarProps = {
   versionLabel?: string | null
   nodeCount: number
   edgeCount: number
-  onBlank: () => void
-  onOpenMatcher: () => void
   onOpenGraph: () => void
 }
 
 /**
- * Composer draft-graph chrome (Note 8). Visual match to {@link GraphContextBar} only —
- * never uses shared graph context / GraphContextProvider.
+ * Composer draft-graph chrome (Note 8 / Note 2 / Note 3). Visual match to {@link GraphContextBar};
+ * New lives on view actions — Open stays here.
  */
 export function ComposerGraphBar({
   graphId,
@@ -44,8 +36,6 @@ export function ComposerGraphBar({
   versionLabel,
   nodeCount,
   edgeCount,
-  onBlank,
-  onOpenMatcher,
   onOpenGraph,
 }: ComposerGraphBarProps) {
   async function copyText(label: string, value: string) {
@@ -59,14 +49,19 @@ export function ComposerGraphBar({
 
   const graphAnn = Object.entries(annotations).filter(
     ([k, v]) => k.trim().length > 0 && v.trim().length > 0,
-  )
-  const shownGraphAnn = graphAnn.slice(0, ANN_MAX)
-  const moreGraphAnn = graphAnn.length - shownGraphAnn.length
+  ) as [string, string][]
 
   return (
-    <Paper withBorder px="sm" py={6} radius="md" data-tour="composer-graph-bar">
-      <Group gap="sm" wrap="nowrap" justify="space-between" align="center">
-        <Group gap="xs" wrap="nowrap" style={{ flex: 1, minWidth: 0 }} align="center">
+    <Paper
+      withBorder
+      px="sm"
+      py={6}
+      radius="md"
+      data-tour="composer-graph-bar"
+      style={{ width: 'max-content', maxWidth: '100%' }}
+    >
+      <Group gap="sm" wrap="nowrap" justify="flex-start" align="center">
+        <Group gap="xs" wrap="nowrap" style={{ flexShrink: 0 }} align="center">
           {graphId ? (
             <>
               <Tooltip label="Composer graph" withArrow>
@@ -92,45 +87,24 @@ export function ComposerGraphBar({
                 onCopy={() => void copyText('Graph id', graphId)}
               />
 
-              <Group gap={6} wrap="nowrap" style={{ flex: 1, minWidth: 0 }} align="center">
-                <Group
-                  gap={4}
-                  wrap="nowrap"
-                  style={{ minWidth: 0, overflow: 'hidden' }}
-                  align="center"
-                >
-                  {shownGraphAnn.length === 0 ? (
-                    <Text size="xs" c="dimmed" fs="italic">
-                      none
-                    </Text>
-                  ) : (
-                    <>
-                      {shownGraphAnn.map(([k, v]) => (
-                        <AnnotationSplitPill key={`g-${k}`} k={k} v={v} size="bar" />
-                      ))}
-                      {moreGraphAnn > 0 && (
-                        <Text size="xs" c="dimmed" style={{ flexShrink: 0 }}>
-                          +{moreGraphAnn}
-                        </Text>
-                      )}
-                    </>
-                  )}
-                </Group>
+              <AnnotationsCountLabel
+                entries={graphAnn}
+                dataTour="composer-graph-annotations"
+              />
 
-                {versionLabel != null && versionLabel.length > 0 && (
-                  <>
-                    <Text size="xs" c="dimmed" fw={700} style={{ flexShrink: 0, opacity: 0.55 }}>
-                      |
-                    </Text>
-                    <Text size="xs" c="dimmed" fw={600} style={{ flexShrink: 0 }}>
-                      Version:
-                    </Text>
-                    <Text size="xs" c="dimmed" style={{ flexShrink: 0 }}>
-                      {versionLabel}
-                    </Text>
-                  </>
-                )}
-              </Group>
+              {versionLabel != null && versionLabel.length > 0 && (
+                <>
+                  <Text size="xs" c="dimmed" fw={700} style={{ flexShrink: 0, opacity: 0.55 }}>
+                    |
+                  </Text>
+                  <Text size="xs" c="dimmed" fw={600} style={{ flexShrink: 0 }}>
+                    Version:
+                  </Text>
+                  <Text size="xs" c="dimmed" style={{ flexShrink: 0 }}>
+                    {versionLabel}
+                  </Text>
+                </>
+              )}
             </>
           ) : (
             <>
@@ -149,28 +123,8 @@ export function ComposerGraphBar({
             style={{ whiteSpace: 'nowrap' }}
             data-tour="composer-graph-stats"
           >
-            Nodes {nodeCount} / Edges {edgeCount}
+            N/E: {nodeCount}/{edgeCount}
           </Text>
-          <Menu shadow="md" width={160} position="bottom-end">
-            <Menu.Target>
-              <Button
-                size="xs"
-                variant="default"
-                rightSection={<IconChevronDown size={14} />}
-                data-tour="composer-new"
-              >
-                New
-              </Button>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Item leftSection={<IconFile size={14} />} onClick={onBlank}>
-                Blank
-              </Menu.Item>
-              <Menu.Item leftSection={<IconFilter size={14} />} onClick={onOpenMatcher}>
-                Matcher
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
           <Button
             size="xs"
             variant="light"

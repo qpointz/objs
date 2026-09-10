@@ -60,6 +60,7 @@ import {
   type CatalogTypeNode,
 } from './catalogOverviewModel'
 import { GraphMenuSub } from './graphGoToNav'
+import { GraphLayoutMenuItems, GraphLayoutToolbar } from './GraphLayoutToolbar'
 import { SyntaxCodeEditor, type SyntaxCodeEditorHandle } from './SyntaxCodeEditor'
 import type { BoMAllowedEdgeRule, BoMSchema, SeedImportResult } from './types'
 
@@ -246,6 +247,7 @@ const SchemaCatalogOverviewInner = forwardRef<
     type?: string
     version?: string
   } | null>(null)
+  const [paneLayoutMenu, setPaneLayoutMenu] = useState<{ x: number; y: number } | null>(null)
   const fittedOnceRef = useRef(false)
   const [storedSession] = useState(() => loadCatalogLayout())
   const [layout, setLayout] = useState<CatalogLayout>(() => storedSession.direction)
@@ -499,6 +501,7 @@ const SchemaCatalogOverviewInner = forwardRef<
               border: '1px solid var(--mantine-color-default-border)',
               borderRadius: 6,
               overflow: 'hidden',
+              position: 'relative',
             }}
           >
             <ReactFlow
@@ -534,6 +537,7 @@ const SchemaCatalogOverviewInner = forwardRef<
                   type: data.type,
                   version: data.version,
                 })
+                setPaneLayoutMenu(null)
               }}
               onEdgeContextMenu={(event, edge) => {
                 event.preventDefault()
@@ -545,13 +549,63 @@ const SchemaCatalogOverviewInner = forwardRef<
                   sourceType: rule.sourceType,
                   targetType: rule.targetType,
                 })
+                setPaneLayoutMenu(null)
               }}
-              onMoveStart={() => setGoToMenu(null)}
+              onPaneContextMenu={(event) => {
+                event.preventDefault()
+                if (nodes.length === 0) return
+                setGoToMenu(null)
+                setPaneLayoutMenu({ x: event.clientX, y: event.clientY })
+              }}
+              onMoveStart={() => {
+                setGoToMenu(null)
+                setPaneLayoutMenu(null)
+              }}
               proOptions={{ hideAttribution: true }}
             >
               <Background gap={18} size={1} />
               <Controls showInteractive={false} />
             </ReactFlow>
+            <GraphLayoutToolbar
+              layout={layout}
+              disabled={nodes.length === 0}
+              onApply={() => applyLayout()}
+              onLayoutChange={(next) => applyLayout(next)}
+              onFitView={() => fitView({ padding: 0.18, maxZoom: 1, duration: 300 })}
+            />
+            <Menu
+              opened={paneLayoutMenu != null}
+              onChange={(opened) => {
+                if (!opened) setPaneLayoutMenu(null)
+              }}
+              position="bottom-start"
+              offset={0}
+              withinPortal
+              shadow="md"
+            >
+              <Menu.Target>
+                <div
+                  style={{
+                    position: 'fixed',
+                    left: paneLayoutMenu?.x ?? 0,
+                    top: paneLayoutMenu?.y ?? 0,
+                    width: 1,
+                    height: 1,
+                    pointerEvents: 'none',
+                  }}
+                />
+              </Menu.Target>
+              <Menu.Dropdown>
+                <GraphLayoutMenuItems
+                  layout={layout}
+                  disabled={nodes.length === 0}
+                  onApply={() => applyLayout()}
+                  onLayoutChange={(next) => applyLayout(next)}
+                  onFitView={() => fitView({ padding: 0.18, maxZoom: 1, duration: 300 })}
+                  onDone={() => setPaneLayoutMenu(null)}
+                />
+              </Menu.Dropdown>
+            </Menu>
             <Menu
               opened={goToMenu != null}
               onChange={(opened) => {

@@ -1,7 +1,14 @@
-import { Button, Code } from '@mantine/core'
+import { Button, Code, type ButtonProps } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
+import { VIEW_ACTION_VARIANT } from './viewActionButtons'
 
-export function NewUuidButton() {
+/** Match Composer Visual/Text L2 actions (`compact-xs` + bordered secondary). */
+type Props = Pick<ButtonProps, 'size' | 'variant'>
+
+export function NewUuidButton({
+  size = 'compact-xs',
+  variant = VIEW_ACTION_VARIANT,
+}: Props) {
   async function createUuid() {
     const uuid = crypto.randomUUID()
     let copied = false
@@ -21,7 +28,7 @@ export function NewUuidButton() {
   }
 
   return (
-    <Button size="xs" variant="light" onClick={createUuid}>
+    <Button size={size} variant={variant} onClick={createUuid}>
       New UUID
     </Button>
   )

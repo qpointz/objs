@@ -7,22 +7,22 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from 'react'
 import {
-  ActionIcon,
   Alert,
   Badge,
   Box,
   Button,
   Code,
   Group,
+  Menu,
+  Modal,
   NumberInput,
   Paper,
-  Popover,
   Stack,
   Tabs,
   Text,
   Title,
 } from '@mantine/core'
-import { IconSettings } from '@tabler/icons-react'
+import { IconChevronDown, IconSettings } from '@tabler/icons-react'
 import {
   GraphGoToContextMenu,
   buildGraphNeighborIndex,
@@ -35,9 +35,12 @@ import {
   traverseGremlin,
   type BoMGremlinResult,
 } from './api'
-import { GraphContextBar } from './GraphContextBar'
+import { ColumnFilterHeader } from './ColumnFilterHeader'
+import { passesColumnFilter, toggleInSet, uniqueSortedOptions } from './columnFilterUtils'
 import { useGraphContext } from './GraphContextProvider'
-import { GraphCanvas, type GraphCanvasHandle } from './GraphCanvas'
+import { GraphCanvas, type GraphCanvasHandle, type GraphLayout } from './GraphCanvas'
+import { applyGraphCanvasFilters, toggleTypeInSet, uniqueSortedRoles } from './graphFilterDimming'
+import { GraphFilterToolbar } from './GraphFilterToolbar'
 import { ObjectInspectPane } from './ObjectInspectPane'
 import { formatObjectCell, scalarPayloadColumns } from './ObjectResultsTable'
 import { formatQueryDuration } from './queryExecStats'
@@ -77,7 +80,7 @@ import {
 import { payloadFieldKindsByTypeVersion } from './payloadFieldKinds'
 import { EXPLORER_NODE_CAP } from './graphContextVersions'
 import { clamp, maxSidePaneWidth } from './sidePaneSplit'
-import { VIEW_ACTION_BUTTON_SIZE } from './viewActionButtons'
+import { VIEW_ACTION_BUTTON_SIZE, VIEW_ACTION_VARIANT, VIEW_TITLE_PROPS } from './viewActionButtons'
 import { objectDisplayTitle } from './objectViewerTitle'
 
 const SCRIPT_STORAGE_KEY = QUERY_SCRIPT_STORAGE_KEY
@@ -417,13 +420,44 @@ export function QueryPage() {
   const [result, setResult] = useState<BoMGremlinResult | null>(null)
   const [nodes, setNodes] = useState<GraphNode[]>([])
   const [links, setLinks] = useState<GraphLink[]>([])
+  const [graphLayout, setGraphLayout] = useState<GraphLayout>('TB')
+  const [highlightedTypes, setHighlightedTypes] = useState<Set<string>>(() => new Set())
+  const [highlightedEdgeRoles, setHighlightedEdgeRoles] = useState<Set<string>>(() => new Set())
+  const [dataEdgeTypes, setDataEdgeTypes] = useState<Set<string>>(() => new Set())
+  const [dataEdgeSourceTypes, setDataEdgeSourceTypes] = useState<Set<string>>(() => new Set())
+  const [dataEdgeTargetTypes, setDataEdgeTargetTypes] = useState<Set<string>>(() => new Set())
   const graphOverCap = nodes.length > EXPLORER_NODE_CAP
   const [querySelection, setQuerySelection] = useState<GraphSelection | null>(null)
   const [goToMenu, setGoToMenu] = useState<{ x: number; y: number; target: GraphGoToTarget } | null>(
     null,
   )
   const [schemas, setSchemas] = useState<BoMSchema[]>([])
-  const neighborIndex = useMemo(() => buildGraphNeighborIndex(nodes, links), [nodes, links])
+  const displayGraph = useMemo(
+    () =>
+      applyGraphCanvasFilters(nodes, links, {
+        types: highlightedTypes,
+        edgeRoles: highlightedEdgeRoles,
+      }),
+    [highlightedEdgeRoles, highlightedTypes, links, nodes],
+  )
+  const neighborIndex = useMemo(
+    () => buildGraphNeighborIndex(displayGraph.nodes, displayGraph.links),
+    [displayGraph],
+  )
+  const typeFilterOptions = useMemo(() => {
+    const set = new Map<string, string>()
+    for (const n of nodes) {
+      if (!set.has(n.type)) set.set(n.type, n.color)
+    }
+    return [...set.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([value, color]) => ({ value, label: value, color }))
+  }, [nodes])
+  const edgeRoleOptions = useMemo(() => uniqueSortedRoles(links), [links])
+  const clearCanvasFilters = useCallback(() => {
+    setHighlightedTypes((prev) => (prev.size === 0 ? prev : new Set()))
+    setHighlightedEdgeRoles((prev) => (prev.size === 0 ? prev : new Set()))
+  }, [])
   const { context, setGraph } = useGraphContext()
 
   const fieldKindsByTypeVersion = useMemo(
@@ -491,6 +525,52 @@ export function QueryPage() {
     () => (structContents != null ? structuredEdgeRows(structContents) : []),
     [structContents],
   )
+  const filteredVertexRows = useMemo(
+    () => vertexRows.filter((row) => passesColumnFilter(row.type, highlightedTypes)),
+    [highlightedTypes, vertexRows],
+  )
+  const filteredEdgeRows = useMemo(
+    () =>
+      edgeRows.filter(
+        (row) =>
+          passesColumnFilter(row.type, dataEdgeTypes) &&
+          passesColumnFilter(row.sourceType, dataEdgeSourceTypes) &&
+          passesColumnFilter(row.targetType, dataEdgeTargetTypes) &&
+          passesColumnFilter(row.role, highlightedEdgeRoles),
+      ),
+    [
+      dataEdgeSourceTypes,
+      dataEdgeTargetTypes,
+      dataEdgeTypes,
+      edgeRows,
+      highlightedEdgeRoles,
+    ],
+  )
+  const dataVertexTypeOptions = useMemo(
+    () => uniqueSortedOptions(vertexRows.map((r) => r.type)),
+    [vertexRows],
+  )
+  const dataEdgeTypeOptions = useMemo(
+    () => uniqueSortedOptions(edgeRows.map((r) => r.type)),
+    [edgeRows],
+  )
+  const dataEdgeSourceTypeOptions = useMemo(
+    () => uniqueSortedOptions(edgeRows.map((r) => r.sourceType)),
+    [edgeRows],
+  )
+  const dataEdgeTargetTypeOptions = useMemo(
+    () => uniqueSortedOptions(edgeRows.map((r) => r.targetType)),
+    [edgeRows],
+  )
+  const dataEdgeRoleOptions = useMemo(
+    () => uniqueSortedOptions(edgeRows.map((r) => r.role)),
+    [edgeRows],
+  )
+  const edgeDataFiltersActive =
+    dataEdgeTypes.size > 0 ||
+    dataEdgeSourceTypes.size > 0 ||
+    dataEdgeTargetTypes.size > 0 ||
+    highlightedEdgeRoles.size > 0
   /** Same scalar payload-column pick as Objects (`scalarPayloadColumns`). */
   const vertexPayloadCols = useMemo(
     () => scalarPayloadColumns(vertexRows.map((r) => r.entity)),
@@ -569,6 +649,9 @@ export function QueryPage() {
       setResult(next)
       setQuerySelection(null)
       setStructVeTab('vertices')
+      setDataEdgeTypes(new Set())
+      setDataEdgeSourceTypes(new Set())
+      setDataEdgeTargetTypes(new Set())
 
       const sg = next.contents ?? next.views.graph ?? null
       const graph =
@@ -642,85 +725,105 @@ export function QueryPage() {
 
   return (
     <Stack gap="sm" style={{ flex: 1, minHeight: 0, height: '100%' }}>
-      <Group align="center" wrap="nowrap" gap="md" style={{ flexShrink: 0 }}>
-        <Title order={3} style={{ flexShrink: 0 }}>
-          Query
-        </Title>
-        <Box style={{ flex: 1, minWidth: 0 }}>
-          <GraphContextBar />
-        </Box>
-      </Group>
-
-      <Group
-        justify="space-between"
-        align="center"
-        wrap="wrap"
-        style={{ flexShrink: 0 }}
-        gap="xs"
-        data-tour="query-view-actions"
-      >
-        <Text size="xs" c="dimmed" style={{ alignSelf: 'center' }}>
-          {result != null ? formatGremlinStats(result) : '\u00a0'}
-        </Text>
-        <Group gap="xs" wrap="nowrap">
-          <Button
-            size={VIEW_ACTION_BUTTON_SIZE}
-            variant="default"
-            disabled={!canOpenInComposer}
-            onClick={onOpenInComposer}
-            data-tour="query-open-composer"
-          >
-            Open in Composer
-          </Button>
-          <Button
-            size={VIEW_ACTION_BUTTON_SIZE}
-            loading={loading}
-            onClick={() => void onExec()}
-            data-tour="query-exec"
-          >
-            Exec
-          </Button>
-          <Popover
-            opened={optionsOpen}
-            onChange={setOptionsOpen}
-            position="bottom-end"
-            withArrow
-            shadow="md"
-          >
-            <Popover.Target>
-              <ActionIcon
+      <Group align="center" wrap="nowrap" gap="sm" style={{ flexShrink: 0 }}>
+        <Title {...VIEW_TITLE_PROPS}>Query</Title>
+        <Group
+          justify="flex-end"
+          align="center"
+          wrap="wrap"
+          style={{ flex: 1, minWidth: 0 }}
+          gap="xs"
+          data-tour="query-view-actions"
+        >
+          <Box style={{ flex: 1, minWidth: 0 }} aria-hidden />
+          <Text size="xs" c="dimmed" style={{ alignSelf: 'center' }}>
+            {result != null ? formatGremlinStats(result) : '\u00a0'}
+          </Text>
+          <Group gap="xs" wrap="nowrap">
+            <Button
+              size={VIEW_ACTION_BUTTON_SIZE}
+              variant={VIEW_ACTION_VARIANT}
+              disabled={!canOpenInComposer}
+              onClick={onOpenInComposer}
+              data-tour="query-open-composer"
+            >
+              Open in Composer
+            </Button>
+            <Group gap={0} wrap="nowrap" style={{ display: 'inline-flex' }}>
+              <Button
                 size={VIEW_ACTION_BUTTON_SIZE}
-                variant="default"
-                aria-label="Query options"
-                data-tour="query-options"
-                onClick={() => setOptionsOpen((o) => !o)}
+                loading={loading}
+                onClick={() => void onExec()}
+                data-tour="query-exec"
+                style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
               >
-                <IconSettings size={16} />
-              </ActionIcon>
-            </Popover.Target>
-            <Popover.Dropdown>
-              <Stack gap="sm" w={260}>
-                <NumberInput
-                  label="Timeout (seconds)"
-                  description="Eval timeout sent as traversalOptions.timeoutSeconds"
-                  min={1}
-                  max={3600}
-                  value={options.timeoutSeconds}
-                  onChange={(v) =>
-                    setOptions({
-                      timeoutSeconds:
-                        typeof v === 'number' && v > 0 ? v : DEFAULT_TIMEOUT_SECONDS,
-                    })
-                  }
-                />
-                <Text size="xs" c="dimmed">
-                  Language is fixed to <Code>gremlin-lang</Code> for this release.
-                </Text>
-              </Stack>
-            </Popover.Dropdown>
-          </Popover>
+                Exec
+              </Button>
+              <Menu position="bottom-end" withinPortal>
+                <Menu.Target>
+                  <Button
+                    size={VIEW_ACTION_BUTTON_SIZE}
+                    loading={loading}
+                    px="xs"
+                    aria-label="Exec options"
+                    data-tour="query-options"
+                    style={{
+                      borderTopLeftRadius: 0,
+                      borderBottomLeftRadius: 0,
+                      borderLeft: '1px solid var(--mantine-color-default-border)',
+                    }}
+                  >
+                    <IconChevronDown size={14} />
+                  </Button>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Item
+                    leftSection={<IconSettings size={14} />}
+                    onClick={() => setOptionsOpen(true)}
+                  >
+                    Options
+                    {options.timeoutSeconds !== DEFAULT_TIMEOUT_SECONDS
+                      ? ` (${options.timeoutSeconds}s)`
+                      : ''}
+                  </Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
+            </Group>
+          </Group>
         </Group>
       </Group>
+
+      <Modal
+        opened={optionsOpen}
+        onClose={() => setOptionsOpen(false)}
+        title="Query options"
+        centered
+        size="sm"
+      >
+        <Stack gap="sm">
+          <NumberInput
+            label="Timeout (seconds)"
+            description="Eval timeout sent as traversalOptions.timeoutSeconds"
+            min={1}
+            max={3600}
+            value={options.timeoutSeconds}
+            onChange={(v) =>
+              setOptions({
+                timeoutSeconds:
+                  typeof v === 'number' && v > 0 ? v : DEFAULT_TIMEOUT_SECONDS,
+              })
+            }
+          />
+          <Text size="xs" c="dimmed">
+            Language is fixed to <Code>gremlin-lang</Code> for this release.
+          </Text>
+          <Group justify="flex-end">
+            <Button size={VIEW_ACTION_BUTTON_SIZE} onClick={() => setOptionsOpen(false)}>
+              Done
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
 
       <Box
         ref={splitHostRef}
@@ -819,6 +922,15 @@ export function QueryPage() {
               setQuerySelection(null)
             }}
             style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}
+            styles={{
+              panel: {
+                flex: 1,
+                minHeight: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+              },
+            }}
           >
             <Tabs.List style={{ flexShrink: 0 }}>
               <Tabs.Tab value="graph">Visual</Tabs.Tab>
@@ -853,37 +965,53 @@ export function QueryPage() {
                     open Data / Raw instead.
                   </Alert>
                 ) : (
-                  <GraphCanvas
-                    ref={graphRef}
-                    nodes={nodes}
-                    links={links}
-                    selection={querySelection}
-                    onSelect={setQuerySelection}
-                    layout="TB"
-                    autoLayoutOnDataChange={resultTab === 'graph'}
-                    onNodeContextMenu={(event, node) => {
-                      event.preventDefault()
-                      setQuerySelection({ kind: 'node', node })
-                      setGoToMenu({
-                        x: event.clientX,
-                        y: event.clientY,
-                        target: { kind: 'node', nodeId: node.id },
-                      })
-                    }}
-                    onEdgeContextMenu={(event, edge) => {
-                      event.preventDefault()
-                      setQuerySelection({ kind: 'edge', edge })
-                      setGoToMenu({
-                        x: event.clientX,
-                        y: event.clientY,
-                        target: {
-                          kind: 'edge',
-                          sourceId: edge.source,
-                          targetId: edge.target,
-                        },
-                      })
-                    }}
-                  />
+                  <Box style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+                    <GraphCanvas
+                      ref={graphRef}
+                      nodes={displayGraph.nodes}
+                      links={displayGraph.links}
+                      selection={querySelection}
+                      onSelect={setQuerySelection}
+                      layout={graphLayout}
+                      onLayoutChange={setGraphLayout}
+                      autoLayoutOnDataChange={resultTab === 'graph'}
+                      onNodeContextMenu={(event, node) => {
+                        event.preventDefault()
+                        setQuerySelection({ kind: 'node', node })
+                        setGoToMenu({
+                          x: event.clientX,
+                          y: event.clientY,
+                          target: { kind: 'node', nodeId: node.id },
+                        })
+                      }}
+                      onEdgeContextMenu={(event, edge) => {
+                        event.preventDefault()
+                        setQuerySelection({ kind: 'edge', edge })
+                        setGoToMenu({
+                          x: event.clientX,
+                          y: event.clientY,
+                          target: {
+                            kind: 'edge',
+                            sourceId: edge.source,
+                            targetId: edge.target,
+                          },
+                        })
+                      }}
+                    />
+                    <GraphFilterToolbar
+                      types={typeFilterOptions}
+                      selectedTypes={highlightedTypes}
+                      onToggleType={(type) =>
+                        setHighlightedTypes((prev) => toggleTypeInSet(prev, type))
+                      }
+                      edgeRoles={edgeRoleOptions}
+                      selectedEdgeRoles={highlightedEdgeRoles}
+                      onToggleEdgeRole={(role) =>
+                        setHighlightedEdgeRoles((prev) => toggleTypeInSet(prev, role))
+                      }
+                      onReset={clearCanvasFilters}
+                    />
+                  </Box>
                 )}
               </QueryTabInspectSplit>
             </Tabs.Panel>
@@ -963,13 +1091,22 @@ export function QueryPage() {
                       display: 'flex',
                       flexDirection: 'column',
                     }}
+                    styles={{
+                      panel: {
+                        flex: 1,
+                        minHeight: 0,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        overflow: 'hidden',
+                      },
+                    }}
                   >
                     <Tabs.List style={{ flexShrink: 0, alignSelf: 'flex-start' }}>
                       <Tabs.Tab value="vertices" style={{ fontSize: 'var(--mantine-font-size-xs)' }}>
-                        Vertices ({vertexRows.length})
+                        Vertices ({filteredVertexRows.length})
                       </Tabs.Tab>
                       <Tabs.Tab value="edges" style={{ fontSize: 'var(--mantine-font-size-xs)' }}>
-                        Edges ({edgeRows.length})
+                        Edges ({filteredEdgeRows.length})
                       </Tabs.Tab>
                     </Tabs.List>
                     <Tabs.Panel
@@ -978,7 +1115,7 @@ export function QueryPage() {
                       style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}
                     >
                       <QueryResultGrid
-                        rows={vertexRows}
+                        rows={filteredVertexRows}
                         rowKey={(r) => r.id}
                         selectedKey={
                           querySelection?.kind === 'node' ? querySelection.node.id : null
@@ -988,7 +1125,9 @@ export function QueryPage() {
                         }
                         empty={
                           <Text size="sm" c="dimmed">
-                            No vertices in this result.
+                            {highlightedTypes.size > 0
+                              ? 'No vertices match the current filters.'
+                              : 'No vertices in this result.'}
                           </Text>
                         }
                         columns={[
@@ -1010,7 +1149,18 @@ export function QueryPage() {
                           },
                           {
                             key: 'type',
-                            header: 'Type',
+                            header: (
+                              <ColumnFilterHeader
+                                label="Type"
+                                options={dataVertexTypeOptions}
+                                selected={highlightedTypes}
+                                onToggle={(type) =>
+                                  setHighlightedTypes((prev) => toggleTypeInSet(prev, type))
+                                }
+                                onClear={() => setHighlightedTypes(new Set())}
+                                menuWidth={280}
+                              />
+                            ),
                             width: QUERY_STRUCT_TYPE_COL_WIDTH,
                             render: (row) => (
                               <Text size="xs" truncate title={row.type}>
@@ -1033,7 +1183,7 @@ export function QueryPage() {
                       style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}
                     >
                       <QueryResultGrid
-                        rows={edgeRows}
+                        rows={filteredEdgeRows}
                         rowKey={(r) => r.id}
                         selectedKey={
                           querySelection?.kind === 'edge' ? querySelection.edge.id : null
@@ -1046,7 +1196,9 @@ export function QueryPage() {
                         }
                         empty={
                           <Text size="sm" c="dimmed">
-                            No edges in this result.
+                            {edgeDataFiltersActive
+                              ? 'No edges match the current filters.'
+                              : 'No edges in this result.'}
                           </Text>
                         }
                         columns={[
@@ -1068,11 +1220,44 @@ export function QueryPage() {
                           },
                           {
                             key: 'type',
-                            header: 'Type',
+                            header: (
+                              <ColumnFilterHeader
+                                label="Type"
+                                options={dataEdgeTypeOptions}
+                                selected={dataEdgeTypes}
+                                onToggle={(type) =>
+                                  setDataEdgeTypes((prev) => toggleInSet(prev, type))
+                                }
+                                onClear={() => setDataEdgeTypes(new Set())}
+                                menuWidth={280}
+                                emptyMessage="No edge types"
+                              />
+                            ),
                             width: QUERY_STRUCT_TYPE_COL_WIDTH,
                             render: (row) => (
                               <Text size="xs" truncate title={row.type}>
                                 {row.type}
+                              </Text>
+                            ),
+                          },
+                          {
+                            key: 'sourceType',
+                            header: (
+                              <ColumnFilterHeader
+                                label="Source Type"
+                                options={dataEdgeSourceTypeOptions}
+                                selected={dataEdgeSourceTypes}
+                                onToggle={(type) =>
+                                  setDataEdgeSourceTypes((prev) => toggleInSet(prev, type))
+                                }
+                                onClear={() => setDataEdgeSourceTypes(new Set())}
+                                menuWidth={280}
+                              />
+                            ),
+                            width: QUERY_STRUCT_TYPE_COL_WIDTH,
+                            render: (row) => (
+                              <Text size="xs" truncate title={row.sourceType}>
+                                {row.sourceType}
                               </Text>
                             ),
                           },
@@ -1088,11 +1273,43 @@ export function QueryPage() {
                           },
                           {
                             key: 'role',
-                            header: 'Role',
+                            header: (
+                              <ColumnFilterHeader
+                                label="Role"
+                                options={dataEdgeRoleOptions}
+                                selected={highlightedEdgeRoles}
+                                onToggle={(role) =>
+                                  setHighlightedEdgeRoles((prev) => toggleTypeInSet(prev, role))
+                                }
+                                onClear={() => setHighlightedEdgeRoles(new Set())}
+                                menuWidth={280}
+                              />
+                            ),
                             width: QUERY_STRUCT_EDGE_ROLE_COL_WIDTH,
                             render: (row) => (
                               <Text size="xs" truncate title={row.role}>
                                 {row.role}
+                              </Text>
+                            ),
+                          },
+                          {
+                            key: 'targetType',
+                            header: (
+                              <ColumnFilterHeader
+                                label="Target Type"
+                                options={dataEdgeTargetTypeOptions}
+                                selected={dataEdgeTargetTypes}
+                                onToggle={(type) =>
+                                  setDataEdgeTargetTypes((prev) => toggleInSet(prev, type))
+                                }
+                                onClear={() => setDataEdgeTargetTypes(new Set())}
+                                menuWidth={280}
+                              />
+                            ),
+                            width: QUERY_STRUCT_TYPE_COL_WIDTH,
+                            render: (row) => (
+                              <Text size="xs" truncate title={row.targetType}>
+                                {row.targetType}
                               </Text>
                             ),
                           },
@@ -1126,10 +1343,10 @@ export function QueryPage() {
         y={goToMenu?.y ?? 0}
         onClose={() => setGoToMenu(null)}
         target={goToMenu?.target ?? null}
-        nodes={nodes}
+        nodes={displayGraph.nodes}
         index={neighborIndex}
         onGoTo={(id) => {
-          const node = nodes.find((n) => n.id === id)
+          const node = displayGraph.nodes.find((n) => n.id === id) ?? nodes.find((n) => n.id === id)
           if (node) setQuerySelection({ kind: 'node', node })
           requestAnimationFrame(() => graphRef.current?.focusNode(id))
         }}
