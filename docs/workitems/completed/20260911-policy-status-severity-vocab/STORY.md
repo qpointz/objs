@@ -7,6 +7,7 @@
 **Folder:** [`docs/workitems/completed/20260911-policy-status-severity-vocab/`](.)  
 **Backlog:** [C-34](../../BACKLOG.md)  
 **Base:** `origin/dev`  
+**MR:** https://gitlab.qpointz.io/sandbox/bom-poc/-/merge_requests/64  
 **Before:** [C-33 `policy-results-persistence`](../20260907-policy-results-persistence/STORY.md)  
 **Independent of:** [C-29 `policy-batch`](../../planned/policy-batch/STORY.md), [C-30 `policy-consumer`](../../planned/policy-consumer/STORY.md)  
 **Gaps:** [`GAPS.md`](GAPS.md) (G-P50v–G-P56v **resolved**)  
