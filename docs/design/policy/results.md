@@ -1,6 +1,6 @@
-# Policy results and findings (S1 locked)
+# Policy results and findings
 
-**Normative:** G-P11–G-P14, G-P16–G-P18 · [`GAPS.md`](../../workitems/completed/20260904-policy-evaluate-core/GAPS.md)
+**Normative:** G-P11–G-P14, G-P16–G-P18 · C-34 G-P50v–G-P56v · [`GAPS.md`](../../workitems/in-progress/policy-status-severity-vocab/GAPS.md)
 
 ---
 
@@ -13,12 +13,12 @@ flowchart TB
   subgraph statuses [PolicyOutcome.status]
     PASS
     FAIL
-    ERROR
+    EXEC_ERROR
     NA[NOT_APPLICABLE]
   end
   PASS -->|may| F1[findings optional]
   FAIL -->|may| F2[findings optional — including zero]
-  ERROR -->|may| F3[findings optional]
+  EXEC_ERROR -->|may| F3[findings optional]
   NA -->|reason| R[why N/A]
 ```
 
@@ -26,7 +26,7 @@ flowchart TB
 |--------|---------|
 | **PASS** | In scope; policy satisfied |
 | **FAIL** | In scope; policy **not** satisfied (compliance/content) |
-| **ERROR** | Engine/body/unknown-kind/runtime failure — **not** “failed the check” |
+| **EXEC_ERROR** | Engine/body/unknown-kind/runtime failure — **not** “failed the check” (formerly `ERROR`) |
 | **NOT_APPLICABLE** | Gate said out of scope; **not** pass and **not** fail |
 
 Every outcome **must** cite:
@@ -38,10 +38,10 @@ Every outcome **must** cite:
 
 ---
 
-## ERROR vs FAIL (G-P16)
+## EXEC_ERROR vs FAIL (G-P16)
 
-| | FAIL | ERROR |
-|---|------|-------|
+| | FAIL | EXEC_ERROR |
+|---|------|------------|
 | Semantics | Rule said “not OK” | Could not run the rule correctly |
 | Examples | Required edge missing | Bad body, unknown engineKind, adapter throw |
 | Continue others? | **Yes** | **Yes** |
@@ -50,7 +50,7 @@ Every outcome **must** cite:
 flowchart LR
   P1[Policy A → FAIL]
   P2[Policy B → PASS]
-  P3[Policy C → ERROR]
+  P3[Policy C → EXEC_ERROR]
   P1 --> Cont[Continue]
   Cont --> P2 --> Cont2[Continue]
   Cont2 --> P3
@@ -60,22 +60,23 @@ Fragment-level resolve ERRORs are different: they **refuse** the whole evaluate 
 
 ---
 
-## Findings (G-P17, G-P18)
+## Findings (G-P17, G-P18, G-P51v)
 
 | Rule | Lock |
 |------|------|
-| Optional on **all** statuses | Including PASS / ERROR / N/A |
+| Optional on **all** statuses | Including PASS / EXEC_ERROR / N/A |
 | FAIL may have **zero** findings | Allowed |
 | Binding | Soft — node/edge ids when present; **no** hard schema validation in S1 |
 | Purpose | Explain / locate; not a second status channel |
+| **severity** | Closed enum `CRITICAL` \| `HIGH` \| `MEDIUM` \| `LOW` \| `INFO` \| ∅ — not a status token |
 
 Logical shape (illustrative):
 
 | Field | Role |
 |-------|------|
 | `message` | Human-readable |
-| `severity` | Optional severity hint |
-| `nodeIds` / `edgeIds` | Optional fragment bindings |
+| `severity` | Optional [FindingSeverity] |
+| `entities` / `edges` | Optional fragment bindings |
 | `code` / extras | Optional opaque map |
 
 ---
@@ -84,19 +85,19 @@ Logical shape (illustrative):
 
 **Not** suite roll-up. **Not** authoritative.
 
-If provided, compute from the outcome list with fixed precedence:
+If provided, compute from the outcome list with fixed precedence (owned by `SuiteStrategy.aggregateOverall` / builtin pack):
 
 ```text
-ERROR > FAIL > PASS > NOT_APPLICABLE
+EXEC_ERROR > FAIL > PASS > NOT_APPLICABLE
 ```
 
 ```mermaid
 flowchart TD
   list[Outcome list]
-  hasE{any ERROR?}
+  hasE{any EXEC_ERROR?}
   hasF{any FAIL?}
   hasP{any PASS?}
-  OE[overall ERROR]
+  OE[overall EXEC_ERROR]
   OF[overall FAIL]
   OP[overall PASS]
   ON[overall N/A]

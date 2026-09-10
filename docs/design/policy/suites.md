@@ -135,28 +135,36 @@ Request shape (ids / refs) left to API design in WI-002/WI-003 within this lock.
 
 ---
 
-## Status + severity roll-up — **strategy** (**G-P29s** resolved)
+## Status + severity roll-up — **SuiteStrategy pack** (G-P29s / G-P56v)
 
-Roll-up uses a **pluggable strategy** (strategy pattern) selected **on the suite**. That strategy is the **engine** that interprets folder roll-up **inputs** when aggregating each folder’s voting children. Different suites may use different engines; new engines can be added later without changing the suite tree model.
+**Implementer guide:** [`suite-strategy-implementers.md`](suite-strategy-implementers.md) · **Business reading:** [`business-indicators.md`](business-indicators.md)
+
+Suite compute uses a **composable `SuiteStrategy`** selected on the suite (`suiteStrategyKind`; legacy `rollUpStrategyKind` aliases for one release). The pack owns:
+
+- execution strategy selection
+- leaf **reported severity** (from findings, or bare `EXEC_ERROR` → `HIGH` in Builtin)
+- folder **status + reported severity** roll-up
+- **overall** status aggregate
 
 ```text
-interface SuiteRollUpStrategy {
-  // given folder (incl. rollUpMode + severityConfig) + direct voting children,
-  // return this folder's status + reported severity
+interface SuiteStrategy {
+  leafReportedSeverity(outcome) -> FindingSeverity?
   rollUp(folder, votingChildren) -> { status, severity }
+  aggregateOverall(outcomes) -> PolicyOutcomeStatus
+  selectExecution(executionStrategyKind) -> ExecutionStrategy
 }
 ```
 
-### Two layers (corrective lock)
+### Two layers
 
 | Layer | Field | Meaning |
 |-------|--------|---------|
-| **Suite** | `rollUpStrategyKind` | Which **strategy implementation** runs suite-wide (`BUILTIN` in C-27; future e.g. `DROOLS`) |
-| **Folder** | `rollUpMode` | Aggregation **mode** for this folder: **ALL_PASS** \| **ANY_PASS** — input to the suite strategy |
-| **Folder** | `severityConfig` | Optional severity override when non-passing — input to the suite strategy |
+| **Suite** | `suiteStrategyKind` | Which **pack** runs suite-wide (`BUILTIN`; future packs register separately) |
+| **Suite** | `rollUpStrategyKind` | Legacy alias / meta field (same token as pack for Builtin) |
+| **Folder** | `rollUpMode` | Aggregation **mode**: **ALL_PASS** \| **ANY_PASS** — input to the pack |
+| **Folder** | `severityConfig` | Optional severity override when non-passing |
 
 - Folder does **not** select a different strategy class; it only supplies inputs the suite strategy reads.
-- Prior incorrect lock put ALL_PASS/ANY_PASS on the suite as strategy kinds; corrected so modes live on folders.
 
 - **Folder participation** (non-voting for parent):
   - **`DISABLED`** — **no evaluation** of that subtree; omitted from parent voting; no results for that subtree.
@@ -164,68 +172,66 @@ interface SuiteRollUpStrategy {
   - Strategy only sees **ENABLED** voting children.
 - **N/A policies (G-P33):** same participation as **DISABLED** — no engine execution, **no** suite result leaf, **no** vote (even if flat `evaluate` would surface `NOT_APPLICABLE`; the suite wrapper drops them from suite results/voting).
 
-### Builtin engine (`BUILTIN`)
+### Builtin pack (`BUILTIN`)
 
-C-27 ships **`BuiltinSuiteRollUpStrategy`**: reads each folder’s `rollUpMode` and applies the matrices below (+ shared severity rules).
+**`BuiltinSuiteStrategy`** (delegates folder matrices to `BuiltinSuiteRollUpStrategy`): reads each folder’s `rollUpMode` and applies the matrices below (+ shared severity rules).
 
 | Folder `rollUpMode` | Status behavior |
 |---------------------|-----------------|
-| **ALL_PASS** (default) | Every voting child must PASS; ERROR escalates; else any FAIL → FAIL; else N/A if no voters |
-| **ANY_PASS** | ERROR escalates; else any PASS → PASS; else any FAIL → FAIL; else N/A |
+| **ALL_PASS** (default) | Every voting child must PASS; **EXEC_ERROR** escalates; else any FAIL → FAIL; else N/A if no voters |
+| **ANY_PASS** | **EXEC_ERROR** escalates; else any PASS → PASS; else any FAIL → FAIL; else N/A |
 
-Severity is computed **inside** `SuiteRollUpStrategy` (not a separate post-step). Shared draft rules for built-ins: status-agnostic **max** of **voting** children’s reported severities; explicit folder override when folder status is non-passing; PASS + sev = “PASS with WARNING”. DISABLED/IGNORED children do not contribute severity to parent. Custom strategies may define their own severity behavior.
-
-**Future (out of C-27 built-ins, not required now):** suite `rollUpStrategyKind=DROOLS` (or other) loads a strategy impl that still receives `(folder, votingChildren)` and may use folder mode/severity/tags as facts. Same SPI; engine-as-strategy.
+**Reported severity** tokens: `CRITICAL` > `HIGH` > `MEDIUM` > `LOW` > `INFO` (same as finding severity). Status-agnostic **max** of voting children’s reported severities; explicit folder override when folder status is non-passing; PASS + sev = “PASS with warning”. DISABLED/IGNORED children do not contribute severity to parent. Custom packs may define their own severity behavior.
 
 ```mermaid
 flowchart LR
-  suite[Suite.rollUpStrategyKind]
+  suite[Suite.suiteStrategyKind]
   reg[Strategy registry]
-  strat[SuiteRollUpStrategy]
+  strat[SuiteStrategy pack]
   mode[Folder.rollUpMode]
   folder[Each folder bottom-up]
   suite --> reg --> strat --> folder
   mode --> strat
 ```
 
-### Status matrices (folder `rollUpMode`, Builtin engine)
+### Status matrices (folder `rollUpMode`, Builtin pack)
 
 **ALL_PASS**
 
-| ERROR? | FAIL? | PASS? | Parent |
+| EXEC_ERROR? | FAIL? | PASS? | Parent |
 |:---:|:---:|:---:|---|
-| yes | · | · | ERROR |
+| yes | · | · | EXEC_ERROR |
 | no | yes | · | FAIL |
 | no | no | yes | PASS |
 | no | no | no | N/A |
 
 **ANY_PASS**
 
-| ERROR? | FAIL? | PASS? | Parent |
+| EXEC_ERROR? | FAIL? | PASS? | Parent |
 |:---:|:---:|:---:|---|
-| yes | · | · | ERROR |
+| yes | · | · | EXEC_ERROR |
 | no | · | yes | PASS |
 | no | yes | no | FAIL |
 | no | no | no | N/A |
 
 ---
 
-## Severity (via `SuiteRollUpStrategy`)
+## Severity (via SuiteStrategy reported severity)
 
-Scale (draft): `CRITICAL > HIGH > MEDIUM > LOW > INFO > ∅`
+Scale (locked): `CRITICAL > HIGH > MEDIUM > LOW > INFO > ∅`
 
-- **Leaf severity** = max of that outcome’s finding severities when present.
-- **No findings** → set a **synthetic severity appropriate to the outcome** (built-ins: **ERROR → HIGH**; other outcomes get a sensible synthetic when a severity signal is needed without findings).
+- **Leaf reported severity** = max of that outcome’s finding severities when present.
+- **No findings** → Builtin: bare **`EXEC_ERROR` → `HIGH`**; otherwise ∅.
 - **Folder `severityConfig`**: unset **or** explicit override.
-- When folder is **non-passing** (`FAIL`/`ERROR`):
-  - **unset** → reported severity = **max of voting children’s reported severities**, **irrespective of child status** (PASS/FAIL/ERROR).
+- When folder is **non-passing** (`FAIL`/`EXEC_ERROR`):
+  - **unset** → reported severity = **max of voting children’s reported severities**, **irrespective of child status**.
   - **explicit** → reported severity = configured value.
-- When folder is **PASS**: override unused; reported severity = same status-agnostic child max (may be ∅). **PASS + non-empty severity** reads as **PASS with WARNING** (no new status enum).
+- When folder is **PASS**: override unused; reported severity = same status-agnostic child max (may be ∅). **PASS + non-empty severity** reads as **PASS with warning** (no new status enum).
 - DISABLED / IGNORED folders and **N/A policies** → no severity contribution to parent (non-voting). IGNORED may still have local severity on its own result node. N/A policies have no suite result node.
 
 ```text
 childSeverityPool = reported sevs of voting children (any status)
-if status in {FAIL, ERROR}:
+if status in {FAIL, EXEC_ERROR}:
   reported = severityConfig ?: max(childSeverityPool)
 elif status == PASS:
   reported = max(childSeverityPool)   # ∅ => clean PASS; else PASS with WARNING
@@ -242,7 +248,7 @@ else:
 | ALL_PASS mode | FAIL@L, override=C | FAIL | C | FAIL with explicit C |
 | ANY_PASS mode | PASS + FAIL@H | PASS | H | PASS with WARNING (H) |
 | ANY_PASS mode | PASS@C + FAIL@L | PASS | C | PASS with WARNING (C) |
-| either | ERROR, no findings | ERROR | H | ERROR (synthetic HIGH) |
+| either | EXEC_ERROR, no findings | EXEC_ERROR | H | EXEC_ERROR (synthetic HIGH) |
 
 ---
 

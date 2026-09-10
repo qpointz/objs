@@ -44,6 +44,8 @@ flowchart LR
 | [**workbench.md**](workbench.md) | C-31 Policy playground UI + `:objs-policy-service` |
 | [**metadata.md**](metadata.md) | C-32 categories, tags, annotations, semver (list navigation) |
 | [**suites.md**](suites.md) | C-27 suites — folders, matchers, `evaluateSuite`, roll-up (**normative / implemented**) |
+| [**business-indicators.md**](business-indicators.md) | **Business guide** — how outcomes/findings roll up into Pass/Fail/severity indicators |
+| [**suite-strategy-implementers.md**](suite-strategy-implementers.md) | **Engineers** — SuiteStrategy packs, Builtin behavior, extension map → business value |
 | [**examples-sbom.md**](examples-sbom.md) | Paste-ready DROOLS sketches against SBOM ontology |
 
 Normative S1 decisions: [`GAPS.md`](../../workitems/completed/20260904-policy-evaluate-core/GAPS.md) · Story: [`STORY.md`](../../workitems/completed/20260904-policy-evaluate-core/STORY.md) · Scenarios: [`EXAMPLES.md`](../../workitems/completed/20260904-policy-evaluate-core/EXAMPLES.md)  

@@ -15,7 +15,10 @@ Shared philosophy for foundation policy evaluation. **S1 flat evaluate** and the
 | [`pipeline.md`](pipeline.md) | Resolve → PolicyContextWiring → gated evaluate |
 | [`evaluation-sequences.md`](evaluation-sequences.md) | Sequence diagrams for implement + documenting pass |
 | [`modules.md`](modules.md) | `:objs-policy-api` / `:objs-policy-core` (shipped types) |
-| [`results.md`](results.md) | Outcomes, findings, ERROR vs FAIL, aggregate helper |
+| [`results.md`](results.md) | Outcomes, findings, EXEC_ERROR vs FAIL, aggregate helper |
+| [`suites.md`](suites.md) | Suites, folders, matchers, roll-up |
+| [`business-indicators.md`](business-indicators.md) | Business-oriented roll-up → indicators guide |
+| [`suite-strategy-implementers.md`](suite-strategy-implementers.md) | SuiteStrategy packs for maintainers / extenders |
 | [`repository.md`](repository.md) | In-memory repo; resolve latest\|version\|id |
 | [`drools.md`](drools.md) | C-26 Drools adapter (EntityFact/EdgeFact/ObjectFact, BOM+engine, KB cache) |
 
