@@ -50,6 +50,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | C-33 | Evaluation result archives: persist axes, filters, presets, labeling (G-P11r/32r/48r–50r) | feature | done | [`completed/20260907-policy-results-persistence/`](completed/20260907-policy-results-persistence/STORY.md) |
 | C-34 | Disambiguate outcome status ERROR vs finding severity ERROR (API / engines / SeverityRank) | refactoring | done | [`completed/20260911-policy-status-severity-vocab/`](completed/20260911-policy-status-severity-vocab/STORY.md) |
 | C-35 | Typed multi-version deserialize + hand migrations (latest OM codegen; Lane B snapshots) | feature | planned | [`planned/codegen-schema-evolution/`](planned/codegen-schema-evolution/STORY.md), [`DESIGN.md`](planned/codegen-schema-evolution/DESIGN.md) |
+| C-36 | Graph lifecycle ops catalog: empty/erase/backdated freeze + programmatic recipes | feature | done | [`completed/20260912-graph-ops-catalog/`](completed/20260912-graph-ops-catalog/STORY.md) |
 
 ---
 
@@ -104,4 +105,4 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | backlog | 2 |
 | planned | 5 |
 | in-progress | 0 |
-| done | 41 |
+| done | 42 |

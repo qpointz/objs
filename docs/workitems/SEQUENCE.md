@@ -63,3 +63,11 @@ C-24 flat evaluate
 | **C-35** | [`codegen-schema-evolution`](planned/codegen-schema-evolution/STORY.md) | planned | After **C-23**. Typed upgrade-to-latest hydrate; Lane A latest OM + Lane B snapshot DTOs; hand migrations. **Design first** ([`DESIGN.md`](planned/codegen-schema-evolution/DESIGN.md)). Independent of C-20 and policy family. Does not block C-29/C-30. |
 
 Do not start C-35 implementation until C-35 WI-001 closes open GAPS.
+
+---
+
+## Graph lifecycle ops (outside policy chain)
+
+| Id | Story | Status | Notes |
+|----|--------|--------|-------|
+| **C-36** | [`graph-ops-catalog`](completed/20260912-graph-ops-catalog/STORY.md) | done | After **C-18** / **C-22**. clear/purge/destroy/compact, backdated freeze, reset/apply, REST+Composer, recipes, example seeds. Independent of C-20, C-35, policy family. |

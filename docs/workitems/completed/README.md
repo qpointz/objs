@@ -10,6 +10,7 @@ docs/workitems/completed/YYYYMMDD-<story-slug>/
 
 ## Index (optional, newest first)
 
+- [`20260912-graph-ops-catalog`](20260912-graph-ops-catalog/STORY.md) — Graph lifecycle clear/purge/destroy/compact, backdated freeze, reset/apply, recipes (C-36)
 - [`20260911-policy-status-severity-vocab`](20260911-policy-status-severity-vocab/STORY.md) — Status vs finding severity vocab; SuiteStrategy pack; evaluation trees (C-34)
 - [`20260903-objs-core-spring-split`](20260903-objs-core-spring-split/STORY.md) — Spring-free persistence + autoconfigure; expand objs-api; rename objs-persistence (C-25)
 - [`20260903-workbench-cosmetic`](20260903-workbench-cosmetic/STORY.md) — Workbench cosmetic polish: Objects splash, inspect Graphs, open-graph dialog (U-8)

@@ -2,12 +2,14 @@
 
 **Slug:** `graph-ops-catalog`  
 **Branch:** `graph-ops-catalog`  
-**Status:** in-progress  
-**Folder:** [`docs/workitems/in-progress/graph-ops-catalog/`](.)  
+**Status:** completed  
+**Closed:** 2026-09-12  
+**Folder:** [`docs/workitems/completed/20260912-graph-ops-catalog/`](.)  
 **Backlog:** [C-36](../../BACKLOG.md)  
 **Base:** `origin/dev`  
-**Before:** [C-18](../../completed/20260819-versions-and-snapshots/STORY.md), [C-22](../../completed/20260826-graph-mutate-replace/STORY.md)  
-**Gaps:** [`GAPS.md`](GAPS.md) — **all design rows locked** (A–C resolved; G-O16a/b → Stage D)  
+**MR:** https://gitlab.qpointz.io/sandbox/bom-poc/-/merge_requests/65  
+**Before:** [C-18](../20260819-versions-and-snapshots/STORY.md), [C-22](../20260826-graph-mutate-replace/STORY.md)  
+**Gaps:** [`GAPS.md`](GAPS.md) — **all design rows locked** (A–D shipped)  
 **Docs:** [`persist-sketch.md`](../../../design/graph/persist-sketch.md) · [`programmatic-recipes.md`](../../../design/graph/programmatic-recipes.md) (WI-005) · [`rest-api.md`](../../../design/service/rest-api.md)  
 **Process:** [`RULES.md`](../../RULES.md)
 
