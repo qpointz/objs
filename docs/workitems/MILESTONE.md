@@ -65,7 +65,8 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 
 ### In progress
 
-_(none)_
+- [`transaction-recipes`](in-progress/transaction-recipes/STORY.md) — Spring integration how-to + transaction recipes (C-37).
+
 
 ### Planned
 

@@ -27,6 +27,16 @@ class MyGraphService(
 versions externally (e.g. SBOM fingerprints) should provide a `GraphVersionReferenceGuard` bean so
 purge/destroy fail closed.
 
+Full Boot embed how-to (properties, Flyway, EntityScan, overrides):
+[spring-integration.md](../core/spring-integration.md).
+
+## Transactions
+
+Same-TX with app `JpaRepository` + objs stores, Spring without an outer TX, and non-Spring UoW:
+[transaction-recipes.md](../core/transaction-recipes.md).
+
+Stores already wrap `uow.read` / `uow.write` — inject stores, not DAOs.
+
 ## Create / update / delete
 
 ```kotlin
@@ -120,6 +130,8 @@ catalog tags are for ontology UX and export, not graph lifecycle.
 
 - [persist-sketch.md](persist-sketch.md) — mutate order, REPLACE-empty ≡ `clearGraph`
 - [persistence.md](persistence.md) — tables, clocks, Flyway
+- [../core/spring-integration.md](../core/spring-integration.md) — Boot autoconfigure how-to
+- [../core/transaction-recipes.md](../core/transaction-recipes.md) — Spring / non-Spring TX
 - [rest-api.md](../service/rest-api.md) — HTTP glossary
 - [apps-vs-foundation.md](apps-vs-foundation.md) — store vs example apps
 - [spring-split.md](../core/spring-split.md) — module boundaries

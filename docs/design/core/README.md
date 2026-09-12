@@ -1,7 +1,7 @@
 # objs-api / objs-persistence / objs-autoconfigure
 
 **Modules:** `:objs-api` · `:objs-persistence` · `:objs-autoconfigure` (Boot adapter)  
-**Story:** [C-25 objs-core-spring-split](../../workitems/completed/20260903-objs-core-spring-split/STORY.md) · [GAPS](../../workitems/completed/20260903-objs-core-spring-split/GAPS.md) · [spring-split.md](spring-split.md) · [persistence-backends.md](persistence-backends.md)
+**Story:** [C-25 objs-core-spring-split](../../workitems/completed/20260903-objs-core-spring-split/STORY.md) · [GAPS](../../workitems/completed/20260903-objs-core-spring-split/GAPS.md) · [spring-split.md](spring-split.md) · [persistence-backends.md](persistence-backends.md) · [spring-integration.md](spring-integration.md) · [transaction-recipes.md](transaction-recipes.md)
 
 ## Role
 
@@ -25,9 +25,18 @@ Gradle module is `:objs-persistence` (G-X7). Java packages remain `org.poc.objs.
 ## Key behaviours
 
 - **SDK / model:** construct graphs, match in memory, hold catalogs — prefer `:objs-api`.
-- **Persist:** DAOs + internal UoW; Boot apps never open TX themselves — write-path sketch [`../graph/persist-sketch.md`](../graph/persist-sketch.md).
+- **Persist:** DAOs + internal UoW; Boot apps use [`spring-integration.md`](spring-integration.md). App services may own an outer `@Transactional` that objs **joins** — [`transaction-recipes.md`](transaction-recipes.md). Write-path sketch: [`../graph/persist-sketch.md`](../graph/persist-sketch.md).
 - **DB:** objs Flyway (`flyway_schema_history_objs`, vendor SQL in persistence JAR) before Boot Flyway — see [`../graph/persistence.md`](../graph/persistence.md).
 - **Other backends / further splits:** deferred strategies — see [`persistence-backends.md`](persistence-backends.md).
+
+## How-to docs
+
+| Doc | Contents |
+|-----|----------|
+| [spring-integration.md](spring-integration.md) | Boot embed: Gradle, autoconfig beans, properties, Flyway, EntityScan |
+| [transaction-recipes.md](transaction-recipes.md) | Spring `@Transactional` join / non-Spring UoW / pitfalls |
+| [spring-split.md](spring-split.md) | C-25 module boundaries (normative history) |
+| [persistence-backends.md](persistence-backends.md) | Future multi-backend packaging |
 
 ## Tests
 

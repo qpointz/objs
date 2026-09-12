@@ -3,7 +3,7 @@
 **Status:** **normative for C-25** — story [`objs-core-spring-split`](../../workitems/completed/20260903-objs-core-spring-split/STORY.md) (backlog **C-25**). Design GAPS locked in story [`GAPS.md`](../../workitems/completed/20260903-objs-core-spring-split/GAPS.md).  
 **Modules (C-25 target):** `:objs-api` · `:objs-persistence` · `:objs-autoconfigure`
 **Parent:** [`README.md`](README.md)
-**Related:** [`persistence-backends.md`](persistence-backends.md), [`../graph/persistence.md`](../graph/persistence.md), [`../graph/gremlin.md`](../graph/gremlin.md), [`../platform/overview.md`](../platform/overview.md)
+**Related:** [`persistence-backends.md`](persistence-backends.md), [`spring-integration.md`](spring-integration.md), [`transaction-recipes.md`](transaction-recipes.md), [`../graph/persistence.md`](../graph/persistence.md), [`../graph/gremlin.md`](../graph/gremlin.md), [`../platform/overview.md`](../platform/overview.md)
 
 > **Historical note:** Sections below that speak of "Split A / Split B" and module names `:objs-core-jpa` / `:objs-core-spring` are the **pre-story exploration**. **Authoritative locks** for this delivery are G-A1…G-A21 in GAPS (three modules: api + Spring-free persistence + tiny autoconfigure; DAOs 1:1; UoW internal; package matrix G-A20). Gradle rename `:objs-core` → `:objs-persistence` is **G-X7** (resolved). Treat Split A/B wording as background, not competing requirements.
 
@@ -17,7 +17,7 @@ The split is implemented. Verdict / Split A-B sections below are pre-story explo
 | `:objs-persistence` | Spring-free persistence (DAOs, store impls, Flyway SQL, seed apply); packages `org.poc.objs.core.*` |
 | `:objs-autoconfigure` | Boot adapter: `spring.datasource` to beans, Spring UoW, objs Flyway ordering |
 
-Boot apps depend on `:objs-autoconfigure`. Graph frontends (`:objs-gremlin-core`) depend on `:objs-api` only. See [`persistence-backends.md`](persistence-backends.md) for multi-backend strategy.
+Boot apps depend on `:objs-autoconfigure`. Graph frontends (`:objs-gremlin-core`) depend on `:objs-api` only. See [`persistence-backends.md`](persistence-backends.md) for multi-backend strategy. Operator how-tos: [`spring-integration.md`](spring-integration.md), [`transaction-recipes.md`](transaction-recipes.md).
 
 ## Verdict
 

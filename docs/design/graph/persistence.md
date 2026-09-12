@@ -2,8 +2,8 @@
 
 **Status:** living (C-25 ownership)  
 **Parent:** [README.md](README.md)  
-**Modules:** `:objs-persistence` owns JPA/DAOs/Flyway **SQL**; `:objs-autoconfigure` owns Boot DataSource/EMF wiring and objs Flyway **ordering** beans — see [core/spring-split.md](../core/spring-split.md), [core/persistence-backends.md](../core/persistence-backends.md).  
-**Write path (create / mutate / persist):** [persist-sketch.md](persist-sketch.md).
+**Modules:** `:objs-persistence` owns JPA/DAOs/Flyway **SQL**; `:objs-autoconfigure` owns Boot DataSource/EMF wiring and objs Flyway **ordering** beans — see [core/spring-split.md](../core/spring-split.md), [core/spring-integration.md](../core/spring-integration.md), [core/persistence-backends.md](../core/persistence-backends.md).  
+**Write path (create / mutate / persist):** [persist-sketch.md](persist-sketch.md). **Transactions:** [core/transaction-recipes.md](../core/transaction-recipes.md).
 
 ## Database
 

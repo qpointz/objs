@@ -24,6 +24,8 @@ Objs is an **entity store**: independent informational **entities** linked by **
 | [validation.md](validation.md) | Persist gate, batch two-stage validation, create/update by id |
 | [persist-sketch.md](persist-sketch.md) | Write path sketch: create graph → mutation → persist |
 | [programmatic-recipes.md](programmatic-recipes.md) | Copy-paste Kotlin: wiring, clear/purge/destroy, versions, annotations vs tags |
+| [../core/spring-integration.md](../core/spring-integration.md) | Boot `:objs-autoconfigure` how-to |
+| [../core/transaction-recipes.md](../core/transaction-recipes.md) | Spring / non-Spring transaction recipes |
 | [persistence.md](persistence.md) | PostgreSQL, JSONB, two Flyway lines, H2 tests |
 | [database-model.md](database-model.md) | As-built `bom_*` schema (C-18 HEAD + history) |
 | [apps-vs-foundation.md](apps-vs-foundation.md) | Store vs example apps: missing graph APIs, lift candidates, duplicates |
