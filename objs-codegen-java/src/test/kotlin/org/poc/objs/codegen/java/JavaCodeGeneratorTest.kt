@@ -302,12 +302,25 @@ class JavaCodeGeneratorTest {
         assertThatThrownBy {
             JavaCodeGenerator().generate(
                 document(),
-                Path.of("objs-core", "build", "generated"),
+                tempDirectory.resolve("a/b/z/objs-api/build/generated"),
                 "com.example",
             )
         }
             .isInstanceOf(JavaCodegenException::class.java)
-            .hasMessageContaining("cannot be under a root objs-* module")
+            .hasMessageContaining("cannot be under foundation module 'objs-api'")
+    }
+
+    @Test
+    fun shouldAllowOutputUnderIncidentalObjsPrefixAndAppModules() {
+        val underMonorepo = tempDirectory.resolve("objs-my-monorepo/examples/sbom/sbom-service/build/generated")
+        Files.createDirectories(underMonorepo)
+        val monorepoReport = JavaCodeGenerator().generate(document(), underMonorepo, "com.example")
+        assertThat(monorepoReport.generatedFiles).isNotEmpty()
+
+        val underAppModule = tempDirectory.resolve("objs-sbom-service/build/generated")
+        Files.createDirectories(underAppModule)
+        val appReport = JavaCodeGenerator().generate(document(), underAppModule, "com.example")
+        assertThat(appReport.generatedFiles).isNotEmpty()
     }
 
     private fun document(): Map<String, Any?> = mapOf(

@@ -42,15 +42,15 @@ or prefix-renamed layouts:
 
 | Stage | WIs | Ready | Notes |
 |-------|-----|-------|-------|
-| 0 — Scaffold | WI-000 | ready | This folder + backlog + branch |
+| 0 — Scaffold | WI-000 | done | This folder + backlog + branch |
 | 1 — Export DRL | WI-001 | done | `REPLACE_EXTENSIONS` + fixture |
-| 2 — Codegen guard | WI-002 | after WI-000 (parallel OK with WI-001) | Exact foundation dir set + tests + README |
+| 2 — Codegen guard | WI-002 | done | Exact foundation dir set + tests + README |
 
 ## Work Items
 
 - [x] WI-000 — Story scaffold — examples: **—** (`WI-000-story-scaffold.md`)
 - [x] WI-001 — Export rewrite for `.drl` (and confirm no other gaps) — examples: **SBOM policy seeds** (`WI-001-export-drl.md`)
-- [ ] WI-002 — Codegen foundation-dir path guard — examples: **SBOM / AR / codegen examples** (`WI-002-codegen-path-guard.md`)
+- [x] WI-002 — Codegen foundation-dir path guard — examples: **SBOM / AR / codegen examples** (`WI-002-codegen-path-guard.md`)
 
 ## Out of scope
 
@@ -60,11 +60,11 @@ or prefix-renamed layouts:
 
 ## Acceptance
 
-- [ ] Exported `.drl` seeds contain `TARGET_PACKAGE` (no leftover `org.poc.objs`)
-- [ ] `make test-export-fixture` covers DRL rewrite
-- [ ] Codegen allows output under nested monorepos and `objs-sbom-service`-style app dirs
-- [ ] Codegen still rejects output under foundation dirs (e.g. `…/objs-api/…`) at any depth
-- [ ] `./gradlew :objs-codegen-java:test`
+- [x] Exported `.drl` seeds contain `TARGET_PACKAGE` (no leftover `org.poc.objs`)
+- [x] `make test-export-fixture` covers DRL rewrite
+- [x] Codegen allows output under nested monorepos and `objs-sbom-service`-style app dirs
+- [x] Codegen still rejects output under foundation dirs (e.g. `…/objs-api/…`) at any depth
+- [x] `./gradlew :objs-codegen-java:test`
 
 ## Process notes
 

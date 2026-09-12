@@ -1002,9 +1002,13 @@ class JavaCodeGenerator(
 
     private fun validateOutputDirectory(outputDirectory: Path) {
         val normalized = outputDirectory.toAbsolutePath().normalize()
-        if (normalized.any { it.fileName.toString().startsWith("objs-") }) {
+        val foundationDir = normalized.firstOrNull { segment ->
+            FOUNDATION_MODULE_DIRS.contains(segment.fileName.toString())
+        }
+        if (foundationDir != null) {
             throw JavaCodegenException(
-                "Generated output must be application-owned and cannot be under a root objs-* module: $normalized",
+                "Generated output must be application-owned and cannot be under foundation module " +
+                    "'${foundationDir.fileName}': $normalized",
             )
         }
     }
@@ -1118,6 +1122,29 @@ class JavaCodeGenerator(
     )
 
     companion object {
+        /**
+         * Exact foundation module directory names. Export string-replace rewrites these when
+         * `MODULE_PREFIX` changes. Application modules (e.g. `objs-sbom-service`) and incidental
+         * ancestors named `objs-*` are intentionally absent.
+         */
+        private val FOUNDATION_MODULE_DIRS = setOf(
+            "objs-api",
+            "objs-codegen-java",
+            "objs-persistence",
+            "objs-autoconfigure",
+            "objs-service",
+            "objs-service-ui",
+            "objs-service-app",
+            "objs-gremlin-core",
+            "objs-gremlin-service",
+            "objs-jgrapht-core",
+            "objs-jgrapht-service",
+            "objs-policy-api",
+            "objs-policy-core",
+            "objs-policy-drools",
+            "objs-policy-service",
+        )
+
         private val JAVA_IDENTIFIER = Regex("[A-Za-z_$][A-Za-z0-9_$]*")
         private val JAVA_KEYWORDS = setOf(
             "abstract", "assert", "boolean", "break", "byte", "case", "catch", "char", "class",

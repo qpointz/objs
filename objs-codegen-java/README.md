@@ -34,7 +34,10 @@ JavaCodeGenerator().generate(
 )
 ```
 
-The output directory must be owned by the consuming application. Paths under a root `objs-*`
-module are rejected. Configured custom node base classes must expose an accessible no-argument
-constructor. The generated builder requires a caller-supplied `PayloadMapper`; it never creates a
-Jackson mapper or performs persistence. The standalone CLI entry point is `JavaCodegenMain`.
+The output directory must be owned by the consuming application. Paths under a **foundation
+module directory** (`objs-api`, `objs-persistence`, `objs-codegen-java`, …) are rejected at any
+nesting depth. Incidental ancestors or application modules whose names start with `objs-`
+(for example `objs-my-monorepo` or `objs-sbom-service`) are allowed. Configured custom node base
+classes must expose an accessible no-argument constructor. The generated builder requires a
+caller-supplied `PayloadMapper`; it never creates a Jackson mapper or performs persistence. The
+standalone CLI entry point is `JavaCodegenMain`.

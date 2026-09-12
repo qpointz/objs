@@ -2,7 +2,7 @@
 
 **Story:** [`STORY.md`](STORY.md)  
 **Stage:** 2 — Codegen guard  
-**Status:** planned  
+**Status:** done  
 **Depends on:** WI-000 (independent of WI-001)  
 **Examples:** **SBOM / AR / codegen examples** (any app that runs `JavaCodeGenerator`)
 
@@ -13,15 +13,15 @@ module directory names so nested monorepos and incidental / app `objs-*` path se
 
 ## Deliverables
 
-- [ ] Exact foundation module dir set in [`JavaCodeGenerator.kt`](../../../../objs-codegen-java/src/main/kotlin/org/poc/objs/codegen/java/JavaCodeGenerator.kt)
-- [ ] Tests: reject `…/a/b/z/objs-api/…`; allow `objs-my-monorepo/…` and `objs-sbom-service/…`
-- [ ] README wording in [`objs-codegen-java/README.md`](../../../../objs-codegen-java/README.md)
-- [ ] Ship G-2 locked decision (exact foundation dir set)
+- [x] Exact foundation module dir set in [`JavaCodeGenerator.kt`](../../../../objs-codegen-java/src/main/kotlin/org/poc/objs/codegen/java/JavaCodeGenerator.kt)
+- [x] Tests: reject `…/a/b/z/objs-api/…`; allow `objs-my-monorepo/…` and `objs-sbom-service/…`
+- [x] README wording in [`objs-codegen-java/README.md`](../../../../objs-codegen-java/README.md)
+- [x] Ship G-2 locked decision (exact foundation dir set)
 
 ## Acceptance
 
-- [ ] `./gradlew :objs-codegen-java:test`
-- [ ] Message still indicates foundation-module ownership when rejecting
+- [x] `./gradlew :objs-codegen-java:test`
+- [x] Message still indicates foundation-module ownership when rejecting
 
 ## Out of scope
 
