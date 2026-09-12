@@ -23,7 +23,7 @@ C-17, C-18, and C-25 are **done**. Do not start C-20 implementation until C-20 W
 | 5 | **C-27** | [`policy-suites`](completed/20260905-policy-suites/STORY.md) | **done** | **C-32** | **C-28** |
 | 6 | **C-28** | [`policy-seeds-persistence`](completed/20260906-policy-seeds-persistence/STORY.md) | **done** | **C-27** | **C-33** |
 | 7 | **C-33** | [`policy-results-persistence`](completed/20260907-policy-results-persistence/STORY.md) | **done** | **C-28** | **C-29** |
-| 8 | **C-29** | [`policy-batch`](planned/policy-batch/STORY.md) | planned | **C-33** | **C-30** |
+| 8 | **C-29** | [`policy-batch`](in-progress/policy-batch/STORY.md) | in-progress | **C-33** | **C-30** |
 | 9 | **C-30** | [`policy-consumer`](planned/policy-consumer/STORY.md) | planned (gated) | **C-29** | — (end of family) |
 
 ```text
@@ -44,7 +44,7 @@ C-24 flat evaluate
 **Content deps:** suite seed kinds need C-27; batch suite target needs C-27; result store needs C-27 shape + C-28 catalog boundary.  
 **Do not** start a story’s WI-002+ until that story’s own WI-001 closes its GAPS. Do not pull later-story gaps into an earlier design lock.
 
-**Next to work now:** C-29 [`policy-batch`](planned/policy-batch/STORY.md) (planned) — after C-33 archives.
+**Next to work now:** finish C-29 living docs / close story; then C-30 [`policy-consumer`](planned/policy-consumer/STORY.md).
 
 ---
 

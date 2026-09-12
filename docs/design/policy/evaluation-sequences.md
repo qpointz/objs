@@ -243,9 +243,14 @@ sequenceDiagram
   Suite-->>App: SuiteEvaluationResult
 
   App->>Batch: evaluateBatch(subjects, target)
+  Note over Batch: PolicyBatchExecutor plans + runs (SequentialPolicyBatchExecutor)
   loop each subject
-    Batch->>Ev: evaluate(subject.fragment, refs)
-    Ev-->>Batch: EvaluationResult
+    alt suite target
+      Batch->>Ev: via SuiteEvaluator.evaluateSuite
+    else policy refs
+      Batch->>Ev: evaluate(subject.fragment, refs)
+    end
+    Ev-->>Batch: EvaluationResult / SuiteEvaluationResult or subject ERROR cell
   end
   Batch-->>App: BatchEvaluationResult
 ```
@@ -262,6 +267,6 @@ sequenceDiagram
 | §4 | FAIL/ERROR continue; unknown kind/engine → ERROR |
 | §5 | Outcome version matches resolved revision |
 | §6 | Unresolvable ref → ERROR (continue) |
-| §7 | Wrappers only call fixed `evaluate` |
+| §7 | Wrappers only call fixed `evaluate` / `evaluateSuite`; batch = `PolicyBatchExecutor` |
 
 Scenarios: [`EXAMPLES.md`](../../workitems/completed/20260904-policy-evaluate-core/EXAMPLES.md).

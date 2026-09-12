@@ -102,5 +102,5 @@ flowchart LR
 | Suites (`SuiteRepository`, `evaluateSuite`) | **C-27** — shipped in api/core + service/workbench; see [`suites.md`](suites.md) |
 | Metadata (categories/tags/annotations/semver) | **C-32** — shipped in api/core + service/workbench; see [`metadata.md`](metadata.md) |
 | JPA + seeds | C-28 |
-| Batch pack | C-29 |
+| Batch pack | **C-29 shipped** — `PolicyBatchEvaluator` / `PolicyBatchExecutor` + `SequentialPolicyBatchExecutor` |
 | Example/REST extras | C-30 |

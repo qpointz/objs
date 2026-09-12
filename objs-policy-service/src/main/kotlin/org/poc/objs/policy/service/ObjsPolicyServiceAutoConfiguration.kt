@@ -3,14 +3,18 @@ package org.poc.objs.policy.service
 import org.poc.objs.api.domain.DefaultGraphFragmentPolicy
 import org.poc.objs.api.domain.GraphFragmentPolicy
 import org.poc.objs.policy.api.CategoryRepository
+import org.poc.objs.policy.api.PolicyBatchEvaluator
+import org.poc.objs.policy.api.PolicyBatchExecutor
 import org.poc.objs.policy.api.PolicyEngineKinds
 import org.poc.objs.policy.api.PolicyEvaluator
 import org.poc.objs.policy.api.PolicyRepository
 import org.poc.objs.policy.api.SuiteEvaluator
 import org.poc.objs.policy.api.SuiteRepository
+import org.poc.objs.policy.core.DefaultPolicyBatchEvaluator
 import org.poc.objs.policy.core.DefaultPolicyEvaluator
 import org.poc.objs.policy.core.DefaultSuiteEvaluator
 import org.poc.objs.policy.core.InMemoryPolicyStores
+import org.poc.objs.policy.core.SequentialPolicyBatchExecutor
 import org.poc.objs.policy.drools.DroolsPolicyEngine
 import org.poc.objs.policy.drools.PolicyKnowledgeBaseCache
 import org.poc.objs.policy.service.seed.CategorySeedHandler
@@ -92,6 +96,23 @@ class ObjsPolicyServiceAutoConfiguration {
             policies = repository,
             categories = categories,
         )
+
+    @Bean
+    @ConditionalOnMissingBean
+    fun policyBatchExecutor(
+        policyEvaluator: PolicyEvaluator,
+        suiteEvaluator: SuiteEvaluator,
+    ): PolicyBatchExecutor =
+        SequentialPolicyBatchExecutor(
+            policyEvaluator = policyEvaluator,
+            suiteEvaluator = suiteEvaluator,
+        )
+
+    @Bean
+    @ConditionalOnMissingBean
+    fun policyBatchEvaluator(
+        executor: PolicyBatchExecutor,
+    ): PolicyBatchEvaluator = DefaultPolicyBatchEvaluator(executor)
 
     /**
      * Policy catalog [org.poc.objs.api.seed.SeedDocumentHandler] beans (C-28 WI-003,

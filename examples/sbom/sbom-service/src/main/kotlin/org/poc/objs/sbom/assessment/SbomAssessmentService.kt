@@ -4,6 +4,11 @@ import org.poc.objs.api.domain.GraphFragmentPolicy
 import org.poc.objs.api.domain.GraphMaterializationException
 import org.poc.objs.api.match.GraphIdsMatcher
 import org.poc.objs.api.store.GraphStore
+import org.poc.objs.api.domain.GraphFragment
+import org.poc.objs.policy.api.BatchSubject
+import org.poc.objs.policy.api.BatchSubjectResult
+import org.poc.objs.policy.api.BatchTarget
+import org.poc.objs.policy.api.PolicyBatchEvaluator
 import org.poc.objs.policy.api.PolicyOutcomeStatus
 import org.poc.objs.policy.api.PolicySuite
 import org.poc.objs.policy.api.SuiteEvaluateScope
@@ -39,8 +44,8 @@ data class AppBomTarget(
 )
 
 /**
- * Replaceable orchestration for portfolio assessment (MVP: sequential per-app evaluate).
- * Swap implementation for true batch (C-29) without changing HTTP or UI contracts.
+ * Portfolio assessment orchestration via C-29 [PolicyBatchEvaluator] (sequential executor).
+ * HTTP/UI contracts unchanged.
  */
 interface PortfolioAssessmentRunner {
     fun run(suite: PolicySuite, targets: List<AppBomTarget>): PortfolioAssessmentMatrix
@@ -49,13 +54,20 @@ interface PortfolioAssessmentRunner {
 @Service
 class SequentialPortfolioAssessmentRunner(
     private val assessor: ObjectProvider<SbomAssessmentService>,
+    private val batchEvaluator: ObjectProvider<PolicyBatchEvaluator>,
 ) : PortfolioAssessmentRunner {
     override fun run(suite: PolicySuite, targets: List<AppBomTarget>): PortfolioAssessmentMatrix {
         val svc = assessor.getObject()
+        val batch = batchEvaluator.getIfAvailable()
+            ?: throw ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Policy batch unavailable")
         val dimensions = svc.dimensionColumns(suite)
         val measureKeys = dimensions.flatMap { d -> d.measures.map { it.key } }.toSet()
+
         val rows = mutableListOf<AssessmentMatrixRow>()
         val cells = mutableListOf<AssessmentMatrixCell>()
+        val subjects = mutableListOf<BatchSubject>()
+        val subjectTargets = mutableListOf<AppBomTarget>()
+
         for (target in targets) {
             if (target.graphIds.isEmpty()) {
                 rows += AssessmentMatrixRow(
@@ -66,9 +78,9 @@ class SequentialPortfolioAssessmentRunner(
                 continue
             }
             try {
-                val result = svc.evaluateTarget(suite, target)
-                rows += AssessmentMatrixRow(target.applicationId, target.applicationName)
-                cells += svc.measureCells(suite, target.applicationId, result, measureKeys)
+                val fragment = svc.fragmentFor(target)
+                subjects += BatchSubject(target.applicationId.toString(), fragment)
+                subjectTargets += target
             } catch (ex: Exception) {
                 val message =
                     when (ex) {
@@ -82,6 +94,28 @@ class SequentialPortfolioAssessmentRunner(
                 )
             }
         }
+
+        if (subjects.isNotEmpty()) {
+            val pack = batch.evaluateBatch(subjects, BatchTarget.Suite(suite, SuiteEvaluateScope.Full))
+            for ((cell, target) in pack.cells.zip(subjectTargets)) {
+                when (cell) {
+                    is BatchSubjectResult.Ok -> {
+                        val result = cell.suite
+                            ?: throw IllegalStateException("Suite batch cell missing suite result")
+                        rows += AssessmentMatrixRow(target.applicationId, target.applicationName)
+                        cells += svc.measureCells(suite, target.applicationId, result, measureKeys)
+                    }
+                    is BatchSubjectResult.Error -> {
+                        rows += AssessmentMatrixRow(
+                            applicationId = target.applicationId,
+                            applicationName = target.applicationName,
+                            error = cell.message,
+                        )
+                    }
+                }
+            }
+        }
+
         return PortfolioAssessmentMatrix(
             suiteId = suite.id,
             suiteKey = suite.key,
@@ -152,11 +186,16 @@ class SbomAssessmentService(
     }
 
     fun evaluateTarget(suite: PolicySuite, target: AppBomTarget): SuiteEvaluationResult {
+        val evaluator = suiteEvaluator.getIfAvailable()
+            ?: throw ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Policy evaluation unavailable")
+        return evaluator.evaluateSuite(fragmentFor(target), suite, SuiteEvaluateScope.Full)
+    }
+
+    /** Materialize BOM graphs for [target] into a resolved fragment (C-29 batch subject input). */
+    fun fragmentFor(target: AppBomTarget): GraphFragment {
         if (target.graphIds.isEmpty()) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "No BOM graph for application ${target.applicationId}")
         }
-        val evaluator = suiteEvaluator.getIfAvailable()
-            ?: throw ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Policy evaluation unavailable")
         val matcher = GraphIdsMatcher(target.graphIds)
         val contents = store.select(matcher)
         val resolved = fragmentPolicy.resolve(contents)
@@ -166,7 +205,7 @@ class SbomAssessmentService(
                 diagnostics = resolved.diagnostics,
             )
         }
-        return evaluator.evaluateSuite(resolved, suite, SuiteEvaluateScope.Full)
+        return resolved
     }
 
     fun dimensionColumns(suite: PolicySuite): List<AssessmentDimensionColumn> {
