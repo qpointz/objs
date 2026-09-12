@@ -37,6 +37,10 @@ interface SbomApplicationFingerprintRepository : JpaRepository<SbomApplicationFi
     fun findByVersionIdOrderByCreatedAtDesc(versionId: UUID): List<SbomApplicationFingerprintRecord>
 
     fun findByIdAndVersionId(id: UUID, versionId: UUID): SbomApplicationFingerprintRecord?
+
+    fun findByGraphId(graphId: UUID): List<SbomApplicationFingerprintRecord>
+
+    fun findByGraphIdAndGraphVersion(graphId: UUID, graphVersion: Long): List<SbomApplicationFingerprintRecord>
 }
 
 interface SbomApplicationSbomRepository : JpaRepository<SbomApplicationSbomRecord, UUID> {

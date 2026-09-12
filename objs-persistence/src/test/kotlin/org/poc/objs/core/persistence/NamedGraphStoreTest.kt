@@ -837,4 +837,156 @@ class NamedGraphStoreTest : ObjsPersistenceFixture() {
         assertThat(afterDelete.contents.entities).hasSize(2)
         assertThat(afterDelete.contents.edges).hasSize(1)
     }
+
+    @Test
+    fun shouldClearGraph_keepingHeaderAndHistory() {
+        val graph = namedGraphs.create(GraphSpec(entityIds = setOf(a, b), annotations = mapOf("k" to "v")))
+        addEdge(graph.id, a, b)
+        val freeze = namedGraphs.createDeepGraphVersion(graph.id, mapOf("label" to "keep"))
+        assertThat(namedGraphs.clearGraph(graph.id).isValid).isTrue()
+        val cleared = namedGraphs.get(graph.id)!!
+        assertThat(cleared.contents.entities).isEmpty()
+        assertThat(cleared.contents.edges).isEmpty()
+        assertThat(cleared.annotations).containsEntry("k", "v")
+        assertThat(namedGraphs.getGraphVersion(graph.id, freeze.version).contents.entities).hasSize(2)
+    }
+
+    @Test
+    fun shouldPurgeGraphVersion_rejectingHead() {
+        val graph = namedGraphs.create(GraphSpec(entityIds = setOf(a, b)))
+        addEdge(graph.id, a, b)
+        val v1 = namedGraphs.createDeepGraphVersion(graph.id, mapOf("n" to "1"))
+        graphStore.getEntity(a)!!.also {
+            it.payload["name"] = "A2"
+            assertThat(graphStore.write(org.poc.objs.api.domain.Graph(entities = mutableListOf(it))).isValid).isTrue()
+        }
+        val v2 = namedGraphs.createDeepGraphVersion(graph.id, mapOf("n" to "2"))
+        assertThatThrownBy { namedGraphs.purgeGraphVersion(graph.id, v2.version) }
+            .isInstanceOf(GraphException::class.java)
+            .hasFieldOrPropertyWithValue("code", "GRAPH_VERSION_IS_HEAD")
+        namedGraphs.purgeGraphVersion(graph.id, v1.version)
+        assertThat(namedGraphs.listGraphVersions(graph.id).map { it.version }).containsExactly(v2.version)
+    }
+
+    @Test
+    fun shouldPurgeAllGraphVersions_nullingHeadKeepingLive() {
+        val graph = namedGraphs.create(GraphSpec(entityIds = setOf(a, b)))
+        addEdge(graph.id, a, b)
+        namedGraphs.createDeepGraphVersion(graph.id)
+        namedGraphs.purgeAllGraphVersions(graph.id)
+        assertThat(namedGraphs.listGraphVersions(graph.id)).isEmpty()
+        assertThat(db.queryLong("SELECT COUNT(*) FROM objs_graph_version")).isZero()
+        val live = namedGraphs.get(graph.id)!!
+        assertThat(live.contents.entities).hasSize(2)
+        assertThat(live.contents.edges).hasSize(1)
+    }
+
+    @Test
+    fun shouldDestroyGraph_removingHistory() {
+        val graph = namedGraphs.create(GraphSpec(entityIds = setOf(a, b)))
+        addEdge(graph.id, a, b)
+        val freeze = namedGraphs.createDeepGraphVersion(graph.id)
+        namedGraphs.destroyGraph(graph.id)
+        assertThat(namedGraphs.get(graph.id)).isNull()
+        assertThatThrownBy { namedGraphs.getGraphVersion(graph.id, freeze.version) }
+            .isInstanceOf(GraphException::class.java)
+            .hasFieldOrPropertyWithValue("code", "GRAPH_VERSION_NOT_FOUND")
+        assertThat(graphStore.getEntity(a)).isNotNull()
+    }
+
+    @Test
+    fun shouldCompactEntity_afterPurgeLeavingOrphans() {
+        val graph = namedGraphs.create(GraphSpec(entityIds = setOf(a, b)))
+        val v1 = namedGraphs.createDeepGraphVersion(graph.id)
+        graphStore.getEntity(a)!!.also {
+            it.payload["name"] = "A2"
+            assertThat(graphStore.write(org.poc.objs.api.domain.Graph(entities = mutableListOf(it))).isValid).isTrue()
+        }
+        namedGraphs.createDeepGraphVersion(graph.id)
+        namedGraphs.purgeGraphVersion(graph.id, v1.version)
+        val before = db.queryLong("SELECT COUNT(*) FROM objs_entity_version WHERE entity_id = '$a'")
+        val removed = namedGraphs.compactEntity(a)
+        assertThat(removed).isGreaterThanOrEqualTo(1)
+        assertThat(db.queryLong("SELECT COUNT(*) FROM objs_entity_version WHERE entity_id = '$a'"))
+            .isLessThan(before)
+    }
+
+    @Test
+    fun shouldCreateDeepGraphVersion_withBackdatedAt_optionB() {
+        val graph = namedGraphs.create(GraphSpec(entityIds = setOf(a, b)))
+        addEdge(graph.id, a, b)
+        val past = java.time.Instant.parse("2020-06-15T12:00:00Z")
+        val freeze = namedGraphs.createDeepGraphVersion(graph.id, mapOf("era" to "2020"), past)
+        assertThat(freeze.createdAt).isEqualTo(past)
+        assertThat(freeze.version).isEqualTo(past.toEpochMilli())
+        val listed = namedGraphs.listGraphVersions(graph.id).single()
+        assertThat(listed.createdAt).isEqualTo(past)
+        assertThat(listed.version).isEqualTo(past.toEpochMilli())
+        val liveCreated = uow.read { entityRepository.findById(a) }!!.createdAt
+        // Live HEAD entity clocks are not rewritten to at (G-O2 reuse exception).
+        assertThat(liveCreated).isNotEqualTo(past)
+
+        val laterPast = java.time.Instant.parse("2021-01-01T00:00:00Z")
+        val freeze2 = namedGraphs.createDeepGraphVersion(graph.id, mapOf("era" to "2021"), laterPast)
+        assertThat(freeze2.version).isEqualTo(laterPast.toEpochMilli())
+        assertThat(freeze2.version).isGreaterThan(freeze.version)
+
+        val future = java.time.Instant.parse("2099-01-01T00:00:00Z")
+        val freeze3 = namedGraphs.createDeepGraphVersion(graph.id, emptyMap(), future)
+        assertThat(freeze3.version).isEqualTo(future.toEpochMilli())
+        assertThat(freeze3.createdAt).isEqualTo(future)
+    }
+
+    @Test
+    fun shouldCreateDeepGraphVersion_bumpVersionWhenAtCollidesWithPrev() {
+        val graph = namedGraphs.create(GraphSpec(entityIds = setOf(a)))
+        val t = java.time.Instant.parse("2022-03-01T00:00:00Z")
+        val first = namedGraphs.createDeepGraphVersion(graph.id, emptyMap(), t)
+        val second = namedGraphs.createDeepGraphVersion(graph.id, emptyMap(), t)
+        assertThat(second.version).isEqualTo(first.version + 1)
+    }
+
+    @Test
+    fun shouldResetGraphToVersion_restoringPayloads() {
+        val graph = namedGraphs.create(GraphSpec(entityIds = setOf(a, b)))
+        addEdge(graph.id, a, b)
+        val v1 = namedGraphs.createDeepGraphVersion(graph.id, mapOf("n" to "1"))
+        graphStore.getEntity(a)!!.also {
+            it.payload["name"] = "A-changed"
+            assertThat(graphStore.write(org.poc.objs.api.domain.Graph(entities = mutableListOf(it))).isValid).isTrue()
+        }
+        namedGraphs.createDeepGraphVersion(graph.id, mapOf("n" to "2"))
+        assertThat(namedGraphs.resetGraphToVersion(graph.id, v1.version).isValid).isTrue()
+        assertThat(graphStore.getEntity(a)!!.payload["name"]).isEqualTo("A")
+        assertThat(uow.read { graphDao.findById(graph.id) }!!.headVersion).isEqualTo(v1.version)
+        assertThat(namedGraphs.listGraphVersions(graph.id)).hasSize(2)
+    }
+
+    @Test
+    fun shouldResetGraphToVersion_truncatingNewer() {
+        val graph = namedGraphs.create(GraphSpec(entityIds = setOf(a)))
+        val v1 = namedGraphs.createDeepGraphVersion(graph.id)
+        namedGraphs.createDeepGraphVersion(graph.id)
+        assertThat(namedGraphs.resetGraphToVersion(graph.id, v1.version, truncateAfter = true).isValid).isTrue()
+        assertThat(namedGraphs.listGraphVersions(graph.id).map { it.version }).containsExactly(v1.version)
+    }
+
+    @Test
+    fun shouldApplyGraphVersionMembership_keepingLivePayloads() {
+        val graph = namedGraphs.create(GraphSpec(entityIds = setOf(a, b)))
+        addEdge(graph.id, a, b)
+        val v1 = namedGraphs.createDeepGraphVersion(graph.id)
+        graphStore.getEntity(a)!!.also {
+            it.payload["name"] = "A-live"
+            assertThat(graphStore.write(org.poc.objs.api.domain.Graph(entities = mutableListOf(it))).isValid).isTrue()
+        }
+        namedGraphs.clearGraph(graph.id)
+        assertThat(namedGraphs.get(graph.id)!!.contents.entities).isEmpty()
+        val headBefore = uow.read { graphDao.findById(graph.id) }!!.headVersion
+        assertThat(namedGraphs.applyGraphVersionMembership(graph.id, v1.version).isValid).isTrue()
+        val live = namedGraphs.get(graph.id)!!
+        assertThat(live.contents.entities.map { it.id }).containsExactlyInAnyOrder(a, b)
+        assertThat(live.contents.entities.single { it.id == a }.payload["name"]).isEqualTo("A-live")
+        assertThat(uow.read { graphDao.findById(graph.id) }!!.headVersion).isEqualTo(headBefore)
+    }
 }

@@ -28,22 +28,23 @@ class DeepGraphVersionService(
     fun createDeepGraphVersion(
         graphId: UUID,
         versionAnnotations: Map<String, String> = emptyMap(),
+        at: Instant? = null,
     ): GraphVersionSummary = uow.write {
         val header = graphDao.findById(graphId)
             ?: throw GraphException(code = "GRAPH_NOT_FOUND", message = "Graph not found: $graphId")
         val memberIds = membershipDao.findByGraphId(graphId).map { it.entityId }
         val entityRows = if (memberIds.isEmpty()) emptyList() else entityDao.findAllById(memberIds)
         val edgeRows = edgeDao.findByGraphId(graphId)
-        val now = Instant.now()
-        val graphVersion = nextVersion(header.headVersion)
+        val stamp = at ?: Instant.now()
+        val graphVersion = nextVersion(header.headVersion, stamp)
         graphVersions.save(
             GraphVersionRecord(
                 graphId = graphId,
                 version = graphVersion,
                 graphAnnotations = header.annotations.toMutableMap(),
                 annotations = versionAnnotations.toMutableMap(),
-                createdAt = now,
-                updatedAt = now,
+                createdAt = stamp,
+                updatedAt = stamp,
             ),
         )
         header.headVersion = graphVersion
@@ -51,8 +52,8 @@ class DeepGraphVersionService(
 
         for (row in entityRows) {
             val id = row.id
-            val version = nextVersion(row.headVersion)
-            entityVersions.save(copyEntityVersion(row, version, now))
+            val version = nextVersion(row.headVersion, stamp)
+            entityVersions.save(copyEntityVersion(row, version, stamp))
             row.headVersion = version
             entityDao.save(row)
             versionMembers.save(
@@ -61,16 +62,16 @@ class DeepGraphVersionService(
                     graphVersion = graphVersion,
                     entityId = id,
                     entityVersion = version,
-                    createdAt = now,
-                    updatedAt = now,
+                    createdAt = stamp,
+                    updatedAt = stamp,
                 ),
             )
         }
 
         for (row in edgeRows) {
             val id = row.id
-            val version = nextVersion(row.headVersion)
-            edgeVersions.save(copyEdgeVersion(row, version, now))
+            val version = nextVersion(row.headVersion, stamp)
+            edgeVersions.save(copyEdgeVersion(row, version, stamp))
             row.headVersion = version
             edgeDao.save(row)
             versionEdges.save(
@@ -79,15 +80,15 @@ class DeepGraphVersionService(
                     graphVersion = graphVersion,
                     edgeId = id,
                     edgeVersion = version,
-                    createdAt = now,
-                    updatedAt = now,
+                    createdAt = stamp,
+                    updatedAt = stamp,
                 ),
             )
         }
         GraphVersionSummary(
             graphId = graphId,
             version = graphVersion,
-            createdAt = now,
+            createdAt = stamp,
             annotations = versionAnnotations,
         )
     }
@@ -216,9 +217,95 @@ class DeepGraphVersionService(
         )
     }
 
+    /**
+     * Drop one deep freeze (pins + graph version row). Rejects if [version] is current head.
+     * Does not GC entity/edge version orphans (use [compactEntity] / [compactEdge]).
+     */
+    fun purgeGraphVersion(graphId: UUID, version: Long) = uow.write {
+        val header = graphDao.findById(graphId)
+            ?: throw GraphException(code = "GRAPH_NOT_FOUND", message = "Graph not found: $graphId")
+        graphVersions.findByGraphIdAndVersion(graphId, version)
+            ?: throw GraphException(
+                code = "GRAPH_VERSION_NOT_FOUND",
+                message = "Graph version not found: $graphId@$version",
+            )
+        if (header.headVersion == version) {
+            throw GraphException(
+                code = "GRAPH_VERSION_IS_HEAD",
+                message = "Cannot purge current head version $version of graph $graphId",
+            )
+        }
+        versionMembers.deleteByGraphIdAndGraphVersion(graphId, version)
+        versionEdges.deleteByGraphIdAndGraphVersion(graphId, version)
+        graphVersions.delete(graphId, version)
+    }
+
+    /**
+     * Drop all deep freezes for [graphId] and set [GraphRecord.headVersion] to null.
+     * Live HEAD membership/edges/payloads unchanged.
+     */
+    fun purgeAllGraphVersions(graphId: UUID) = uow.write {
+        val header = graphDao.findById(graphId)
+            ?: throw GraphException(code = "GRAPH_NOT_FOUND", message = "Graph not found: $graphId")
+        versionMembers.deleteAllByGraphId(graphId)
+        versionEdges.deleteAllByGraphId(graphId)
+        graphVersions.deleteAllByGraphId(graphId)
+        header.headVersion = null
+        graphDao.save(header)
+    }
+
+    /** Delete all graph version rows/pins for [graphId] (used by destroy; graph may still exist). */
+    fun deleteGraphHistory(graphId: UUID) = uow.write {
+        versionMembers.deleteAllByGraphId(graphId)
+        versionEdges.deleteAllByGraphId(graphId)
+        graphVersions.deleteAllByGraphId(graphId)
+    }
+
+    /** Purge freezes with version strictly greater than [afterVersion] (no head check). */
+    fun purgeGraphVersionsAfter(graphId: UUID, afterVersion: Long) = uow.write {
+        for (row in graphVersions.findByGraphIdOrderByVersionDesc(graphId)) {
+            if (row.version <= afterVersion) continue
+            versionMembers.deleteByGraphIdAndGraphVersion(graphId, row.version)
+            versionEdges.deleteByGraphIdAndGraphVersion(graphId, row.version)
+            graphVersions.delete(graphId, row.version)
+        }
+    }
+
+    /**
+     * Delete entity version rows not referenced by any graph pin and not equal to live head_version.
+     * @return number of rows removed
+     */
+    fun compactEntity(entityId: UUID): Int = uow.write {
+        val live = entityDao.findById(entityId)?.headVersion
+        var removed = 0
+        for (row in entityVersions.findByEntityIdOrderByVersionDesc(entityId)) {
+            if (live != null && row.version == live) continue
+            if (versionMembers.countByEntityIdAndEntityVersion(entityId, row.version) > 0L) continue
+            entityVersions.delete(entityId, row.version)
+            removed++
+        }
+        removed
+    }
+
+    /**
+     * Delete edge version rows not referenced by any graph pin and not equal to live head_version.
+     * @return number of rows removed
+     */
+    fun compactEdge(edgeId: UUID): Int = uow.write {
+        val live = edgeDao.findById(edgeId)?.headVersion
+        var removed = 0
+        for (row in edgeVersions.findByEdgeIdOrderByVersionDesc(edgeId)) {
+            if (live != null && row.version == live) continue
+            if (versionEdges.countByEdgeIdAndEdgeVersion(edgeId, row.version) > 0L) continue
+            edgeVersions.delete(edgeId, row.version)
+            removed++
+        }
+        removed
+    }
+
     companion object {
-        fun nextVersion(previous: Long?): Long {
-            val millis = Instant.now().toEpochMilli()
+        fun nextVersion(previous: Long?, at: Instant = Instant.now()): Long {
+            val millis = at.toEpochMilli()
             return max(millis, (previous ?: 0L) + 1L)
         }
 

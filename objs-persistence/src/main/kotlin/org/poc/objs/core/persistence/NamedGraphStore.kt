@@ -42,6 +42,8 @@ class NamedGraphStore(
     private val deepVersions: DeepGraphVersionService,
     private val versionMemberDao: GraphVersionMemberDao,
     private val uow: UnitOfWork,
+    private val versionReferenceGuard: org.poc.objs.api.store.GraphVersionReferenceGuard =
+        org.poc.objs.api.store.AllowAllGraphVersionReferenceGuard,
 ) {
     private lateinit var graphStore: GraphStore
 
@@ -135,7 +137,123 @@ class NamedGraphStore(
                 message = "Subgraph not found: $id",
             )
         }
+        versionReferenceGuard.assertRemovable(id, emptyList())
         graphDao.deleteById(id)
+    }
+
+    /**
+     * Clear live HEAD membership and graph-local edges; keep header and history.
+     * Equivalent to REPLACE mutate with empty sets.
+     */
+    fun clearGraph(graphId: UUID): ValidationResult =
+        mutate(
+            graphId,
+            org.poc.objs.api.domain.graphMutation {
+                mode(MutationMode.REPLACE)
+            },
+        )
+
+    /** Purge one deep freeze; rejects current head_version. */
+    fun purgeGraphVersion(graphId: UUID, version: Long) {
+        versionReferenceGuard.assertRemovable(graphId, listOf(version))
+        deepVersions.purgeGraphVersion(graphId, version)
+    }
+
+    /** Purge all deep freezes; null head_version; live HEAD content intact. */
+    fun purgeAllGraphVersions(graphId: UUID) {
+        versionReferenceGuard.assertRemovable(graphId, emptyList())
+        deepVersions.purgeAllGraphVersions(graphId)
+    }
+
+    /**
+     * Full wipe: history then live graph header (membership/edges CASCADE).
+     * Soft [delete] keeps history; this removes it.
+     */
+    fun destroyGraph(graphId: UUID) = uow.write {
+        if (!graphDao.existsById(graphId)) {
+            throw GraphException(
+                code = "GRAPH_NOT_FOUND",
+                message = "Subgraph not found: $graphId",
+            )
+        }
+        versionReferenceGuard.assertRemovable(graphId, emptyList())
+        val header = graphDao.findById(graphId)!!
+        header.headVersion = null
+        graphDao.save(header)
+        uow.entityManager().flush()
+        deepVersions.deleteGraphHistory(graphId)
+        graphDao.deleteById(graphId)
+    }
+
+    fun compactEntity(entityId: UUID): Int = deepVersions.compactEntity(entityId)
+
+    fun compactEdge(edgeId: UUID): Int = deepVersions.compactEdge(edgeId)
+
+    /**
+     * Travel back: restore membership, edges, and entity/edge **payloads** from [version].
+     * Sets [GraphRecord.headVersion] to [version]. When [truncateAfter], drops newer freezes.
+     * Shared-pool rewrite of live entity/edge bytes is intentional (G-O16a).
+     */
+    fun resetGraphToVersion(
+        graphId: UUID,
+        version: Long,
+        truncateAfter: Boolean = false,
+    ): ValidationResult {
+        val freeze = deepVersions.getGraphVersion(graphId, version)
+        val result =
+            mutate(
+                graphId,
+                org.poc.objs.api.domain.graphMutation {
+                    mode(MutationMode.REPLACE)
+                    entities { set(freeze.contents.entities) }
+                    edges { set(freeze.contents.edges) }
+                },
+            )
+        if (!result.isValid) return result
+        uow.write {
+            val header = graphDao.findById(graphId)
+                ?: throw GraphException(code = "GRAPH_NOT_FOUND", message = "Subgraph not found: $graphId")
+            header.headVersion = version
+            graphDao.save(header)
+            if (truncateAfter) {
+                deepVersions.purgeGraphVersionsAfter(graphId, version)
+            }
+        }
+        return ValidationResult.ok()
+    }
+
+    /**
+     * Membership-only apply: restore membership + edge topology from [version], keep **live**
+     * entity/edge payloads when present. Does **not** change [GraphRecord.headVersion] (G-O16b).
+     */
+    fun applyGraphVersionMembership(graphId: UUID, version: Long): ValidationResult {
+        val freeze = deepVersions.getGraphVersion(graphId, version)
+        val entities =
+            uow.read {
+                freeze.contents.entities.map { pinned ->
+                    val id = requireNotNull(pinned.id) { "freeze entity missing id" }
+                    entityDao.findById(id)?.toDomain() ?: pinned
+                }
+            }
+        val edges =
+            uow.read {
+                freeze.contents.edges.map { pinned ->
+                    val id = pinned.id
+                    if (id != null) {
+                        edgeDao.findById(id)?.toDomain() ?: pinned
+                    } else {
+                        pinned
+                    }
+                }
+            }
+        return mutate(
+            graphId,
+            org.poc.objs.api.domain.graphMutation {
+                mode(MutationMode.REPLACE)
+                entities { set(entities) }
+                edges { set(edges) }
+            },
+        )
     }
 
     fun get(id: UUID): ResolvedGraph? = uow.read {
@@ -344,7 +462,8 @@ class NamedGraphStore(
     fun createDeepGraphVersion(
         graphId: UUID,
         versionAnnotations: Map<String, String> = emptyMap(),
-    ) = uow.write { deepVersions.createDeepGraphVersion(graphId, versionAnnotations) }
+        at: java.time.Instant? = null,
+    ) = uow.write { deepVersions.createDeepGraphVersion(graphId, versionAnnotations, at) }
 
     fun listGraphVersions(graphId: UUID) = deepVersions.listGraphVersions(graphId)
 

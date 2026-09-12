@@ -73,9 +73,11 @@ data class ResolvedGraph @JvmOverloads constructor(
 )
 
 /**
- * Soft-link subgraph membership validation / not-found failures.
+ * Soft-link subgraph membership validation / not-found / lifecycle failures.
+ * Prefer [org.poc.objs.api.GraphOperationException] for new call sites; this subtype keeps
+ * existing `GraphException(code, message)` call sites working.
  */
 class GraphException(
-    val code: String,
+    code: String,
     message: String,
-) : RuntimeException(message)
+) : org.poc.objs.api.GraphOperationException(code, message)

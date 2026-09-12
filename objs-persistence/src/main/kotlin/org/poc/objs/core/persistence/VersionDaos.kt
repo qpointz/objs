@@ -59,6 +59,10 @@ class EntityVersionDao(private val uow: UnitOfWork) {
             "select count(v) from BoMEntityVersionRecord v where v.entityId = :entityId",
             Long::class.javaObjectType,
         ).setParameter("entityId", entityId).singleResult
+
+    fun delete(entityId: UUID, version: Long) {
+        findByEntityIdAndVersion(entityId, version)?.let { em.remove(it) }
+    }
 }
 
 class GraphVersionDao(private val uow: UnitOfWork) {
@@ -95,6 +99,14 @@ class GraphVersionDao(private val uow: UnitOfWork) {
             """.trimIndent(),
             GraphVersionRecord::class.java,
         ).setParameter("graphId", graphId).resultList
+
+    fun delete(graphId: UUID, version: Long) {
+        findByGraphIdAndVersion(graphId, version)?.let { em.remove(it) }
+    }
+
+    fun deleteAllByGraphId(graphId: UUID) {
+        findByGraphIdOrderByVersionDesc(graphId).forEach { em.remove(it) }
+    }
 }
 
 class EdgeVersionDao(private val uow: UnitOfWork) {
@@ -150,6 +162,10 @@ class EdgeVersionDao(private val uow: UnitOfWork) {
             "select count(v) from BoMEdgeVersionRecord v where v.edgeId = :edgeId",
             Long::class.javaObjectType,
         ).setParameter("edgeId", edgeId).singleResult
+
+    fun delete(edgeId: UUID, version: Long) {
+        findByEdgeIdAndVersion(edgeId, version)?.let { em.remove(it) }
+    }
 }
 
 class GraphVersionMemberDao(private val uow: UnitOfWork) {
@@ -184,6 +200,28 @@ class GraphVersionMemberDao(private val uow: UnitOfWork) {
             """.trimIndent(),
             UUID::class.java,
         ).setParameter("entityId", entityId).resultList
+
+    fun deleteByGraphIdAndGraphVersion(graphId: UUID, graphVersion: Long) {
+        findByGraphIdAndGraphVersion(graphId, graphVersion).forEach { em.remove(it) }
+    }
+
+    fun deleteAllByGraphId(graphId: UUID) {
+        em.createQuery(
+            "delete from BoMGraphVersionMemberRecord m where m.graphId = :graphId",
+        ).setParameter("graphId", graphId).executeUpdate()
+    }
+
+    fun countByEntityIdAndEntityVersion(entityId: UUID, entityVersion: Long): Long =
+        em.createQuery(
+            """
+            select count(m) from BoMGraphVersionMemberRecord m
+            where m.entityId = :entityId and m.entityVersion = :entityVersion
+            """.trimIndent(),
+            Long::class.javaObjectType,
+        )
+            .setParameter("entityId", entityId)
+            .setParameter("entityVersion", entityVersion)
+            .singleResult
 }
 
 class GraphVersionEdgeDao(private val uow: UnitOfWork) {
@@ -209,4 +247,26 @@ class GraphVersionEdgeDao(private val uow: UnitOfWork) {
             .setParameter("graphId", graphId)
             .setParameter("graphVersion", graphVersion)
             .resultList
+
+    fun deleteByGraphIdAndGraphVersion(graphId: UUID, graphVersion: Long) {
+        findByGraphIdAndGraphVersion(graphId, graphVersion).forEach { em.remove(it) }
+    }
+
+    fun deleteAllByGraphId(graphId: UUID) {
+        em.createQuery(
+            "delete from BoMGraphVersionEdgeRecord e where e.graphId = :graphId",
+        ).setParameter("graphId", graphId).executeUpdate()
+    }
+
+    fun countByEdgeIdAndEdgeVersion(edgeId: UUID, edgeVersion: Long): Long =
+        em.createQuery(
+            """
+            select count(e) from BoMGraphVersionEdgeRecord e
+            where e.edgeId = :edgeId and e.edgeVersion = :edgeVersion
+            """.trimIndent(),
+            Long::class.javaObjectType,
+        )
+            .setParameter("edgeId", edgeId)
+            .setParameter("edgeVersion", edgeVersion)
+            .singleResult
 }

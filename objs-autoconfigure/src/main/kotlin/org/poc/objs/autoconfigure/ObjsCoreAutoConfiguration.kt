@@ -167,6 +167,11 @@ class ObjsCoreAutoConfiguration {
     fun bomVersioningStrategy(): VersioningStrategy = ExplicitOnlyVersioningStrategy()
 
     @Bean
+    @ConditionalOnMissingBean(org.poc.objs.api.store.GraphVersionReferenceGuard::class)
+    fun graphVersionReferenceGuard(): org.poc.objs.api.store.GraphVersionReferenceGuard =
+        org.poc.objs.api.store.AllowAllGraphVersionReferenceGuard
+
+    @Bean
     @ConditionalOnMissingBean
     fun bomValidator(
         schemas: SchemaCatalog,
@@ -214,6 +219,7 @@ class ObjsCoreAutoConfiguration {
         deepVersions: DeepGraphVersionService,
         versionMemberDao: GraphVersionMemberDao,
         uow: UnitOfWork,
+        versionReferenceGuard: org.poc.objs.api.store.GraphVersionReferenceGuard,
     ) = NamedGraphStore(
         graphDao = graphDao,
         membershipDao = membershipDao,
@@ -223,6 +229,7 @@ class ObjsCoreAutoConfiguration {
         deepVersions = deepVersions,
         versionMemberDao = versionMemberDao,
         uow = uow,
+        versionReferenceGuard = versionReferenceGuard,
     )
 
     @Bean

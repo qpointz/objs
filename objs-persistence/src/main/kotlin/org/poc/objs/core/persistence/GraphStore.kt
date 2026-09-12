@@ -494,6 +494,10 @@ class GraphStore(
     fun getEdgeVersion(edgeId: UUID, version: Long) =
         uow.read { namedGraphs.getEdgeVersion(edgeId, version) }
 
+    fun compactEntity(entityId: UUID): Int = namedGraphs.compactEntity(entityId)
+
+    fun compactEdge(edgeId: UUID): Int = namedGraphs.compactEdge(edgeId)
+
     /**
      * Union of stored members/edges of every graph selected by stage-0 `all`, `graph-expr`,
      * or `graphs-in`, then optional later-stage entity filters. Distinct by entity/edge id.
