@@ -10,6 +10,7 @@ docs/workitems/completed/YYYYMMDD-<story-slug>/
 
 ## Index (optional, newest first)
 
+- [`20260912-export-package-sensitive-assets`](20260912-export-package-sensitive-assets/STORY.md) — Export `.drl` rewrite + codegen foundation-dir path guard (P-5)
 - [`20260912-transaction-recipes`](20260912-transaction-recipes/STORY.md) — Spring integration how-to + transaction recipes (C-37)
 - [`20260912-graph-ops-catalog`](20260912-graph-ops-catalog/STORY.md) — Graph lifecycle clear/purge/destroy/compact, backdated freeze, reset/apply, recipes (C-36)
 - [`20260911-policy-status-severity-vocab`](20260911-policy-status-severity-vocab/STORY.md) — Status vs finding severity vocab; SuiteStrategy pack; evaluation trees (C-34)

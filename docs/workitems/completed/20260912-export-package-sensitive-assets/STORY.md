@@ -2,8 +2,9 @@
 
 **Slug:** `export-package-sensitive-assets`  
 **Branch:** `export-package-sensitive-assets`  
-**Status:** in-progress  
-**Folder:** [`docs/workitems/in-progress/export-package-sensitive-assets/`](.)  
+**Status:** completed  
+**Closed:** 2026-09-12  
+**Folder:** [`docs/workitems/completed/20260912-export-package-sensitive-assets/`](.)  
 **Backlog:** [P-5](../../BACKLOG.md)  
 **GitLab:** [#4](https://gitlab.qpointz.io/sandbox/bom-poc/-/work_items/4)  
 **Base:** `origin/dev`  

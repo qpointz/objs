@@ -96,7 +96,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | P-2 | Align SPA URL prefix with classpath `static/<name>/`; rename workbench runner `:objs-service-app` | improvement | done | [`completed/20260817-spa-url-classpath-align/`](completed/20260817-spa-url-classpath-align/STORY.md) |
 | P-3 | Isolate objs Flyway from derived-app Flyway (two history tables; vendor SQL in JAR) | refactoring | done | [`completed/20260817-flyway-module-isolation/`](completed/20260817-flyway-module-isolation/STORY.md) |
 | P-4 | Makefile source export — clean copy outside repo with package/module rename (dumper) | feature | done | [`completed/20260828-source-export/`](completed/20260828-source-export/STORY.md) |
-| P-5 | Export package-sensitive assets (`.drl`) + codegen foundation-dir path guard | fix | in-progress | [`in-progress/export-package-sensitive-assets/`](in-progress/export-package-sensitive-assets/STORY.md) |
+| P-5 | Export package-sensitive assets (`.drl`) + codegen foundation-dir path guard | fix | done | [`completed/20260912-export-package-sensitive-assets/`](completed/20260912-export-package-sensitive-assets/STORY.md) |
 
 ---
 
@@ -106,5 +106,5 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 |--------|------:|
 | backlog | 2 |
 | planned | 5 |
-| in-progress | 1 |
-| done | 42 |
+| in-progress | 0 |
+| done | 43 |

@@ -63,6 +63,7 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`policy-status-severity-vocab`](completed/20260911-policy-status-severity-vocab/STORY.md) — Disambiguate status `ERROR`→`EXEC_ERROR` vs finding severity; `FindingSeverity`; SuiteStrategy pack; dual-read archives; Suites/Play evaluation trees (C-34). WI-000…WI-005.
 - [`graph-ops-catalog`](completed/20260912-graph-ops-catalog/STORY.md) — Graph lifecycle: clear/purge/destroy/compact, backdated freeze, reset/apply, REST+Composer, recipes, example seeds (C-36). WI-000…WI-007.
 - [`transaction-recipes`](completed/20260912-transaction-recipes/STORY.md) — Spring integration how-to + transaction recipes (C-37). WI-000…WI-001.
+- [`export-package-sensitive-assets`](completed/20260912-export-package-sensitive-assets/STORY.md) — Export `.drl` package rewrite + codegen foundation-dir path guard (P-5). WI-000…WI-002.
 
 ### In progress
 
