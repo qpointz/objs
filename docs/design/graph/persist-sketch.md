@@ -176,6 +176,7 @@ Invalid mutations return `ValidationResult` with issues — **nothing is written
 | `createDeepGraphVersion` | Explicit history pin — default persist is **HEAD only** |
 
 REST glossary: [rest-api.md](../service/rest-api.md#mutate-glossary).
+Programmatic recipes (Boot inject + lifecycle): [programmatic-recipes.md](programmatic-recipes.md).
 
 ## Minimal end-to-end
 
@@ -185,6 +186,7 @@ REST glossary: [rest-api.md](../service/rest-api.md#mutate-glossary).
 3. namedGraphs.mutate(id, graphMutation { entities { set(…) }; edges { set(…) } })
 4. namedGraphs.get(id)                                  → ResolvedGraph (HEAD)
 5. optional: createDeepGraphVersion(id, …)              → pin history
+6. optional: clearGraph / purge* / destroyGraph         → lifecycle (see recipes)
 ```
 
 ## Where details live
@@ -194,5 +196,6 @@ REST glossary: [rest-api.md](../service/rest-api.md#mutate-glossary).
 | Tables, Flyway, clocks, versions | [persistence.md](persistence.md) |
 | Gate rules, create vs update by id | [validation.md](validation.md) |
 | Matchers / select (reads) | [annotations-and-matchers.md](annotations-and-matchers.md) |
-| HTTP PATCH/PUT | [rest-api.md](../service/rest-api.md) |
+| HTTP PATCH/PUT + lifecycle | [rest-api.md](../service/rest-api.md) |
+| Kotlin Boot recipes | [programmatic-recipes.md](programmatic-recipes.md) |
 | Future backends | [../core/persistence-backends.md](../core/persistence-backends.md) |

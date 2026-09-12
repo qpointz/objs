@@ -25,6 +25,7 @@ import org.springframework.boot.ApplicationRunner
 import org.springframework.context.annotation.Profile
 import org.springframework.core.annotation.Order
 import org.springframework.stereotype.Component
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -42,6 +43,7 @@ class SbomDemoInventorySeeder(
     private val boms: ApplicationBomService,
     private val assets: AssetInventoryService,
     private val portfolioService: PortfolioService,
+    private val namedGraphs: org.poc.objs.core.persistence.NamedGraphStore,
 ) : ApplicationRunner {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -83,6 +85,9 @@ class SbomDemoInventorySeeder(
                             category = fingerprintCategory(index),
                         ),
                     )
+                    if (index < 3) {
+                        seedBackdatedBomVersions(released.version.id, index)
+                    }
                 }
                 val needAnother = vIndex < spec.releasedVersions.lastIndex || spec.openDraft
                 if (needAnother) {
@@ -334,6 +339,25 @@ class SbomDemoInventorySeeder(
             1 -> "history"
             else -> "unknown"
         }
+
+    /** C-36: several backdated freezes on a BOM graph for demo / Explorer history. */
+    private fun seedBackdatedBomVersions(versionId: UUID, appIndex: Int) {
+        val graphId = boms.graphIds(versionId).firstOrNull() ?: return
+        val stamps =
+            listOf(
+                Instant.parse("2019-0${(appIndex % 9) + 1}-15T10:00:00Z"),
+                Instant.parse("2020-0${(appIndex % 9) + 1}-15T10:00:00Z"),
+                Instant.parse("2021-0${(appIndex % 9) + 1}-15T10:00:00Z"),
+            )
+        stamps.forEachIndexed { i, at ->
+            namedGraphs.createDeepGraphVersion(
+                graphId,
+                mapOf("kind" to "demo-backdate", "era" to "${2019 + i}"),
+                at,
+            )
+        }
+        log.info("Seeded {} backdated versions on BOM graph {}", stamps.size, graphId)
+    }
 
     private fun fillBoms(
         applicationId: UUID,

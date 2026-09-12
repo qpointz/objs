@@ -44,7 +44,9 @@ Live GET **never** joins `*_version`. Default persist is in-place HEAD (no versi
 | **REPLACE** | `*.set` = full desired membership + edges; prune extras; reject non-empty `unset`; empty both `set` clears contents; **stable `graphId`** |
 
 REPLACE updates **HEAD** only. Pin history with explicit `createDeepGraphVersion` after rebuild
-(analytics “uber graph” pattern). Pool `BoMGraphStore.mutate` stays MERGE-only (hard-delete on
+(analytics “uber graph” pattern). Empty REPLACE ≡ `clearGraph`. Lifecycle erase:
+`purgeGraphVersion` / `purgeAllGraphVersions` / `destroyGraph` / `compact*` — see
+[programmatic-recipes.md](programmatic-recipes.md). Pool `BoMGraphStore.mutate` stays MERGE-only (hard-delete on
 entity unset). Do not confuse with `replace(BoMGraphSpec)` (id-set membership) or `mergeGraph`
 (new union graph) — glossary in [rest-api.md](../service/rest-api.md#mutate-glossary).
 

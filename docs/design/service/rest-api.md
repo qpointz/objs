@@ -28,14 +28,22 @@ graph-local edges, resolve, query, clone, and graph versions. See [`../graph/mod
 | `PATCH` | `/graphs/{id}` | **MERGE** mutate: `entities`/`edges` × `set`/`unset`; omission keeps | `:objs-service` |
 | `PUT` | `/graphs/{id}` | **REPLACE** mutate: `*.set` is full desired membership + edges; `unset` rejected | `:objs-service` |
 | `PATCH`/`PUT` | `/graphs/{id}/validate` | Dry-run MERGE / REPLACE (no persist); `POST …/validate` = MERGE alias | `:objs-service` |
-| `DELETE` | `/graphs/{id}` | Drop header + membership + edges (CASCADE); pool entities kept; `204` | `:objs-service` |
+| `DELETE` | `/graphs/{id}` | Softish delete: drop live header + membership + edges; **history kept**; pool entities kept; `204` | `:objs-service` |
+| `DELETE` | `/graphs/{id}/destroy` | Full wipe: live HEAD **and** all deep versions; fail closed if referenced (`GRAPH_VERSION_IN_USE`) | `:objs-service` |
+| `POST` | `/graphs/{id}/clear` | Clear live HEAD members+edges; keep header + history (`clearGraph` ≡ REPLACE-empty) | `:objs-service` |
 | `POST`/`DELETE` | `/graphs/{id}/members/{entityId}` | Attach / detach an existing pool entity id (membership row only; pool entity kept on detach) | `:objs-service` |
 | `POST` | `/graphs/{id}/query` | Matcher DSL (`obj-expr` / chained) scoped to this graph's members; edges induced within scope | `:objs-service` |
 | `POST` | `/graphs/query` | Matcher DSL (`all`, `graph-expr`, or chained starting with either) over graph headers → matching graphs' stored members + graph-local edges (distinct by id) | `:objs-service` |
 | `POST` | `/graphs/{id}/clone` | Deep copy into a **new** independent graph (new entity/edge ids, current HEAD only); source unchanged; no parent/lineage link; clone history starts empty | `:objs-service` |
-| `POST` | `/graphs/{id}/versions` | **Snapshot** / `createDeepGraphVersion`: pin current HEAD on the **same** `graph_id`; body optional version `annotations` | `:objs-service` |
+| `POST` | `/graphs/{id}/versions` | **Snapshot** / `createDeepGraphVersion`: optional body `{ annotations, createdAt }` (backdated Option B) | `:objs-service` |
 | `GET` | `/graphs/{id}/versions` | List deep versions newest first (`version DESC`); empty if never snapshotted | `:objs-service` |
+| `DELETE` | `/graphs/{id}/versions` | Purge **all** deep versions; null `head_version`; live HEAD intact | `:objs-service` |
 | `GET` | `/graphs/{id}/versions/{version}` | Reconstruct pinned graph (read-only; slower OK). Works after HEAD delete | `:objs-service` |
+| `DELETE` | `/graphs/{id}/versions/{version}` | Purge one deep version (rejects current head); orphans until `compact` | `:objs-service` |
+| `POST` | `/graphs/{id}/versions/{version}/reset` | Travel back: restore HEAD from freeze; optional `truncateAfter` | `:objs-service` |
+| `POST` | `/graphs/{id}/versions/{version}/apply-membership` | Membership + edge topology from freeze; keep live payloads; head unchanged | `:objs-service` |
+| `POST` | `/entities/{id}/compact` | Delete orphan entity version rows (not pinned, not live head) | `:objs-service` |
+| `POST` | `/edges/{id}/compact` | Delete orphan edge version rows | `:objs-service` |
 | `POST` | `/graph/traverse/gremlin` | Matcher + gremlin-lang script → `BoMGremlinResult` (OpenAPI tag **`traverse`**); matcher DSL scoping rules as above | `:objs-gremlin-service` |
 | `GET` | `/graph/algorithms/capabilities` | Supported analysis algorithms and materialization modes (OpenAPI tag **`graph-algorithms`**) | `:objs-jgrapht-service` |
 | `POST` | `/graph/algorithms/cycles` | Directed SCC cycle-region analysis for matcher-selected fragment (`materialization`: **`GENERIC`** default) | `:objs-jgrapht-service` |
@@ -68,11 +76,19 @@ Empty both `set` under REPLACE clears contents (stable `graphId`).
 |------|------------|-----|
 | **MERGE** + `PATCH /graphs/{id}` | Patch one graph: `set` + `unset`; omission keeps | Combining several graphs into a new one |
 | **REPLACE** + `PUT /graphs/{id}` | Overwrite one graph’s membership + edges from `*.set` | Id-only membership swap; multi-graph union |
+| **`clearGraph`** / `POST …/clear` | Empty HEAD members+edges; history kept | Soft delete / destroy |
+| **`purgeGraphVersion(s)`** | Drop freeze(s); reject purge of current head | — |
+| **`resetGraphToVersion`** | Travel back: restore payloads + set head; optional truncate | Membership-only apply |
+| **`applyGraphVersionMembership`** | Structure from freeze; keep live payloads; head unchanged | Travel-back reset |
+| **`destroyGraph`** / `DELETE …/destroy` | Wipe HEAD + history | Softish `delete` (history kept) |
+| **`compactEntity` / `compactEdge`** | Explicit orphan instance-version GC | Global batch GC |
 | **`replace(id, BoMGraphSpec)`** | Set membership/`edgeIds` by existing ids only | Payload REPLACE mutate |
 | **`mergeGraph(sourceIds, …)`** | Create a **new** graph = union of sources | In-place MERGE mutate |
 | Seed **MERGE** | Catalog/graph seed import; omission never deletes | Mutate mode or `mergeGraph` |
 
-Composer: **Save** → MERGE; **Overwrite…** → REPLACE.
+Kotlin Boot recipes: [`programmatic-recipes.md`](../graph/programmatic-recipes.md).
+
+Composer: **Save** → MERGE; **Overwrite…** → REPLACE; **Graph ▾** → clear / purge / delete / destroy.
 
 ## Registry
 

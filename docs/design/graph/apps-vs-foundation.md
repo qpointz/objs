@@ -71,7 +71,8 @@ Lock for [`live-store-apis`](../../workitems/completed/20260819-live-store-apis/
 | `copyGraph(sourceId, annotations)` | exactly one | **same ids** (membership only) | copied, **new ids**, new `graphId` | none | SBOM **keep-split** new draft; AR **collection copy** |
 | `mergeGraph(sourceIds, annotations, policy)` | 1..n | same ids; collisions via policy | copied, new ids; collisions via policy | `GraphMergePolicy` (default `FirstSeenGraphMergePolicy`) | SBOM **combine-on-new-draft** |
 | `clone()` | one | **new ids** | new ids, remapped endpoints | n/a | Workbench Composer **Clone** (C-18: empty history on the new graph) |
-| `createDeepGraphVersion` | one | **same ids** (pins) | same edge ids at pin versions | n/a | Composer **Create version**; SBOM fingerprint |
+| `createDeepGraphVersion` | one | **same ids** (pins) | same edge ids at pin versions | n/a | Composer **Create version** (optional `createdAt`); SBOM fingerprint |
+| `clearGraph` / `purge*` / `destroyGraph` / `compact*` | one | — | — | n/a | Composer **Graph ▾**; recipes |
 
 `GraphMergePolicy`: `nodeKey` / `edgeKey` detect overlap; `onDuplicateNode` / `onDuplicateEdge` choose the survivor. Default: node key = entity id; edge key = `(source, role, target)`; keep first in caller order; do not merge property maps. Empty `sourceIds` → `GRAPH_MERGE_EMPTY`; any missing source → `GRAPH_NOT_FOUND` and no new graph.
 
