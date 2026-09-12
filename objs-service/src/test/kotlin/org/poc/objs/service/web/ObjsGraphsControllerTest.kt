@@ -433,4 +433,81 @@ class ObjsGraphsControllerTest {
             .andExpect(status().isCreated)
             .andExpect(jsonPath("$.id").value(cloneId.toString()))
     }
+
+    @Test
+    fun shouldClearGraph() {
+        val id = UUID.randomUUID()
+        given(namedGraphs.clearGraph(id)).willReturn(ValidationResult.ok())
+        given(namedGraphs.get(id)).willReturn(
+            ResolvedGraph(id, mapOf("k" to "v"), GraphContents(emptyList(), emptyList())),
+        )
+
+        mockMvc.perform(post("/api/v1/objs/graphs/$id/clear"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.annotations.k").value("v"))
+    }
+
+    @Test
+    fun shouldDestroyGraph() {
+        val id = UUID.randomUUID()
+        mockMvc.perform(delete("/api/v1/objs/graphs/$id/destroy"))
+            .andExpect(status().isNoContent)
+        verify(namedGraphs).destroyGraph(id)
+    }
+
+    @Test
+    fun shouldPurgeGraphVersion() {
+        val id = UUID.randomUUID()
+        mockMvc.perform(delete("/api/v1/objs/graphs/$id/versions/42"))
+            .andExpect(status().isNoContent)
+        verify(namedGraphs).purgeGraphVersion(id, 42L)
+    }
+
+    @Test
+    fun shouldPurgeAllGraphVersions() {
+        val id = UUID.randomUUID()
+        mockMvc.perform(delete("/api/v1/objs/graphs/$id/versions"))
+            .andExpect(status().isNoContent)
+        verify(namedGraphs).purgeAllGraphVersions(id)
+    }
+
+    @Test
+    fun shouldCreateVersion_withCreatedAt() {
+        val id = UUID.randomUUID()
+        val at = java.time.Instant.parse("2020-01-01T00:00:00Z")
+        given(namedGraphs.createDeepGraphVersion(eqObj(id), anyObj(), eqObj(at))).willReturn(
+            org.poc.objs.api.domain.GraphVersionSummary(id, at.toEpochMilli(), at, mapOf("era" to "2020")),
+        )
+
+        mockMvc.perform(
+            post("/api/v1/objs/graphs/$id/versions")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"annotations":{"era":"2020"},"createdAt":"2020-01-01T00:00:00Z"}"""),
+        )
+            .andExpect(status().isCreated)
+            .andExpect(jsonPath("$.version").value(at.toEpochMilli()))
+    }
+
+    @Test
+    fun shouldResetGraphToVersion() {
+        val id = UUID.randomUUID()
+        given(namedGraphs.resetGraphToVersion(eqObj(id), eqObj(7L), eqObj(false)))
+            .willReturn(ValidationResult.ok())
+        given(namedGraphs.get(id)).willReturn(
+            ResolvedGraph(id, emptyMap(), GraphContents(emptyList(), emptyList())),
+        )
+        mockMvc.perform(post("/api/v1/objs/graphs/$id/versions/7/reset"))
+            .andExpect(status().isOk)
+    }
+
+    @Test
+    fun shouldApplyGraphVersionMembership() {
+        val id = UUID.randomUUID()
+        given(namedGraphs.applyGraphVersionMembership(id, 7L)).willReturn(ValidationResult.ok())
+        given(namedGraphs.get(id)).willReturn(
+            ResolvedGraph(id, emptyMap(), GraphContents(emptyList(), emptyList())),
+        )
+        mockMvc.perform(post("/api/v1/objs/graphs/$id/versions/7/apply-membership"))
+            .andExpect(status().isOk)
+    }
 }

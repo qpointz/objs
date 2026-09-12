@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
@@ -30,6 +31,14 @@ class ObjsEdgesController(
     @GetMapping("/{id}/versions")
     @Operation(summary = "List edge deep-capture versions, newest first")
     fun listVersions(@PathVariable id: UUID) = store.listEdgeVersions(id)
+
+    @PostMapping("/{id}/compact")
+    @Operation(
+        summary = "Compact orphan edge version rows",
+        description = "Deletes edge version rows not pinned by any graph freeze and not equal to live head_version.",
+    )
+    fun compact(@PathVariable id: UUID): Map<String, Int> =
+        mapOf("removed" to store.compactEdge(id))
 
     @GetMapping("/{id}/versions/{version}")
     @Operation(summary = "Fetch one edge deep-capture version")

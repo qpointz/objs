@@ -287,6 +287,76 @@ export async function deleteGraph(id: string): Promise<void> {
   await parseResponse(res)
 }
 
+export async function clearGraph(id: string): Promise<BoMGraphResponse> {
+  const res = await fetch(`/api/v1/objs/graphs/${encodeURIComponent(id)}/clear`, {
+    method: 'POST',
+  })
+  return parseResponse<BoMGraphResponse>(res)
+}
+
+export async function destroyGraph(id: string): Promise<void> {
+  const res = await fetch(`/api/v1/objs/graphs/${encodeURIComponent(id)}/destroy`, {
+    method: 'DELETE',
+  })
+  if (res.status === 204) return
+  await parseResponse(res)
+}
+
+export async function purgeGraphVersion(id: string, version: number): Promise<void> {
+  const res = await fetch(
+    `/api/v1/objs/graphs/${encodeURIComponent(id)}/versions/${encodeURIComponent(String(version))}`,
+    { method: 'DELETE' },
+  )
+  if (res.status === 204) return
+  await parseResponse(res)
+}
+
+export async function purgeAllGraphVersions(id: string): Promise<void> {
+  const res = await fetch(`/api/v1/objs/graphs/${encodeURIComponent(id)}/versions`, {
+    method: 'DELETE',
+  })
+  if (res.status === 204) return
+  await parseResponse(res)
+}
+
+export async function resetGraphToVersion(
+  id: string,
+  version: number,
+  truncateAfter = false,
+): Promise<BoMGraphResponse> {
+  const q = truncateAfter ? '?truncateAfter=true' : ''
+  const res = await fetch(
+    `/api/v1/objs/graphs/${encodeURIComponent(id)}/versions/${encodeURIComponent(String(version))}/reset${q}`,
+    { method: 'POST' },
+  )
+  return parseResponse<BoMGraphResponse>(res)
+}
+
+export async function applyGraphVersionMembership(
+  id: string,
+  version: number,
+): Promise<BoMGraphResponse> {
+  const res = await fetch(
+    `/api/v1/objs/graphs/${encodeURIComponent(id)}/versions/${encodeURIComponent(String(version))}/apply-membership`,
+    { method: 'POST' },
+  )
+  return parseResponse<BoMGraphResponse>(res)
+}
+
+export async function compactEntity(id: string): Promise<{ removed: number }> {
+  const res = await fetch(`/api/v1/objs/entities/${encodeURIComponent(id)}/compact`, {
+    method: 'POST',
+  })
+  return parseResponse(res)
+}
+
+export async function compactEdge(id: string): Promise<{ removed: number }> {
+  const res = await fetch(`/api/v1/objs/edges/${encodeURIComponent(id)}/compact`, {
+    method: 'POST',
+  })
+  return parseResponse(res)
+}
+
 export async function cloneGraph(
   id: string,
   annotations: Record<string, string> = {},
@@ -302,11 +372,14 @@ export async function cloneGraph(
 export async function createGraphVersion(
   id: string,
   annotations: Record<string, string> = {},
+  createdAt?: string | null,
 ): Promise<BoMGraphVersionSummary> {
+  const body: { annotations: Record<string, string>; createdAt?: string } = { annotations }
+  if (createdAt) body.createdAt = createdAt
   const res = await fetch(`/api/v1/objs/graphs/${encodeURIComponent(id)}/versions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ annotations }),
+    body: JSON.stringify(body),
   })
   return parseResponse(res)
 }

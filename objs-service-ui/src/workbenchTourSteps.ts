@@ -125,8 +125,15 @@ export const WORKBENCH_TOUR_STEPS: WorkbenchTourStep[] = [
   {
     id: 'composer-version',
     title: 'Create version and Clone',
-    body: 'On the title-row actions: Create version freezes the current graph (same id). Clone deep-copies to a new id. Both require a saved, clean draft.',
+    body: 'On the title-row actions: Create version freezes the current graph (same id; optional backdated created-at). Clone deep-copies to a new id. Both require a saved, clean draft.',
     selector: '[data-tour="composer-version"]',
+    route: '/composer',
+  },
+  {
+    id: 'composer-lifecycle',
+    title: 'Graph lifecycle',
+    body: 'Graph ▾: Clear contents, versions (purge / travel back / apply membership), purge all, soft Delete, or Destroy. Confirms before destructive ops.',
+    selector: '[data-tour="composer-lifecycle"]',
     route: '/composer',
   },
   {

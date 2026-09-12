@@ -11,6 +11,7 @@ import org.poc.objs.api.domain.GraphMutation
 import org.poc.objs.api.domain.MutationMode
 import org.poc.objs.api.domain.ResolvedGraph
 import org.poc.objs.api.domain.GraphContents
+import org.poc.objs.api.GraphOperationException
 import org.poc.objs.api.domain.GraphException
 import org.poc.objs.api.domain.GraphHeader
 import org.poc.objs.api.domain.GraphListItem
@@ -69,9 +70,19 @@ class ObjsGraphsController(
         val annotations: Map<String, String> = emptyMap(),
     )
 
+    @Schema(description = "Create deep graph version; optional createdAt for backdated freeze (G-O1 Option B)")
+    data class CreateVersionBody(
+        val annotations: Map<String, String> = emptyMap(),
+        val createdAt: java.time.Instant? = null,
+    )
+
     @Schema(description = "Open-graph search envelope (G-U10); additive fields may appear later")
     data class GraphSearchResponse(
         val items: List<GraphHeader>,
+    )
+
+    data class CompactResult(
+        val removed: Int,
     )
 
     @GetMapping
@@ -231,13 +242,49 @@ class ObjsGraphsController(
         )
 
     @DeleteMapping("/{id}")
-    @Operation(summary = "Delete graph header + membership + edges (CASCADE); pool entities kept")
+    @Operation(
+        summary = "Softish delete: drop live graph header + membership + edges; history kept",
+        description = "Pool entities kept. Deep version rows remain readable via GET …/versions. " +
+            "Use DELETE …/destroy to wipe history too.",
+    )
     @ApiResponses(
         ApiResponse(responseCode = "204", description = "Deleted"),
         ApiResponse(responseCode = "404", description = "Graph not found"),
     )
     fun delete(@PathVariable id: UUID): ResponseEntity<Void> {
         namedGraphs.delete(id)
+        return ResponseEntity.noContent().build()
+    }
+
+    @PostMapping("/{id}/clear")
+    @Operation(
+        summary = "Clear live HEAD membership and graph-local edges; keep header and history",
+        description = "Equivalent to REPLACE mutate with empty sets (`clearGraph`).",
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "Cleared graph"),
+        ApiResponse(responseCode = "404", description = "Graph not found"),
+    )
+    fun clear(@PathVariable id: UUID): ResponseEntity<Any> {
+        val result = namedGraphs.clearGraph(id)
+        if (!result.isValid) {
+            return ResponseEntity.badRequest().body(result)
+        }
+        return ResponseEntity.ok(requireNotNull(namedGraphs.get(id)).toResponse())
+    }
+
+    @DeleteMapping("/{id}/destroy")
+    @Operation(
+        summary = "Destroy graph: wipe live HEAD and all deep version history",
+        description = "Fails with GRAPH_VERSION_IN_USE when app references (e.g. SBOM fingerprints) block removal.",
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "204", description = "Destroyed"),
+        ApiResponse(responseCode = "404", description = "Graph not found"),
+        ApiResponse(responseCode = "400", description = "In use or other graph operation failure"),
+    )
+    fun destroy(@PathVariable id: UUID): ResponseEntity<Void> {
+        namedGraphs.destroyGraph(id)
         return ResponseEntity.noContent().build()
     }
 
@@ -347,18 +394,40 @@ class ObjsGraphsController(
     }
 
     @PostMapping("/{id}/versions")
-    @Operation(summary = "Snapshot: pin current HEAD as a deep graph version (same graph id)")
+    @Operation(
+        summary = "Snapshot: pin current HEAD as a deep graph version (same graph id)",
+        description = "Optional `createdAt` backdates version key + new freeze clocks (Option B). " +
+            "Omitted → now. Live entity/edge HEAD clocks are not rewritten.",
+    )
     fun createVersion(
         @PathVariable id: UUID,
-        @RequestBody(required = false) body: CloneBody?,
+        @RequestBody(required = false) body: CreateVersionBody?,
     ): ResponseEntity<org.poc.objs.api.domain.GraphVersionSummary> {
-        val created = namedGraphs.createDeepGraphVersion(id, body?.annotations ?: emptyMap())
+        val created = namedGraphs.createDeepGraphVersion(
+            id,
+            body?.annotations ?: emptyMap(),
+            body?.createdAt,
+        )
         return ResponseEntity.status(HttpStatus.CREATED).body(created)
     }
 
     @GetMapping("/{id}/versions")
     @Operation(summary = "List deep graph versions, newest first")
     fun listVersions(@PathVariable id: UUID) = namedGraphs.listGraphVersions(id)
+
+    @DeleteMapping("/{id}/versions")
+    @Operation(
+        summary = "Purge all deep graph versions; null head_version; live HEAD intact",
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "204", description = "Purged"),
+        ApiResponse(responseCode = "404", description = "Graph not found"),
+        ApiResponse(responseCode = "400", description = "In use or other failure"),
+    )
+    fun purgeAllVersions(@PathVariable id: UUID): ResponseEntity<Void> {
+        namedGraphs.purgeAllGraphVersions(id)
+        return ResponseEntity.noContent().build()
+    }
 
     @GetMapping("/{id}/versions/{version}")
     @Operation(summary = "Reconstruct a deep graph version (read-only)")
@@ -368,6 +437,58 @@ class ObjsGraphsController(
     ): ResponseEntity<GraphResponse> {
         val resolved = namedGraphs.getGraphVersion(id, version)
         return ResponseEntity.ok(resolved.toResponse())
+    }
+
+    @DeleteMapping("/{id}/versions/{version}")
+    @Operation(
+        summary = "Purge one deep graph version (pins + graph version row)",
+        description = "Rejects current head_version (GRAPH_VERSION_IS_HEAD). Does not compact entity/edge orphans.",
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "204", description = "Purged"),
+        ApiResponse(responseCode = "404", description = "Graph or version not found"),
+        ApiResponse(responseCode = "400", description = "Head version or in-use"),
+    )
+    fun purgeVersion(
+        @PathVariable id: UUID,
+        @PathVariable version: Long,
+    ): ResponseEntity<Void> {
+        namedGraphs.purgeGraphVersion(id, version)
+        return ResponseEntity.noContent().build()
+    }
+
+    @PostMapping("/{id}/versions/{version}/reset")
+    @Operation(
+        summary = "Travel back: restore HEAD membership, edges, and payloads from a freeze",
+        description = "Sets head_version to the target. Optional truncateAfter drops newer freezes. " +
+            "Shared-pool rewrite of live entity/edge bytes is intentional.",
+    )
+    fun resetToVersion(
+        @PathVariable id: UUID,
+        @PathVariable version: Long,
+        @RequestParam(defaultValue = "false") truncateAfter: Boolean,
+    ): ResponseEntity<Any> {
+        val result = namedGraphs.resetGraphToVersion(id, version, truncateAfter)
+        if (!result.isValid) {
+            return ResponseEntity.badRequest().body(result)
+        }
+        return ResponseEntity.ok(requireNotNull(namedGraphs.get(id)).toResponse())
+    }
+
+    @PostMapping("/{id}/versions/{version}/apply-membership")
+    @Operation(
+        summary = "Apply freeze membership + edge topology; keep live payloads",
+        description = "Does not change head_version. Missing live entities/edges fall back to freeze rows.",
+    )
+    fun applyMembership(
+        @PathVariable id: UUID,
+        @PathVariable version: Long,
+    ): ResponseEntity<Any> {
+        val result = namedGraphs.applyGraphVersionMembership(id, version)
+        if (!result.isValid) {
+            return ResponseEntity.badRequest().body(result)
+        }
+        return ResponseEntity.ok(requireNotNull(namedGraphs.get(id)).toResponse())
     }
 
     @PostMapping(
@@ -396,12 +517,13 @@ class ObjsGraphsController(
         return ResponseEntity.status(status).body(ex.result)
     }
 
-    @ExceptionHandler(GraphException::class)
-    fun handleGraphException(ex: GraphException): ResponseEntity<Map<String, String>> {
+    @ExceptionHandler(GraphOperationException::class, GraphException::class)
+    fun handleGraphException(ex: GraphOperationException): ResponseEntity<Map<String, String>> {
         val status = when (ex.code) {
             "GRAPH_NOT_FOUND", "GRAPH_VERSION_NOT_FOUND",
             "ENTITY_VERSION_NOT_FOUND", "EDGE_VERSION_NOT_FOUND",
             -> HttpStatus.NOT_FOUND
+            "GRAPH_VERSION_IN_USE", "GRAPH_VERSION_IS_HEAD", "GRAPH_IN_USE" -> HttpStatus.CONFLICT
             else -> HttpStatus.BAD_REQUEST
         }
         return ResponseEntity.status(status).body(

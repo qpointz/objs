@@ -168,6 +168,14 @@ class ObjsEntitiesController(
     @Operation(summary = "List entity deep-capture versions, newest first")
     fun listVersions(@PathVariable id: UUID) = store.listEntityVersions(id)
 
+    @PostMapping("/{id}/compact")
+    @Operation(
+        summary = "Compact orphan entity version rows",
+        description = "Deletes entity version rows not pinned by any graph freeze and not equal to live head_version.",
+    )
+    fun compact(@PathVariable id: UUID): Map<String, Int> =
+        mapOf("removed" to store.compactEntity(id))
+
     @GetMapping("/{id}/versions/{version}")
     @Operation(summary = "Fetch one entity deep-capture version")
     fun getVersion(

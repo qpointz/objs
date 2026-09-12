@@ -21,10 +21,18 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { mutationShapeError, normalizeGraphMutation } from './graphDraft'
 import {
   createGraph,
+  clearGraph,
+  deleteGraph,
+  destroyGraph,
   getGraph,
+  listGraphVersions,
   patchGraphMutation,
+  purgeAllGraphVersions,
+  purgeGraphVersion,
   putGraphMutation,
   putGraphAnnotations,
+  resetGraphToVersion,
+  applyGraphVersionMembership,
   validateGraphMutation,
   toGraphData,
   type GraphMutationBody,
@@ -140,6 +148,12 @@ export function ObjectLinterPage() {
   const [snapshotOpen, setSnapshotOpen] = useState(false)
   const [cloneOpen, setCloneOpen] = useState(false)
   const [overwriteOpen, setOverwriteOpen] = useState(false)
+  const [lifecycleConfirm, setLifecycleConfirm] = useState<
+    null | 'clear' | 'delete' | 'destroy' | 'purge-all'
+  >(null)
+  const [purgeVersionOpen, setPurgeVersionOpen] = useState(false)
+  const [versionRows, setVersionRows] = useState<{ version: number; createdAt?: string }[]>([])
+  const [purgeVersionBusy, setPurgeVersionBusy] = useState(false)
   const [handoffMatcher, setHandoffMatcher] = useState<unknown | null>(null)
   const [autoSearch, setAutoSearch] = useState(false)
   const [autoAddAllResults, setAutoAddAllResults] = useState(false)
@@ -201,6 +215,65 @@ export function ObjectLinterPage() {
     },
     [applyGraphHeader, loadGraphMembers],
   )
+
+  const runLifecycle = useCallback(
+    async (op: 'clear' | 'delete' | 'destroy' | 'purge-all') => {
+      if (currentGraphId == null) return
+      setBusy(true)
+      setError(null)
+      try {
+        if (op === 'clear') {
+          const cleared = await clearGraph(currentGraphId)
+          applyGraphHeader(currentGraphId, cleared.annotations ?? {})
+          loadGraphMembers(cleared.graph)
+        } else if (op === 'purge-all') {
+          await purgeAllGraphVersions(currentGraphId)
+        } else if (op === 'delete') {
+          await deleteGraph(currentGraphId)
+          clearDraft()
+          clearQuery()
+          setCurrentGraphId(null)
+          setGraphAnnotations({})
+          setSavedGraphAnnotations({})
+        } else {
+          await destroyGraph(currentGraphId)
+          clearDraft()
+          clearQuery()
+          setCurrentGraphId(null)
+          setGraphAnnotations({})
+          setSavedGraphAnnotations({})
+        }
+        setLifecycleConfirm(null)
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : String(e))
+      } finally {
+        setBusy(false)
+      }
+    },
+    [
+      applyGraphHeader,
+      clearDraft,
+      clearQuery,
+      currentGraphId,
+      loadGraphMembers,
+      setCurrentGraphId,
+    ],
+  )
+
+  const openPurgeVersion = useCallback(async () => {
+    if (currentGraphId == null) return
+    setPurgeVersionBusy(true)
+    setError(null)
+    try {
+      const rows = await listGraphVersions(currentGraphId)
+      setVersionRows(rows.map((r) => ({ version: r.version, createdAt: r.createdAt })))
+      setPurgeVersionOpen(true)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setPurgeVersionBusy(false)
+    }
+  }, [currentGraphId])
 
   const onNewGraphChrome = useCallback(() => {
     clearDraft()
@@ -742,6 +815,37 @@ export function ObjectLinterPage() {
             </Button>
           </span>
         </Tooltip>
+        <Menu position="bottom-end" withinPortal>
+          <Menu.Target>
+            <Button
+              size={VIEW_ACTION_BUTTON_SIZE}
+              variant={VIEW_ACTION_VARIANT}
+              disabled={currentGraphId == null}
+              data-tour="composer-lifecycle"
+            >
+              Graph ▾
+            </Button>
+          </Menu.Target>
+          <Menu.Dropdown>
+            <Menu.Item onClick={() => setLifecycleConfirm('clear')}>Clear contents…</Menu.Item>
+            <Menu.Item
+              disabled={purgeVersionBusy}
+              onClick={() => void openPurgeVersion()}
+            >
+              Versions (purge / travel back / apply)…
+            </Menu.Item>
+            <Menu.Item onClick={() => setLifecycleConfirm('purge-all')}>
+              Purge all versions…
+            </Menu.Item>
+            <Menu.Divider />
+            <Menu.Item color="red" onClick={() => setLifecycleConfirm('delete')}>
+              Delete (keep history)…
+            </Menu.Item>
+            <Menu.Item color="red" onClick={() => setLifecycleConfirm('destroy')}>
+              Destroy (wipe history)…
+            </Menu.Item>
+          </Menu.Dropdown>
+        </Menu>
         {mutationBody.entities.set.length + mutationBody.edges.set.length > 0 && (
           <Badge color="blue" variant="light" size="sm">
             {mutationBody.entities.set.length + mutationBody.edges.set.length} upsert
@@ -1023,6 +1127,141 @@ export function ObjectLinterPage() {
               }}
             >
               Overwrite
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+      <Modal
+        opened={lifecycleConfirm != null}
+        onClose={() => setLifecycleConfirm(null)}
+        title={
+          lifecycleConfirm === 'clear'
+            ? 'Clear graph contents'
+            : lifecycleConfirm === 'purge-all'
+              ? 'Purge all versions'
+              : lifecycleConfirm === 'delete'
+                ? 'Delete graph'
+                : 'Destroy graph'
+        }
+        centered
+      >
+        <Stack gap="sm">
+          <Text size="sm">
+            {lifecycleConfirm === 'clear'
+              ? 'Removes live members and edges. Header annotations and version history stay.'
+              : lifecycleConfirm === 'purge-all'
+                ? 'Deletes every deep freeze for this graph. Live HEAD contents stay; head_version is cleared.'
+                : lifecycleConfirm === 'delete'
+                  ? 'Drops the live graph header. Deep version history remains readable. Pool entities stay.'
+                  : 'Wipes the live graph and all deep version history. Blocked if fingerprints still reference versions.'}
+          </Text>
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setLifecycleConfirm(null)}>
+              Cancel
+            </Button>
+            <Button
+              color="red"
+              loading={busy}
+              onClick={() => {
+                if (lifecycleConfirm) void runLifecycle(lifecycleConfirm)
+              }}
+            >
+              Confirm
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+      <Modal
+        opened={purgeVersionOpen}
+        onClose={() => setPurgeVersionOpen(false)}
+        title="Versions: purge / travel back / apply"
+        centered
+        size="md"
+      >
+        <Stack gap="sm">
+          <Text size="sm" c="dimmed">
+            Purge drops a freeze (not current head). Travel back restores payloads from the freeze.
+            Apply membership restores structure only and keeps live payloads.
+          </Text>
+          {versionRows.length === 0 ? (
+            <Text size="sm">No versions.</Text>
+          ) : (
+            versionRows.map((row) => (
+              <Stack key={row.version} gap={4}>
+                <Text size="sm" ff="monospace">
+                  {row.version}
+                  {row.createdAt ? ` · ${row.createdAt}` : ''}
+                </Text>
+                <Group gap="xs">
+                  <Button
+                    size="xs"
+                    color="red"
+                    variant="light"
+                    loading={busy}
+                    onClick={() => {
+                      if (currentGraphId == null) return
+                      setBusy(true)
+                      void purgeGraphVersion(currentGraphId, row.version)
+                        .then(() => {
+                          setVersionRows((prev) => prev.filter((r) => r.version !== row.version))
+                        })
+                        .catch((e: unknown) => {
+                          setError(e instanceof Error ? e.message : String(e))
+                        })
+                        .finally(() => setBusy(false))
+                    }}
+                  >
+                    Purge
+                  </Button>
+                  <Button
+                    size="xs"
+                    variant="light"
+                    loading={busy}
+                    onClick={() => {
+                      if (currentGraphId == null) return
+                      setBusy(true)
+                      void resetGraphToVersion(currentGraphId, row.version, false)
+                        .then((resolved) => {
+                          applyGraphHeader(currentGraphId, resolved.annotations ?? {})
+                          loadGraphMembers(resolved.graph)
+                          setPurgeVersionOpen(false)
+                        })
+                        .catch((e: unknown) => {
+                          setError(e instanceof Error ? e.message : String(e))
+                        })
+                        .finally(() => setBusy(false))
+                    }}
+                  >
+                    Travel back
+                  </Button>
+                  <Button
+                    size="xs"
+                    variant="light"
+                    loading={busy}
+                    onClick={() => {
+                      if (currentGraphId == null) return
+                      setBusy(true)
+                      void applyGraphVersionMembership(currentGraphId, row.version)
+                        .then((resolved) => {
+                          applyGraphHeader(currentGraphId, resolved.annotations ?? {})
+                          loadGraphMembers(resolved.graph)
+                          setPurgeVersionOpen(false)
+                        })
+                        .catch((e: unknown) => {
+                          setError(e instanceof Error ? e.message : String(e))
+                        })
+                        .finally(() => setBusy(false))
+                    }}
+                  >
+                    Apply membership
+                  </Button>
+                </Group>
+              </Stack>
+            ))
+          )}
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setPurgeVersionOpen(false)}>
+              Close
             </Button>
           </Group>
         </Stack>

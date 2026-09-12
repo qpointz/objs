@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Alert, Button, Group, Modal, Stack, Text } from '@mantine/core'
+import { Alert, Button, Group, Modal, Stack, Text, TextInput } from '@mantine/core'
 import { cloneGraph, createGraph, createGraphVersion, getGraph } from './api'
 import {
   EMPTY_KEY_VALUE_ROWS,
@@ -31,6 +31,7 @@ export function NewGraphModal({
   const [rows, setRows] = useState<KeyValueRow[]>(() =>
     EMPTY_KEY_VALUE_ROWS.map((row) => ({ ...row })),
   )
+  const [createdAt, setCreatedAt] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -38,6 +39,7 @@ export function NewGraphModal({
     if (!opened) return
     setError(null)
     setBusy(false)
+    setCreatedAt('')
     setRows(EMPTY_KEY_VALUE_ROWS.map((row) => ({ ...row })))
   }, [opened, mode])
 
@@ -55,7 +57,8 @@ export function NewGraphModal({
           : mode === 'clone'
             ? await cloneGraph(cloneSourceGraphId!, annotations)
             : await (async () => {
-                await createGraphVersion(cloneSourceGraphId!, annotations)
+                const at = createdAt.trim() ? new Date(createdAt).toISOString() : null
+                await createGraphVersion(cloneSourceGraphId!, annotations, at)
                 return getGraph(cloneSourceGraphId!)
               })()
       onCreated(resolved.id, resolved)
@@ -84,8 +87,18 @@ export function NewGraphModal({
             ? 'Creates a new, empty graph header. Set as the current graph after creation.'
             : mode === 'clone'
               ? 'Deep-copies the current graph into a new graph with new object ids and an empty history. Switches Composer to the clone.'
-              : 'Creates a version of the current graph (same id). Composer stays here. Explorer can open that freeze later.'}
+              : 'Creates a version of the current graph (same id). Optional created-at backdates the freeze (Option B). Composer stays here.'}
         </Text>
+        {mode === 'snapshot' && (
+          <TextInput
+            label="Created at (optional)"
+            description="ISO datetime or local value from datetime-local. Empty = now."
+            type="datetime-local"
+            value={createdAt}
+            onChange={(e) => setCreatedAt(e.currentTarget.value)}
+            data-tour="composer-version-created-at"
+          />
+        )}
         <Text size="sm" fw={500}>
           Header annotations
         </Text>
