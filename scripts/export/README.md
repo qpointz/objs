@@ -67,7 +67,7 @@ All Gradle modules (foundation, gremlin, workbench runner, SBOM + asset-reposito
 3. `dumper.py` runs YAML actions on the copy only:
    - `move_package` (copy-then-delete, deepest paths first)
    - `move_dir` (all modules from `settings.gradle.kts`)
-   - `replace_in_files` (longest-first; SPI `.imports`, seeds, Flyway classpath paths, Gradle refs)
+   - `replace_in_files` (longest-first; SPI `.imports`, YAML/JSON seeds, Drools `.drl`, Flyway classpath paths, Gradle refs)
    - optional literal `replace`, `delete_dir`, and `delete_file` actions from cleanup manifest
    - `delete_empty_folder`
 

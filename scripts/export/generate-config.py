@@ -31,6 +31,7 @@ REPLACE_EXTENSIONS = [
     ".md",
     ".properties",
     ".gradle",
+    ".drl",  # Drools policy bodies (classpath seeds; package/import sensitive)
 ]
 
 TOP_LEVEL_MODULES = [

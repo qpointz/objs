@@ -43,13 +43,13 @@ or prefix-renamed layouts:
 | Stage | WIs | Ready | Notes |
 |-------|-----|-------|-------|
 | 0 — Scaffold | WI-000 | ready | This folder + backlog + branch |
-| 1 — Export DRL | WI-001 | after WI-000 | `REPLACE_EXTENSIONS` + fixture |
+| 1 — Export DRL | WI-001 | done | `REPLACE_EXTENSIONS` + fixture |
 | 2 — Codegen guard | WI-002 | after WI-000 (parallel OK with WI-001) | Exact foundation dir set + tests + README |
 
 ## Work Items
 
 - [x] WI-000 — Story scaffold — examples: **—** (`WI-000-story-scaffold.md`)
-- [ ] WI-001 — Export rewrite for `.drl` (and confirm no other gaps) — examples: **SBOM policy seeds** (`WI-001-export-drl.md`)
+- [x] WI-001 — Export rewrite for `.drl` (and confirm no other gaps) — examples: **SBOM policy seeds** (`WI-001-export-drl.md`)
 - [ ] WI-002 — Codegen foundation-dir path guard — examples: **SBOM / AR / codegen examples** (`WI-002-codegen-path-guard.md`)
 
 ## Out of scope

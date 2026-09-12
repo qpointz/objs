@@ -1,0 +1,5 @@
+package org.poc.objs.policy.fixture;
+
+import org.poc.objs.policy.drools.DroolsEvaluationScratch;
+
+global DroolsEvaluationScratch scratch;

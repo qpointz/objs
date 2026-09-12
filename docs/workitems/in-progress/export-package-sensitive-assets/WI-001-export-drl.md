@@ -2,7 +2,7 @@
 
 **Story:** [`STORY.md`](STORY.md)  
 **Stage:** 1 — Export DRL  
-**Status:** planned  
+**Status:** done  
 **Depends on:** WI-000  
 **Examples:** **SBOM policy seeds** (`examples/sbom/.../seeds/policy/drl/*.drl`)
 
@@ -13,15 +13,15 @@ Document that the repo scan found no other missing package-sensitive non-code ex
 
 ## Deliverables
 
-- [ ] Add `.drl` to `REPLACE_EXTENSIONS` in [`scripts/export/generate-config.py`](../../../../scripts/export/generate-config.py)
-- [ ] Fixture DRL + assertion in [`scripts/export/test_fixture.py`](../../../../scripts/export/test_fixture.py)
-- [ ] Note in [`scripts/export/README.md`](../../../../scripts/export/README.md)
-- [ ] `make test-export-fixture` passes
+- [x] Add `.drl` to `REPLACE_EXTENSIONS` in [`scripts/export/generate-config.py`](../../../../scripts/export/generate-config.py)
+- [x] Fixture DRL + assertion in [`scripts/export/test_fixture.py`](../../../../scripts/export/test_fixture.py)
+- [x] Note in [`scripts/export/README.md`](../../../../scripts/export/README.md)
+- [x] `make test-export-fixture` passes
 
 ## Acceptance
 
-- [ ] Exported sample `.drl` has no leftover `org.poc.objs`
-- [ ] G-1 decision already locked; ship the `.drl` rewrite
+- [x] Exported sample `.drl` has no leftover `org.poc.objs`
+- [x] G-1 decision already locked; ship the `.drl` rewrite
 
 ## Out of scope
 

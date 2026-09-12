@@ -114,6 +114,24 @@ def main() -> int:
             print("SPI .imports replace failed in fixture", file=sys.stderr)
             return 1
 
+        drl = (
+            out_dir
+            / "demo-persistence"
+            / "src"
+            / "main"
+            / "resources"
+            / "seeds"
+            / "policy"
+            / "sample.drl"
+        )
+        drl_text = drl.read_text(encoding="utf-8")
+        if "com.example.demo.policy.drools.DroolsEvaluationScratch" not in drl_text:
+            print("DRL package replace failed in fixture", file=sys.stderr)
+            return 1
+        if "org.poc.objs" in drl_text:
+            print("Leftover source package in DRL fixture", file=sys.stderr)
+            return 1
+
     with tempfile.TemporaryDirectory(prefix="bom-export-source-package-fixture-") as tmp:
         out_dir = Path(tmp) / "out"
         shutil.copytree(FIXTURE_SRC, out_dir)
