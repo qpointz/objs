@@ -64,7 +64,7 @@ C-26 gaps: [`policy-drools/GAPS.md`](../../workitems/completed/20260904-policy-d
 | 5 | C-27 | [`policy-suites`](../../workitems/completed/20260905-policy-suites/STORY.md) | **done** |
 | 6 | C-28 | [`policy-seeds-persistence`](../../workitems/completed/20260906-policy-seeds-persistence/STORY.md) | **done** |
 | 7 | C-33 | [`policy-results-persistence`](../../workitems/completed/20260907-policy-results-persistence/STORY.md) | **shipped** |
-| 8 | C-29 | [`policy-batch`](../../workitems/in-progress/policy-batch/STORY.md) | in-progress (API shipped) |
+| 8 | C-29 | [`policy-batch`](../../workitems/completed/20260912-policy-batch/STORY.md) | **done** |
 | 9 | C-30 | [`policy-consumer`](../../workitems/planned/policy-consumer/STORY.md) | planned (gated) |
 
 ```mermaid

@@ -9,7 +9,7 @@
 **Base:** `origin/dev`  
 **MR:** https://gitlab.qpointz.io/sandbox/bom-poc/-/merge_requests/64  
 **Before:** [C-33 `policy-results-persistence`](../20260907-policy-results-persistence/STORY.md)  
-**Independent of:** [C-29 `policy-batch`](../../planned/policy-batch/STORY.md), [C-30 `policy-consumer`](../../planned/policy-consumer/STORY.md)  
+**Independent of:** [C-29 `policy-batch`](../20260912-policy-batch/STORY.md), [C-30 `policy-consumer`](../../planned/policy-consumer/STORY.md)  
 **Gaps:** [`GAPS.md`](GAPS.md) (G-P50v–G-P56v **resolved**)  
 **Normative picture:** [`VOCAB-MATRIX.md`](VOCAB-MATRIX.md) · **UI labels:** [`VOCAB-MATRIX.md` §10](VOCAB-MATRIX.md#10-ui-presentation-normative-for-wi-002--consumers) · **Business guide:** [`business-indicators.md`](../../../design/policy/business-indicators.md) · **Strategy implementers:** [`suite-strategy-implementers.md`](../../../design/policy/suite-strategy-implementers.md)  
 **Design:** [`results.md`](../../../design/policy/results.md) · [`suites.md`](../../../design/policy/suites.md)  

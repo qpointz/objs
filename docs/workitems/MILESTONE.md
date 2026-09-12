@@ -64,6 +64,7 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`graph-ops-catalog`](completed/20260912-graph-ops-catalog/STORY.md) — Graph lifecycle: clear/purge/destroy/compact, backdated freeze, reset/apply, REST+Composer, recipes, example seeds (C-36). WI-000…WI-007.
 - [`transaction-recipes`](completed/20260912-transaction-recipes/STORY.md) — Spring integration how-to + transaction recipes (C-37). WI-000…WI-001.
 - [`export-package-sensitive-assets`](completed/20260912-export-package-sensitive-assets/STORY.md) — Export `.drl` package rewrite + codegen foundation-dir path guard (P-5). WI-000…WI-002.
+- [`policy-batch`](completed/20260912-policy-batch/STORY.md) — Thin `PolicyBatchEvaluator` + `SequentialPolicyBatchExecutor`; SBOM portfolio runner (C-29). WI-000…WI-003.
 
 ### In progress
 
@@ -73,6 +74,6 @@ _(none)_
 ### Planned
 
 - [`store-text-search`](planned/store-text-search/STORY.md) — FB-3 contains/`q`; design first (C-20). Does not block C-18.
-- Policy family after C-33: [`policy-batch`](planned/policy-batch/STORY.md) (C-29) → [`policy-consumer`](planned/policy-consumer/STORY.md) (C-30).
+- Policy family after C-29: [`policy-consumer`](planned/policy-consumer/STORY.md) (C-30).
 - [`codegen-schema-evolution`](planned/codegen-schema-evolution/STORY.md) — typed multi-version deserialize + hand migrations (C-35); design first after C-23.
 

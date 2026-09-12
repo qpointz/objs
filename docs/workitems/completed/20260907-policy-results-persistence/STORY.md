@@ -10,7 +10,7 @@
 **MR:** https://gitlab.qpointz.io/sandbox/bom-poc/-/merge_requests/62  
 **Sequence:** [policy family](../../SEQUENCE.md#policy-family-c-24c-32--normative-order) step **7 / 9**  
 **Before:** [C-28 `policy-seeds-persistence`](../20260906-policy-seeds-persistence/STORY.md) (catalog durable); result **API shape** from [C-27](../20260905-policy-suites/STORY.md)  
-**Next:** [C-29 `policy-batch`](../../planned/policy-batch/STORY.md) (advanced mass execution — **after** this story)  
+**Next:** [C-29 `policy-batch`](../20260912-policy-batch/STORY.md) (advanced mass execution — **after** this story)  
 **Gaps:** [`GAPS.md`](GAPS.md) — **all closed** (WI-001)  
 **Design:** [`PERSISTENCE-MODEL.md`](PERSISTENCE-MODEL.md) (concrete store) · [`RESULTS-MODEL.md`](../20260905-policy-suites/RESULTS-MODEL.md) § Persistence API · [`suites.md`](../../../design/policy/suites.md) · [`results.md`](../../../design/policy/results.md) · [`repository.md`](../../../design/policy/repository.md)
 
@@ -77,6 +77,6 @@ Effective PersistSpec fields live in extensible **`persist_profile`** JSON on `o
 
 ## Out of scope
 
-- [C-29 `policy-batch`](../../planned/policy-batch/STORY.md) — FragmentsFactory / policies source / mass execution
+- [C-29 `policy-batch`](../20260912-policy-batch/STORY.md) — FragmentsFactory / policies source / mass execution
 - [C-30 `policy-consumer`](../../planned/policy-consumer/STORY.md) — optional REST / example consumer (beyond thin archive HTTP)
 - Matrix UI; regulatory seed **content** in foundation

@@ -2,14 +2,15 @@
 
 **Slug:** `policy-batch`  
 **Branch:** `policy-batch`  
-**Status:** in-progress  
-**Folder:** [`docs/workitems/in-progress/policy-batch/`](.)  
+**Status:** completed  
+**Closed:** 2026-09-12  
+**Folder:** [`docs/workitems/completed/20260912-policy-batch/`](.)  
 **Backlog:** [C-29](../../BACKLOG.md)  
 **GitLab:** [#5](https://gitlab.qpointz.io/sandbox/bom-poc/-/work_items/5)  
 **Base:** `origin/dev`  
 **Sequence:** [policy family](../../SEQUENCE.md#policy-family-c-24c-32--normative-order) step **8 / 9**  
-**Before:** [C-33 `policy-results-persistence`](../../completed/20260907-policy-results-persistence/STORY.md); suite target needs [C-27](../../completed/20260905-policy-suites/STORY.md)  
-**Next:** [C-30 `policy-consumer`](../policy-consumer/STORY.md)  
+**Before:** [C-33 `policy-results-persistence`](../20260907-policy-results-persistence/STORY.md); suite target needs [C-27](../20260905-policy-suites/STORY.md)  
+**Next:** [C-30 `policy-consumer`](../../planned/policy-consumer/STORY.md)  
 **Gaps:** [`GAPS.md`](GAPS.md) — **all batch gaps locked** (WI-001)  
 **Design:** [`docs/design/policy/overview.md`](../../../design/policy/overview.md) §15 · [`evaluation-sequences.md`](../../../design/policy/evaluation-sequences.md) §7 · [`modules.md`](../../../design/policy/modules.md)  
 **Process:** [`docs/workitems/RULES.md`](../../RULES.md)
@@ -74,6 +75,4 @@ All batch GAPS locked — implement in WI-002.
 
 ## Process notes
 
-1. One WI at a time; `[x]` + one commit + push per WI.  
-2. Do not start WI-002 until WI-001 closes open GAPS.  
-3. Do not close this story until the user asks.
+Closed 2026-09-12. Archive: `completed/20260912-policy-batch/`.

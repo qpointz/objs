@@ -55,7 +55,7 @@ Same policies, two fragments: full graph vs Explorer subset → different applic
 |----------|--------|
 | Suite hierarchy + folder roll-up (former E6) | [policy-suites](../../completed/20260905-policy-suites/STORY.md) |
 | Seeds / MERGE packs | [policy-seeds-persistence](../20260906-policy-seeds-persistence/STORY.md) |
-| Portfolio × suite matrix / batch (former E8) | [policy-batch](../../planned/policy-batch/STORY.md) |
+| Portfolio × suite matrix / batch (former E8) | [policy-batch](../20260912-policy-batch/STORY.md) |
 | Drools fixture engine | [policy-drools](../20260904-policy-drools/STORY.md) |
 | Workbench Policy play UI | [policy-workbench](../../completed/20260904-policy-workbench/STORY.md) |
 | SBOM / extra REST consumer | [policy-consumer](../../planned/policy-consumer/STORY.md) |
