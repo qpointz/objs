@@ -2,8 +2,8 @@
 
 **Slug:** `transaction-recipes`  
 **Branch:** `transaction-recipes`  
-**Status:** in-progress  
-**Folder:** [`docs/workitems/in-progress/transaction-recipes/`](.)  
+**Status:** completed  
+**Folder:** [`docs/workitems/completed/20260912-transaction-recipes/`](.)  
 **Backlog:** [C-37](../../BACKLOG.md)  
 **Base:** `origin/dev`  
 **Depends on:** C-25 (`objs-core-spring-split`)  
