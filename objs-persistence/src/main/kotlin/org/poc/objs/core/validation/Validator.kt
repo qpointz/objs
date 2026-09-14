@@ -3,6 +3,7 @@ package org.poc.objs.core.validation
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.networknt.schema.JsonSchemaFactory
 import com.networknt.schema.SpecVersion
+import com.networknt.schema.ValidationMessage
 import org.poc.objs.api.domain.AllowedEdgeCatalog
 import org.poc.objs.api.domain.AllowedEdgeRule
 import org.poc.objs.api.domain.Edge
@@ -11,11 +12,15 @@ import org.poc.objs.api.domain.Graph
 import org.poc.objs.api.domain.IdentityProjection
 import org.poc.objs.api.domain.PropertiesPolicy
 import org.poc.objs.api.domain.SchemaCatalog
+import org.poc.objs.api.validation.AllowedEdgeKey
 import org.poc.objs.api.validation.EntityTypeLookup
 import org.poc.objs.api.validation.PersistValidator
 import org.poc.objs.api.validation.ValidationIssue
+import org.poc.objs.api.validation.ValidationLocus
 import org.poc.objs.api.validation.ValidationResult
-import java.util.UUID
+import org.poc.objs.api.validation.ValidationSchemaRef
+import org.poc.objs.api.validation.ValidationSubject
+import org.poc.objs.api.validation.ValidationSubjectKind
 
 /**
  * JSON Schema + allow-list validation (audit and persist stages).
@@ -31,12 +36,17 @@ class Validator(
     override fun validateEntities(entities: Collection<Entity>): ValidationResult {
         val issues = mutableListOf<ValidationIssue>()
         entities.forEachIndexed { index, entity ->
-            issues += validateEntity(entity, path = "entities[$index]")
+            issues += validateEntity(entity, index = index, path = "entities[$index]")
         }
         return ValidationResult(issues)
     }
 
-    fun validateEntity(entity: Entity, path: String = "entity"): List<ValidationIssue> {
+    fun validateEntity(
+        entity: Entity,
+        index: Int? = null,
+        path: String = "entity",
+    ): List<ValidationIssue> {
+        val subject = entitySubject(entity, index)
         val issues = mutableListOf<ValidationIssue>()
         val schema = schemas.get(entity.type, entity.schemaVersion)
         if (schema == null) {
@@ -44,10 +54,24 @@ class Validator(
                 code = "SCHEMA_NOT_FOUND",
                 message = "No schema for type=${entity.type} schemaVersion=${entity.schemaVersion}",
                 path = path,
+                subject = subject,
+                schema = ValidationSchemaRef(
+                    locus = ValidationLocus.ENTITY_PAYLOAD,
+                    schemaType = entity.type,
+                    schemaVersion = entity.schemaVersion,
+                ),
             )
             return issues
         }
-        issues += validateAgainstSchema(schema.toJsonSchema(), entity.payload, path = "$path.payload")
+        issues += validateAgainstSchema(
+            schemaDoc = schema.toJsonSchema(),
+            data = entity.payload,
+            path = "$path.payload",
+            subject = subject,
+            locus = ValidationLocus.ENTITY_PAYLOAD,
+            schemaType = entity.type,
+            schemaVersion = entity.schemaVersion,
+        )
         return issues
     }
 
@@ -61,7 +85,7 @@ class Validator(
     ): ValidationResult {
         val issues = mutableListOf<ValidationIssue>()
         edges.forEachIndexed { index, edge ->
-            issues += validateEdge(edge, typeLookup, path = "edges[$index]")
+            issues += validateEdge(edge, typeLookup, index = index, path = "edges[$index]")
         }
         return ValidationResult(issues)
     }
@@ -69,8 +93,10 @@ class Validator(
     fun validateEdge(
         edge: Edge,
         typeLookup: EntityTypeLookup,
+        index: Int? = null,
         path: String = "edge",
     ): List<ValidationIssue> {
+        val subject = edgeSubject(edge, index)
         val issues = mutableListOf<ValidationIssue>()
         val sourceType = typeLookup.typeOf(edge.source)
         val targetType = typeLookup.typeOf(edge.target)
@@ -79,6 +105,8 @@ class Validator(
                 code = "SOURCE_NOT_FOUND",
                 message = "Edge source ${edge.source} not in payload or store",
                 path = "$path.source",
+                subject = subject,
+                schema = ValidationSchemaRef(locus = ValidationLocus.OTHER),
             )
         }
         if (targetType == null) {
@@ -86,6 +114,8 @@ class Validator(
                 code = "TARGET_NOT_FOUND",
                 message = "Edge target ${edge.target} not in payload or store",
                 path = "$path.target",
+                subject = subject,
+                schema = ValidationSchemaRef(locus = ValidationLocus.OTHER),
             )
         }
         if (sourceType == null || targetType == null) {
@@ -97,18 +127,30 @@ class Validator(
                 code = "EDGE_NOT_ALLOWED",
                 message = "No allow-list rule for ($sourceType, ${edge.role}, $targetType)",
                 path = path,
+                subject = subject,
+                schema = ValidationSchemaRef(
+                    locus = ValidationLocus.EDGE_ALLOWLIST,
+                    allowedEdge = AllowedEdgeKey(sourceType, edge.role, targetType),
+                ),
             )
             return issues
         }
-        issues += validateEdgeProperties(edge, rule, path)
+        issues += validateEdgeProperties(edge, rule, index, path)
         return issues
     }
 
     private fun validateEdgeProperties(
         edge: Edge,
         rule: AllowedEdgeRule,
+        index: Int?,
         path: String,
     ): List<ValidationIssue> {
+        val subject = edgeSubject(edge, index)
+        val allowKey = AllowedEdgeKey(
+            sourceType = rule.sourceType,
+            role = rule.role,
+            targetType = rule.targetType,
+        )
         val issues = mutableListOf<ValidationIssue>()
         val props = edge.properties
         when (rule.propertiesPolicy) {
@@ -118,6 +160,11 @@ class Validator(
                         code = "PROPERTIES_NOT_ALLOWED",
                         message = "Role ${edge.role} forbids properties (bare edge)",
                         path = "$path.properties",
+                        subject = subject.copy(document = props),
+                        schema = ValidationSchemaRef(
+                            locus = ValidationLocus.EDGE_PROPERTIES,
+                            allowedEdge = allowKey,
+                        ),
                     )
                 }
             }
@@ -129,6 +176,11 @@ class Validator(
                         code = "EDGE_SCHEMA_REF_MISSING",
                         message = "Edge type+schemaVersion required for schema properties policy",
                         path = path,
+                        subject = subject,
+                        schema = ValidationSchemaRef(
+                            locus = ValidationLocus.EDGE_PROPERTIES,
+                            allowedEdge = allowKey,
+                        ),
                     )
                     return issues
                 }
@@ -142,6 +194,13 @@ class Validator(
                         message = "Edge schema $type@$schemaVersion does not match allowed " +
                             "${rule.propertiesSchemaType}@${rule.propertiesSchemaVersion}",
                         path = path,
+                        subject = subject,
+                        schema = ValidationSchemaRef(
+                            locus = ValidationLocus.EDGE_PROPERTIES,
+                            schemaType = type,
+                            schemaVersion = schemaVersion,
+                            allowedEdge = allowKey,
+                        ),
                     )
                     return issues
                 }
@@ -151,6 +210,13 @@ class Validator(
                             code = "PROPERTIES_REQUIRED",
                             message = "Empty properties not allowed for this edge rule",
                             path = "$path.properties",
+                            subject = subject,
+                            schema = ValidationSchemaRef(
+                                locus = ValidationLocus.EDGE_PROPERTIES,
+                                schemaType = type,
+                                schemaVersion = schemaVersion,
+                                allowedEdge = allowKey,
+                            ),
                         )
                     }
                     return issues
@@ -160,6 +226,13 @@ class Validator(
                         code = "PROPERTIES_REQUIRED",
                         message = "Empty properties not allowed for this edge rule",
                         path = "$path.properties",
+                        subject = subject.copy(document = props),
+                        schema = ValidationSchemaRef(
+                            locus = ValidationLocus.EDGE_PROPERTIES,
+                            schemaType = type,
+                            schemaVersion = schemaVersion,
+                            allowedEdge = allowKey,
+                        ),
                     )
                     return issues
                 }
@@ -169,9 +242,24 @@ class Validator(
                         code = "SCHEMA_NOT_FOUND",
                         message = "No schema for edge type=$type schemaVersion=$schemaVersion",
                         path = path,
+                        subject = subject.copy(document = props),
+                        schema = ValidationSchemaRef(
+                            locus = ValidationLocus.EDGE_PROPERTIES,
+                            schemaType = type,
+                            schemaVersion = schemaVersion,
+                            allowedEdge = allowKey,
+                        ),
                     )
                 } else {
-                    issues += validateAgainstSchema(schema.toJsonSchema(), props, path = "$path.properties")
+                    issues += validateAgainstSchema(
+                        schemaDoc = schema.toJsonSchema(),
+                        data = props,
+                        path = "$path.properties",
+                        subject = subject.copy(document = props),
+                        locus = ValidationLocus.EDGE_PROPERTIES,
+                        schemaType = type,
+                        schemaVersion = schemaVersion,
+                    )
                 }
             }
         }
@@ -215,6 +303,7 @@ class Validator(
         incomingSchemaVersion: String,
         incomingDocument: Map<String, Any?>,
         path: String,
+        subject: ValidationSubject? = null,
     ): List<ValidationIssue> {
         val storedSchema = schemas.get(storedType, storedSchemaVersion) ?: return emptyList()
         val incomingSchema = schemas.get(incomingType, incomingSchemaVersion) ?: return emptyList()
@@ -235,6 +324,13 @@ class Validator(
                 code = "IDENTIFIER_IMMUTABLE",
                 message = "Identifier fields are immutable on update: ${changed.joinToString(", ")}",
                 path = path,
+                subject = subject,
+                schema = ValidationSchemaRef(
+                    locus = ValidationLocus.IDENTITY,
+                    schemaType = incomingType,
+                    schemaVersion = incomingSchemaVersion,
+                    fieldPath = null,
+                ),
             ),
         )
     }
@@ -243,6 +339,7 @@ class Validator(
         stored: Entity,
         incoming: Entity,
         path: String,
+        index: Int? = null,
     ): List<ValidationIssue> =
         validateIdentifierImmutability(
             storedType = stored.type,
@@ -252,12 +349,14 @@ class Validator(
             incomingSchemaVersion = incoming.schemaVersion,
             incomingDocument = incoming.payload,
             path = "$path.payload",
+            subject = entitySubject(incoming, index),
         )
 
     fun validateEdgeIdentifierImmutability(
         stored: Edge,
         incoming: Edge,
         path: String,
+        index: Int? = null,
     ): List<ValidationIssue> {
         val storedType = stored.type ?: return emptyList()
         val storedVersion = stored.schemaVersion ?: return emptyList()
@@ -271,6 +370,7 @@ class Validator(
             incomingSchemaVersion = incomingVersion,
             incomingDocument = incoming.properties.orEmpty(),
             path = "$path.properties",
+            subject = edgeSubject(incoming, index),
         )
     }
 
@@ -278,17 +378,28 @@ class Validator(
         schemaDoc: Map<String, Any?>,
         data: Map<String, Any?>,
         path: String,
+        subject: ValidationSubject,
+        locus: ValidationLocus,
+        schemaType: String,
+        schemaVersion: String,
     ): List<ValidationIssue> {
         return try {
             val schemaNode = objectMapper.valueToTree<com.fasterxml.jackson.databind.JsonNode>(schemaDoc)
             val dataNode = objectMapper.valueToTree<com.fasterxml.jackson.databind.JsonNode>(data)
             val schema = schemaFactory.getSchema(schemaNode)
             val errors = schema.validate(dataNode)
-            errors.map {
+            errors.map { msg ->
                 ValidationIssue(
                     code = "SCHEMA_VIOLATION",
-                    message = it.message,
+                    message = msg.message,
                     path = path,
+                    subject = subject,
+                    schema = ValidationSchemaRef(
+                        locus = locus,
+                        schemaType = schemaType,
+                        schemaVersion = schemaVersion,
+                        fieldPath = jsonPointerFrom(msg),
+                    ),
                 )
             }
         } catch (ex: Exception) {
@@ -297,8 +408,54 @@ class Validator(
                     code = "SCHEMA_ERROR",
                     message = ex.message ?: "schema validation failed",
                     path = path,
+                    subject = subject,
+                    schema = ValidationSchemaRef(
+                        locus = locus,
+                        schemaType = schemaType,
+                        schemaVersion = schemaVersion,
+                    ),
                 ),
             )
+        }
+    }
+
+    private fun entitySubject(entity: Entity, index: Int?): ValidationSubject =
+        ValidationSubject(
+            kind = ValidationSubjectKind.ENTITY,
+            id = entity.id,
+            index = index,
+            type = entity.type,
+            schemaVersion = entity.schemaVersion,
+            document = entity.payload,
+        )
+
+    private fun edgeSubject(edge: Edge, index: Int?): ValidationSubject =
+        ValidationSubject(
+            kind = ValidationSubjectKind.EDGE,
+            id = edge.id,
+            index = index,
+            type = edge.type,
+            schemaVersion = edge.schemaVersion,
+            document = edge.properties,
+            role = edge.role,
+            sourceId = edge.source,
+            targetId = edge.target,
+        )
+
+    companion object {
+        internal fun jsonPointerFrom(msg: ValidationMessage): String? {
+            val raw = msg.instanceLocation?.toString()?.trim().orEmpty()
+            if (raw.isEmpty() || raw == "$" || raw == "#") return null
+            return when {
+                raw.startsWith("/") -> raw
+                raw.startsWith("$.") ->
+                    raw.removePrefix("$")
+                        .split('.')
+                        .filter { it.isNotEmpty() }
+                        .joinToString(prefix = "/", separator = "/") { it }
+                raw.startsWith("$[") -> "/${raw.removePrefix("$")}"
+                else -> if (raw.startsWith("$")) null else "/$raw"
+            }
         }
     }
 }

@@ -91,6 +91,12 @@ class ValidatorTest {
         val result = validator.validateEntities(listOf(entity))
         assertThat(result.isValid).isFalse()
         assertThat(result.issues.map { it.code }).contains("SCHEMA_VIOLATION")
+        val issue = result.issues.first { it.code == "SCHEMA_VIOLATION" }
+        assertThat(issue.subject?.kind?.name).isEqualTo("ENTITY")
+        assertThat(issue.subject?.index).isEqualTo(0)
+        assertThat(issue.subject?.type).isEqualTo("Person")
+        assertThat(issue.schema?.locus?.name).isEqualTo("ENTITY_PAYLOAD")
+        assertThat(issue.schema?.schemaType).isEqualTo("Person")
     }
 
     @Test
