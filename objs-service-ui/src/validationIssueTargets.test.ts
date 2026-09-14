@@ -9,6 +9,35 @@ describe('validationIssueTargets', () => {
   const entities = [{ id: 'e0' }, { id: 'e1' }]
   const edges = [{ id: 'edge0' }, { id: 'edge1' }]
 
+  it('shouldPreferStructuredSubjectOverPath', () => {
+    expect(
+      validationTargetFromIssue(
+        {
+          code: 'SCHEMA_VIOLATION',
+          message: 'bad',
+          path: 'entities[0].payload',
+          subject: { kind: 'ENTITY', id: 'e1', index: 1 },
+        },
+        entities,
+        edges,
+      ),
+    ).toEqual({ kind: 'entity', id: 'e1', index: 1 })
+  })
+
+  it('shouldResolveEntityFromSubjectIndexWhenIdMissing', () => {
+    expect(
+      validationTargetFromIssue(
+        {
+          code: 'SCHEMA_VIOLATION',
+          message: 'bad',
+          subject: { kind: 'ENTITY', index: 1 },
+        },
+        entities,
+        edges,
+      ),
+    ).toEqual({ kind: 'entity', id: 'e1', index: 1 })
+  })
+
   it('shouldResolveEntityFromEntitiesIndexPath', () => {
     expect(
       validationTargetFromIssue(

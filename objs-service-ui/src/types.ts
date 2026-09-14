@@ -227,10 +227,48 @@ export type TypeEdgesResponse = {
   outgoing: BoMAllowedEdgeRule[]
 }
 
+export type BoMValidationSubjectKind = 'ENTITY' | 'EDGE' | 'GRAPH' | 'OTHER'
+
+export type BoMValidationLocus =
+  | 'ENTITY_PAYLOAD'
+  | 'EDGE_PROPERTIES'
+  | 'EDGE_ALLOWLIST'
+  | 'IDENTITY'
+  | 'MEMBERSHIP'
+  | 'OTHER'
+
+export type BoMValidationSubject = {
+  kind: BoMValidationSubjectKind
+  id?: string | null
+  index?: number | null
+  type?: string | null
+  schemaVersion?: string | null
+  document?: Record<string, unknown> | null
+  role?: string | null
+  sourceId?: string | null
+  targetId?: string | null
+}
+
+export type BoMAllowedEdgeKey = {
+  sourceType: string
+  role: string
+  targetType: string
+}
+
+export type BoMValidationSchemaRef = {
+  locus: BoMValidationLocus
+  schemaType?: string | null
+  schemaVersion?: string | null
+  fieldPath?: string | null
+  allowedEdge?: BoMAllowedEdgeKey | null
+}
+
 export type BoMValidationIssue = {
   code: string
   message: string
   path?: string | null
+  subject?: BoMValidationSubject | null
+  schema?: BoMValidationSchemaRef | null
 }
 
 export type SchemaDefinitionRequest = {
