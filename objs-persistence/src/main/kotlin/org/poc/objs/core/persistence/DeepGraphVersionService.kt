@@ -28,14 +28,19 @@ class DeepGraphVersionService(
     fun createDeepGraphVersion(
         graphId: UUID,
         versionAnnotations: Map<String, String> = emptyMap(),
-        at: Instant? = null,
+    ): GraphVersionSummary = createDeepGraphVersion(graphId, versionAnnotations, Instant.now())
+
+    fun createDeepGraphVersion(
+        graphId: UUID,
+        versionAnnotations: Map<String, String> = emptyMap(),
+        at: Instant,
     ): GraphVersionSummary = uow.write {
         val header = graphDao.findById(graphId)
             ?: throw GraphException(code = "GRAPH_NOT_FOUND", message = "Graph not found: $graphId")
         val memberIds = membershipDao.findByGraphId(graphId).map { it.entityId }
         val entityRows = if (memberIds.isEmpty()) emptyList() else entityDao.findAllById(memberIds)
         val edgeRows = edgeDao.findByGraphId(graphId)
-        val stamp = at ?: Instant.now()
+        val stamp = at
         val graphVersion = nextVersion(header.headVersion, stamp)
         graphVersions.save(
             GraphVersionRecord(

@@ -18,8 +18,11 @@ import org.poc.objs.api.domain.GraphListItem
 import org.poc.objs.api.domain.GraphSpec
 import org.poc.objs.api.domain.PageRequest
 import org.poc.objs.api.domain.PagedEntities
+import org.poc.objs.api.match.AllGraphsMatcher
 import org.poc.objs.api.match.GraphExprMatcher
 import org.poc.objs.api.match.GraphExprPushdown
+import org.poc.objs.api.match.GraphIdsMatcher
+import org.poc.objs.api.match.Matcher
 import org.poc.objs.api.validation.EntityTypeLookup
 import org.poc.objs.api.validation.PersistGate
 import org.poc.objs.api.validation.ValidationIssue
@@ -261,6 +264,37 @@ class NamedGraphStore(
         resolve(header)
     }
 
+    /** True if a named-graph header with [id] exists (no content load). */
+    fun exists(id: UUID): Boolean = uow.read { graphDao.existsById(id) }
+
+    /**
+     * True if at least one named graph matches [matcher] (header / graph-scoped).
+     * Early-exits on the first hit; does not load entities or edges.
+     * Supported: [GraphExprMatcher], [GraphIdsMatcher], [AllGraphsMatcher].
+     */
+    fun exists(matcher: Matcher): Boolean = uow.read {
+        when (matcher) {
+            is GraphExprMatcher -> existsGraphExpr(matcher)
+            is GraphIdsMatcher -> matcher.graphIds.any { graphDao.existsById(it) }
+            is AllGraphsMatcher -> graphDao.existsAny()
+            else -> throw GraphException(
+                code = "MATCHER_UNSUPPORTED",
+                message = "exists(matcher) supports GraphExprMatcher, GraphIdsMatcher, and AllGraphsMatcher only; got ${matcher::class.simpleName}",
+            )
+        }
+    }
+
+    private fun existsGraphExpr(matcher: GraphExprMatcher): Boolean {
+        val pushdown = matcher.pushdown
+        if (pushdown != null && isPostgres()) {
+            return findHeadersByPushdown(pushdown, limit = 1).isNotEmpty()
+        }
+        return graphDao.findAll()
+            .asSequence()
+            .map { it.toHeader() }
+            .any { matcher.matchesHeader(it.id, it.annotations) }
+    }
+
     fun list(): List<GraphListItem> = uow.read {
         graphDao.findAll().map { header ->
             GraphListItem(
@@ -459,10 +493,22 @@ class NamedGraphStore(
     fun clone(sourceId: UUID, annotations: Map<String, String> = emptyMap()): ResolvedGraph =
         uow.write { snapshot(sourceId, annotations) }
 
+    /**
+     * Explicit deep freeze of current HEAD (same [graphId]). Clocks stamped with [Instant.now].
+     */
     fun createDeepGraphVersion(
         graphId: UUID,
         versionAnnotations: Map<String, String> = emptyMap(),
-        at: java.time.Instant? = null,
+    ) = createDeepGraphVersion(graphId, versionAnnotations, java.time.Instant.now())
+
+    /**
+     * Explicit deep freeze with clock stamp [at] (backdated Option B / C-36).
+     * Live entity/edge HEAD clocks are not rewritten; new version rows use [at].
+     */
+    fun createDeepGraphVersion(
+        graphId: UUID,
+        versionAnnotations: Map<String, String> = emptyMap(),
+        at: java.time.Instant,
     ) = uow.write { deepVersions.createDeepGraphVersion(graphId, versionAnnotations, at) }
 
     fun listGraphVersions(graphId: UUID) = deepVersions.listGraphVersions(graphId)
@@ -788,6 +834,19 @@ class NamedGraphStore(
                     code = "EDGE_ENDPOINT_NOT_MEMBER",
                     message = "Edge source ${edge.source} is not a member of graph $graphId",
                     path = "edges.set[$index].source",
+                    subject = org.poc.objs.api.validation.ValidationSubject(
+                        kind = org.poc.objs.api.validation.ValidationSubjectKind.EDGE,
+                        id = edge.id,
+                        index = index,
+                        type = edge.type,
+                        schemaVersion = edge.schemaVersion,
+                        role = edge.role,
+                        sourceId = edge.source,
+                        targetId = edge.target,
+                    ),
+                    schema = org.poc.objs.api.validation.ValidationSchemaRef(
+                        locus = org.poc.objs.api.validation.ValidationLocus.MEMBERSHIP,
+                    ),
                 )
             }
             if (edge.target !in projectedMembers) {
@@ -795,6 +854,19 @@ class NamedGraphStore(
                     code = "EDGE_ENDPOINT_NOT_MEMBER",
                     message = "Edge target ${edge.target} is not a member of graph $graphId",
                     path = "edges.set[$index].target",
+                    subject = org.poc.objs.api.validation.ValidationSubject(
+                        kind = org.poc.objs.api.validation.ValidationSubjectKind.EDGE,
+                        id = edge.id,
+                        index = index,
+                        type = edge.type,
+                        schemaVersion = edge.schemaVersion,
+                        role = edge.role,
+                        sourceId = edge.source,
+                        targetId = edge.target,
+                    ),
+                    schema = org.poc.objs.api.validation.ValidationSchemaRef(
+                        locus = org.poc.objs.api.validation.ValidationLocus.MEMBERSHIP,
+                    ),
                 )
             }
         }
@@ -810,6 +882,7 @@ class NamedGraphStore(
                 stored,
                 entity,
                 path = "entities.set[$index]",
+                index = index,
             )
         }
         graph.edges.forEachIndexed { index, edge ->
@@ -819,6 +892,7 @@ class NamedGraphStore(
                 stored,
                 edge,
                 path = "edges.set[$index]",
+                index = index,
             )
         }
         ValidationResult(identityIssues)
@@ -894,6 +968,7 @@ class NamedGraphStore(
     }
 
     private fun requireGraphExists(graphId: UUID) {
+        // Already inside a UoW; use DAO (same check as [exists]) to avoid nested read.
         if (!graphDao.existsById(graphId)) {
             throw GraphException(code = "GRAPH_NOT_FOUND", message = "Graph not found: $graphId")
         }

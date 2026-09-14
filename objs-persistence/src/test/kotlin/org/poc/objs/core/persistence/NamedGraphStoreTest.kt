@@ -989,4 +989,37 @@ class NamedGraphStoreTest : ObjsPersistenceFixture() {
         assertThat(live.contents.entities.single { it.id == a }.payload["name"]).isEqualTo("A-live")
         assertThat(uow.read { graphDao.findById(graph.id) }!!.headVersion).isEqualTo(headBefore)
     }
+
+    @Test
+    fun shouldExistById_headerOnly() {
+        val missing = UUID.randomUUID()
+        assertThat(namedGraphs.exists(missing)).isFalse()
+        val graph = namedGraphs.create(GraphSpec(annotations = mapOf("env" to "prod")))
+        assertThat(namedGraphs.exists(graph.id)).isTrue()
+        assertThat(namedGraphs.exists(missing)).isFalse()
+    }
+
+    @Test
+    fun shouldExistByGraphExpr_earlyHit() {
+        namedGraphs.create(GraphSpec(annotations = mapOf("env" to "prod")))
+        namedGraphs.create(GraphSpec(annotations = mapOf("env" to "dev")))
+        assertThat(namedGraphs.exists(GraphExprMatcher("a.env == 'prod'"))).isTrue()
+        assertThat(namedGraphs.exists(GraphExprMatcher("a.env == 'staging'"))).isFalse()
+    }
+
+    @Test
+    fun shouldExistByGraphIds_andAll() {
+        val g = namedGraphs.create(GraphSpec())
+        assertThat(namedGraphs.exists(org.poc.objs.api.match.GraphIdsMatcher(listOf(g.id)))).isTrue()
+        assertThat(namedGraphs.exists(org.poc.objs.api.match.GraphIdsMatcher(listOf(UUID.randomUUID())))).isFalse()
+        assertThat(namedGraphs.exists(org.poc.objs.api.match.GraphIdsMatcher(emptyList()))).isFalse()
+        assertThat(namedGraphs.exists(org.poc.objs.api.match.AllGraphsMatcher)).isTrue()
+    }
+
+    @Test
+    fun shouldRejectUnsupportedExistsMatcher() {
+        assertThatThrownBy { namedGraphs.exists(ObjExprMatcher("type == 'Person'")) }
+            .isInstanceOf(GraphException::class.java)
+            .hasFieldOrPropertyWithValue("code", "MATCHER_UNSUPPORTED")
+    }
 }

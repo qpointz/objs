@@ -406,7 +406,7 @@ class ObjsGraphsController(
         val created = namedGraphs.createDeepGraphVersion(
             id,
             body?.annotations ?: emptyMap(),
-            body?.createdAt,
+            body?.createdAt ?: java.time.Instant.now(),
         )
         return ResponseEntity.status(HttpStatus.CREATED).body(created)
     }

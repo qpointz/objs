@@ -204,6 +204,13 @@ class GraphDao(private val uow: UnitOfWork) {
 
     fun existsById(id: UUID): Boolean = findById(id) != null
 
+    /** True if at least one graph header row exists. */
+    fun existsAny(): Boolean =
+        em.createQuery("select g.id from BoMGraphRecord g", UUID::class.java)
+            .setMaxResults(1)
+            .resultList
+            .isNotEmpty()
+
     fun save(entity: GraphRecord): GraphRecord {
         return if (em.find(GraphRecord::class.java, entity.id) == null) {
             em.persist(entity)

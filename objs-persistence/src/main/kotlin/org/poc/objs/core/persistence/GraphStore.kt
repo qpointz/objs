@@ -131,6 +131,7 @@ class GraphStore(
                 stored,
                 entity,
                 path = "entities.set[$index]",
+                index = index,
             )
         }
         graph.edges.forEachIndexed { index, edge ->
@@ -140,6 +141,7 @@ class GraphStore(
                 stored,
                 edge,
                 path = "edges.set[$index]",
+                index = index,
             )
         }
         return@read if (identityIssues.isEmpty()) {
