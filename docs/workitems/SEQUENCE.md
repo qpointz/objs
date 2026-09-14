@@ -72,3 +72,11 @@ Do not start C-35 implementation until C-35 WI-001 closes open GAPS.
 |----|--------|--------|-------|
 | **C-36** | [`graph-ops-catalog`](completed/20260912-graph-ops-catalog/STORY.md) | done | After **C-18** / **C-22**. clear/purge/destroy/compact, backdated freeze, reset/apply, REST+Composer, recipes, example seeds. Independent of C-20, C-35, policy family. |
 | **C-37** | [`transaction-recipes`](completed/20260912-transaction-recipes/STORY.md) | done | Docs: Boot autoconfigure how-to + Spring/non-Spring TX recipes. After **C-25**. |
+
+---
+
+## Store / validation API gaps (outside policy chain)
+
+| Id | Story | Status | Notes |
+|----|--------|--------|-------|
+| **C-38** | [`api-store-improvements`](completed/20260914-api-store-improvements/STORY.md) | done | `NamedGraphStore.exists(id\|matcher)` + structured `ValidationIssue` (subject/schema) + GraphContextBar Open layout (Note1). Independent of C-20, C-30, C-35, policy family. |

@@ -52,6 +52,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | C-35 | Typed multi-version deserialize + hand migrations (latest OM codegen; Lane B snapshots) | feature | planned | [`planned/codegen-schema-evolution/`](planned/codegen-schema-evolution/STORY.md), [`DESIGN.md`](planned/codegen-schema-evolution/DESIGN.md) |
 | C-36 | Graph lifecycle ops catalog: empty/erase/backdated freeze + programmatic recipes | feature | done | [`completed/20260912-graph-ops-catalog/`](completed/20260912-graph-ops-catalog/STORY.md) |
 | C-37 | Spring integration how-to + transaction recipes (Boot join / non-Spring UoW) | docs | done | [`completed/20260912-transaction-recipes/`](completed/20260912-transaction-recipes/STORY.md) |
+| C-38 | Store/validation API gaps: `NamedGraphStore.exists` + structured `ValidationIssue` | improvement | done | [`completed/20260914-api-store-improvements/`](completed/20260914-api-store-improvements/STORY.md) |
 
 ---
 
@@ -107,4 +108,4 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | backlog | 2 |
 | planned | 4 |
 | in-progress | 0 |
-| done | 44 |
+| done | 45 |

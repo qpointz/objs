@@ -65,11 +65,11 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`transaction-recipes`](completed/20260912-transaction-recipes/STORY.md) — Spring integration how-to + transaction recipes (C-37). WI-000…WI-001.
 - [`export-package-sensitive-assets`](completed/20260912-export-package-sensitive-assets/STORY.md) — Export `.drl` package rewrite + codegen foundation-dir path guard (P-5). WI-000…WI-002.
 - [`policy-batch`](completed/20260912-policy-batch/STORY.md) — Thin `PolicyBatchEvaluator` + `SequentialPolicyBatchExecutor`; SBOM portfolio runner (C-29). WI-000…WI-003.
+- [`api-store-improvements`](completed/20260914-api-store-improvements/STORY.md) — `NamedGraphStore.exists` + structured `ValidationIssue` + `createDeepGraphVersion` default + context-bar Open layout (C-38). WI-000…WI-007.
 
 ### In progress
 
 _(none)_
-
 
 ### Planned
 
