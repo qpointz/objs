@@ -59,7 +59,7 @@ export function HeaderComposerGraphBar() {
   const props = useContext(PropsContext)
   if (!onComposer || props == null) return null
   return (
-    <Box style={{ flexShrink: 0, maxWidth: 'min(720px, 48vw)' }}>
+    <Box style={{ flexShrink: 1, minWidth: 0, maxWidth: 'min(720px, 48vw)' }}>
       <ComposerGraphBar {...props} />
     </Box>
   )

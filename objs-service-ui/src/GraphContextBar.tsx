@@ -108,10 +108,10 @@ export function GraphContextBar({ onMatcherApplied, onGraphOpened }: Props) {
         py={6}
         radius="md"
         data-tour="graph-context"
-        style={{ width: 'max-content', maxWidth: '100%' }}
+        style={{ width: '100%', maxWidth: '100%' }}
       >
-        <Group gap="sm" wrap="nowrap" justify="flex-start" align="center">
-          <Group gap="xs" wrap="nowrap" style={{ flexShrink: 0 }} align="center">
+        <Group gap="sm" wrap="nowrap" justify="space-between" align="center" w="100%">
+          <Group gap="xs" wrap="nowrap" style={{ flex: 1, minWidth: 0, overflow: 'hidden' }} align="center">
             {context.kind === 'graph' && context.graphId ? (
               <>
                 <Tooltip label="Graph context" withArrow>

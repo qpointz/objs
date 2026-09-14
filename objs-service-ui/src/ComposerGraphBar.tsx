@@ -58,10 +58,10 @@ export function ComposerGraphBar({
       py={6}
       radius="md"
       data-tour="composer-graph-bar"
-      style={{ width: 'max-content', maxWidth: '100%' }}
+      style={{ width: '100%', maxWidth: '100%' }}
     >
-      <Group gap="sm" wrap="nowrap" justify="flex-start" align="center">
-        <Group gap="xs" wrap="nowrap" style={{ flexShrink: 0 }} align="center">
+      <Group gap="sm" wrap="nowrap" justify="space-between" align="center" w="100%">
+        <Group gap="xs" wrap="nowrap" style={{ flex: 1, minWidth: 0, overflow: 'hidden' }} align="center">
           {graphId ? (
             <>
               <Tooltip label="Composer graph" withArrow>

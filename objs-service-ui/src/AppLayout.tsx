@@ -111,7 +111,7 @@ function HeaderGraphContextBar() {
   const { getHandlers } = useGraphContextBarBridge()
   if (!showsSharedGraphContext(location.pathname)) return null
   return (
-    <Box style={{ flexShrink: 0, maxWidth: 'min(720px, 48vw)' }}>
+    <Box style={{ flexShrink: 1, minWidth: 0, maxWidth: 'min(720px, 48vw)' }}>
       <GraphContextBar
         onMatcherApplied={(contents, body) =>
           getHandlers()?.onMatcherApplied?.(contents, body)
