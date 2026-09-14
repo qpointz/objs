@@ -69,6 +69,19 @@ shared by entities and edges; see [object-schema-dsl.md](object-schema-dsl.md).
 - Report conformance; do not imply historical writes were valid under today’s rules.
 - API shape (subgraph vs whole store; report format) is **TBD** (G-18 default-ok).
 
+## ValidationIssue shape
+
+Persist-gate / audit issues are **addressable** without parsing `path`:
+
+| Field | Role |
+|-------|------|
+| `code` / `message` | Stable machine code + human text |
+| `path` | Optional debug string only — **do not** require clients to parse it |
+| `subject` | Failing entity/edge: `kind`, `id`, `index` (in `*.set`), `type`/`schemaVersion`, optional `document` (payload or edge properties), edge `role`/`sourceId`/`targetId` |
+| `schema` | `locus` (`ENTITY_PAYLOAD` \| `EDGE_PROPERTIES` \| `EDGE_ALLOWLIST` \| `IDENTITY` \| `MEMBERSHIP` \| …), catalog `schemaType`/`schemaVersion`, JSON Pointer `fieldPath`, optional `allowedEdge` triple |
+
+Redundancy is intentional (e.g. both `index` and `document`). Seeds/registry may still emit path-only issues.
+
 ## Open
 
 - Audit validation API surface (G-18 default-ok)

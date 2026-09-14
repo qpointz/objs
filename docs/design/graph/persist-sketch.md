@@ -16,6 +16,13 @@ This is the **write path** in plain order: what to call, what gets stored, what 
 
 Pool entities can belong to **0..n** graphs. Deleting a graph does **not** delete pool entities. Edges are **graph-local** (`graph_id` NOT NULL).
 
+Cheap existence (no content load):
+
+```kotlin
+namedGraphs.exists(graphId)
+namedGraphs.exists(GraphExprMatcher("a.env == 'prod'"))  // any match, early exit
+```
+
 ```mermaid
 flowchart TB
   app[App / REST / seed]
@@ -165,6 +172,7 @@ Pool mutate does **not** create a named graph. Use it to seed the pool, then `cr
 4. **Sets** (upsert). Same id in unset and set → **set wins**.
 
 Invalid mutations return `ValidationResult` with issues — **nothing is written**.
+Each `ValidationIssue` carries structured `subject` + `schema` (locus / schema key / JSON Pointer `fieldPath`) so callers need not parse `path`. See [validation.md](validation.md#validationissue-shape).
 
 ## Do not confuse
 
@@ -175,7 +183,9 @@ Invalid mutations return `ValidationResult` with issues — **nothing is written
 | `replace(id, GraphSpec)` | Id-set membership / edge ids only (no payloads) |
 | `mergeGraph(sourceIds, …)` | **New** graph = union of sources |
 | `copyGraph` / `clone` | New graph (soft copy vs deep clone semantics differ) |
-| `createDeepGraphVersion` | Explicit history pin — default persist is **HEAD only** |
+| `createDeepGraphVersion(id, annotations)` | Explicit history pin; clocks = `Instant.now()` |
+| `createDeepGraphVersion(id, annotations, at)` | Backdated freeze (Option B); `at` mandatory `Instant` |
+| `exists(id)` / `exists(matcher)` | Header-only existence (no `ResolvedGraph` load); matcher = any-match early exit |
 
 REST glossary: [rest-api.md](../service/rest-api.md#mutate-glossary).
 Programmatic recipes (Boot inject + lifecycle): [programmatic-recipes.md](programmatic-recipes.md).
