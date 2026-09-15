@@ -65,7 +65,7 @@ C-26 gaps: [`policy-drools/GAPS.md`](../../workitems/completed/20260904-policy-d
 | 6 | C-28 | [`policy-seeds-persistence`](../../workitems/completed/20260906-policy-seeds-persistence/STORY.md) | **done** |
 | 7 | C-33 | [`policy-results-persistence`](../../workitems/completed/20260907-policy-results-persistence/STORY.md) | **shipped** |
 | 8 | C-29 | [`policy-batch`](../../workitems/completed/20260912-policy-batch/STORY.md) | **done** |
-| 9 | C-30 | [`policy-consumer`](../../workitems/planned/policy-consumer/STORY.md) | planned (gated) |
+| 9 | C-30 | [`policy-consumer`](../../workitems/completed/20260915-policy-consumer/STORY.md) | **superseded** (C-31 REST + SBOM) |
 
 ```mermaid
 flowchart TD
@@ -77,7 +77,7 @@ flowchart TD
   c28[C-28 seeds + JPA]
   c33[C-33 result store]
   c29[C-29 batch pack]
-  c30[C-30 example/REST]
+  c30[C-30 superseded]
   c24 --> c26 --> c31 --> c32 --> c27 --> c28 --> c33 --> c29 --> c30
 ```
 

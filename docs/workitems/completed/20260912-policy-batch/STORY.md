@@ -10,7 +10,7 @@
 **Base:** `origin/dev`  
 **Sequence:** [policy family](../../SEQUENCE.md#policy-family-c-24c-32--normative-order) step **8 / 9**  
 **Before:** [C-33 `policy-results-persistence`](../20260907-policy-results-persistence/STORY.md); suite target needs [C-27](../20260905-policy-suites/STORY.md)  
-**Next:** [C-30 `policy-consumer`](../../planned/policy-consumer/STORY.md)  
+**Next:** [C-30 `policy-consumer`](../20260915-policy-consumer/STORY.md) (**superseded**)  
 **Gaps:** [`GAPS.md`](GAPS.md) — **all batch gaps locked** (WI-001)  
 **Design:** [`docs/design/policy/overview.md`](../../../design/policy/overview.md) §15 · [`evaluation-sequences.md`](../../../design/policy/evaluation-sequences.md) §7 · [`modules.md`](../../../design/policy/modules.md)  
 **Process:** [`docs/workitems/RULES.md`](../../RULES.md)
@@ -60,7 +60,7 @@ All batch GAPS locked — implement in WI-002.
 ## Out of scope
 
 - Matrix UI, cross-subject roll-up, heatmaps
-- REST / example HTTP consumer (**C-30**)
+- REST / example HTTP consumer (**C-30** — superseded; SBOM + C-31)
 - Parallel batch execution
 - Auto-persist inside batch
 - Changing flat evaluate or suite roll-up semantics

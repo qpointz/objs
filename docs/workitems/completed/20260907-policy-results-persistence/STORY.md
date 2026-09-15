@@ -78,5 +78,5 @@ Effective PersistSpec fields live in extensible **`persist_profile`** JSON on `o
 ## Out of scope
 
 - [C-29 `policy-batch`](../20260912-policy-batch/STORY.md) — FragmentsFactory / policies source / mass execution
-- [C-30 `policy-consumer`](../../planned/policy-consumer/STORY.md) — optional REST / example consumer (beyond thin archive HTTP)
+- [C-30 `policy-consumer`](../20260915-policy-consumer/STORY.md) — **superseded** (REST via C-31; example = SBOM assessment)
 - Matrix UI; regulatory seed **content** in foundation

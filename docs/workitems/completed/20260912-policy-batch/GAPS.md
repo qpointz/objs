@@ -66,7 +66,7 @@ PolicyBatchExecutor.execute(subjects, target)
 |-------|-------|
 | Auto-persist | Caller uses C-33 `EvaluationArchive` |
 | FragmentsFactory SPI | Product builds `List<BatchSubject>` |
-| REST | C-30 |
+| REST | C-30 superseded (C-31 + SBOM) |
 | Parallel executor | Deferred after C-29 |
 
 ## Decision log

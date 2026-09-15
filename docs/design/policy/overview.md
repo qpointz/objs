@@ -45,7 +45,7 @@ Also: [`GAPS.md`](../../workitems/completed/20260904-policy-evaluate-core/GAPS.m
 
 **C-26 design lock:** [`drools.md`](drools.md) — `EntityFact`/`EdgeFact`/`ObjectFact`; `drools-bom`+`drools-engine`+`drools-xml-support`; per-call session + KB cache by policy revision.
 
-**Deferred to later stories:** example/REST consumer (C-30). Catalog seeds/JPA (C-28), evaluation archives (C-33), workbench play (C-31), metadata (C-32), suites (C-27), and **batch pack (C-29)** **implemented** — see [`suites.md`](suites.md) / [`workbench.md`](workbench.md) / [`results.md`](results.md); batch: `PolicyBatchEvaluator` / `SequentialPolicyBatchExecutor` ([`policy-batch/GAPS.md`](../../workitems/completed/20260912-policy-batch/GAPS.md)).
+**Family shipped:** Catalog seeds/JPA (C-28), evaluation archives (C-33), workbench play (C-31), metadata (C-32), suites (C-27), batch pack (C-29) — see [`suites.md`](suites.md) / [`workbench.md`](workbench.md) / [`results.md`](results.md); batch: `PolicyBatchEvaluator` / `SequentialPolicyBatchExecutor` ([`policy-batch/GAPS.md`](../../workitems/completed/20260912-policy-batch/GAPS.md)). **C-30** example/REST consumer **superseded** — REST via C-31; product example = SBOM assessment ([`policy-consumer`](../../workitems/completed/20260915-policy-consumer/STORY.md)).
 
 Sections **§1+** below remain illustrative for the **full-family** vision (suites, seeds, batch, Drools). Where they conflict with the table above, S1 pages, or [`drools.md`](drools.md), **those locks win**.
 
@@ -194,7 +194,7 @@ flowchart TB
 | `:objs-policy-core` | In-memory repo, wire → gated evaluate; later seeds/suites as stories land | **C-24** (+ C-27/C-28) |
 | `:objs-policy-drools` | First real `PolicyEngine` | **C-26** |
 | `:objs-policy-opa` | Later | deferred |
-| `:objs-policy-service` | Optional REST (jgrapht-service pattern); **not** on `:objs-service` by default | C-30 / C-31 as needed |
+| `:objs-policy-service` | Optional REST (jgrapht-service pattern); **not** on `:objs-service` by default | **C-31** (C-30 superseded) |
 
 ---
 
@@ -684,7 +684,7 @@ SBOM Application / Portfolio binding stays in the app. Foundation never requires
 | C-28 Seeds + persistence | [`policy-seeds-persistence/GAPS.md`](../../workitems/completed/20260906-policy-seeds-persistence/GAPS.md) |
 | C-33 Result store | [`policy-results-persistence/GAPS.md`](../../workitems/completed/20260907-policy-results-persistence/GAPS.md) — **closed**; archive **shipped** |
 | C-29 Batch | [`policy-batch/GAPS.md`](../../workitems/completed/20260912-policy-batch/GAPS.md) — **shipped** (sequential executor) |
-| C-30 Example/REST consumer | [`policy-consumer/GAPS.md`](../../workitems/planned/policy-consumer/GAPS.md) |
+| C-30 Example/REST consumer | [`policy-consumer/GAPS.md`](../../workitems/completed/20260915-policy-consumer/GAPS.md) — **superseded** |
 
 **C-24 WI-001 is closed.** Implement api/core against S1 locks (WI-002+). Do not pull later-story gaps into C-24.
 

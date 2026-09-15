@@ -103,4 +103,4 @@ flowchart LR
 | Metadata (categories/tags/annotations/semver) | **C-32** — shipped in api/core + service/workbench; see [`metadata.md`](metadata.md) |
 | JPA + seeds | C-28 |
 | Batch pack | **C-29 shipped** — `PolicyBatchEvaluator` / `PolicyBatchExecutor` + `SequentialPolicyBatchExecutor` |
-| Example/REST extras | C-30 |
+| Example/REST extras | C-30 **superseded** (C-31 REST + SBOM assessment) |

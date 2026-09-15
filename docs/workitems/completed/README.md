@@ -10,6 +10,8 @@ docs/workitems/completed/YYYYMMDD-<story-slug>/
 
 ## Index (optional, newest first)
 
+- [`20260915-policy-consumer`](20260915-policy-consumer/STORY.md) — C-30 superseded (C-31 REST + SBOM assessment)
+- [`20260914-api-store-improvements`](20260914-api-store-improvements/STORY.md) — `NamedGraphStore.exists` + structured `ValidationIssue` (C-38)
 - [`20260912-policy-batch`](20260912-policy-batch/STORY.md) — Thin policy batch / sequential executor (C-29)
 - [`20260912-export-package-sensitive-assets`](20260912-export-package-sensitive-assets/STORY.md) — Export `.drl` rewrite + codegen foundation-dir path guard (P-5)
 - [`20260912-transaction-recipes`](20260912-transaction-recipes/STORY.md) — Spring integration how-to + transaction recipes (C-37)

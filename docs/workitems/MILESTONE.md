@@ -66,6 +66,7 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`export-package-sensitive-assets`](completed/20260912-export-package-sensitive-assets/STORY.md) — Export `.drl` package rewrite + codegen foundation-dir path guard (P-5). WI-000…WI-002.
 - [`policy-batch`](completed/20260912-policy-batch/STORY.md) — Thin `PolicyBatchEvaluator` + `SequentialPolicyBatchExecutor`; SBOM portfolio runner (C-29). WI-000…WI-003.
 - [`api-store-improvements`](completed/20260914-api-store-improvements/STORY.md) — `NamedGraphStore.exists` + structured `ValidationIssue` + `createDeepGraphVersion` default + context-bar Open layout (C-38). WI-000…WI-007.
+- [`policy-consumer`](completed/20260915-policy-consumer/STORY.md) — C-30 superseded (no impl): REST via C-31; example consumer = SBOM assessment.
 
 ### In progress
 
@@ -74,6 +75,5 @@ _(none)_
 ### Planned
 
 - [`store-text-search`](planned/store-text-search/STORY.md) — FB-3 contains/`q`; design first (C-20). Does not block C-18.
-- Policy family after C-29: [`policy-consumer`](planned/policy-consumer/STORY.md) (C-30).
 - [`codegen-schema-evolution`](planned/codegen-schema-evolution/STORY.md) — typed multi-version deserialize + hand migrations (C-35); design first after C-23.
 

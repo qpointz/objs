@@ -44,7 +44,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | C-27 | Policy suites: hierarchy, folder roll-up, evaluateSuite, Suites workbench | feature | done | [`completed/20260905-policy-suites/`](completed/20260905-policy-suites/STORY.md) |
 | C-28 | Policy (+suite) catalog JPA + seeds (`key`, Drop*, REPLACE/workbench export) | feature | done | [`completed/20260906-policy-seeds-persistence/`](completed/20260906-policy-seeds-persistence/STORY.md) |
 | C-29 | Thin policy batch / result pack (no matrix; after results) | feature | done | [`completed/20260912-policy-batch/`](completed/20260912-policy-batch/STORY.md) |
-| C-30 | Optional policy REST / example consumer (gated; workbench = C-31) | feature | planned | [`planned/policy-consumer/`](planned/policy-consumer/STORY.md) |
+| C-30 | Optional policy REST / example consumer (superseded: C-31 REST + SBOM assessment) | feature | done | [`completed/20260915-policy-consumer/`](completed/20260915-policy-consumer/STORY.md) |
 | C-31 | Workbench tactical Policy play UI (after Drools) | feature | done | [`completed/20260904-policy-workbench/`](completed/20260904-policy-workbench/STORY.md), also [U-9](#ui--workbench) |
 | C-32 | Policy metadata: tags, user-managed categories, annotations (Policy list navigation) | feature | done | [`completed/20260905-policy-metadata/`](completed/20260905-policy-metadata/STORY.md), also [U-10](#ui--workbench) |
 | C-33 | Evaluation result archives: persist axes, filters, presets, labeling (G-P11r/32r/48r–50r) | feature | done | [`completed/20260907-policy-results-persistence/`](completed/20260907-policy-results-persistence/STORY.md) |
@@ -106,6 +106,6 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | Status | Count |
 |--------|------:|
 | backlog | 2 |
-| planned | 4 |
+| planned | 2 |
 | in-progress | 0 |
-| done | 45 |
+| done | 46 |

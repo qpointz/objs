@@ -343,4 +343,4 @@ All listed suite GAPS resolved (G-P29s corrected: suite engine vs folder `rollUp
 
 ## Out of scope (story)
 
-Seeds (C-28), batch (C-29), product suite content, polished reporting. Workbench **Policy > Suites** basic UI is **in** story (WI-004; tactical). Input persist deferred. Full C-30 consumer REST beyond play-service needs out.
+Seeds (C-28), batch (C-29), product suite content, polished reporting. Workbench **Policy > Suites** basic UI is **in** story (WI-004; tactical). Input persist deferred. C-30 consumer extras **superseded** (play-service REST + SBOM assessment).

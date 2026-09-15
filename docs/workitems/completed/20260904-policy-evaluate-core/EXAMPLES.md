@@ -58,4 +58,4 @@ Same policies, two fragments: full graph vs Explorer subset → different applic
 | Portfolio × suite matrix / batch (former E8) | [policy-batch](../20260912-policy-batch/STORY.md) |
 | Drools fixture engine | [policy-drools](../20260904-policy-drools/STORY.md) |
 | Workbench Policy play UI | [policy-workbench](../../completed/20260904-policy-workbench/STORY.md) |
-| SBOM / extra REST consumer | [policy-consumer](../../planned/policy-consumer/STORY.md) |
+| SBOM / extra REST consumer | [policy-consumer](../20260915-policy-consumer/STORY.md) (**superseded**) |

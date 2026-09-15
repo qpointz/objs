@@ -37,5 +37,5 @@ Ship small, consumer-facing **store and validation API** improvements that unblo
 - Changing validation *rules* or persist-gate order
 - Retrofitting every seed/registry `ValidationIssue` in v1
 - REST `HEAD` / exists endpoint (follow-up unless requested)
-- Policy-batch / consumer (C-29 done; C-30 gated)
+- Policy-batch / consumer (C-29 done; C-30 superseded)
 - Store text search (C-20)
