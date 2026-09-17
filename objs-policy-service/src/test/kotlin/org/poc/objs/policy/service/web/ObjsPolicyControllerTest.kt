@@ -57,6 +57,12 @@ class ObjsPolicyControllerTest {
         store = mock(GraphStore::class.java)
         stores = InMemoryPolicyStores()
         categoryId = stores.categories.save(CategoryWrite("General", "general")).id
+        mockMvc = buildMockMvc()
+    }
+
+    private fun buildMockMvc(
+        evaluationArchive: org.poc.objs.policy.api.EvaluationArchive? = null,
+    ): MockMvc {
         val repo = stores.policies
         val cache = PolicyKnowledgeBaseCache()
         val drools = DroolsPolicyEngine(cache)
@@ -83,8 +89,9 @@ class ObjsPolicyControllerTest {
                 repo,
                 stores.suites,
             ),
+            evaluationArchive = java.util.Optional.ofNullable(evaluationArchive),
         )
-        mockMvc = MockMvcBuilders
+        return MockMvcBuilders
             .standaloneSetup(ObjsPolicyController(play))
             .setMessageConverters(
                 JacksonJsonHttpMessageConverter(JsonMapper.builder().findAndAddModules().build()),
@@ -259,5 +266,84 @@ class ObjsPolicyControllerTest {
         mockMvc.perform(get("/api/v1/objs/policy/capabilities"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.operations").value(org.hamcrest.Matchers.not(org.hamcrest.Matchers.hasItem("archive"))))
+    }
+
+    @Test
+    fun shouldListGetDeleteEvaluations_whenArchivePresent() {
+        val id = UUID.fromString("22222222-2222-2222-2222-222222222222")
+        val axes = org.poc.objs.policy.api.PersistContentAxes(results = true, executionContext = true, input = true)
+        val summary =
+            org.poc.objs.policy.api.EvaluationArchiveSummary(
+                evaluationId = id,
+                kind = org.poc.objs.policy.api.PolicyEvaluationKinds.SUITE,
+                name = "nightly",
+                evaluatedAtEpochMs = 9_000L,
+                tags = listOf("ci"),
+                axes = axes,
+            )
+        val entityId = UUID.randomUUID()
+        val fullDoc =
+            org.poc.objs.policy.api.EvaluationArchiveDocument(
+                evaluationId = id,
+                kind = org.poc.objs.policy.api.PolicyEvaluationKinds.SUITE,
+                name = "nightly",
+                meta =
+                    org.poc.objs.policy.api.PolicyEvaluationMeta(
+                        evaluationId = id,
+                        kind = org.poc.objs.policy.api.PolicyEvaluationKinds.SUITE,
+                        evaluatedAtEpochMs = 9_000L,
+                        tags = listOf("ci"),
+                    ),
+                outcomes = emptyList(),
+                axes = axes,
+                filters = org.poc.objs.policy.api.PersistResultFilters.ALL,
+                executionContext = mapOf("source" to "workbench"),
+                input =
+                    GraphContents(
+                        entities = listOf(Entity(id = entityId, type = "Component", schemaVersion = "1")),
+                        edges = emptyList(),
+                    ),
+            )
+        val standardDoc = fullDoc.copy(input = null)
+        val archive = mock(org.poc.objs.policy.api.EvaluationArchive::class.java)
+        given(archive.list(org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.isNull(), org.mockito.ArgumentMatchers.isNull()))
+            .willReturn(listOf(summary))
+        given(archive.load(id)).willReturn(fullDoc)
+        given(archive.loadAsStandard(id)).willReturn(standardDoc)
+        org.mockito.Mockito.doNothing().`when`(archive).delete(id)
+
+        val mvc = buildMockMvc(archive)
+
+        mvc.perform(get("/api/v1/objs/policy/evaluations"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.items[0].evaluationId").value(id.toString()))
+            .andExpect(jsonPath("$.items[0].name").value("nightly"))
+
+        mvc.perform(get("/api/v1/objs/policy/evaluations/$id"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.input.entities").isArray)
+            .andExpect(jsonPath("$.executionContext.source").value("workbench"))
+
+        mvc.perform(get("/api/v1/objs/policy/evaluations/$id").param("view", "standard"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.input").doesNotExist())
+
+        mvc.perform(get("/api/v1/objs/policy/evaluations/$id").param("view", "weird"))
+            .andExpect(status().isBadRequest)
+
+        mvc.perform(delete("/api/v1/objs/policy/evaluations/$id"))
+            .andExpect(status().isNoContent)
+
+        given(archive.load(id)).willReturn(null)
+        mvc.perform(get("/api/v1/objs/policy/evaluations/$id"))
+            .andExpect(status().isNotFound)
+        mvc.perform(delete("/api/v1/objs/policy/evaluations/$id"))
+            .andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun shouldReturnServiceUnavailable_whenListWithoutArchive() {
+        mockMvc.perform(get("/api/v1/objs/policy/evaluations"))
+            .andExpect(status().isServiceUnavailable)
     }
 }

@@ -7,6 +7,7 @@ import org.poc.objs.api.domain.GraphFragment
 import org.poc.objs.core.persistence.tx.UnitOfWork
 import org.poc.objs.policy.api.EvaluationArchive
 import org.poc.objs.policy.api.EvaluationArchiveDocument
+import org.poc.objs.policy.api.EvaluationArchiveSummary
 import org.poc.objs.policy.api.EvaluationResult
 import org.poc.objs.policy.api.ExecutionContextSnapshot
 import org.poc.objs.policy.api.Finding
@@ -108,6 +109,38 @@ class JpaEvaluationArchive(
             outcomeDao.deleteByEvaluationId(evaluationId)
             evaluationDao.deleteById(evaluationId)
         }
+    }
+
+    override fun list(
+        limit: Int,
+        offset: Int,
+        kind: String?,
+        tag: String?,
+    ): List<EvaluationArchiveSummary> =
+        uow.read {
+            val clampedLimit = limit.coerceIn(1, EvaluationArchive.LIST_LIMIT_MAX)
+            val clampedOffset = offset.coerceAtLeast(0)
+            evaluationDao.list(clampedLimit, clampedOffset, kind, tag).map { toSummary(it) }
+        }
+
+    private fun toSummary(record: PolicyEvaluationRecord): EvaluationArchiveSummary {
+        val profile = persistProfileFromMap(record.persistProfile)
+        return EvaluationArchiveSummary(
+            evaluationId = record.evaluationId,
+            kind = record.kind,
+            name = profile.name,
+            description = profile.description,
+            evaluatedAtEpochMs = record.evaluatedAt.toEpochMilli(),
+            overallStatus = record.overallStatus?.let { PolicyOutcomeStatus.parseToken(it) },
+            overallSeverity = FindingSeverity.parseLegacyOrNull(record.overallSeverity),
+            suiteId = record.suiteId,
+            suiteName = record.suiteName,
+            tags = record.tags.toList(),
+            presetName = profile.presetName,
+            origin = profile.origin,
+            durationMs = profile.durationMs,
+            axes = profile.axes,
+        )
     }
 
     private fun persist(

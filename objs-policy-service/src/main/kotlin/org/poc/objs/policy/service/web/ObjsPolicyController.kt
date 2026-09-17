@@ -357,6 +357,60 @@ class ObjsPolicyController(
         }
     }
 
+    @GetMapping("/evaluations")
+    @Operation(summary = "List evaluation archive summaries (newest first)")
+    fun listEvaluations(
+        @RequestParam(required = false) limit: Int?,
+        @RequestParam(required = false) offset: Int?,
+        @RequestParam(required = false) kind: String?,
+        @RequestParam(required = false) tag: String?,
+    ): ResponseEntity<Any> =
+        try {
+            ResponseEntity.ok(
+                EvaluationArchiveListResponse(
+                    items =
+                        play.listEvaluations(
+                            limit = limit ?: org.poc.objs.policy.api.EvaluationArchive.LIST_LIMIT_DEFAULT,
+                            offset = offset ?: 0,
+                            kind = kind,
+                            tag = tag,
+                        ),
+                ),
+            )
+        } catch (ex: IllegalStateException) {
+            ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(ex.message)
+        }
+
+    @GetMapping("/evaluations/{id}")
+    @Operation(summary = "Load an evaluation archive (full or STANDARD view)")
+    fun getEvaluation(
+        @PathVariable id: UUID,
+        @RequestParam(required = false) view: String?,
+    ): ResponseEntity<Any> {
+        val standardView =
+            when {
+                view == null || view.isBlank() -> false
+                view.equals("standard", ignoreCase = true) -> true
+                else -> return ResponseEntity.badRequest().body("Unknown view='$view' (use standard or omit)")
+            }
+        return try {
+            play.loadEvaluation(id, standardView)?.let { ResponseEntity.ok(it) }
+                ?: ResponseEntity.notFound().build()
+        } catch (ex: IllegalStateException) {
+            ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(ex.message)
+        }
+    }
+
+    @DeleteMapping("/evaluations/{id}")
+    @Operation(summary = "Delete an evaluation archive")
+    fun deleteEvaluation(@PathVariable id: UUID): ResponseEntity<Any> =
+        try {
+            if (play.deleteEvaluation(id)) ResponseEntity.noContent().build()
+            else ResponseEntity.notFound().build()
+        } catch (ex: IllegalStateException) {
+            ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(ex.message)
+        }
+
     private fun buildSuiteExecutionContext(
         result: org.poc.objs.policy.api.SuiteEvaluationResult,
     ): Map<String, Any?> =

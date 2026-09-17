@@ -73,6 +73,27 @@ object PersistPresets {
 typealias ExecutionContextSnapshot = Map<String, Any?>
 
 /**
+ * Thin list row for [EvaluationArchive.list] (C-39). Row metadata + persist_profile axes only —
+ * no outcomes, tree, executionContext, or input.
+ */
+data class EvaluationArchiveSummary(
+    val evaluationId: UUID,
+    val kind: String,
+    val name: String? = null,
+    val description: String? = null,
+    val evaluatedAtEpochMs: Long,
+    val overallStatus: PolicyOutcomeStatus? = null,
+    val overallSeverity: FindingSeverity? = null,
+    val suiteId: UUID? = null,
+    val suiteName: String? = null,
+    val tags: List<String> = emptyList(),
+    val presetName: String? = null,
+    val origin: String? = null,
+    val durationMs: Long? = null,
+    val axes: PersistContentAxes,
+)
+
+/**
  * Loaded evaluation archive (C-33). When [includeInput] is false (STANDARD view), [input] is null
  * even if the row stored a pack.
  */
@@ -126,4 +147,21 @@ interface EvaluationArchive {
     fun loadAsStandard(evaluationId: UUID): EvaluationArchiveDocument?
 
     fun delete(evaluationId: UUID)
+
+    /**
+     * List archive summaries (newest first). Does not hydrate outcomes/findings/tree/context/input.
+     * [limit] is clamped to 1..[LIST_LIMIT_MAX] (default [LIST_LIMIT_DEFAULT]).
+     * [kind] exact match when non-null; [tag] matches when the row's tags contain that string.
+     */
+    fun list(
+        limit: Int = LIST_LIMIT_DEFAULT,
+        offset: Int = 0,
+        kind: String? = null,
+        tag: String? = null,
+    ): List<EvaluationArchiveSummary>
+
+    companion object {
+        const val LIST_LIMIT_DEFAULT: Int = 50
+        const val LIST_LIMIT_MAX: Int = 200
+    }
 }

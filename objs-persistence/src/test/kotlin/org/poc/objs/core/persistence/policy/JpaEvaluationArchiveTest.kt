@@ -279,4 +279,109 @@ class JpaEvaluationArchiveTest : ObjsPersistenceFixture() {
         assertThat(loaded.outcomes.single().findings).extracting("severity")
             .containsExactly(FindingSeverity.HIGH)
     }
+
+    @Test
+    fun shouldReturnEmptyList_whenNoArchives() {
+        assertThat(evaluationArchives.list()).isEmpty()
+    }
+
+    @Test
+    fun shouldListOrderedNewestFirst_withoutHydratingOutcomes() {
+        val olderId =
+            evaluationArchives.saveFlat(
+                result =
+                    EvaluationResult(
+                        outcomes = listOf(PolicyOutcome("a", 1, "CUSTOM", PolicyOutcomeStatus.PASS)),
+                    ),
+                spec =
+                    PersistPresets.standard().copy(
+                        name = "older",
+                        evaluatedAtEpochMs = 1_000L,
+                        tags = listOf("ci"),
+                    ),
+            )!!
+        val newerId =
+            evaluationArchives.saveFlat(
+                result =
+                    EvaluationResult(
+                        outcomes = listOf(PolicyOutcome("b", 2, "CUSTOM", PolicyOutcomeStatus.FAIL)),
+                    ),
+                spec =
+                    PersistPresets.standard().copy(
+                        name = "newer",
+                        evaluatedAtEpochMs = 2_000L,
+                        tags = listOf("ci", "nightly"),
+                    ),
+            )!!
+
+        val listed = evaluationArchives.list()
+        assertThat(listed).extracting("evaluationId").containsExactly(newerId, olderId)
+        assertThat(listed[0].name).isEqualTo("newer")
+        assertThat(listed[0].axes.results).isTrue()
+        assertThat(listed[0].axes.executionContext).isTrue()
+
+        // list must not require outcome hydrate — load still returns outcomes
+        assertThat(evaluationArchives.load(newerId)!!.outcomes).hasSize(1)
+    }
+
+    @Test
+    fun shouldFilterListByKindAndTag() {
+        evaluationArchives.saveFlat(
+            result =
+                EvaluationResult(
+                    outcomes = listOf(PolicyOutcome("flat", 1, "CUSTOM", PolicyOutcomeStatus.PASS)),
+                ),
+            spec =
+                PersistPresets.standard().copy(
+                    name = "flat-ci",
+                    evaluatedAtEpochMs = 3_000L,
+                    tags = listOf("ci"),
+                ),
+        )
+        val folderId = UUID.randomUUID()
+        val suiteId =
+            evaluationArchives.saveSuite(
+                result =
+                    SuiteEvaluationResult(
+                        meta =
+                            PolicyEvaluationMeta(
+                                evaluationId = UUID.randomUUID(),
+                                kind = PolicyEvaluationKinds.SUITE,
+                                evaluatedAtEpochMs = 4_000L,
+                                suiteId = folderId,
+                                suiteName = "s",
+                                overallStatus = PolicyOutcomeStatus.PASS,
+                                tags = listOf("nightly"),
+                            ),
+                        tree =
+                            SuiteFolderResult(
+                                folderId = folderId,
+                                key = "root",
+                                name = "Root",
+                                participation = SuiteFolderParticipation.ENABLED,
+                                status = PolicyOutcomeStatus.PASS,
+                                votes = true,
+                            ),
+                        outcomes =
+                            listOf(PolicyOutcome("leaf", 1, "CUSTOM", PolicyOutcomeStatus.PASS)),
+                    ),
+                spec =
+                    PersistPresets.standard().copy(
+                        name = "suite-nightly",
+                        tags = listOf("nightly"),
+                        evaluatedAtEpochMs = 4_000L,
+                    ),
+            )!!
+
+        assertThat(evaluationArchives.list(kind = PolicyEvaluationKinds.SUITE))
+            .extracting("evaluationId")
+            .containsExactly(suiteId)
+        assertThat(evaluationArchives.list(tag = "nightly"))
+            .extracting("name")
+            .containsExactly("suite-nightly")
+        assertThat(evaluationArchives.list(kind = PolicyEvaluationKinds.FLAT, tag = "ci"))
+            .extracting("name")
+            .containsExactly("flat-ci")
+        assertThat(evaluationArchives.list(tag = "missing")).isEmpty()
+    }
 }

@@ -20,6 +20,37 @@ class PolicyEvaluationDao(private val uow: UnitOfWork) {
     fun deleteById(id: UUID) {
         findById(id)?.let { em.remove(it) }
     }
+
+    /**
+     * Ordered evaluation rows for archive list. Optional [kind] filter in JPQL.
+     * Optional [tag] containment is applied in-memory (JSON tags; same pattern as policy query).
+     */
+    fun list(
+        limit: Int,
+        offset: Int,
+        kind: String? = null,
+        tag: String? = null,
+    ): List<PolicyEvaluationRecord> {
+        val jpql =
+            buildString {
+                append("select e from PolicyEvaluationRecord e")
+                if (kind != null) append(" where e.kind = :kind")
+                append(" order by e.evaluatedAt desc, e.evaluationId desc")
+            }
+        val query = em.createQuery(jpql, PolicyEvaluationRecord::class.java)
+        if (kind != null) {
+            query.setParameter("kind", kind)
+        }
+        if (tag == null) {
+            query.firstResult = offset.coerceAtLeast(0)
+            query.maxResults = limit
+            return query.resultList
+        }
+        val filtered = query.resultList.filter { tag in it.tags }
+        val from = offset.coerceAtLeast(0)
+        if (from >= filtered.size) return emptyList()
+        return filtered.drop(from).take(limit)
+    }
 }
 
 class PolicyOutcomeDao(private val uow: UnitOfWork) {

@@ -228,6 +228,34 @@ class PolicyPlayService(
         )
     }
 
+    fun listEvaluations(
+        limit: Int = EvaluationArchive.LIST_LIMIT_DEFAULT,
+        offset: Int = 0,
+        kind: String? = null,
+        tag: String? = null,
+    ): List<org.poc.objs.policy.api.EvaluationArchiveSummary> {
+        val archive = requireArchive()
+        return archive.list(limit = limit, offset = offset, kind = kind, tag = tag)
+    }
+
+    fun loadEvaluation(evaluationId: UUID, standardView: Boolean): org.poc.objs.policy.api.EvaluationArchiveDocument? {
+        val archive = requireArchive()
+        return if (standardView) archive.loadAsStandard(evaluationId) else archive.load(evaluationId)
+    }
+
+    /** @return false when the id is missing */
+    fun deleteEvaluation(evaluationId: UUID): Boolean {
+        val archive = requireArchive()
+        if (archive.load(evaluationId) == null) return false
+        archive.delete(evaluationId)
+        return true
+    }
+
+    private fun requireArchive(): EvaluationArchive =
+        evaluationArchive.orElseThrow {
+            IllegalStateException("Evaluation archive is not available (persistence not configured)")
+        }
+
     fun resolveFragment(
         matcher: Matcher,
         graphId: UUID?,

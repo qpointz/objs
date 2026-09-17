@@ -30,3 +30,8 @@ data class PersistAxesDto(
 data class PersistEvaluationResponse(
     val evaluationId: java.util.UUID,
 )
+
+/** List wrapper for `GET /evaluations` (C-39). */
+data class EvaluationArchiveListResponse(
+    val items: List<org.poc.objs.policy.api.EvaluationArchiveSummary>,
+)
