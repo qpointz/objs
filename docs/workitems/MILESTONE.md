@@ -67,6 +67,7 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`policy-batch`](completed/20260912-policy-batch/STORY.md) — Thin `PolicyBatchEvaluator` + `SequentialPolicyBatchExecutor`; SBOM portfolio runner (C-29). WI-000…WI-003.
 - [`api-store-improvements`](completed/20260914-api-store-improvements/STORY.md) — `NamedGraphStore.exists` + structured `ValidationIssue` + `createDeepGraphVersion` default + context-bar Open layout (C-38). WI-000…WI-007.
 - [`policy-consumer`](completed/20260915-policy-consumer/STORY.md) — C-30 superseded (no impl): REST via C-31; example consumer = SBOM assessment.
+- [`policy-archive-workbench`](completed/20260917-policy-archive-workbench/STORY.md) — Archive list/load HTTP + Policy in-page Archives mode (Results / Policies / Input axes) (C-39 / U-12). WI-000…WI-005.
 
 ### In progress
 

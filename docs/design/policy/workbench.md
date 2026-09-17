@@ -23,13 +23,11 @@ Mirror jgrapht/gremlin:
 ## UI chrome
 
 ```text
-[Policies|Suites] | Editor (full height) | Visual | Data
-                  |                      |== Policy|Evaluations|Object ==|
-                  |                      | (Suites: Selection|Evaluation|Object) |
+[Policies|Suites|Archives] | (mode-specific body)
 ```
 
 - Nav **Policy** after Query, before Composer (`/policy`)
-- Left pane: **Policies | Suites** mode tabs (not top Evaluate|Suites subnav)
+- Left pane: **Policies | Suites | Archives** mode tabs (not top Evaluate|Suites subnav)
 - Graph pane: **Visual** (canvas; disabled over node cap) | **Data** (vertices/edges grid)
 - Visual: hover **Filter** toolbar (Types / Edges / Severity / Reset) + Apply layout / Fit to view; filters dim the canvas
 - Data: Vertices — Severity and Type **column funnel** menus (shared type/severity sets with Visual). Edges — Severity; **Type** funnel = edge schema types only; **Source Type** / **Target Type** / **Role** funnels (Role shared with Visual Edges filter); Source/Target name columns.
@@ -49,16 +47,44 @@ Also: [`metadata.md`](metadata.md) (C-32 list navigation — **shipped**; Genera
 
 ## C-27 Suites mode
 
-Policy route (`/policy`) uses left **Policies | Suites** mode tabs:
+Policy route (`/policy`) uses left **Policies | Suites | Archives** mode tabs:
 
 | Item | Role |
 |------|------|
 | **Policies** | Policy play (C-31/C-32) |
-| **Suites** | Suite/folder/matcher authoring, Examine selection, `evaluateSuite` |
+| **Suites** | Suite/folder/matcher authoring, Examine selection, `evaluateSuite`; **Persist result** → archive |
+| **Archives** | Read-only browse/inspect of persisted evaluation packs (C-39 / U-12) |
 
 - Suites share the same layout: tree + full-height editor + Visual/Data + **Output**.
 - HTTP (on `:objs-policy-service`): `…/policy/suites` CRUD, `POST …/suites/selection`, `POST …/suites/evaluate`.
 - Design: [`suites.md`](suites.md).
+
+## C-39 Archives mode (read-only)
+
+Third **in-page** Policy mode — **not** a new L0 nav item. Soft-fails when capabilities lack `"archive"`.
+
+```text
+[Policies|Suites|Archives] | List summaries | Inspector (Results / Policies / Input)
+```
+
+| Persist axis | Inspector tab | Notes |
+|--------------|---------------|-------|
+| `results` | **Results** | Suite tree *or* flat outcomes; read-only reuse of Suites widgets |
+| `executionContext` | **Policies** | Structured thin T₀ snapshot + raw JSON extras |
+| `input` | **Input** | Visual \| Data \| Raw of frozen fragment; **does not** mutate shared graph context |
+
+Tabs appear only when the axis flag is true **and** the payload is present. After Suites **Persist**, **Open archive** switches to this mode and loads the saved id.
+
+### Archive HTTP (read + write)
+
+| Method | Path | Role |
+|--------|------|------|
+| `POST` | `…/evaluations/suite` | Persist suite run (C-33) |
+| `GET` | `…/evaluations` | List summaries (`limit`/`offset`/`kind`/`tag`) |
+| `GET` | `…/evaluations/{id}` | Full document; `?view=standard` omits `input` |
+| `DELETE` | `…/evaluations/{id}` | Delete pack |
+
+Port: `EvaluationArchive.list` / `load` / `loadAsStandard` / `delete`. Story: [`policy-archive-workbench`](../../workitems/completed/20260917-policy-archive-workbench/STORY.md).
 
 ## C-28 Persistence + seeds + export
 

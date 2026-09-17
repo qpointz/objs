@@ -53,6 +53,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | C-36 | Graph lifecycle ops catalog: empty/erase/backdated freeze + programmatic recipes | feature | done | [`completed/20260912-graph-ops-catalog/`](completed/20260912-graph-ops-catalog/STORY.md) |
 | C-37 | Spring integration how-to + transaction recipes (Boot join / non-Spring UoW) | docs | done | [`completed/20260912-transaction-recipes/`](completed/20260912-transaction-recipes/STORY.md) |
 | C-38 | Store/validation API gaps: `NamedGraphStore.exists` + structured `ValidationIssue` | improvement | done | [`completed/20260914-api-store-improvements/`](completed/20260914-api-store-improvements/STORY.md) |
+| C-39 | Evaluation archive list/load HTTP + Policy in-page Archives mode (axes) | feature | done | [`completed/20260917-policy-archive-workbench/`](completed/20260917-policy-archive-workbench/STORY.md), also [U-12](#ui--workbench) |
 
 ---
 
@@ -71,6 +72,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | U-9 | Tactical Policy play UI in workbench (same as C-31) | feature | done | [`completed/20260904-policy-workbench/`](completed/20260904-policy-workbench/STORY.md), [C-31](#core--entity--graph-core) |
 | U-10 | Policy list navigation (categories / tags / annotations; same as C-32) | feature | done | [`completed/20260905-policy-metadata/`](completed/20260905-policy-metadata/STORY.md), [C-32](#core--entity--graph-core) |
 | U-11 | Workbench UI improve 2 (further polish after U-8) | improvement | done | [`completed/20260910-workbench-ui-improve-2/`](completed/20260910-workbench-ui-improve-2/STORY.md) |
+| U-12 | Policy Archives mode (Results / Policies / Input axes; same as C-39) | feature | done | [`completed/20260917-policy-archive-workbench/`](completed/20260917-policy-archive-workbench/STORY.md), [C-39](#core--entity--graph-core) |
 
 ---
 

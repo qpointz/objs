@@ -44,7 +44,7 @@ C-24 flat evaluate
 **Content deps:** suite seed kinds need C-27; batch suite target needs C-27; result store needs C-27 shape + C-28 catalog boundary.  
 **Do not** start a story’s WI-002+ until that story’s own WI-001 closes its GAPS. Do not pull later-story gaps into an earlier design lock.
 
-**Policy family complete** (C-30 closed superseded 2026-09-15). Open foundation work outside this chain: e.g. [C-20](planned/store-text-search/STORY.md), [C-35](planned/codegen-schema-evolution/STORY.md).
+**Policy family complete** (C-30 closed superseded 2026-09-15). Open foundation work outside this chain: e.g. [C-39](completed/20260917-policy-archive-workbench/STORY.md) archive viewer (done), [C-20](planned/store-text-search/STORY.md), [C-35](planned/codegen-schema-evolution/STORY.md).
 
 ---
 
@@ -53,6 +53,7 @@ C-24 flat evaluate
 | Id | Story | Status | Notes |
 |----|--------|--------|-------|
 | **C-34** | [`policy-status-severity-vocab`](completed/20260911-policy-status-severity-vocab/STORY.md) | done | Disambiguate status `ERROR`→`EXEC_ERROR` vs finding severity; SuiteStrategy pack; after C-33; **independent of** C-29 / C-30 |
+| **C-39** | [`policy-archive-workbench`](completed/20260917-policy-archive-workbench/STORY.md) | done | Archive list/load HTTP + Policy in-page Archives mode (Results / Policies / Input); after C-33; also **U-12** |
 
 ---
 

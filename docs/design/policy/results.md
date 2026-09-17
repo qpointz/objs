@@ -141,6 +141,8 @@ classDiagram
 
 Suite-level roll-up / reporting tree is **C-27** — see [`suites.md`](suites.md) and [`RESULTS-MODEL.md`](../../workitems/completed/20260905-policy-suites/RESULTS-MODEL.md) (`evaluationId` + `meta` + `tree` + `outcomes`).
 
-## Durable archives (C-33 **shipped**)
+## Durable archives (C-33 **shipped**; C-39 read HTTP)
 
 Explicit `EvaluationArchive.saveFlat` / `saveSuite` with [`PersistSpec`](../../workitems/completed/20260907-policy-results-persistence/GAPS.md) (content axes + result filters + labeling/runtime). Presets: EPHEMERAL / STANDARD / FULL. Evaluate paths do **not** auto-persist. Port: `org.poc.objs.policy.api.EvaluationArchive`; JPA in `:objs-persistence`. See RESULTS-MODEL § Persistence API.
+
+**Read path (C-39):** `EvaluationArchive.list` + `GET/DELETE …/policy/evaluations/**` on `:objs-policy-service`; workbench **Archives** mode under `/policy` (see [`workbench.md`](workbench.md)). Write remains `POST …/evaluations/suite`.
