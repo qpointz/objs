@@ -104,7 +104,7 @@ export const WORKBENCH_TOUR_STEPS: WorkbenchTourStep[] = [
   {
     id: 'policy',
     title: 'Policy playground',
-    body: 'Policy playground: left Policies | Suites mode tabs, full-height editor, Visual/Data, and Policy|Evaluations|Object (Suites: Selection|Evaluation|Object) under the graph — Object opens on selection; Evaluations filters findings to the selection. Shared graph context; soft-fails if the policy service module is absent.',
+    body: 'Policy playground: left Policies | Suites | Archives mode tabs, full-height editor, Visual/Data, and Policy|Evaluations|Object (Suites: Selection|Evaluation|Object) under the graph — Object opens on selection; Evaluations filters findings to the selection. Archives is read-only inspect of persisted packs. Shared graph context; soft-fails if the policy service module is absent.',
     selector: '[data-tour="nav-policy"]',
     route: '/policy',
   },

@@ -1,8 +1,8 @@
-import { Tabs } from '@mantine/core'
+import { SegmentedControl } from '@mantine/core'
 
-export type PolicyWorkbenchMode = 'policies' | 'suites'
+export type PolicyWorkbenchMode = 'policies' | 'suites' | 'archives'
 
-/** Left-pane Policies | Suites mode switch (Note 1). */
+/** Left-pane Policies | Suites | Archives mode switch (fits narrow side pane). */
 export function PolicyModeTabs({
   mode,
   onModeChange,
@@ -11,18 +11,18 @@ export function PolicyModeTabs({
   onModeChange: (mode: PolicyWorkbenchMode) => void
 }) {
   return (
-    <Tabs
+    <SegmentedControl
+      fullWidth
+      size="xs"
       value={mode}
-      onChange={(v) => {
-        if (v === 'policies' || v === 'suites') onModeChange(v)
-      }}
+      onChange={(v) => onModeChange(v as PolicyWorkbenchMode)}
+      data={[
+        { label: 'Policies', value: 'policies' },
+        { label: 'Suites', value: 'suites' },
+        { label: 'Archives', value: 'archives' },
+      ]}
       data-tour="policy-mode-tabs"
       mb="xs"
-    >
-      <Tabs.List grow>
-        <Tabs.Tab value="policies">Policies</Tabs.Tab>
-        <Tabs.Tab value="suites">Suites</Tabs.Tab>
-      </Tabs.List>
-    </Tabs>
+    />
   )
 }

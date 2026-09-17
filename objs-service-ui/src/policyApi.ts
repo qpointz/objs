@@ -1,6 +1,8 @@
 import type {
   Category,
   CategoryWrite,
+  EvaluationArchiveDocument,
+  EvaluationArchiveListResponse,
   EvaluationResult,
   PersistEvaluationResponse,
   PersistSuiteEvaluationRequest,
@@ -250,6 +252,34 @@ export async function persistSuiteEvaluation(
     body: JSON.stringify(request),
   })
   return parseResponse<PersistEvaluationResponse>(res)
+}
+
+export async function listEvaluations(query: {
+  limit?: number
+  offset?: number
+  kind?: string | null
+  tag?: string | null
+} = {}): Promise<EvaluationArchiveListResponse> {
+  const params = new URLSearchParams()
+  if (query.limit != null) params.set('limit', String(query.limit))
+  if (query.offset != null) params.set('offset', String(query.offset))
+  if (query.kind?.trim()) params.set('kind', query.kind.trim())
+  if (query.tag?.trim()) params.set('tag', query.tag.trim())
+  const qs = params.toString()
+  const res = await fetch(`/api/v1/objs/policy/evaluations${qs ? `?${qs}` : ''}`)
+  return parseResponse(res)
+}
+
+export async function loadEvaluation(id: string): Promise<EvaluationArchiveDocument> {
+  const res = await fetch(`/api/v1/objs/policy/evaluations/${encodeURIComponent(id)}`)
+  return parseResponse(res)
+}
+
+export async function deleteEvaluation(id: string): Promise<void> {
+  const res = await fetch(`/api/v1/objs/policy/evaluations/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  })
+  await parseResponse<void>(res)
 }
 
 /** Download full policy catalog as REPLACE seed YAML (WI-005). */

@@ -211,6 +211,48 @@ export type PersistEvaluationResponse = {
   evaluationId: string
 }
 
+export type EvaluationArchiveSummary = {
+  evaluationId: string
+  kind: string
+  name?: string | null
+  description?: string | null
+  evaluatedAtEpochMs: number
+  overallStatus?: string | null
+  overallSeverity?: string | null
+  suiteId?: string | null
+  suiteName?: string | null
+  tags: string[]
+  presetName?: string | null
+  origin?: string | null
+  durationMs?: number | null
+  axes: PersistContentAxes
+}
+
+export type EvaluationArchiveDocument = {
+  evaluationId: string
+  kind: string
+  name?: string | null
+  description?: string | null
+  meta: SuiteEvaluationMeta
+  outcomes: PolicyOutcome[]
+  tree?: SuiteFolderResult | null
+  overall?: string | null
+  axes: PersistContentAxes
+  filters?: {
+    outcomeStatuses?: string[] | null
+    findingSeverities?: string[] | null
+  }
+  presetName?: string | null
+  durationMs?: number | null
+  origin?: string | null
+  executionContext?: Record<string, unknown> | null
+  input?: import('./types').BoMGraphContents | null
+}
+
+export type EvaluationArchiveListResponse = {
+  items: EvaluationArchiveSummary[]
+}
+
 export type SuiteSelectionResult = {
   policies: Policy[]
   placementByPolicyId?: Record<string, string>

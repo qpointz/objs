@@ -134,9 +134,12 @@ function cloneSuite(s: PolicySuite): PolicySuite {
 export function PolicySuitesPage({
   mode = 'suites',
   onModeChange,
+  onOpenArchive,
 }: {
   mode?: PolicyWorkbenchMode
   onModeChange?: (mode: PolicyWorkbenchMode) => void
+  /** After Persist success — switch Policy mode to Archives and load this id. */
+  onOpenArchive?: (evaluationId: string) => void
 }) {
   const { context } = useGraphContext()
   const [capable, setCapable] = useState<boolean | null>(null)
@@ -507,6 +510,7 @@ export function PolicySuitesPage({
 
   function openPersistDialog() {
     if (!evalResult) return
+    setPersistSavedId(null)
     setPersistName(draft?.name ? `${draft.name} run` : 'Suite evaluation')
     setPersistDescription('')
     setPersistTags([...(evalResult.meta.tags ?? [])])
@@ -543,7 +547,7 @@ export function PolicySuitesPage({
         matcher: scope.matcher,
       })
       setPersistSavedId(saved.evaluationId)
-      setPersistOpen(false)
+      // Keep dialog open on success so Open archive is obvious (G-A9).
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -1231,9 +1235,20 @@ export function PolicySuitesPage({
                   ) : (
                     <Stack gap="sm">
                       {persistSavedId && (
-                        <Text size="xs" c="teal">
-                          Archived: {persistSavedId}
-                        </Text>
+                        <Group gap="xs" align="center">
+                          <Text size="xs" c="teal">
+                            Archived: {persistSavedId}
+                          </Text>
+                          {archiveCapable && onOpenArchive && (
+                            <Button
+                              size="compact-xs"
+                              variant="light"
+                              onClick={() => onOpenArchive(persistSavedId)}
+                            >
+                              Open archive
+                            </Button>
+                          )}
+                        </Group>
                       )}
                       <Group gap="xs" wrap="wrap">
                         <Text size="xs" c="dimmed">
@@ -1329,79 +1344,104 @@ export function PolicySuitesPage({
       <Modal
         opened={persistOpen}
         onClose={() => setPersistOpen(false)}
-        title="Persist evaluation result"
+        title={persistSavedId ? 'Archive saved' : 'Persist evaluation result'}
         size="md"
       >
-        <Stack gap="sm">
-          <Text size="xs" c="dimmed">
-            evaluationId: {evalResult?.meta.evaluationId ?? '—'}
-          </Text>
-          <TextInput
-            size="xs"
-            label="Name"
-            value={persistName}
-            onChange={(e) => setPersistName(e.currentTarget.value)}
-          />
-          <Textarea
-            size="xs"
-            label="Description"
-            minRows={2}
-            value={persistDescription}
-            onChange={(e) => setPersistDescription(e.currentTarget.value)}
-          />
-          <TagsInput
-            size="xs"
-            label="Tags"
-            value={persistTags}
-            onChange={setPersistTags}
-            placeholder="Add tag"
-          />
-          <Box>
-            <Text size="xs" fw={500} mb={4}>
-              Annotations
+        {persistSavedId ? (
+          <Stack gap="sm">
+            <Text size="sm">
+              Saved archive <Text span ff="monospace" size="xs">{persistSavedId}</Text>
             </Text>
-            <KeyValueRowsEditor rows={persistAnnoRows} onChange={setPersistAnnoRows} />
-          </Box>
-          <Stack gap={6}>
-            <Text size="xs" fw={500}>
-              Persist axes
-            </Text>
-            <Checkbox
-              size="xs"
-              label="Results (outcomes, findings, suite tree)"
-              checked={persistAxisResults}
-              onChange={(e) => setPersistAxisResults(e.currentTarget.checked)}
-            />
-            <Checkbox
-              size="xs"
-              label="Execution context (policy/config snapshot at T₀)"
-              checked={persistAxisContext}
-              onChange={(e) => setPersistAxisContext(e.currentTarget.checked)}
-            />
-            <Checkbox
-              size="xs"
-              label="Input (frozen graph fragment)"
-              checked={persistAxisInput}
-              onChange={(e) => setPersistAxisInput(e.currentTarget.checked)}
-              disabled={context.kind === 'empty'}
-            />
+            <Group justify="flex-end" mt="xs">
+              <Button size="xs" variant="default" onClick={() => setPersistOpen(false)}>
+                Close
+              </Button>
+              {archiveCapable && onOpenArchive && (
+                <Button
+                  size="xs"
+                  onClick={() => {
+                    const id = persistSavedId
+                    setPersistOpen(false)
+                    onOpenArchive(id)
+                  }}
+                >
+                  Open archive
+                </Button>
+              )}
+            </Group>
           </Stack>
-          <Group justify="flex-end" mt="xs">
-            <Button size="xs" variant="default" onClick={() => setPersistOpen(false)}>
-              Cancel
-            </Button>
-            <Button
+        ) : (
+          <Stack gap="sm">
+            <Text size="xs" c="dimmed">
+              evaluationId: {evalResult?.meta.evaluationId ?? '—'}
+            </Text>
+            <TextInput
               size="xs"
-              loading={busy}
-              disabled={
-                busy || (!persistAxisResults && !persistAxisContext && !persistAxisInput)
-              }
-              onClick={() => void onPersistSave()}
-            >
-              Save
-            </Button>
-          </Group>
-        </Stack>
+              label="Name"
+              value={persistName}
+              onChange={(e) => setPersistName(e.currentTarget.value)}
+            />
+            <Textarea
+              size="xs"
+              label="Description"
+              minRows={2}
+              value={persistDescription}
+              onChange={(e) => setPersistDescription(e.currentTarget.value)}
+            />
+            <TagsInput
+              size="xs"
+              label="Tags"
+              value={persistTags}
+              onChange={setPersistTags}
+              placeholder="Add tag"
+            />
+            <Box>
+              <Text size="xs" fw={500} mb={4}>
+                Annotations
+              </Text>
+              <KeyValueRowsEditor rows={persistAnnoRows} onChange={setPersistAnnoRows} />
+            </Box>
+            <Stack gap={6}>
+              <Text size="xs" fw={500}>
+                Persist axes
+              </Text>
+              <Checkbox
+                size="xs"
+                label="Results (outcomes, findings, suite tree)"
+                checked={persistAxisResults}
+                onChange={(e) => setPersistAxisResults(e.currentTarget.checked)}
+              />
+              <Checkbox
+                size="xs"
+                label="Execution context (policy/config snapshot at T₀)"
+                checked={persistAxisContext}
+                onChange={(e) => setPersistAxisContext(e.currentTarget.checked)}
+              />
+              <Checkbox
+                size="xs"
+                label="Input (frozen graph fragment)"
+                checked={persistAxisInput}
+                onChange={(e) => setPersistAxisInput(e.currentTarget.checked)}
+                disabled={context.kind === 'empty'}
+              />
+            </Stack>
+            <Group justify="flex-end" mt="xs">
+              <Button size="xs" variant="default" onClick={() => setPersistOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                size="xs"
+                loading={busy}
+                disabled={
+                  busy || (!persistAxisResults && !persistAxisContext && !persistAxisInput)
+                }
+                onClick={() => void onPersistSave()}
+              >
+                Save
+              </Button>
+            </Group>
+          </Stack>
+        )}
       </Modal>
     </Stack>
   )

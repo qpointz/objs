@@ -176,6 +176,13 @@ type PolicyGraphOutputColumnProps = {
   onSeverityFilterChange?: (next: Set<string>) => void
   onSeveritiesPresent?: (sevs: string[]) => void
   onGraphModel?: (model: PolicyGraphModel) => void
+  /**
+   * When set, Visual/Data use this fragment instead of the shared graph context
+   * (Archives Input — does not mutate context).
+   */
+  frozenFragment?: BoMGraphContents | null
+  /** Hide the bottom output pane (Archives Input raw/detail can own the chrome). */
+  hideOutput?: boolean
 }
 
 /** Shared Visual | Data + Output column for Policy Policies/Suites. */
@@ -194,6 +201,8 @@ export const PolicyGraphOutputColumn = forwardRef<
     onSeverityFilterChange,
     onSeveritiesPresent,
     onGraphModel,
+    frozenFragment = null,
+    hideOutput = false,
   },
   ref,
 ) {
@@ -254,6 +263,22 @@ export const PolicyGraphOutputColumn = forwardRef<
   }, [])
 
   const loadCanvas = useCallback(async () => {
+    if (frozenFragment != null) {
+      const contents = frozenFragment
+      const entityCount = contents.entities?.length ?? 0
+      setFragmentContents(contents)
+      setFragmentNodeCount(entityCount)
+      if (entityCount > EXPLORER_NODE_CAP) {
+        setNodes([])
+        setLinks([])
+        setGraphViewTab('data')
+        return
+      }
+      const data = toGraphData(contents, schemas)
+      setNodes(data.nodes)
+      setLinks(data.links)
+      return
+    }
     if (context.kind === 'empty') {
       setNodes([])
       setLinks([])
@@ -298,7 +323,7 @@ export const PolicyGraphOutputColumn = forwardRef<
       setFragmentContents(null)
       setFragmentNodeCount(0)
     }
-  }, [context, schemas])
+  }, [context, frozenFragment, schemas])
 
   useEffect(() => {
     void loadCanvas()
@@ -306,12 +331,17 @@ export const PolicyGraphOutputColumn = forwardRef<
 
   // Clear selection only when the shared graph context actually changes — not when
   // parent re-renders with a new onSelectionChange callback identity.
+  // Frozen fragment: clear when the frozen pack identity changes.
   const contextKey =
-    context.kind === 'graph'
-      ? `graph:${context.graphId}:${context.graphVersion ?? 'head'}`
-      : context.kind === 'matcher'
-        ? `matcher:${JSON.stringify(context.matcherBody)}`
-        : 'empty'
+    frozenFragment != null
+      ? `frozen:${frozenFragment.entities?.length ?? 0}:${frozenFragment.edges?.length ?? 0}:${
+          frozenFragment.entities?.[0]?.id ?? ''
+        }`
+      : context.kind === 'graph'
+        ? `graph:${context.graphId}:${context.graphVersion ?? 'head'}`
+        : context.kind === 'matcher'
+          ? `matcher:${JSON.stringify(context.matcherBody)}`
+          : 'empty'
 
   useEffect(() => {
     setSelection(null)
@@ -757,7 +787,9 @@ export const PolicyGraphOutputColumn = forwardRef<
               </Stack>
             ) : annotatedGraph.nodes.length === 0 ? (
               <Text size="sm" c="dimmed" p="md">
-                Open a graph or matcher (Matcher / All) in the shared context to preview findings.
+                {frozenFragment != null
+                  ? 'No entities in this archived fragment.'
+                  : 'Open a graph or matcher (Matcher / All) in the shared context to preview findings.'}
               </Text>
             ) : (
               <>
@@ -819,8 +851,9 @@ export const PolicyGraphOutputColumn = forwardRef<
           >
             {!dataNonEmpty ? (
               <Text size="sm" c="dimmed" p="md">
-                Open a graph or matcher (Matcher / All) in the shared context to browse objects and
-                edges.
+                {frozenFragment != null
+                  ? 'No objects or edges in this archived fragment.'
+                  : 'Open a graph or matcher (Matcher / All) in the shared context to browse objects and edges.'}
               </Text>
             ) : (
               <Stack gap="xs" style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
@@ -1101,28 +1134,32 @@ export const PolicyGraphOutputColumn = forwardRef<
         </Tabs>
       </Paper>
 
-      <Box
-        role="separator"
-        aria-orientation="horizontal"
-        onPointerDown={onOutputSplit}
-        style={{ height: SPLITTER, cursor: 'row-resize', flexShrink: 0 }}
-      />
+      {!hideOutput && (
+        <>
+          <Box
+            role="separator"
+            aria-orientation="horizontal"
+            onPointerDown={onOutputSplit}
+            style={{ height: SPLITTER, cursor: 'row-resize', flexShrink: 0 }}
+          />
 
-      <Paper
-        withBorder
-        style={{
-          height: outputHeight,
-          minHeight: outputHeight,
-          flexShrink: 0,
-          flexGrow: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-        }}
-        data-tour="policy-output"
-      >
-        {output}
-      </Paper>
+          <Paper
+            withBorder
+            style={{
+              height: outputHeight,
+              minHeight: outputHeight,
+              flexShrink: 0,
+              flexGrow: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+            }}
+            data-tour="policy-output"
+          >
+            {output}
+          </Paper>
+        </>
+      )}
     </Stack>
   )
 })
