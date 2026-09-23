@@ -97,8 +97,8 @@ class CanonicalOntologyTest {
     @Test
     fun shouldRegisterFullCanonicalPack() {
         val pack = SbomRegistry.pack()
-        // CanonicalEdge + 23 entity types
-        assertThat(pack.schemas).hasSize(24)
+        // CanonicalEdge + 23 entity types + Component@2.0.0
+        assertThat(pack.schemas).hasSize(25)
         // Exact relationship table in canonical-spec.md
         assertThat(pack.edgeRules).hasSize(28)
         assertThat(pack.edgeRules)
@@ -124,6 +124,9 @@ class CanonicalOntologyTest {
             .isEqualTo(SchemaUsage.EDGE_PROPERTIES)
         assertThat(schemas.get("Component", "1.0.0")!!.usage)
             .isEqualTo(SchemaUsage.ENTITY)
+        assertThat(schemas.get("Component", "2.0.0")).isNotNull()
+        val componentV2Fields = schemas.get("Component", "2.0.0")!!.contentSchema.fields.orEmpty().map { it.name }
+        assertThat(componentV2Fields).contains("displayName", "tier")
     }
 
     @Test

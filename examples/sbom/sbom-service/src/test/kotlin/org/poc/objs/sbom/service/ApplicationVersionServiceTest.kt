@@ -1,5 +1,7 @@
 package org.poc.objs.sbom.service
 
+import org.poc.objs.sbom.migration.SbomSchemaUpgradeConfiguration
+
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -39,6 +41,7 @@ import javax.sql.DataSource
     SbomService::class,
     ApplicationInventoryService::class,
     ApplicationVersionService::class,
+    SbomSchemaUpgradeConfiguration::class,
     AssetTypeCatalogService::class,
     ApplicationBomService::class,
     BomGraphSupport::class,
@@ -354,6 +357,7 @@ class ApplicationVersionServiceTest {
             appId,
             DraftAssetWrite(
                 type = "Component",
+                schemaVersion = "1.0.0",
                 payload =
                     mapOf(
                         "name" to name,

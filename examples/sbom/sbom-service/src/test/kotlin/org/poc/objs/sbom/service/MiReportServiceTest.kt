@@ -1,5 +1,7 @@
 package org.poc.objs.sbom.service
 
+import org.poc.objs.sbom.migration.SbomSchemaUpgradeConfiguration
+
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -28,6 +30,7 @@ import org.springframework.test.context.TestPropertySource
     SbomService::class,
     ApplicationInventoryService::class,
     ApplicationVersionService::class,
+    SbomSchemaUpgradeConfiguration::class,
     AssetTypeCatalogService::class,
     AssetInventoryService::class,
     PortfolioService::class,
@@ -104,6 +107,7 @@ class MiReportServiceTest {
             assets.create(
                 org.poc.objs.sbom.domain.CreatePoolAssetRequest(
                     type = "Component",
+                    schemaVersion = "1.0.0",
                     payload = jacksonPayload,
                 ),
             )
@@ -112,6 +116,7 @@ class MiReportServiceTest {
             assets.create(
                 org.poc.objs.sbom.domain.CreatePoolAssetRequest(
                     type = "Component",
+                    schemaVersion = "1.0.0",
                     payload = jacksonPayload,
                 ),
             )

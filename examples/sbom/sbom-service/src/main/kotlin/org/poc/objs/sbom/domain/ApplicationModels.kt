@@ -38,6 +38,9 @@ data class AssetView(
     val label: String,
     val payload: Map<String, Any?>,
     val owner: String?,
+    /** Examine projection (latest model); null when representation=saved or upgrade failed. */
+    val latestSchemaVersion: String? = null,
+    val latestPayload: Map<String, Any?>? = null,
 )
 
 data class RelationView(

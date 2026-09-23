@@ -1,5 +1,7 @@
 package org.poc.objs.sbom.service
 
+import org.poc.objs.sbom.migration.SbomSchemaUpgradeConfiguration
+
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach
@@ -27,6 +29,7 @@ import org.springframework.web.server.ResponseStatusException
     SbomService::class,
     ApplicationInventoryService::class,
     ApplicationVersionService::class,
+    SbomSchemaUpgradeConfiguration::class,
     AssetTypeCatalogService::class,
     PortfolioService::class,
     org.poc.objs.sbom.uniqueness.PortfolioUniquenessRules::class,

@@ -16,6 +16,7 @@ import org.poc.objs.sbom.domain.DraftAssetWrite
 import org.poc.objs.sbom.domain.DraftRelationWrite
 import org.poc.objs.sbom.domain.InferredAppDependency
 import org.poc.objs.sbom.domain.PatchVersionRequest
+import org.poc.objs.sbom.domain.PayloadRepresentation
 import org.poc.objs.sbom.domain.PromoteVersionRequest
 import org.poc.objs.sbom.domain.ReplaceVersionBomRequest
 import org.poc.objs.sbom.domain.UpdateApplicationRequest
@@ -280,7 +281,15 @@ class ApplicationInventoryController(
         @PathVariable id: UUID,
         @PathVariable versionId: UUID,
         @PathVariable fingerprintId: UUID,
-    ): VersionBomView = versions.getFingerprintBom(id, versionId, fingerprintId)
+        @RequestParam(defaultValue = "both") representation: String,
+    ): VersionBomView {
+        val parsed = try {
+            PayloadRepresentation.parse(representation, PayloadRepresentation.BOTH)
+        } catch (ex: IllegalArgumentException) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, ex.message)
+        }
+        return versions.getFingerprintBom(id, versionId, fingerprintId, parsed)
+    }
 
     @PostMapping("/{id}/versions/{versionId}/fingerprints")
     @Operation(summary = "Snapshot the full Combined SBOM as a named fingerprint")

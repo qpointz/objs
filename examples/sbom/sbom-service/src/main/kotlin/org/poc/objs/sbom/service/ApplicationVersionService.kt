@@ -10,11 +10,15 @@ import org.poc.objs.api.domain.MutationMode
 import org.poc.objs.api.domain.graphMutation
 import org.poc.objs.core.persistence.GraphStore
 import org.poc.objs.core.persistence.NamedGraphStore
+import org.poc.objs.api.typed.PayloadMapper
+import org.poc.objs.api.typed.upgrade.SchemaUpgradeRegistry
+import org.poc.objs.api.typed.upgrade.SchemaUpgradeTargetRegistry
 import org.poc.objs.sbom.annotations.SbomAnnotationKeys
 import org.poc.objs.sbom.domain.ApplicationFingerprintSummary
 import org.poc.objs.sbom.domain.ApplicationVersionSummary
 import org.poc.objs.sbom.domain.AssetView
 import org.poc.objs.sbom.domain.BomUnion
+import org.poc.objs.sbom.domain.PayloadRepresentation
 import org.poc.objs.sbom.domain.RenameVersionRequest
 import org.poc.objs.sbom.domain.CreateDraftVersionRequest
 import org.poc.objs.sbom.domain.CreateFingerprintRequest
@@ -57,6 +61,9 @@ class ApplicationVersionService(
     private val graphStore: GraphStore,
     private val sbom: SbomService,
     private val assetTypes: AssetTypeCatalogService,
+    private val upgradeMapper: PayloadMapper,
+    private val upgrades: SchemaUpgradeRegistry,
+    private val upgradeTargets: SchemaUpgradeTargetRegistry,
 ) {
     private val versionComparer: VersionComparer = SemVerVersionComparer()
     fun list(applicationId: UUID): List<ApplicationVersionSummary> {
@@ -103,11 +110,16 @@ class ApplicationVersionService(
         return toBomView(app, row)
     }
 
-    fun getFingerprintBom(applicationId: UUID, versionId: UUID, fingerprintId: UUID): VersionBomView {
+    fun getFingerprintBom(
+        applicationId: UUID,
+        versionId: UUID,
+        fingerprintId: UUID,
+        representation: PayloadRepresentation = PayloadRepresentation.BOTH,
+    ): VersionBomView {
         val app = requireApplication(applicationId)
         val row = requireVersion(applicationId, versionId)
         val fingerprint = requireFingerprint(versionId, fingerprintId)
-        return toBomView(app, row, fingerprint.graphId, fingerprint.graphVersion)
+        return toBomView(app, row, fingerprint.graphId, fingerprint.graphVersion, representation)
     }
 
     fun rejectFingerprintWrite(applicationId: UUID, versionId: UUID, fingerprintId: UUID): Nothing {
@@ -712,6 +724,7 @@ class ApplicationVersionService(
         row: SbomApplicationVersionRecord,
         graphId: UUID = bomGraphId(row),
         graphVersion: Long? = null,
+        representation: PayloadRepresentation = PayloadRepresentation.SAVED,
     ): VersionBomView {
         val resolved =
             if (graphVersion != null) {
@@ -723,7 +736,9 @@ class ApplicationVersionService(
         return VersionBomView(
             version = row.toSummary(),
             applicationName = app.name,
-            assets = resolved.contents.entities.map { it.toAssetView() },
+            assets = resolved.contents.entities.map {
+                AssetExamine.project(it, representation, upgradeMapper, upgrades, upgradeTargets)
+            },
             relations = resolved.contents.edges.map { it.toRelationView() },
         )
     }
@@ -965,13 +980,6 @@ class ApplicationVersionService(
     private fun latestSchemaVersion(type: String): String =
         assetTypes.getEntityType(type)?.version ?: "1.0.0"
 
-    private fun assetLabel(payload: Map<String, Any?>, type: String): String {
-        val name = payload["name"]?.toString()?.takeIf { it.isNotBlank() }
-        val version = payload["version"]?.toString()?.takeIf { it.isNotBlank() }
-        return when {
-            name != null && version != null -> "$name@$version"
-            name != null -> name
-            else -> type
-        }
-    }
+    private fun assetLabel(payload: Map<String, Any?>, type: String): String =
+        AssetViews.label(payload, type)
 }

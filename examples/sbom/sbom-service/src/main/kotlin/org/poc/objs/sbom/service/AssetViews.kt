@@ -32,7 +32,9 @@ object AssetViews {
     }
 
     fun label(payload: Map<String, Any?>, type: String): String {
-        val name = payload["name"]?.toString()?.takeIf { it.isNotBlank() }
+        val name = sequenceOf("displayName", "name")
+            .mapNotNull { key -> payload[key]?.toString()?.takeIf { it.isNotBlank() } }
+            .firstOrNull()
         val version = payload["version"]?.toString()?.takeIf { it.isNotBlank() }
         return when {
             name != null && version != null -> "$name@$version"

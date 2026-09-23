@@ -14,6 +14,8 @@ import org.poc.objs.sbom.model.ArtifactType
 import org.poc.objs.sbom.model.BuildType
 import org.poc.objs.sbom.model.CanonicalEdgeType
 import org.poc.objs.sbom.model.ComponentType
+import org.poc.objs.sbom.model.ComponentTypeV2
+import org.poc.objs.sbom.model.COMPONENT_SCHEMA_V2
 import org.poc.objs.sbom.model.ContainerImageType
 import org.poc.objs.sbom.model.ContainerLayerType
 import org.poc.objs.sbom.model.DatabaseType
@@ -136,9 +138,10 @@ object SbomRegistry {
         identifiers: Set<String> = setOf("name"),
         searchable: Set<String> = properties.keys - setOf("description"),
         description: String,
+        version: String = SCHEMA_VERSION,
     ): Schema = RegistryPack.objectSchema(
         type = type,
-        version = SCHEMA_VERSION,
+        version = version,
         title = type,
         description = description,
         fields = (properties + commonOptional).map { (name, fieldSchema) ->
@@ -216,6 +219,22 @@ object SbomRegistry {
                 identifiers = setOf("name", "version", "ecosystem"),
                 searchable = setOf("name", "version", "ecosystem", "kind", "coordinates"),
                 description = "A software package or library in an application bill of materials",
+            ),
+            schema(
+                ComponentTypeV2.meta.type,
+                listOf("displayName", "version", "ecosystem", "kind"),
+                mapOf(
+                    "displayName" to text("Display name", "Human-readable component name"),
+                    "version" to versionField,
+                    "ecosystem" to text("Ecosystem", "Package ecosystem (Maven, npm, PyPI, …)"),
+                    "kind" to text("Kind", "Component kind (library, application, framework, …)"),
+                    "coordinates" to text("Coordinates", "Package coordinates or PURL"),
+                    "tier" to text("Tier", "Support or criticality tier"),
+                ),
+                identifiers = setOf("displayName", "version", "ecosystem"),
+                searchable = setOf("displayName", "version", "ecosystem", "kind", "coordinates", "tier"),
+                description = "A software package or library in an application bill of materials (v2)",
+                version = COMPONENT_SCHEMA_V2,
             ),
             schema(
                 ProductType.meta.type,

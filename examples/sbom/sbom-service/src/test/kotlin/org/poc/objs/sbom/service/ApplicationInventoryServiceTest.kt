@@ -1,5 +1,7 @@
 package org.poc.objs.sbom.service
 
+import org.poc.objs.sbom.migration.SbomSchemaUpgradeConfiguration
+
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -26,6 +28,7 @@ import org.springframework.web.server.ResponseStatusException
     SbomService::class,
     ApplicationInventoryService::class,
     ApplicationVersionService::class,
+    SbomSchemaUpgradeConfiguration::class,
     AssetTypeCatalogService::class,
 )
 @TestPropertySource(
@@ -94,6 +97,7 @@ class ApplicationInventoryServiceTest {
                 a.id,
                 DraftAssetWrite(
                     type = "Component",
+                    schemaVersion = "1.0.0",
                     payload =
                         mapOf(
                             "name" to "jackson-core",
@@ -124,6 +128,7 @@ class ApplicationInventoryServiceTest {
                 app.id,
                 DraftAssetWrite(
                     type = "Component",
+                    schemaVersion = "1.0.0",
                     payload =
                         mapOf(
                             "name" to "parent",
@@ -138,6 +143,7 @@ class ApplicationInventoryServiceTest {
                 app.id,
                 DraftAssetWrite(
                     type = "Component",
+                    schemaVersion = "1.0.0",
                     payload =
                         mapOf(
                             "name" to "child",

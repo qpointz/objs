@@ -1,5 +1,7 @@
 package org.poc.objs.sbom.service
 
+import org.poc.objs.sbom.migration.SbomSchemaUpgradeConfiguration
+
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach
@@ -34,6 +36,7 @@ import org.springframework.web.server.ResponseStatusException
     AssetTypeCatalogService::class,
     ApplicationInventoryService::class,
     ApplicationVersionService::class,
+    SbomSchemaUpgradeConfiguration::class,
     AssetInventoryService::class,
 )
 @TestPropertySource(
@@ -86,6 +89,7 @@ class AssetInventoryServiceTest {
         assets.create(
             CreatePoolAssetRequest(
                 type = "Component",
+                schemaVersion = "1.0.0",
                 payload =
                     mapOf(
                         "name" to "jackson-core",
@@ -98,6 +102,7 @@ class AssetInventoryServiceTest {
         assets.create(
             CreatePoolAssetRequest(
                 type = "Component",
+                schemaVersion = "1.0.0",
                 payload =
                     mapOf(
                         "name" to "guava",
@@ -110,7 +115,7 @@ class AssetInventoryServiceTest {
 
         val hit =
             assets.search(
-                AssetSearchRequest(type = "Component", filters = mapOf("name" to "jackson-core")),
+                AssetSearchRequest(type = "Component", schemaVersion = "1.0.0", filters = mapOf("name" to "jackson-core")),
             )
         assertThat(hit).hasSize(1)
         assertThat(hit[0].label).isEqualTo("jackson-core@2.17.0")
@@ -121,6 +126,7 @@ class AssetInventoryServiceTest {
         assets.create(
             CreatePoolAssetRequest(
                 type = "Component",
+                schemaVersion = "1.0.0",
                 payload =
                     mapOf(
                         "name" to "jackson-core",
@@ -133,6 +139,7 @@ class AssetInventoryServiceTest {
         assets.create(
             CreatePoolAssetRequest(
                 type = "Component",
+                schemaVersion = "1.0.0",
                 payload =
                     mapOf(
                         "name" to "guava",
@@ -145,7 +152,7 @@ class AssetInventoryServiceTest {
 
         val hit =
             assets.search(
-                AssetSearchRequest(type = "Component", filters = mapOf("name" to "jackson*")),
+                AssetSearchRequest(type = "Component", schemaVersion = "1.0.0", filters = mapOf("name" to "jackson*")),
             )
         assertThat(hit).hasSize(1)
         assertThat(hit[0].label).isEqualTo("jackson-core@2.17.0")
@@ -157,6 +164,7 @@ class AssetInventoryServiceTest {
             assets.create(
                 CreatePoolAssetRequest(
                     type = "Component",
+                    schemaVersion = "1.0.0",
                     payload =
                         mapOf(
                             "name" to "page-comp-$i",
@@ -181,6 +189,7 @@ class AssetInventoryServiceTest {
         assets.create(
             CreatePoolAssetRequest(
                 type = "Component",
+                schemaVersion = "1.0.0",
                 payload =
                     mapOf(
                         "name" to "across",
@@ -218,6 +227,7 @@ class AssetInventoryServiceTest {
                 app.id,
                 DraftAssetWrite(
                     type = "Component",
+                    schemaVersion = "1.0.0",
                     payload =
                         mapOf(
                             "name" to "shared",
@@ -233,6 +243,7 @@ class AssetInventoryServiceTest {
                 app.id,
                 DraftAssetWrite(
                     type = "Component",
+                    schemaVersion = "1.0.0",
                     payload =
                         mapOf(
                             "name" to "dep",
@@ -259,6 +270,7 @@ class AssetInventoryServiceTest {
         assets.create(
             CreatePoolAssetRequest(
                 type = "Component",
+                schemaVersion = "1.0.0",
                 payload =
                     mapOf(
                         "name" to "dup",
@@ -271,6 +283,7 @@ class AssetInventoryServiceTest {
         assets.create(
             CreatePoolAssetRequest(
                 type = "Component",
+                schemaVersion = "1.0.0",
                 payload =
                     mapOf(
                         "name" to "dup",
@@ -283,6 +296,7 @@ class AssetInventoryServiceTest {
         assets.create(
             CreatePoolAssetRequest(
                 type = "Component",
+                schemaVersion = "1.0.0",
                 payload =
                     mapOf(
                         "name" to "unique",
@@ -304,6 +318,7 @@ class AssetInventoryServiceTest {
         assets.create(
             CreatePoolAssetRequest(
                 type = "Component",
+                schemaVersion = "1.0.0",
                 payload =
                     mapOf(
                         "name" to "a",
@@ -316,6 +331,7 @@ class AssetInventoryServiceTest {
         assets.create(
             CreatePoolAssetRequest(
                 type = "Component",
+                schemaVersion = "1.0.0",
                 payload =
                     mapOf(
                         "name" to "b",
@@ -337,6 +353,7 @@ class AssetInventoryServiceTest {
             assets.create(
                 CreatePoolAssetRequest(
                     type = "Component",
+                    schemaVersion = "1.0.0",
                     payload =
                         mapOf(
                             "name" to "owned",
@@ -358,6 +375,7 @@ class AssetInventoryServiceTest {
             assets.create(
                 CreatePoolAssetRequest(
                     type = "Component",
+                    schemaVersion = "1.0.0",
                     payload =
                         mapOf(
                             "name" to "jackson-core",
