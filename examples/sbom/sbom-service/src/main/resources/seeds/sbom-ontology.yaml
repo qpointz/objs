@@ -227,6 +227,71 @@ contentSchema:
 ---
 apiVersion: "objs.poc.org/v1"
 kind: "ObjectSchema"
+type: "Component"
+version: "2.0.0"
+attributes:
+  color: "#4c6ef5"
+contentSchema:
+  type: "OBJECT"
+  title: "Component"
+  description: "A software package or library in an application bill of materials\
+    \ (v2)"
+  fields:
+  - name: "displayName"
+    schema:
+      type: "STRING"
+      title: "Display name"
+      description: "Human-readable component name"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "version"
+    schema:
+      type: "STRING"
+      title: "Version"
+      description: "Version identifier"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "ecosystem"
+    schema:
+      type: "STRING"
+      title: "Ecosystem"
+      description: "Package ecosystem (Maven, npm, PyPI, …)"
+    required: true
+    identifier: true
+    searchable: true
+  - name: "kind"
+    schema:
+      type: "STRING"
+      title: "Kind"
+      description: "Component kind (library, application, framework, …)"
+    required: true
+    searchable: true
+  - name: "coordinates"
+    schema:
+      type: "STRING"
+      title: "Coordinates"
+      description: "Package coordinates or PURL"
+    required: false
+    searchable: true
+  - name: "tier"
+    schema:
+      type: "STRING"
+      title: "Tier"
+      description: "Support or criticality tier"
+    required: false
+    searchable: true
+  - name: "description"
+    schema:
+      type: "STRING"
+      title: "Description"
+      description: "Short summary"
+    required: false
+---
+---
+apiVersion: "objs.poc.org/v1"
+kind: "ObjectSchema"
 type: "Container Image"
 version: "1.0.0"
 attributes:
@@ -1187,7 +1252,7 @@ description: "Image is built from filesystem layers"
 sourceVerb: "contains"
 targetVerb: "contained in"
 tags:
-  - "composition"
+- "composition"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -1234,7 +1299,7 @@ description: "Database hosts the dataset"
 sourceVerb: "contains"
 targetVerb: "contained in"
 tags:
-  - "composition"
+- "composition"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -1371,7 +1436,7 @@ description: "Product includes the artifact in its bill"
 sourceVerb: "contains"
 targetVerb: "contained in"
 tags:
-  - "composition"
+- "composition"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -1388,7 +1453,7 @@ description: "Product includes the software component in its bill"
 sourceVerb: "contains"
 targetVerb: "contained in"
 tags:
-  - "composition"
+- "composition"
 ---
 ---
 apiVersion: "objs.poc.org/v1"
@@ -1480,4 +1545,4 @@ description: "Repository contains the source module"
 sourceVerb: "contains"
 targetVerb: "contained in"
 tags:
-  - "composition"
+- "composition"

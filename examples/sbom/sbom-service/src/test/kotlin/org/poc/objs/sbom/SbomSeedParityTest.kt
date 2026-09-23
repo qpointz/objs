@@ -34,7 +34,7 @@ class SbomSeedParityTest {
             .readText()
         val result = importer.importYaml(yaml)
         assertThat(result.isSuccess).isTrue()
-        assertThat(result.appliedByKind()[SEED_KIND_OBJECT_SCHEMA]).isEqualTo(24)
+        assertThat(result.appliedByKind()[SEED_KIND_OBJECT_SCHEMA]).isEqualTo(25)
         assertThat(result.appliedByKind()[SEED_KIND_ALLOWED_EDGE_RULE]).isEqualTo(28)
 
         assertThat(schemas.all().map { it.type to it.version }.toSet())
