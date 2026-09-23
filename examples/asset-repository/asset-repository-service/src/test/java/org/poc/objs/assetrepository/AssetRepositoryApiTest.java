@@ -1,6 +1,7 @@
 package org.poc.objs.assetrepository;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -349,6 +350,14 @@ class AssetRepositoryApiTest {
                 .andExpect(jsonPath("$.paths['/api/v1/asset-repository/collections']").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/asset-repository/schemas/{type}/{version}']").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/asset-repository/schema-catalog']").exists())
-                .andExpect(jsonPath("$.paths['/api/v1/asset-repository/schema-catalog/{type}/allowed-edges']").exists());
+                .andExpect(jsonPath("$.paths['/api/v1/asset-repository/schema-catalog/{type}/allowed-edges']").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/asset-repository/collections/{id}/objects/search']").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/asset-repository/collections/{id}/compositions']").exists())
+                .andExpect(jsonPath(
+                        "$.paths['/api/v1/asset-repository/collections'].post.responses['201'].content['*/*'].schema.$ref"
+                ).value(containsString("CollectionDto")))
+                .andExpect(jsonPath(
+                        "$.paths['/api/v1/asset-repository/collections/{id}/objects/{objectId}'].get.responses['200'].content['*/*'].schema.$ref"
+                ).value(containsString("ObjectDto")));
     }
 }

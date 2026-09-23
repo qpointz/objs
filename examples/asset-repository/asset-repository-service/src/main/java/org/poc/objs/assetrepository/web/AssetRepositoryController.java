@@ -1,6 +1,11 @@
 package org.poc.objs.assetrepository.web;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import java.util.UUID;
@@ -11,7 +16,6 @@ import org.poc.objs.assetrepository.service.CollectionService;
 import org.poc.objs.assetrepository.service.ObjectWriteService;
 import org.poc.objs.assetrepository.service.SchemaQueryService;
 import org.poc.objs.assetrepository.web.dto.ApiDtos;
-import org.poc.objs.api.domain.Schema;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -45,25 +49,35 @@ public class AssetRepositoryController {
 
     @GetMapping("/schema-catalog")
     @Operation(summary = "Latest object schema per type, with collections that use it")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Catalog entries",
+                    content = @Content(array = @ArraySchema(
+                            schema = @Schema(implementation = ApiDtos.SchemaCatalogEntryDto.class))))
+    })
     List<ApiDtos.SchemaCatalogEntryDto> schemaCatalog() {
         return schemaQuery.catalog();
     }
 
     @GetMapping("/schemas")
     @Operation(summary = "List object schemas", description = "Optional type filter.")
-    List<Schema> listSchemas(@RequestParam(required = false) String type) {
+    List<org.poc.objs.api.domain.Schema> listSchemas(@RequestParam(required = false) String type) {
         return schemaQuery.list(type);
     }
 
     @GetMapping("/schemas/{type}")
     @Operation(summary = "List schema versions for a type")
-    List<Schema> listSchemasByType(@PathVariable("type") String type) {
+    List<org.poc.objs.api.domain.Schema> listSchemasByType(@PathVariable("type") String type) {
         return schemaQuery.listByType(type);
     }
 
     @GetMapping("/schemas/{type}/{version}")
     @Operation(summary = "Get object schema by type and version")
-    Schema getSchema(@PathVariable("type") String type, @PathVariable("version") String version) {
+    org.poc.objs.api.domain.Schema getSchema(
+            @PathVariable("type") String type,
+            @PathVariable("version") String version
+    ) {
         return schemaQuery.get(type, version);
     }
 
@@ -75,7 +89,7 @@ public class AssetRepositoryController {
 
     @GetMapping("/collections/{id}/schemas")
     @Operation(summary = "Schemas for a collection's accepted types")
-    List<Schema> collectionSchemas(@PathVariable("id") UUID id) {
+    List<org.poc.objs.api.domain.Schema> collectionSchemas(@PathVariable("id") UUID id) {
         return schemaQuery.forCollection(id);
     }
 
@@ -92,6 +106,12 @@ public class AssetRepositoryController {
     @PostMapping("/collections")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Create collection")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "Created collection",
+                    content = @Content(schema = @Schema(implementation = ApiDtos.CollectionDto.class)))
+    })
     ApiDtos.CollectionDto createCollection(@RequestBody ApiDtos.CreateCollectionRequest request) {
         List<CollectionTypeSpec> types = request.types() == null
                 ? List.of()
@@ -111,6 +131,16 @@ public class AssetRepositoryController {
 
     @GetMapping("/collections/{id}")
     @Operation(summary = "Get collection")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Collection",
+                    content = @Content(schema = @Schema(implementation = ApiDtos.CollectionDto.class))),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Collection not found",
+                    content = @Content(schema = @Schema(implementation = ApiDtos.ErrorBody.class)))
+    })
     ApiDtos.CollectionDto getCollection(@PathVariable("id") UUID id) {
         return toDto(collections.require(id));
     }
@@ -166,6 +196,16 @@ public class AssetRepositoryController {
 
     @GetMapping("/collections/{id}/objects/{objectId}")
     @Operation(summary = "Get object")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Object",
+                    content = @Content(schema = @Schema(implementation = ApiDtos.ObjectDto.class))),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Collection or object not found",
+                    content = @Content(schema = @Schema(implementation = ApiDtos.ErrorBody.class)))
+    })
     ApiDtos.ObjectDto getObject(@PathVariable("id") UUID id, @PathVariable("objectId") UUID objectId) {
         return objects.getObject(id, objectId);
     }
@@ -182,6 +222,12 @@ public class AssetRepositoryController {
     @PostMapping("/collections/{id}/objects")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Create or update object", description = "Identity resolve per collection object_write_mode. When id matches an existing object, payload is a partial merge (omitted fields kept).")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "Created or updated object",
+                    content = @Content(schema = @Schema(implementation = ApiDtos.ObjectDto.class)))
+    })
     ApiDtos.ObjectDto writeObject(@PathVariable("id") UUID id, @RequestBody ApiDtos.WriteObjectRequest request) {
         return objects.writeObject(id, request);
     }
@@ -208,6 +254,9 @@ public class AssetRepositoryController {
     @DeleteMapping("/collections/{id}/objects/{objectId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Delete object")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Object deleted")
+    })
     void deleteObject(@PathVariable("id") UUID id, @PathVariable("objectId") UUID objectId) {
         objects.deleteObject(id, objectId);
     }
