@@ -5,6 +5,11 @@ import org.poc.objs.api.domain.Edge
 import org.poc.objs.api.domain.Entity
 import org.poc.objs.api.domain.Graph
 import org.poc.objs.api.domain.GraphFragment
+import org.poc.objs.api.typed.upgrade.HydrationPolicy
+import org.poc.objs.api.typed.upgrade.PayloadUpgrade
+import org.poc.objs.api.typed.upgrade.SchemaUpgradeRegistry
+import org.poc.objs.api.typed.upgrade.SchemaUpgradeTargetRegistry
+import org.poc.objs.api.typed.upgrade.UpgradeDiagnostics
 import java.util.UUID
 import java.util.stream.Stream
 
@@ -72,10 +77,16 @@ class ReadNode internal constructor(
     private val view: TypedGraphView,
     val entity: Entity,
     val hydratedPayload: Any?,
+    val upgradeDiagnostics: UpgradeDiagnostics? = null,
 ) {
     val id: UUID? get() = entity.id
     val type: String get() = entity.type
+    /** Stored pin (unchanged by upgrade-on-read). */
     val schemaVersion: String get() = entity.schemaVersion
+
+    /** Effective pin after successful upgrade; equals [schemaVersion] when exact or failed. */
+    val effectiveSchemaVersion: String
+        get() = upgradeDiagnostics?.effectiveSchemaVersion ?: entity.schemaVersion
 
     fun ref(): EntityRef<Any> = EntityRef(
         id = entity.id,
@@ -130,6 +141,9 @@ class TypedGraphView private constructor(
     fragment: GraphFragment,
     private val bindings: TypedEntityBindingRegistry?,
     private val mapper: PayloadMapper?,
+    private val policy: HydrationPolicy,
+    private val upgrades: SchemaUpgradeRegistry?,
+    private val targets: SchemaUpgradeTargetRegistry?,
 ) {
     private val entities: List<Entity> = fragment.entities.map {
         it.copy(
@@ -145,7 +159,8 @@ class TypedGraphView private constructor(
     init {
         entities.forEach { entity ->
             val id = entity.id ?: return@forEach
-            nodesById[id] = ReadNode(this, entity, hydrate(entity))
+            val outcome = hydrate(entity)
+            nodesById[id] = ReadNode(this, entity, outcome.hydrated, outcome.diagnostics)
         }
     }
 
@@ -189,16 +204,17 @@ class TypedGraphView private constructor(
             target = nodesById[edge.target],
         )
 
-    private fun hydrate(entity: Entity): Any? =
+    private fun hydrate(entity: Entity): PayloadUpgrade.Outcome {
         if (bindings == null || mapper == null) {
-            null
-        } else {
-            bindings.find(entity.type, entity.schemaVersion)?.hydrate(entity, mapper)
+            return PayloadUpgrade.Outcome(null, null)
         }
+        return PayloadUpgrade.hydrate(entity, bindings, mapper, policy, upgrades, targets)
+    }
 
     companion object {
         @JvmStatic
-        fun from(fragment: GraphFragment): TypedGraphView = TypedGraphView(fragment, null, null)
+        fun from(fragment: GraphFragment): TypedGraphView =
+            TypedGraphView(fragment, null, null, HydrationPolicy.EXACT_ONLY, null, null)
 
         @JvmStatic
         fun from(graph: Graph): TypedGraphView = from(graph as GraphFragment)
@@ -209,7 +225,8 @@ class TypedGraphView private constructor(
             fragment: GraphFragment,
             bindings: TypedEntityBindingRegistry?,
             mapper: PayloadMapper? = null,
-        ): TypedGraphView = TypedGraphView(fragment, bindings, mapper)
+        ): TypedGraphView =
+            TypedGraphView(fragment, bindings, mapper, HydrationPolicy.EXACT_ONLY, null, null)
 
         @JvmStatic
         @JvmOverloads
@@ -218,5 +235,27 @@ class TypedGraphView private constructor(
             bindings: TypedEntityBindingRegistry?,
             mapper: PayloadMapper? = null,
         ): TypedGraphView = from(graph as GraphFragment, bindings, mapper)
+
+        @JvmStatic
+        @JvmOverloads
+        fun from(
+            fragment: GraphFragment,
+            bindings: TypedEntityBindingRegistry?,
+            mapper: PayloadMapper?,
+            policy: HydrationPolicy,
+            upgrades: SchemaUpgradeRegistry? = null,
+            targets: SchemaUpgradeTargetRegistry? = null,
+        ): TypedGraphView = TypedGraphView(fragment, bindings, mapper, policy, upgrades, targets)
+
+        @JvmStatic
+        @JvmOverloads
+        fun from(
+            graph: Graph,
+            bindings: TypedEntityBindingRegistry?,
+            mapper: PayloadMapper?,
+            policy: HydrationPolicy,
+            upgrades: SchemaUpgradeRegistry? = null,
+            targets: SchemaUpgradeTargetRegistry? = null,
+        ): TypedGraphView = from(graph as GraphFragment, bindings, mapper, policy, upgrades, targets)
     }
 }
