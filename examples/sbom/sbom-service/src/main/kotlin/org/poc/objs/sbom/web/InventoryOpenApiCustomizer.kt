@@ -15,10 +15,17 @@ class InventoryOpenApiCustomizer : OpenApiCustomizer {
     override fun customise(openApi: OpenAPI) {
         val info = openApi.info ?: Info()
         val extra = info.description?.takeIf { it.isNotBlank() }
+        val title =
+            info.title?.takeIf { it.isNotBlank() && it != "OpenAPI definition" }
+                ?: "SBOM inventory API"
+        val version = info.version?.takeIf { it.isNotBlank() } ?: "v1"
         openApi.info =
-            info.description(
-                listOfNotNull(extra, DESCRIPTION).joinToString("\n\n"),
-            )
+            info
+                .title(title)
+                .version(version)
+                .description(
+                    listOfNotNull(extra, DESCRIPTION).joinToString("\n\n"),
+                )
         openApi.paths
             ?.get("/api/v1/inventory/applications/{id}/versions/{versionId}/combined")
             ?.put

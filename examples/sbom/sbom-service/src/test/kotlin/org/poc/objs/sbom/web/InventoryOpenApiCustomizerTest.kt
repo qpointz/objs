@@ -30,6 +30,8 @@ class InventoryOpenApiCustomizerTest {
                 )
         InventoryOpenApiCustomizer().customise(openApi)
 
+        assertThat(openApi.info.title).isEqualTo("SBOM inventory API")
+        assertThat(openApi.info.version).isEqualTo("v1")
         assertThat(openApi.info.description).contains("Combined SBOM")
         assertThat(
             openApi.paths["/api/v1/inventory/applications/{id}/versions/{versionId}/combined"]!!

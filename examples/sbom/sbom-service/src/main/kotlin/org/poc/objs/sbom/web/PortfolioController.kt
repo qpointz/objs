@@ -1,5 +1,9 @@
 package org.poc.objs.sbom.web
 
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.responses.ApiResponse
+import io.swagger.v3.oas.annotations.responses.ApiResponses
+import io.swagger.v3.oas.annotations.tags.Tag
 import org.poc.objs.sbom.domain.CategoryAssetPage
 import org.poc.objs.sbom.domain.CreatePortfolioRequest
 import org.poc.objs.sbom.domain.CreateSubjectAreaRequest
@@ -33,35 +37,42 @@ import java.util.UUID
 
 @RestController
 @RequestMapping("/api/v1/inventory/portfolios")
+@Tag(name = "portfolios")
 class PortfolioController(
     private val portfolios: PortfolioService,
     private val reports: MiReportService,
     private val categoryAssets: CategoryAssetsService,
 ) {
     @GetMapping
+    @Operation(summary = "List portfolios")
     fun list(): List<PortfolioSummary> = portfolios.list()
 
     @PostMapping
+    @Operation(summary = "Create a portfolio")
     fun create(@RequestBody body: CreatePortfolioRequest): PortfolioSummary =
         portfolios.create(body)
 
     @PatchMapping("/{id}")
+    @Operation(summary = "Update portfolio name or description")
     fun update(
         @PathVariable id: UUID,
         @RequestBody body: UpdatePortfolioRequest,
     ): PortfolioSummary = portfolios.update(id, body)
 
     @GetMapping("/{id}")
+    @Operation(summary = "Fetch portfolio tree (subject areas and placements)")
     fun getTree(@PathVariable id: UUID): PortfolioTreeView =
         portfolios.getTree(id)
 
     @PostMapping("/{id}/subject-areas")
+    @Operation(summary = "Add a subject area (category) under the portfolio")
     fun addSubjectArea(
         @PathVariable id: UUID,
         @RequestBody body: CreateSubjectAreaRequest,
     ): SubjectAreaView = portfolios.addSubjectArea(id, body)
 
     @PatchMapping("/{id}/subject-areas/{nodeId}")
+    @Operation(summary = "Update a subject area")
     fun updateSubjectArea(
         @PathVariable id: UUID,
         @PathVariable nodeId: UUID,
@@ -69,6 +80,10 @@ class PortfolioController(
     ): SubjectAreaView = portfolios.updateSubjectArea(id, nodeId, body)
 
     @DeleteMapping("/{id}/subject-areas/{nodeId}")
+    @Operation(summary = "Delete a subject area when empty")
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "Subject area deleted"),
+    )
     fun deleteSubjectArea(
         @PathVariable id: UUID,
         @PathVariable nodeId: UUID,
@@ -77,42 +92,52 @@ class PortfolioController(
     }
 
     @PostMapping("/{id}/applications")
+    @Operation(summary = "Place an application into a subject area")
     fun placeApplication(
         @PathVariable id: UUID,
         @RequestBody body: PlaceApplicationRequest,
     ): PortfolioTreeView = portfolios.placeApplication(id, body)
 
     @PostMapping("/{id}/placements")
+    @Operation(
+        summary = "Place an application (alias of POST …/applications)",
+        description = "Same body and result as POST /{id}/applications.",
+    )
     fun place(
         @PathVariable id: UUID,
         @RequestBody body: PlaceApplicationRequest,
     ): PortfolioTreeView = portfolios.placeApplication(id, body)
 
     @DeleteMapping("/{id}/placements/{placementId}")
+    @Operation(summary = "Remove one placement by id")
     fun removePlacement(
         @PathVariable id: UUID,
         @PathVariable placementId: UUID,
     ): PortfolioTreeView = portfolios.removePlacement(id, placementId)
 
     @DeleteMapping("/{id}/applications/{applicationId}")
+    @Operation(summary = "Remove all placements of an application from the portfolio")
     fun removeApplication(
         @PathVariable id: UUID,
         @PathVariable applicationId: UUID,
     ): PortfolioTreeView = portfolios.removeApplication(id, applicationId)
 
     @PostMapping("/{id}/placements/move")
+    @Operation(summary = "Move placements to another subject area")
     fun movePlacements(
         @PathVariable id: UUID,
         @RequestBody body: MovePlacementsRequest,
     ): PortfolioTreeView = portfolios.movePlacements(id, body.placementIds, body.subjectAreaId)
 
     @PostMapping("/{id}/placements/delete")
+    @Operation(summary = "Delete multiple placements")
     fun deletePlacements(
         @PathVariable id: UUID,
         @RequestBody body: DeletePlacementsRequest,
     ): PortfolioTreeView = portfolios.removePlacements(id, body.placementIds)
 
     @GetMapping("/{id}/applications")
+    @Operation(summary = "Paged applications for a portfolio level")
     fun applicationsForLevel(
         @PathVariable id: UUID,
         @RequestParam(defaultValue = "root") level: String,
@@ -124,6 +149,7 @@ class PortfolioController(
         portfolios.applicationsForLevel(id, level, includeSubcategories, page, size, q)
 
     @GetMapping("/{id}/assets")
+    @Operation(summary = "Paged assets for applications in a portfolio level")
     fun assets(
         @PathVariable id: UUID,
         @RequestParam(defaultValue = "root") level: String,
@@ -134,12 +160,20 @@ class PortfolioController(
         categoryAssets.list(id, level, includeSubcategories, page, size)
 
     @PostMapping("/{id}/reports")
+    @Operation(summary = "Run an MI report table for a portfolio level")
     fun runReport(
         @PathVariable id: UUID,
         @RequestBody body: RunMiReportRequest,
     ): MiReportTable = reports.runTable(id, body)
 
     @GetMapping("/{id}/reports/{report}.csv", produces = [MediaType.TEXT_PLAIN_VALUE])
+    @Operation(summary = "Export an MI report as CSV")
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "CSV attachment",
+        ),
+    )
     fun exportCsv(
         @PathVariable id: UUID,
         @PathVariable report: String,

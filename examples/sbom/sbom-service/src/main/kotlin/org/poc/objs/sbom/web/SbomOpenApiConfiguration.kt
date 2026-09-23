@@ -10,6 +10,7 @@ class SbomOpenApiConfiguration {
     fun inventoryApi(inventoryOpenApi: InventoryOpenApiCustomizer): GroupedOpenApi =
         GroupedOpenApi.builder()
             .group("inventory")
+            .displayName("SBOM inventory")
             .pathsToMatch("/api/v1/inventory", "/api/v1/inventory/**")
             .addOpenApiCustomizer(inventoryOpenApi)
             .build()
