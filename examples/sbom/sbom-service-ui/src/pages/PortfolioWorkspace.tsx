@@ -11,6 +11,7 @@ import {
   Paper,
   Progress,
   ScrollArea,
+  SegmentedControl,
   Select,
   Stack,
   Switch,
@@ -27,14 +28,23 @@ import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { api } from '../api/client'
 import { assessmentCellColor, FindingSeverityPill } from '../FindingSeverityPill'
+import {
+  groupAppsByCategory,
+  groupAssessmentRowsByCategory,
+  groupAssetsByCategory,
+  parseResultLayout,
+  type CategorySection,
+} from '../portfolioResultLayout'
 import { SearchInput } from '../SearchInput'
 import type {
   ApplicationSummary,
   ApplicationVersionSummary,
   AssessmentSuiteSummary,
   CategoryAssetPage,
+  CategoryAssetRow,
   MiReportTable,
   PortfolioAssessmentMatrix,
+  PortfolioAppRef,
   PortfolioLevelApps,
   PortfolioTreeView,
   SubjectAreaView,
@@ -223,6 +233,7 @@ export function PortfolioWorkspace() {
   const level = params.get('level') || 'root'
   const tab = params.get('tab') || 'apps'
   const includeSub = params.get('includeSubcategories') !== 'false'
+  const resultLayout = parseResultLayout(params.get('layout'))
 
   const [tree, setTree] = useState<PortfolioTreeView | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -554,6 +565,26 @@ export function PortfolioWorkspace() {
     return map
   }, [assessmentMatrix])
 
+  const appSections = useMemo((): CategorySection<PortfolioAppRef>[] | null => {
+    if (resultLayout !== 'tree' || !tree || !appsPage) return null
+    return groupAppsByCategory(tree, level, includeSub, appsPage.applications)
+  }, [resultLayout, tree, level, includeSub, appsPage])
+
+  const assetSections = useMemo((): CategorySection<CategoryAssetRow>[] | null => {
+    if (resultLayout !== 'tree' || !tree || !assetsPage) return null
+    return groupAssetsByCategory(tree, level, includeSub, assetsPage.items)
+  }, [resultLayout, tree, level, includeSub, assetsPage])
+
+  const assessmentSections = useMemo(() => {
+    if (resultLayout !== 'tree' || !tree || !assessmentMatrix) return null
+    return groupAssessmentRowsByCategory(tree, level, includeSub, assessmentMatrix.rows)
+  }, [resultLayout, tree, level, includeSub, assessmentMatrix])
+
+  const assessmentMeasureCount = useMemo(() => {
+    if (!assessmentMatrix) return 0
+    return assessmentMatrix.dimensions.reduce((n, d) => n + Math.max(1, d.measures.length), 0)
+  }, [assessmentMatrix])
+
   const appTotalPages = Math.max(1, Math.ceil((appsPage?.total ?? 0) / 20))
   const assetTotalPages = Math.max(1, Math.ceil((assetsPage?.total ?? 0) / 20))
   const reportTotalPages = Math.max(1, Math.ceil((reportTable?.total ?? 0) / 20))
@@ -680,12 +711,23 @@ export function PortfolioWorkspace() {
                 )}
               </Group>
             </Group>
-            <Switch
-              size="sm"
-              label="Include subcategories"
-              checked={includeSub}
-              onChange={(e) => setQuery({ includeSubcategories: String(e.currentTarget.checked) })}
-            />
+            <Group gap="md" align="center" wrap="wrap">
+              <Switch
+                size="sm"
+                label="Include subcategories"
+                checked={includeSub}
+                onChange={(e) => setQuery({ includeSubcategories: String(e.currentTarget.checked) })}
+              />
+              <SegmentedControl
+                size="xs"
+                value={resultLayout}
+                onChange={(v) => setQuery({ layout: v === 'tree' ? 'tree' : 'flat' })}
+                data={[
+                  { label: 'Flat', value: 'flat' },
+                  { label: 'By category', value: 'tree' },
+                ]}
+              />
+            </Group>
           </>
         )}
         <Tabs value={tab} onChange={(v) => setQuery({ tab: v || 'apps' })} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
@@ -757,57 +799,82 @@ export function PortfolioWorkspace() {
                         </Table.Th>
                         <Table.Th>Application</Table.Th>
                         <Table.Th>Description</Table.Th>
-                        {includeSub && <Table.Th>Category</Table.Th>}
+                        {includeSub && resultLayout === 'flat' && <Table.Th>Category</Table.Th>}
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
-                      {(appsPage?.applications ?? []).map((row) => {
-                        const pid = row.placementId
-                        const checked = pid != null && selectedIds.has(pid)
-                        const relPath = relativeCategoryPath(
-                          tree?.subjectAreas ?? [],
-                          level,
-                          row.nodeId,
-                          includeSub,
-                        )
-                        return (
-                          <Table.Tr key={pid || row.applicationId}>
-                            <Table.Td>
-                              <Checkbox
-                                checked={checked}
-                                disabled={!pid}
-                                onChange={() => {
-                                  if (!pid) return
-                                  setSelectedIds((prev) => {
-                                    const next = new Set(prev)
-                                    if (next.has(pid)) next.delete(pid)
-                                    else next.add(pid)
-                                    return next
-                                  })
+                      {(appSections ?? [{ key: 'all', title: '', titleFull: '', items: appsPage?.applications ?? [] }]).flatMap(
+                        (section) => {
+                          const rows = section.items.map((row) => {
+                            const pid = row.placementId
+                            const checked = pid != null && selectedIds.has(pid)
+                            const relPath = relativeCategoryPath(
+                              tree?.subjectAreas ?? [],
+                              level,
+                              row.nodeId,
+                              includeSub,
+                            )
+                            return (
+                              <Table.Tr key={pid || row.applicationId}>
+                                <Table.Td>
+                                  <Checkbox
+                                    checked={checked}
+                                    disabled={!pid}
+                                    onChange={() => {
+                                      if (!pid) return
+                                      setSelectedIds((prev) => {
+                                        const next = new Set(prev)
+                                        if (next.has(pid)) next.delete(pid)
+                                        else next.add(pid)
+                                        return next
+                                      })
+                                    }}
+                                    aria-label={`Select ${row.applicationName}`}
+                                  />
+                                </Table.Td>
+                                <Table.Td>
+                                  <Anchor component={Link} to={`/applications/${row.applicationId}`} size="sm" fw={600}>
+                                    {row.applicationName}
+                                  </Anchor>
+                                </Table.Td>
+                                <Table.Td>
+                                  <Text size="sm" c="dimmed" truncate maw={420}>
+                                    {row.applicationDescription || '—'}
+                                  </Text>
+                                </Table.Td>
+                                {includeSub && resultLayout === 'flat' && (
+                                  <Table.Td>
+                                    <Text size="sm" c="dimmed" truncate title={relPath?.full}>
+                                      {relPath?.display || '—'}
+                                    </Text>
+                                  </Table.Td>
+                                )}
+                              </Table.Tr>
+                            )
+                          })
+                          if (!appSections) return rows
+                          const colSpan = 3 + (includeSub && resultLayout === 'flat' ? 1 : 0)
+                          return [
+                            <Table.Tr key={`sec-${section.key}`}>
+                              <Table.Td
+                                colSpan={colSpan}
+                                style={{
+                                  background: 'var(--mantine-color-default-hover)',
+                                  fontWeight: 650,
                                 }}
-                                aria-label={`Select ${row.applicationName}`}
-                              />
-                            </Table.Td>
-                            <Table.Td>
-                              <Anchor component={Link} to={`/applications/${row.applicationId}`} size="sm" fw={600}>
-                                {row.applicationName}
-                              </Anchor>
-                            </Table.Td>
-                            <Table.Td>
-                              <Text size="sm" c="dimmed" truncate maw={420}>
-                                {row.applicationDescription || '—'}
-                              </Text>
-                            </Table.Td>
-                            {includeSub && (
-                              <Table.Td>
-                                <Text size="sm" c="dimmed" truncate title={relPath?.full}>
-                                  {relPath?.display || '—'}
+                              >
+                                <Text size="sm" fw={650} title={section.titleFull}>
+                                  {section.title}
+                                  <Text span size="xs" c="dimmed" ml={8}>
+                                    ({section.items.length})
+                                  </Text>
                                 </Text>
                               </Table.Td>
-                            )}
-                          </Table.Tr>
-                        )
-                      })}
+                            </Table.Tr>,
+                            ...rows,
+                          ]
+                        },
+                      )}
                     </Table.Tbody>
                   </Table>
                 )}
@@ -837,17 +904,41 @@ export function PortfolioWorkspace() {
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
-                      {(assetsPage?.items ?? []).map((row) => (
-                        <Table.Tr key={`${row.type}-${row.assetId}`}>
-                          <Table.Td>
-                            <Anchor component={Link} to={`/applications/assets/${row.assetId}`} size="sm">
-                              {row.label}
-                            </Anchor>
-                          </Table.Td>
-                          <Table.Td>{row.type}</Table.Td>
-                          <Table.Td>{row.usedInApplicationNames.join(', ')}</Table.Td>
-                        </Table.Tr>
-                      ))}
+                      {(assetSections ?? [{ key: 'all', title: '', titleFull: '', items: assetsPage?.items ?? [] }]).flatMap(
+                        (section) => {
+                          const rows = section.items.map((row) => (
+                            <Table.Tr key={`${section.key}-${row.type}-${row.assetId}`}>
+                              <Table.Td>
+                                <Anchor component={Link} to={`/applications/assets/${row.assetId}`} size="sm">
+                                  {row.label}
+                                </Anchor>
+                              </Table.Td>
+                              <Table.Td>{row.type}</Table.Td>
+                              <Table.Td>{row.usedInApplicationNames.join(', ')}</Table.Td>
+                            </Table.Tr>
+                          ))
+                          if (!assetSections) return rows
+                          return [
+                            <Table.Tr key={`sec-${section.key}`}>
+                              <Table.Td
+                                colSpan={3}
+                                style={{
+                                  background: 'var(--mantine-color-default-hover)',
+                                  fontWeight: 650,
+                                }}
+                              >
+                                <Text size="sm" fw={650} title={section.titleFull}>
+                                  {section.title}
+                                  <Text span size="xs" c="dimmed" ml={8}>
+                                    ({section.items.length})
+                                  </Text>
+                                </Text>
+                              </Table.Td>
+                            </Table.Tr>,
+                            ...rows,
+                          ]
+                        },
+                      )}
                     </Table.Tbody>
                   </Table>
                 )}
@@ -1004,49 +1095,76 @@ export function PortfolioWorkspace() {
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
-                      {assessmentMatrix.rows.map((row) => (
-                        <Table.Tr key={row.applicationId}>
-                          <Table.Td style={{ position: 'sticky', left: 0, zIndex: 1, background: 'var(--mantine-color-body)' }}>
-                            <Anchor
-                              component={Link}
-                              to={`/applications/${row.applicationId}`}
-                              size="sm"
-                              fw={600}
-                            >
-                              {row.applicationName}
-                            </Anchor>
-                            {row.error ? (
-                              <Text size="xs" c="red">
-                                {row.error}
-                              </Text>
-                            ) : null}
-                          </Table.Td>
-                          {assessmentMatrix.dimensions.flatMap((dim) =>
-                            dim.measures.map((m) => {
-                              const cell = assessmentCellLookup.get(`${row.applicationId}|${m.key}`)
-                              if (row.error || !cell) {
+                      {(assessmentSections ?? [
+                        { key: 'all', title: '', titleFull: '', items: assessmentMatrix.rows },
+                      ]).flatMap((section) => {
+                        const rows = section.items.map((row) => (
+                          <Table.Tr key={row.applicationId}>
+                            <Table.Td style={{ position: 'sticky', left: 0, zIndex: 1, background: 'var(--mantine-color-body)' }}>
+                              <Anchor
+                                component={Link}
+                                to={`/applications/${row.applicationId}`}
+                                size="sm"
+                                fw={600}
+                              >
+                                {row.applicationName}
+                              </Anchor>
+                              {row.error ? (
+                                <Text size="xs" c="red">
+                                  {row.error}
+                                </Text>
+                              ) : null}
+                            </Table.Td>
+                            {assessmentMatrix.dimensions.flatMap((dim) =>
+                              dim.measures.map((m) => {
+                                const cell = assessmentCellLookup.get(`${row.applicationId}|${m.key}`)
+                                if (row.error || !cell) {
+                                  return (
+                                    <Table.Td key={m.key}>
+                                      <Text size="xs" c="dimmed">
+                                        —
+                                      </Text>
+                                    </Table.Td>
+                                  )
+                                }
                                 return (
                                   <Table.Td key={m.key}>
-                                    <Text size="xs" c="dimmed">
-                                      —
-                                    </Text>
+                                    <Badge size="sm" color={assessmentCellColor(cell.status)} variant="light">
+                                      {cell.status}
+                                    </Badge>
+                                    {cell.severity ? (
+                                      <FindingSeverityPill severity={cell.severity} ml={6} />
+                                    ) : null}
                                   </Table.Td>
                                 )
-                              }
-                              return (
-                                <Table.Td key={m.key}>
-                                  <Badge size="sm" color={assessmentCellColor(cell.status)} variant="light">
-                                    {cell.status}
-                                  </Badge>
-                                  {cell.severity ? (
-                                    <FindingSeverityPill severity={cell.severity} ml={6} />
-                                  ) : null}
-                                </Table.Td>
-                              )
-                            }),
-                          )}
-                        </Table.Tr>
-                      ))}
+                              }),
+                            )}
+                          </Table.Tr>
+                        ))
+                        if (!assessmentSections) return rows
+                        return [
+                          <Table.Tr key={`sec-${section.key}`}>
+                            <Table.Td
+                              colSpan={1 + assessmentMeasureCount}
+                              style={{
+                                background: 'var(--mantine-color-default-hover)',
+                                fontWeight: 650,
+                                position: 'sticky',
+                                left: 0,
+                                zIndex: 2,
+                              }}
+                            >
+                              <Text size="sm" fw={650} title={section.titleFull}>
+                                {section.title}
+                                <Text span size="xs" c="dimmed" ml={8}>
+                                  ({section.items.length})
+                                </Text>
+                              </Text>
+                            </Table.Td>
+                          </Table.Tr>,
+                          ...rows,
+                        ]
+                      })}
                     </Table.Tbody>
                   </Table>
                 ) : null}
