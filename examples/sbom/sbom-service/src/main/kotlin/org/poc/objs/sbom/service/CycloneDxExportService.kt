@@ -116,7 +116,11 @@ class CycloneDxExportService(
 
     private fun Entity.toCdxComponent(): Map<String, Any?>? {
         val id = id ?: return null
-        val name = payload["name"]?.toString()?.takeIf { it.isNotBlank() } ?: return null
+        val name =
+            sequenceOf("displayName", "name")
+                .mapNotNull { key -> payload[key]?.toString()?.takeIf { it.isNotBlank() } }
+                .firstOrNull()
+                ?: return null
         val version = payload["version"]?.toString()?.takeIf { it.isNotBlank() } ?: "0.0.0"
         val kind = payload["kind"]?.toString()?.lowercase()
         val type =

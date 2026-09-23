@@ -3,7 +3,11 @@ package org.poc.objs.sbom.demo
 import java.util.UUID
 
 object SbomDemoIds {
+    /** Line of business portfolio (LOB taxonomy). */
     val PORTFOLIO: UUID = UUID.fromString("11111111-1111-1111-1111-111111111111")
+    val PORTFOLIO_STACK: UUID = UUID.fromString("11111111-1111-1111-1111-111111111112")
+    val PORTFOLIO_SECURITY: UUID = UUID.fromString("11111111-1111-1111-1111-111111111113")
+
     val CATEGORY_PLATFORM: UUID = UUID.fromString("22222222-2222-2222-2222-222222222222")
     val CATEGORY_PAYMENTS: UUID = UUID.fromString("33333333-3333-3333-3333-333333333333")
     val CATEGORY_RETAIL: UUID = UUID.fromString("44444444-4444-4444-4444-444444444444")
@@ -14,9 +18,28 @@ object SbomDemoIds {
     val CATEGORY_DATA: UUID = UUID.fromString("99999999-9999-9999-9999-999999999999")
     val CATEGORY_CORP_FUNCTIONS: UUID = UUID.fromString("aaaa0001-aaaa-4000-8000-000000000001")
 
+    val CATEGORY_STACK_JAVA: UUID = UUID.fromString("bbbb0001-bbbb-4000-8000-000000000001")
+    val CATEGORY_STACK_PYTHON: UUID = UUID.fromString("bbbb0001-bbbb-4000-8000-000000000002")
+    val CATEGORY_STACK_WEB: UUID = UUID.fromString("bbbb0001-bbbb-4000-8000-000000000003")
+    val CATEGORY_STACK_MIXED: UUID = UUID.fromString("bbbb0001-bbbb-4000-8000-000000000004")
+
+    val CATEGORY_SECURITY_ELEVATED: UUID = UUID.fromString("cccc0001-cccc-4000-8000-000000000001")
+    val CATEGORY_SECURITY_BASELINE: UUID = UUID.fromString("cccc0001-cccc-4000-8000-000000000002")
+
     val APP_PAYMENTS: UUID = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
     val APP_BILLING: UUID = UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
     val APP_PORTAL: UUID = UUID.fromString("cccccccc-cccc-cccc-cccc-cccccccccccc")
 
     fun numberedApp(n: Int): UUID = UUID.fromString("a0000000-0000-4000-8000-%012d".format(n))
+
+    fun stackCategory(stack: DemoStack): UUID =
+        when (stack) {
+            DemoStack.JAVA -> CATEGORY_STACK_JAVA
+            DemoStack.PYTHON -> CATEGORY_STACK_PYTHON
+            DemoStack.WEB -> CATEGORY_STACK_WEB
+            DemoStack.MIXED -> CATEGORY_STACK_MIXED
+        }
+
+    fun securityCategory(attachVuln: Boolean): UUID =
+        if (attachVuln) CATEGORY_SECURITY_ELEVATED else CATEGORY_SECURITY_BASELINE
 }

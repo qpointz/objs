@@ -1,8 +1,8 @@
 apiVersion: objs.poc.org/v1
 kind: Portfolio
 id: 11111111-1111-1111-1111-111111111111
-name: Meridian Financial Group
-description: Enterprise application portfolio across retail, wealth, insurance, data, and platform LOBs
+name: Line of business
+description: Business ownership taxonomy across retail, wealth, insurance, data, and platform LOBs
 uniqueness: UNIQUE_APP
 origin: MANUAL
 categories:
@@ -35,3 +35,39 @@ categories:
   - id: aaaa0001-aaaa-4000-8000-000000000001
     name: Corporate Functions
     description: HR, finance, legal, and workplace systems
+---
+apiVersion: objs.poc.org/v1
+kind: Portfolio
+id: 11111111-1111-1111-1111-111111111112
+name: Technology stack
+description: Engineering view of applications by primary runtime stack
+uniqueness: UNIQUE_APP
+origin: MANUAL
+categories:
+  - id: bbbb0001-bbbb-4000-8000-000000000001
+    name: Java
+    description: JVM services and libraries
+  - id: bbbb0001-bbbb-4000-8000-000000000002
+    name: Python
+    description: Python services, data, and ML workloads
+  - id: bbbb0001-bbbb-4000-8000-000000000003
+    name: Web
+    description: TypeScript / frontend and BFF-adjacent web apps
+  - id: bbbb0001-bbbb-4000-8000-000000000004
+    name: Mixed
+    description: Polyglot or multi-runtime applications
+---
+apiVersion: objs.poc.org/v1
+kind: Portfolio
+id: 11111111-1111-1111-1111-111111111113
+name: Security attention
+description: Risk-oriented slice for vulnerability and assessment demos
+uniqueness: UNIQUE_APP
+origin: MANUAL
+categories:
+  - id: cccc0001-cccc-4000-8000-000000000001
+    name: Elevated exposure
+    description: Applications seeded with known vulnerability attachments
+  - id: cccc0001-cccc-4000-8000-000000000002
+    name: Baseline
+    description: Applications without elevated demo vulnerability attachments

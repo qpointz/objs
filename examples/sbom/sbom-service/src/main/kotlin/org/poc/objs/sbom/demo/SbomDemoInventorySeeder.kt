@@ -30,7 +30,7 @@ import java.util.UUID
 
 /**
  * Demo-profile inventory: 70 LOB applications, version lineages, shared Maven/npm/PyPI pins.
- * Portfolio taxonomy comes from `kind: Portfolio` seeds; this runner places apps.
+ * Portfolio taxonomies come from `kind: Portfolio` seeds (LOB, stack, security); this runner places apps.
  */
 @Component
 @Profile("demo")
@@ -140,12 +140,28 @@ class SbomDemoInventorySeeder(
                 SbomDemoIds.PORTFOLIO,
                 PlaceApplicationRequest(applicationId = spec.id, subjectAreaId = spec.categoryId),
             )
+            portfolioService.placeApplication(
+                SbomDemoIds.PORTFOLIO_STACK,
+                PlaceApplicationRequest(
+                    applicationId = spec.id,
+                    subjectAreaId = SbomDemoIds.stackCategory(spec.stack),
+                ),
+            )
+            portfolioService.placeApplication(
+                SbomDemoIds.PORTFOLIO_SECURITY,
+                PlaceApplicationRequest(
+                    applicationId = spec.id,
+                    subjectAreaId = SbomDemoIds.securityCategory(spec.attachVuln),
+                ),
+            )
         }
 
         log.info(
-            "Demo inventory seeded: apps={}, shared pool assets, portfolio={}",
+            "Demo inventory seeded: apps={}, shared pool assets, portfolios=[{}, {}, {}]",
             SbomDemoApps.all.size,
             SbomDemoIds.PORTFOLIO,
+            SbomDemoIds.PORTFOLIO_STACK,
+            SbomDemoIds.PORTFOLIO_SECURITY,
         )
     }
 
@@ -185,11 +201,12 @@ class SbomDemoInventorySeeder(
                 create(
                     "Component",
                     mapOf(
-                        "name" to name,
+                        "displayName" to name,
                         "version" to version,
                         "ecosystem" to eco,
                         "kind" to kind,
                         "coordinates" to coord,
+                        "tier" to "standard",
                     ),
                 )
             }
@@ -198,11 +215,12 @@ class SbomDemoInventorySeeder(
             create(
                 "Component",
                 mapOf(
-                    "name" to "Jackson Databind",
+                    "displayName" to "Jackson Databind",
                     "version" to "2.21.4",
                     "ecosystem" to "Maven",
                     "kind" to "library",
                     "coordinates" to "com.fasterxml.jackson.core:jackson-databind:2.21.4",
+                    "tier" to "standard",
                 ),
             )
         val boot = { g: Int -> lib("Spring Boot", pin("3.3.2", "3.5.16", "4.1.0", g), "Maven", "framework", "org.springframework.boot:spring-boot") }
@@ -612,7 +630,7 @@ class SbomDemoInventorySeeder(
             if (index > 0) {
                 link(components[0].id, component.id, SbomRoles.DEPENDS_ON)
             }
-            link(component.id, pool.providerFor(component.payload["name"].toString()).id, SbomRoles.PROVIDED_BY)
+            link(component.id, pool.providerFor(componentDisplayName(component.payload)).id, SbomRoles.PROVIDED_BY)
             link(component.id, license.id, SbomRoles.LICENSED_UNDER)
         }
         if (spec.attachVuln) {
@@ -630,10 +648,11 @@ class SbomDemoInventorySeeder(
                 create(
                     "Component",
                     mapOf(
-                        "name" to "legacy-bridge",
+                        "displayName" to "legacy-bridge",
                         "version" to "1.0.0-SNAPSHOT",
                         "ecosystem" to "",
                         "kind" to "library",
+                        "tier" to "legacy",
                     ),
                     spec.name,
                 )
@@ -672,6 +691,12 @@ class SbomDemoInventorySeeder(
 
     private fun pin(older: String, mid: String, current: String, generation: Int): String =
         listOf(older, mid, current)[generation.coerceIn(0, 2)]
+
+    private fun componentDisplayName(payload: Map<String, Any?>): String =
+        sequenceOf("displayName", "name")
+            .mapNotNull { key -> payload[key]?.toString()?.takeIf { it.isNotBlank() } }
+            .firstOrNull()
+            ?: "unknown"
 
     private fun create(type: String, payload: Map<String, Any?>, owner: String? = null) =
         assets.create(CreatePoolAssetRequest(type = type, payload = payload, owner = owner))
