@@ -1,6 +1,6 @@
 # Schema evolution — payload upgrade (L2)
 
-Living design for C-35. Normative detail: [`docs/workitems/planned/codegen-schema-evolution/DESIGN.md`](../../workitems/planned/codegen-schema-evolution/DESIGN.md) and [`GAPS.md`](../../workitems/planned/codegen-schema-evolution/GAPS.md).
+Living design for C-35. Normative detail: [`docs/workitems/completed/20260923-codegen-schema-evolution/DESIGN.md`](../../workitems/completed/20260923-codegen-schema-evolution/DESIGN.md) and [`GAPS.md`](../../workitems/completed/20260923-codegen-schema-evolution/GAPS.md).
 
 ## Intent
 

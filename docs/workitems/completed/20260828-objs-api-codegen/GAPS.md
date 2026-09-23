@@ -37,6 +37,7 @@ the relevant WI before implementation starts.
 | G-24 | Foundation versus application layering | All root `objs-*` modules are generic foundation; `examples/*` own application schemas, ontology classes, generated sources, and generated catalogs |
 | G-22 | Generated source ownership | The reusable generator may live in foundation tooling, but generated DTOs, nodes, relations, and catalogs are written only to the consuming application's source set |
 | G-23 | Wire and storage naming | Public class renames do not rename JSON mutation fields, REST paths, or JPA entity names. Objs persistence tables use the `objs_*` namespace after forward migration V6; SBOM and other application-owned tables retain their own namespaces |
+| G-30 | Evolved-snapshot consumer fixture | Closed by [C-35](../20260923-codegen-schema-evolution/STORY.md): SBOM `Component` 1.0→2.0 ClassToClass step + fingerprint `representation=saved|latest|both` dual view |
 
 ## Deferred
 
@@ -46,5 +47,4 @@ the relevant WI before implementation starts.
 | G-20 | Generated HTTP client | deferred | The API module and generated bindings do not contain REST client behavior |
 | G-21 | Persist-time cardinality checks | deferred | Requires a separate integrity design and is not part of this story |
 | G-29 | Full consumer policy matrix | deferred | The consumer smoke test covers a valid `NONE` relation; exhaustive `SCHEMA`, wildcard, override, and invalid-endpoint scenarios remain a follow-up hardening task |
-| G-30 | Evolved-snapshot consumer fixture | deferred | Core API tests cover raw/dangling reads; a dedicated generated-consumer fixture for historical adapters and schema drift remains outside the current integration smoke test |
 

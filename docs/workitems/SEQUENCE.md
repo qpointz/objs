@@ -44,7 +44,7 @@ C-24 flat evaluate
 **Content deps:** suite seed kinds need C-27; batch suite target needs C-27; result store needs C-27 shape + C-28 catalog boundary.  
 **Do not** start a story’s WI-002+ until that story’s own WI-001 closes its GAPS. Do not pull later-story gaps into an earlier design lock.
 
-**Policy family complete** (C-30 closed superseded 2026-09-15). Open foundation work outside this chain: e.g. [C-39](completed/20260917-policy-archive-workbench/STORY.md) archive viewer (done), [C-20](planned/store-text-search/STORY.md), [C-35](planned/codegen-schema-evolution/STORY.md).
+**Policy family complete** (C-30 closed superseded 2026-09-15). Open foundation work outside this chain: e.g. [C-39](completed/20260917-policy-archive-workbench/STORY.md) archive viewer (done), [C-20](planned/store-text-search/STORY.md), [C-35](completed/20260923-codegen-schema-evolution/STORY.md) (done).
 
 ---
 
@@ -61,9 +61,7 @@ C-24 flat evaluate
 
 | Id | Story | Status | Notes |
 |----|--------|--------|-------|
-| **C-35** | [`codegen-schema-evolution`](planned/codegen-schema-evolution/STORY.md) | planned | After **C-23**. Typed upgrade-to-latest hydrate; Lane A latest OM + Lane B snapshot DTOs; hand migrations. **Design first** ([`DESIGN.md`](planned/codegen-schema-evolution/DESIGN.md)). Independent of C-20 and policy family. Does not block C-29/C-30. |
-
-Do not start C-35 implementation until C-35 WI-001 closes open GAPS.
+| **C-35** | [`codegen-schema-evolution`](completed/20260923-codegen-schema-evolution/STORY.md) | done | After **C-23**. L2 typed upgrade-to-latest hydrate; ClassToClass/MapToClass + additive fallback; SBOM Component@1→2 dual view. [`DESIGN.md`](completed/20260923-codegen-schema-evolution/DESIGN.md). Independent of C-20 and policy family. Closes C-23 G-30. |
 
 ---
 

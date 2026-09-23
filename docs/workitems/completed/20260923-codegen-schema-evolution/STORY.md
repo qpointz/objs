@@ -2,16 +2,16 @@
 
 **Slug:** `codegen-schema-evolution`  
 **Branch:** `codegen-schema-evolution`  
-**Status:** ready for MR (WIs complete)  
-**Folder:** [`docs/workitems/planned/codegen-schema-evolution/`](.)  
+**Status:** done  
+**Folder:** [`docs/workitems/completed/20260923-codegen-schema-evolution/`](.)  
 **Backlog:** [C-35](../../BACKLOG.md)  
 **Base:** `origin/dev`  
-**Before:** [C-23 `objs-api-codegen`](../../completed/20260828-objs-api-codegen/STORY.md)  
+**Before:** [C-23 `objs-api-codegen`](../20260828-objs-api-codegen/STORY.md)  
 **Design:** [`DESIGN.md`](DESIGN.md)  
 **Gaps:** [`GAPS.md`](GAPS.md)  
 **Living docs:** [`schema-evolution.md`](../../../design/graph/schema-evolution.md), [`api-and-codegen.md`](../../../design/graph/api-and-codegen.md)  
 **Process:** [`docs/workitems/RULES.md`](../../RULES.md)  
-**Closes deferred:** C-23 [G-30](../../completed/20260828-objs-api-codegen/GAPS.md) (SBOM evolved Component + dual view)
+**Closes deferred:** C-23 [G-30](../20260828-objs-api-codegen/GAPS.md) (SBOM evolved Component + dual view)
 
 ## Goal
 
@@ -39,4 +39,4 @@ G-E5, G-E6, G-E7, G-X8; full Lane B second-export codegen (SBOM used hand DTOs).
 
 ## Process notes
 
-Do not archive this story until the user asks after MR merge.
+Archived 2026-09-23 (merge-ready). Merging into `dev` is manual.

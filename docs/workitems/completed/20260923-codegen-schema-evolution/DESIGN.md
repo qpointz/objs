@@ -2,7 +2,7 @@
 
 **Story:** [`STORY.md`](STORY.md) · **Backlog:** C-35 · **Status:** aligned with [`GAPS.md`](GAPS.md) (WI-001)  
 **Audience:** foundation (`objs-api`, `objs-codegen-java`) and application authors who own ontology + generated bindings  
-**Related:** [C-23 objs-api-codegen](../../completed/20260828-objs-api-codegen/STORY.md), [G-18 / G-30](../../completed/20260828-objs-api-codegen/GAPS.md), [`api-and-codegen.md`](../../../design/graph/api-and-codegen.md), [`codegen-and-builder.md`](../../../design/graph/codegen-and-builder.md), [`model.md`](../../../design/graph/model.md), [`validation.md`](../../../design/graph/validation.md)
+**Related:** [C-23 objs-api-codegen](../20260828-objs-api-codegen/STORY.md), [G-18 / G-30](../20260828-objs-api-codegen/GAPS.md), [`api-and-codegen.md`](../../../design/graph/api-and-codegen.md), [`codegen-and-builder.md`](../../../design/graph/codegen-and-builder.md), [`model.md`](../../../design/graph/model.md), [`validation.md`](../../../design/graph/validation.md)
 
 This document captures the design intent for **multi-version payload serialization/deserialization** with **controlled upgrades**, while keeping a **minimal typed object model** for consumers and a **hard split** between generated code and hand-maintained migrations.
 

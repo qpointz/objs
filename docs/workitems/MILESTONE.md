@@ -68,6 +68,7 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`api-store-improvements`](completed/20260914-api-store-improvements/STORY.md) — `NamedGraphStore.exists` + structured `ValidationIssue` + `createDeepGraphVersion` default + context-bar Open layout (C-38). WI-000…WI-007.
 - [`policy-consumer`](completed/20260915-policy-consumer/STORY.md) — C-30 superseded (no impl): REST via C-31; example consumer = SBOM assessment.
 - [`policy-archive-workbench`](completed/20260917-policy-archive-workbench/STORY.md) — Archive list/load HTTP + Policy in-page Archives mode (Results / Policies / Input axes) (C-39 / U-12). WI-000…WI-005.
+- [`codegen-schema-evolution`](completed/20260923-codegen-schema-evolution/STORY.md) — L2 schema upgrade SPI + TypedGraphView hydrate; SBOM Component@1→2 + fingerprint dual view (C-35). WI-000…WI-004. Closes C-23 G-30.
 
 ### In progress
 
@@ -76,5 +77,4 @@ _(none)_
 ### Planned
 
 - [`store-text-search`](planned/store-text-search/STORY.md) — FB-3 contains/`q`; design first (C-20). Does not block C-18.
-- [`codegen-schema-evolution`](planned/codegen-schema-evolution/STORY.md) — typed multi-version deserialize + hand migrations (C-35); design first after C-23.
 
