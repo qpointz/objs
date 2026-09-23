@@ -88,6 +88,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | D-6 | Inventory Save as one transactional request (payloads + version graph + application meta) | improvement | backlog | [`completed/20260816-sbom-inventory-app/GAPS.md`](completed/20260816-sbom-inventory-app/GAPS.md) G-P13 |
 | D-7 | Demo inventory as file seeds under `examples/sbom/demo` (replace `SbomDemoInventorySeeder`) | improvement | backlog | [`completed/20260816-sbom-inventory-app/GAPS.md`](completed/20260816-sbom-inventory-app/GAPS.md) G-P14 |
 | D-8 | Multi-BOM app versions (constituents + Combined SBOM; multi-draft with target version) | feature | done | [`completed/20260817-multi-bom-app-versions/`](completed/20260817-multi-bom-app-versions/STORY.md) |
+| D-9 | SBOM + AR domain OpenAPI completeness + Swagger UI on both services | improvement | done | [`completed/20260923-sbom-ar-openapi/`](completed/20260923-sbom-ar-openapi/STORY.md) |
 
 ---
 
@@ -108,6 +109,6 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | Status | Count |
 |--------|------:|
 | backlog | 2 |
-| planned | 2 |
-| in-progress | 0 |
+| planned | 1 |
+| in-progress | 1 |
 | done | 46 |
