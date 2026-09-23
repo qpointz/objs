@@ -171,6 +171,8 @@ Graph/assets mutation is allowed **only** on `focus=bom` while editing a DRAFT. 
 
 ~50% of seeded apps have one BOM; ~50% have 2–3 (`Build` / `Runtime` / `Image`). Portal **content** = latest RELEASED + **Multi-BOM** badge if that version has ≥ 2 BOMs. **Footer** = total BOMs (all versions) · total versions, **lazy** per card.
 
+Demo portfolio seeds (`seeds/sbom-demo-portfolios.yaml`) publish three purpose-named views of the same apps: **Line of business** (LOB tree), **Technology stack** (Java / Python / Web / Mixed), and **Security attention** (Elevated exposure / Baseline). Placements are applied by the demo inventory seeder after apps exist.
+
 ---
 
 ## Journeys (v1)
@@ -200,8 +202,9 @@ Under **Applications** chrome.
 
 ### Journey 3 — Portfolio owner
 
-1. Maintain portfolios / subject areas; place applications (once per portfolio)  
-2. Run MI:
+1. Maintain portfolios / subject areas; place applications (once per portfolio). Demo data includes three purpose portfolios (LOB, stack, security).  
+2. Results for Apps / Assets / Assessment: toggle **Flat** (default) vs **By category** (`layout=flat|tree` in the URL) to band rows under the subject-area tree under the selected level.  
+3. Run MI:
 
 ```text
 Select portfolio → select level → select report → Run → results
@@ -284,6 +287,8 @@ Illustrative routes (inventory OpenAPI group on `:sbom-service`):
 | GET | `/applications/{id}/versions/{versionId}/export/cyclonedx` | Weak demo of Combined SBOM (hidden in UI) |
 
 OpenAPI is published for these domain endpoints on `:sbom-service` (group **`inventory`** only).
+
+**Swagger UI:** `./gradlew :sbom-service:run` → http://localhost:8080/swagger-ui.html (select group **inventory**; raw `/v3/api-docs/inventory`). Tags: **inventory**, **assets**, **portfolios**, **schemas**, **assessment**. Operations document request/response DTO schemas. Port **8080** by default — run one example app at a time (or set `server.port`).
 
 ---
 

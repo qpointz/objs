@@ -39,6 +39,8 @@ Generated output is written under `asset-repository-service/build/generated/sour
 | Domain OpenAPI | http://localhost:8080/swagger-ui.html — select group **asset-repository** (also `/v3/api-docs/asset-repository`) |
 | Domain REST | http://localhost:8080/api/v1/asset-repository/** |
 
+Default port **8080** — do not run SBOM inventory on the same port at the same time (override `server.port` if needed).
+
 The domain UI uses Mantine (dark/light toggle). Collections sit in a searchable left pane; the content pane queries with **obj-expr** and shows objects as a grid or raw JSON. Collection create picks accepted types from existing schemas. Object create/edit is **schema-driven** (one object at a time). JSON/YAML can post a **composition** (`objects` + `relations`). Schemas are read via domain REST (`GET /api/v1/asset-repository/schemas/...`), not foundation `/api/v1/objs/**`.
 
 Foundation `/api/v1/objs/**` is present as a **sidecar** for the workbench. Domain Java, the domain SPA, and the Python client must use **`/api/v1/asset-repository/**` only.

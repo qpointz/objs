@@ -78,6 +78,8 @@ Prefix `/api/v1/asset-repository`:
 
 OpenAPI group **`asset-repository`** in Swagger UI (`/swagger-ui.html`, `/v3/api-docs/asset-repository`).
 
+**Run:** `./gradlew :asset-repository-service:run` → http://localhost:8080/swagger-ui.html (select **asset-repository**). Domain operations document request/response DTO schemas (`CollectionDto`, `ObjectDto`, …). Port **8080** by default — do not run `:sbom-service` on the same port concurrently.
+
 ## Domain UI
 
 Mantine SPA (workbench look: dark/light, AppShell). Top nav: **Collections**, **Schemas** (read-only), optional **Workbench** sidecar.

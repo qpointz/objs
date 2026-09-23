@@ -18,9 +18,11 @@ jars are removed (rebuild required; `/workbench/` then 404s). Gradle still forbi
 |---------|-----|
 | Inventory UI (Mantine) | http://localhost:8080/sbom/ |
 | Workbench (when runtime jars present) | http://localhost:8080/workbench/ |
-| Domain OpenAPI | http://localhost:8080/swagger-ui.html |
+| Domain OpenAPI (Swagger UI) | http://localhost:8080/swagger-ui.html — group **inventory** (also `/v3/api-docs/inventory`) |
 
-The `demo` profile loads ontology seeds and a **70-application** Meridian Financial Group inventory (Java, Python, and web LOB apps). About half of the apps have a single **BOM**; the rest have 2–3 (`Build` / `Runtime` / `Image`). A few apps have **parallel drafts**. Fingerprints use **name** + **category** (`approval` / `history` / `unknown`). Portal cards lazy-load latest RELEASED, a multi-BOM cue, and BOM/version totals.
+Tags in Swagger UI: **inventory**, **assets**, **portfolios**, **schemas**, **assessment**. Default port **8080** — do not run AR on the same port at the same time.
+
+The `demo` profile loads ontology seeds and a **70-application** inventory (Java, Python, and web LOB apps). Apps are placed into three purpose-named portfolios: **Line of business**, **Technology stack**, and **Security attention**. About half of the apps have a single **BOM**; the rest have 2–3 (`Build` / `Runtime` / `Image`). A few apps have **parallel drafts**. Fingerprints use **name** + **category** (`approval` / `history` / `unknown`). Portal cards lazy-load latest RELEASED, a multi-BOM cue, and BOM/version totals.
 
 **Docs:** product model [`docs/design/sbom/example.md`](../../docs/design/sbom/example.md) · user guide [`docs/design/sbom/user.md`](../../docs/design/sbom/user.md).
 
@@ -47,7 +49,7 @@ Step-by-step: [`docs/design/sbom/user.md`](../../docs/design/sbom/user.md).
 
 ### Portfolios
 
-1. **Taxonomy** — create a portfolio and subject areas; place applications (demo data includes *Retail platform*).  
+1. **Taxonomy** — create a portfolio and subject areas; place applications (demo data includes *Line of business*, *Technology stack*, and *Security attention*).  
 2. **Reports** — pick level (root or subject area) → pick MI-1…MI-4 → **Run** (composition, dependency map, shared assets, duplicate/risk signals).
 
 ## Notes
