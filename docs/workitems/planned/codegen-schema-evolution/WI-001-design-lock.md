@@ -2,22 +2,25 @@
 
 **Story:** [`STORY.md`](STORY.md)  
 **Stage:** 1 — Design lock  
-**Status:** planned  
+**Status:** done  
 **Depends on:** WI-000  
 **Examples:** **docs**
 
 ## Goal
 
-Close every **open** row in [`GAPS.md`](GAPS.md) (resolve or defer). Promote the locked decisions from [`DESIGN.md`](DESIGN.md) into living design docs under `docs/design/graph/` (section in `api-and-codegen.md` / `codegen-and-builder.md` or a sibling doc). Do **not** start runtime/codegen code in this WI.
+Close every **open** row in [`GAPS.md`](GAPS.md) (resolve or defer). Align [`DESIGN.md`](DESIGN.md) and living design docs under `docs/design/graph/` with those locks. Do **not** start runtime/codegen code in this WI.
+
+**Locked story width:** **L2 payload / single-entity migration only.** Compaction (L1) and decomposition (L3) are **G-X8 deferred**.
 
 ## Deliverables
 
-- [ ] All `open` GAPS closed or explicitly deferred with rationale
-- [ ] `DESIGN.md` marked aligned with locked decisions (or superseded by living doc link)
-- [ ] Living design doc(s) updated
-- [ ] STORY normative table updated to match locks
-- [ ] Implementation WIs (WI-002+) adjusted if scope changes
+- [x] All `open` GAPS closed or explicitly deferred with rationale ([`GAPS.md`](GAPS.md))
+- [x] `DESIGN.md` marked aligned with locked decisions (kinds, fallback, evidence/examine, packs)
+- [x] Living design doc(s) updated ([`schema-evolution.md`](../../../design/graph/schema-evolution.md), [`api-and-codegen.md`](../../../design/graph/api-and-codegen.md))
+- [x] STORY normative table updated to match locks
+- [x] Implementation WIs (WI-002+) adjusted for locked scope
 
 ## Out of scope
 
 - `objs-api` / `objs-codegen-java` / example product code
+- L1/L3 SPI design (G-X8)

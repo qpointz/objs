@@ -107,6 +107,11 @@ GeneratedReadView view = GeneratedReadView.from(
 
 It never loads from or writes to an object store.
 
+When a `SchemaUpgradeRegistry` is supplied with `HydrationPolicy.UPGRADE_TO_LATEST`, older pins
+may hydrate to the latest Lane A class via explicit steps or the additive default fallback.
+See [`schema-evolution.md`](schema-evolution.md). `ReadNode.schemaVersion` remains the **stored**
+pin; effective version is exposed via upgrade diagnostics.
+
 ```java
 GeneratedReadView view = GeneratedReadView.from(graph, mapper);
 ProductReadNode product = view.products().get(0);

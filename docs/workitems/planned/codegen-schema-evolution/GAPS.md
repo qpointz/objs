@@ -2,55 +2,73 @@
 
 Status: `open` | `resolved` | `deferred` | `cancelled` | `accepted-risk`.
 
-**WI-001 must close every `open` row** (resolve or defer) before implementation WIs. Drafts in [`DESIGN.md`](DESIGN.md) are **not** final locks until then.
+**Story scope:** **payload / single-entity migration only** (L2). Compaction and decomposition are deferred (G-X8).
+
+**WI-001:** design locked below. Promote into living docs as part of this WI; no product code until WI-002+.
 
 ---
 
-## Provisional (likely keep)
+## Scope layers
+
+| Layer | Meaning | C-35 |
+|-------|---------|------|
+| L1 Compaction | Subgraph → single logical payload | **Out** (G-X8) |
+| L2 Payload | Same entity identity; typed / map hops | **In** |
+| L3 Decomposition | One payload → N entities + edges | **Out** (G-X8) |
+
+L2 must not create or delete entities/edges. Read/view upgrades leave the store pin + payload unchanged (G-E0c).
+
+---
+
+## Locked (consumer + authoring)
 
 | # | Topic | Status | Resolution |
 |---|--------|--------|------------|
-| G-E0 | Consumer surface | **resolved** (provisional) | Latest-only object model (Lane A). No per-version `*Node` / versioned root collections |
-| G-E0a | Migration authoring | **resolved** (provisional) | Typed `From → To` steps; **reject** app-facing Map→Map SPI |
-| G-E0b | Codegen vs hand split | **resolved** (provisional) | Migration bodies never in generated trees; Lane A/B may regenerate; hand `…migration` accumulates |
-| G-E0c | Persist on read | **resolved** (provisional) | Read/view upgrade only; store pin+payload unchanged |
-| G-E0d | Serialize any version | **resolved** (provisional) | Raw/`Entity` + catalog validation; typed write stays latest |
-| G-E0e | Jackson polymorphism | **resolved** (provisional) | Not used for entity hydrate; registry + bindings remain |
+| G-E0 | Consumer surface | **resolved** | Latest-only object model (Lane A). No per-version `*Node` / versioned root collections |
+| G-E0a | Migration authoring | **resolved** | Step **kinds**: `ClassToClassUpgradeStep`, `MapToClassUpgradeStep` sharing `SchemaUpgradeStep.apply(Map)→Map`. **Reject** app-facing Map→Map kind |
+| G-E0b | Codegen vs hand split | **resolved** | Migration bodies never in generated trees; Lane A/B may regenerate; hand `…migration` accumulates |
+| G-E0c | Persist on read | **resolved** | Read/view upgrade only; store pin+payload unchanged |
+| G-E0d | Serialize any version | **resolved** | Raw/`Entity` + catalog validation; typed write stays latest |
+| G-E0e | Jackson polymorphism | **resolved** | Not used for entity hydrate; registry + bindings remain |
 
 ---
 
-## Open (design)
+## Locked (L2 design)
 
-| # | Topic | Status | Notes |
-|---|--------|--------|-------|
-| G-E1 | Lane B source / scope | **open** | B1 all catalog versions vs B3 migration-declared/allow-list vs B2 hand-only DTOs. Naming: `Product_1_0_0` vs package-per-version. Export: versioned `$defs` vs second snapshot document |
-| G-E2 | Latest class identity | **open** | Single physical class shared by Lane A and newest Lane B snapshot vs distinct types + final convert. Prefer single class to avoid dual-latest drift |
-| G-E3 | ReadNode schemaVersion | **open** | Keep `schemaVersion` = **stored** pin; expose `effectiveSchemaVersion` separately? Or replace? Diagnostics shape |
-| G-E4 | Missing chain / step failure | **open** | Fail-open → raw + diagnostic (aligned with G-17) vs fail-closed → throw. Per-view policy override? |
-| G-E5 | Edge-property migrations | **open** | Same typed SPI for SCHEMA edge properties in v1 vs defer to follow-up |
-| G-E6 | Explicit persist rewrite | **open** | In-story later WI vs separate backlog item. Must interact with C-14 identifier rules + target-schema validation |
-| G-E7 | Hydrate to non-latest target | **open** | Option B (`UPGRADE_TO(target)`). Still typed steps; still no historical OM. Defer after UPGRADE_TO_LATEST? |
-| G-E8 | Chain topology | **open** | Linear adjacent-only vs allow explicit long-jump steps vs multi-path DAG (error if ambiguous) |
-| G-E9 | SemVer / “latest” | **open** | Use `SchemaVersion` comparer everywhere (export currently may use string max in places). Chain adjacency ordering |
-| G-E10 | Validation after upgrade (read) | **open** | Optional validate upgraded map against target JSON Schema before Lane A hydrate vs trust step author |
-| G-E11 | SPI language shape | **open** | Java-friendly generic interface + `Class<F>`/`Class<T>` vs Kotlin-first helpers; binary compatibility for `:objs-api` |
-| G-E12 | InMemory registry helper | **open** | Ship in `objs-api` vs examples-only |
-| G-E13 | Lane A package vs Lane B package | **open** | Same generated root package with naming discipline vs forced separate packages/source sets |
-| G-E14 | Lenient Jackson mid-chain | **open** | `FAIL_ON_UNKNOWN_PROPERTIES` policy for fromMap on historical DTOs — prefer strict for migration hops |
+| # | Topic | Status | Resolution |
+|---|--------|--------|------------|
+| G-E1 | Lane B source / scope | **resolved** | **B1:** all catalog ENTITY versions; naming `Product_1_0_0`; dedicated package; **second snapshot export** |
+| G-E2 | Latest class identity | **resolved** | Single physical Lane A class as terminal `To`; no duplicate latest Lane B type |
+| G-E3 | ReadNode schemaVersion | **resolved** | `schemaVersion` = **stored** pin; `effectiveSchemaVersion` + diagnostics separately |
+| G-E4 | Missing chain / step failure | **resolved** | **Fail-open** → raw + diagnostic after explicit chain and additive fallback both fail |
+| G-E8 | Chain topology | **resolved** | Adjacent preferred; explicit long-jump OK; multi-path → error |
+| G-E9 | SemVer / “latest” | **resolved** | `SchemaVersion` comparer everywhere |
+| G-E10 | Validation after upgrade (read) | **resolved** | No mandatory validate-after-upgrade on read |
+| G-E11 | SPI language shape | **resolved** | Java-friendly kinds + shared `SchemaUpgradeStep`; package `org.poc.objs.api.typed.upgrade` |
+| G-E12 | InMemory registry helper | **resolved** | `InMemorySchemaUpgradeRegistry` in `objs-api` |
+| G-E13 | Lane A vs Lane B packages | **resolved** | Forced separate packages / source sets |
+| G-E14 | Jackson mid-chain | **resolved** | ClassToClass / DefaultAdditive: **strict** `fromMap`; hand MapToClass may use lenient |
+| G-E15 | Additive default fallback | **resolved** | After empty explicit chain, `DefaultAdditiveMapToLatest` (strict Map→latest class). Incomplete chain → raw (no mid-chain patch). Part of `UPGRADE_TO_LATEST` |
+| G-E16 | Evidence / examine wire | **resolved** | Fingerprint/frozen BOM: default **both** (as-saved + latest projection). Live inventory default **saved**. Query `representation=saved\|latest\|both` |
+| G-E17 | Regression packs | **resolved** | Frozen `evidence.json` + `expect-latest.json` packs; accumulate; foundation + SBOM layers |
 
 ---
 
-## Out of story / deferred
+## Deferred from this story
 
 | # | Topic | Status | Notes |
 |---|--------|--------|-------|
-| G-X1 | Per-version object-model APIs | **cancelled** | Conflicts with minimal consumer surface |
-| G-X2 | App-facing Map→Map SPI | **cancelled** | Error-prone; maps stay wire-only |
-| G-X3 | Auto-rewrite on mutate | **deferred** | Surprising vs pin-and-keep; see G-E6 for explicit rewrite |
-| G-X4 | Inferred migrations from schema diff | **deferred** | Tooling hint only; not a substitute for hand steps |
-| G-X5 | Downgrade latest → older pin | **deferred** | Lossy; not required for read-old-as-new |
+| G-E5 | Edge-property migrations | **deferred** | Entity payloads first |
+| G-E6 | Explicit persist rewrite | **deferred** | Separate backlog; C-14 applies |
+| G-E7 | Hydrate to non-latest target | **deferred** | `UPGRADE_TO(target)` later; v1: `EXACT_ONLY`, `UPGRADE_TO_LATEST` |
+| G-X1 | Per-version object-model APIs | **cancelled** | |
+| G-X2 | App-facing Map→Map SPI | **cancelled** | Maps are chain wire only |
+| G-X3 | Auto-rewrite on mutate | **deferred** | |
+| G-X4 | Inferred migrations from schema diff | **deferred** | DefaultAdditive is compatibility probe, not inferred remaps |
+| G-X5 | Downgrade latest → older pin | **deferred** | |
 | G-X6 | Aggregate materializer / HTTP client | **deferred** | C-23 G-19 / G-20 |
-| G-X7 | Same-pin in-place catalog Save migration | **deferred** | Not version-to-version; operator/process concern |
+| G-X7 | Same-pin in-place catalog Save migration | **deferred** | |
+| G-X8 | Compaction / decomposition | **deferred** | L1 / L3; no SPI in C-35 |
 
 ---
 
@@ -58,7 +76,7 @@ Status: `open` | `resolved` | `deferred` | `cancelled` | `accepted-risk`.
 
 | Prior | Relation |
 |-------|----------|
-| C-23 G-18 | Exact bindings retained; upgrade extends hydrate when chain reaches bound version |
-| C-23 G-17 | Lossless raw fallback remains the fail-open baseline |
-| C-23 G-30 | Implementation should close with evolved-snapshot fixture |
-| C-14 identity | Applies to persist rewrite when `schemaVersion` changes; not to read-view upgrade |
+| C-23 G-18 | Exact bindings retained; upgrade extends hydrate |
+| C-23 G-17 | Fail-open raw baseline (after fallback) |
+| C-23 G-30 | **Closed** by SBOM Component@1→2 regression + fingerprint dual view (WI-003) |
+| C-14 identity | Persist rewrite only (G-E6) |

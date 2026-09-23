@@ -2,7 +2,7 @@
 
 **Story:** [`STORY.md`](STORY.md)  
 **Stage:** 0 — Scaffold  
-**Status:** planned (folder created; story **not** started for implementation)  
+**Status:** done  
 **Depends on:** —  
 **Examples:** **—**
 

@@ -1,6 +1,6 @@
 # DESIGN — Codegen schema evolution (typed deserialize + migrations)
 
-**Story:** [`STORY.md`](STORY.md) · **Backlog:** C-35 · **Status:** draft (normative only after WI-001)  
+**Story:** [`STORY.md`](STORY.md) · **Backlog:** C-35 · **Status:** aligned with [`GAPS.md`](GAPS.md) (WI-001)  
 **Audience:** foundation (`objs-api`, `objs-codegen-java`) and application authors who own ontology + generated bindings  
 **Related:** [C-23 objs-api-codegen](../../completed/20260828-objs-api-codegen/STORY.md), [G-18 / G-30](../../completed/20260828-objs-api-codegen/GAPS.md), [`api-and-codegen.md`](../../../design/graph/api-and-codegen.md), [`codegen-and-builder.md`](../../../design/graph/codegen-and-builder.md), [`model.md`](../../../design/graph/model.md), [`validation.md`](../../../design/graph/validation.md)
 
@@ -44,13 +44,13 @@ When a graph (or pool) still contains `Product@1.0.0` after the app has moved co
 
 ### 1.4 Desired outcomes (product language)
 
-| Capability | Intent |
-|------------|--------|
-| Serialize any version | Persistence and raw APIs can still write/read any catalog pin; typed **write** API stays latest-centric |
-| Deserialize with control | Older stored pins can be presented as the **current** typed model when the app supplies upgrade steps |
-| Minimal consumer model | Callers primarily program against **one** generated type family per entity type (latest) |
-| Transparent consumption | Normal read path: `view.products()` / `payload()` yields latest-shaped typed objects when upgrades succeed |
-| Safe evolution authorship | Upgrade logic is **typed and hand-reviewed**, not stringly-typed map surgery |
+| Capability                | Intent                                                                                                     |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Serialize any version     | Persistence and raw APIs can still write/read any catalog pin; typed **write** API stays latest-centric    |
+| Deserialize with control  | Older stored pins can be presented as the **current** typed model when the app supplies upgrade steps      |
+| Minimal consumer model    | Callers primarily program against **one** generated type family per entity type (latest)                   |
+| Transparent consumption   | Normal read path: `view.products()` / `payload()` yields latest-shaped typed objects when upgrades succeed |
+| Safe evolution authorship | Upgrade logic is **typed and hand-reviewed**, not stringly-typed map surgery                               |
 
 ---
 
@@ -186,12 +186,12 @@ Stored Entity
 
 ### 4.3 Write / serialize path
 
-| Path | Behavior |
-|------|----------|
-| Typed mutation builder (`addProduct`) | Emits **latest** pin + latest-shaped map (Lane A). Unchanged from C-23. |
-| Raw / hand-built `Entity` | Any catalog pin; persist validation as today. This is “serialize any version.” |
-| Optional helper (later) | `mapper.toMap(laneBDto)` + explicit `schemaVersion` for tests/tools — not required for v1 consumer API |
-| Downgrade (latest → older pin) | **Out of v1.** Harder than upgrade; lossy; not required for “read old as new.” |
+| Path                                  | Behavior                                                                                               |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Typed mutation builder (`addProduct`) | Emits **latest** pin + latest-shaped map (Lane A). Unchanged from C-23.                                |
+| Raw / hand-built `Entity`             | Any catalog pin; persist validation as today. This is “serialize any version.”                         |
+| Optional helper (later)               | `mapper.toMap(laneBDto)` + explicit `schemaVersion` for tests/tools — not required for v1 consumer API |
+| Downgrade (latest → older pin)        | **Out of v1.** Harder than upgrade; lossy; not required for “read old as new.”                         |
 
 ### 4.4 Ownership matrix
 
@@ -230,66 +230,97 @@ Authors only implement `upgrade(FromDto): ToDto`. The map hops are mechanical an
 
 ---
 
-## 6. Typed migration SPI (illustrative)
+## 6. Typed migration SPI (normative)
 
-Names are draft; WI-001 locks final identifiers and JVM generics shape.
+Package: `org.poc.objs.api.typed.upgrade`.
 
-### 6.1 Step
+### 6.1 Shared runtime + kinds
 
 ```text
-interface SchemaUpgradeStep<F, T> {
-  String type();                 // catalog type, e.g. "Product"
-  String fromVersion();          // stored / intermediate pin
-  String toVersion();            // next pin
+interface SchemaUpgradeStep {
+  String type();
+  String fromVersion();
+  String toVersion();
+  Map<String, ?> apply(Map<String, ?> payload, PayloadMapper mapper);
+}
+
+abstract class ClassToClassUpgradeStep<F, T> implements SchemaUpgradeStep {
   Class<F> fromClass();
   Class<T> toClass();
   T upgrade(F from);
+  // apply: strict fromMap(F) → upgrade → toMap
+}
+
+abstract class MapToClassUpgradeStep<T> implements SchemaUpgradeStep {
+  Class<T> toClass();
+  T upgrade(Map<String, ?> from, PayloadMapper mapper);
+  // apply: upgrade(map) → toMap
 }
 ```
 
-Properties:
-
-- **Pure / deterministic** preferred (same input → same output); side effects discouraged.
-- **Adjacent hops:** registry composes `1.0.0→1.1.0` then `1.1.0→2.0.0`. Authors should not write long-jump steps unless they also register them as an explicit edge (GAP: allow non-adjacent shortcuts?).
-- **No graph topology:** steps transform **payload** (and optionally edge-property payloads — GAP). Relations remain edges; migrations do not invent membership.
+- Prefer pure / deterministic steps; no graph topology (no invent membership).
+- Adjacent hops preferred; explicit long-jump allowed as a registered edge; multi-path → error (G-E8).
+- **Reject** Map→Map authoring kind (G-X2).
 
 ### 6.2 Registry
 
 ```text
 interface SchemaUpgradeRegistry {
-  List<SchemaUpgradeStep<?, ?>> findChain(
-      String type, String fromVersion, String toVersion);
-  // null or empty ⇒ no chain (caller falls back per policy)
+  List<SchemaUpgradeStep> findChain(String type, String fromVersion, String toVersion);
+  // empty ⇒ no explicit path
 }
 ```
 
-Foundation may ship a small `InMemorySchemaUpgradeRegistry` that indexes steps by `(type, from, to)` and builds a path (linear chain assumed; DAG with multiple paths = GAP).
+`InMemorySchemaUpgradeRegistry` in `objs-api` indexes `(type, from, to)` and builds a path.
 
-### 6.3 Hydration policy
+### 6.3 Hydration policy + additive fallback
 
 ```text
 enum HydrationPolicy {
-  EXACT_ONLY,          // today’s behavior
-  UPGRADE_TO_LATEST,   // provisional default for GeneratedReadView when registry present
-  // UPGRADE_TO(target) — Option B; open GAP
+  EXACT_ONLY,
+  UPGRADE_TO_LATEST,   // explicit chain, else DefaultAdditiveMapToLatest, else raw
 }
 ```
 
-`TypedGraphView` / generated facade:
+`UPGRADE_TO_LATEST` resolution:
 
-- If policy is `EXACT_ONLY`: unchanged C-23 behavior.
-- If `UPGRADE_TO_LATEST`: attempt chain to Lane A’s pinned latest; on success hydrate Lane A class; on failure raw + diagnostic.
+1. Exact binding for stored pin → hydrate
+2. Complete explicit `findChain(stored → latest)` → apply steps → hydrate latest binding
+3. Else `DefaultAdditiveMapToLatest` (strict Map → latest class) — safe for additive optional fields only
+4. Else fail-open raw + diagnostic
+
+Incomplete explicit chain: **no** mid-chain additive patch → raw.
 
 ### 6.4 Diagnostics
 
-Provisional fields / report entries (exact API GAP):
+- `storedType`, `storedSchemaVersion` (also `ReadNode.schemaVersion` = stored)
+- `effectiveSchemaVersion`
+- `upgradeStepsApplied` / `additiveFallback`
+- `upgradeFailure`
 
-- `storedType`, `storedSchemaVersion`
-- `effectiveSchemaVersion` (after upgrade; equals stored if exact)
-- `upgradeStepsApplied` (list of from→to)
-- `upgradeFailure` (missing hop, convert error, step exception)
+### 6.5 Evidence / examine (overwire)
 
-`ReadNode.schemaVersion` today returns **stored** pin. DESIGN recommends **keeping that** for honesty, and exposing effective version via `ref()` extension or a small diagnostic accessor — lock in WI-001 (G-E3).
+Fingerprints / frozen versions are **evidence** (as-saved). Examine projects latest via L2.
+
+- Fingerprint BOM GET default: `representation=both`
+- Live inventory default: `saved`
+- Override: `representation=saved|latest|both`
+
+### 6.6 Regression packs
+
+Frozen packs: `evidence.json` + `expect-latest.json` + meta. Accumulate across ontology bumps. Foundation unit packs + SBOM packs (G-30).
+
+### 6.7 Endpoint recipes (sketch)
+
+Evidence vs examine can be a query param (`representation=…`) **or** two route mappings:
+
+```text
+GET .../graphs/{id}/versions/{n}         → raw as stored
+GET .../graphs/{id}/versions/{n}/latest  → L2 upgrade-to-latest projection
+```
+
+Load the fragment once; do not rewrite storage on GET. Full sketches/recipes:
+[`schema-evolution.md`](../../../design/graph/schema-evolution.md).
 
 ---
 
@@ -299,27 +330,13 @@ Provisional fields / report entries (exact API GAP):
 
 Give migration authors **compile-time** field access for historical shapes without making those shapes the application’s programming model.
 
-### 7.2 Naming / packaging (draft)
+### 7.2 Naming / packaging (locked)
 
-Options (GAP G-E1):
+**Version-suffixed types** (`Product_1_0_0`) in a dedicated package / source set, separate from Lane A OM (G-E1, G-E13).
 
-| Option | Example | Notes |
-|--------|---------|-------|
-| Version suffix type names | `Product_1_0_0` | Flat package; unique `javaTypeName` |
-| Package per version | `….schema.v1_0_0.Product` | Type name stays `Product`; import disambiguates |
-| Hand DTOs only | `migration.dto.ProductV1` | No Lane B generator; max control, more toil |
+### 7.3 Generation scope (locked)
 
-Provisional preference: **version-suffixed types** in a dedicated package, e.g. `….codegen.schema`, separate from Lane A’s `….codegen.generated` if that clarifies ownership in IDEs.
-
-### 7.3 Generation scope (GAP G-E1)
-
-| Option | Meaning |
-|--------|---------|
-| **B1** | Generate Lane B for **all** ENTITY (and maybe EDGE_PROPERTIES) versions in the catalog |
-| **B3** | Generate only versions referenced by registered migration edges / an allow-list attribute |
-| **B2** | No generator; hand-written historical DTOs |
-
-**Provisional preference: B3 or B1.** B3 keeps surface smaller as history grows; B1 is simpler operationally (“export once, all snapshots exist”). WI-001 must pick.
+**B1:** generate Lane B for all catalog ENTITY versions. Latest physical class is Lane A only (G-E2).
 
 ### 7.4 Export contract impact
 
@@ -441,20 +458,12 @@ Ordered only for orientation; WI-001 may reshuffle.
 
 ---
 
-## 13. Open decisions
+## 13. Deferred decisions
 
-Tracked in [`GAPS.md`](GAPS.md). Highest impact:
-
-- Lane B generation scope and naming (G-E1)
-- Latest class sharing between Lane A and newest snapshot (G-E2)
-- Stored vs effective `schemaVersion` on read API (G-E3)
-- Fail-open vs fail-closed (G-E4)
-- Edge-property migrations (G-E5)
-- Explicit persist rewrite API timing (G-E6)
-- Option B: hydrate to non-latest target (G-E7)
+See [`GAPS.md`](GAPS.md): G-E5, G-E6, G-E7, G-X8, etc.
 
 ---
 
 ## 14. Summary
 
-Objs already coexists schema versions in storage. Codegen should keep giving applications a **small, latest-centric object model**. Bridging older pins into that model is a **typed migration problem**, not a “generate everything” problem and not a Map→Map scripting problem. Generated snapshot DTOs (Lane B) make migrations safe to write; hand-maintained steps own semantics; foundation SPI orchestrates decode → upgrade → hydrate; persistence pins stay put until an explicit rewrite story says otherwise.
+Objs already coexists schema versions in storage. Codegen keeps a **small, latest-centric object model**. Bridging older pins uses **step kinds** (ClassToClass / MapToClass), an **additive default fallback**, and **evidence/examine** dual wire for fingerprints. Generated Lane B DTOs support typed hops; hand steps own semantics; store pins stay put.
