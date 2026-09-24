@@ -1,6 +1,8 @@
 package org.poc.objs.service.web
 
 import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import io.swagger.v3.oas.annotations.media.ArraySchema
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.responses.ApiResponse
@@ -38,22 +40,40 @@ import java.util.UUID
  */
 @RestController
 @RequestMapping("/api/v1/objs/entities")
-@Tag(name = "entities")
+@Tag(
+    name = "entities",
+    description = "Shared pool entity CRUD and history, plus graph membership attach/detach",
+)
 class ObjsEntitiesController(
     private val store: GraphStore,
     private val matcherDsl: MatcherDsl = MatcherDsl.create(),
 ) {
     @Schema(description = "Pool entity write body")
     data class EntityWriteBody(
+        @field:Schema(description = "Caller-chosen entity id; omit on create to let the store assign one")
         val id: UUID? = null,
+        @field:Schema(description = "Registry schema type name, e.g. `Component`")
         val type: String,
+        @field:Schema(description = "Registry schema version for [type], e.g. `1`")
         val schemaVersion: String,
+        @field:Schema(description = "Entity payload; validated against the registry schema for type@schemaVersion")
         val payload: MutableMap<String, Any?> = mutableMapOf(),
+        @field:Schema(description = "Free-form string annotations (not schema-validated)")
         val annotations: MutableMap<String, String> = mutableMapOf(),
     )
 
     @GetMapping
-    @Operation(summary = "List pool entities")
+    @Operation(
+        summary = "List pool entities",
+        description = "Whole pool including orphans; prefer POST /entities/query with paging for large stores.",
+    )
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "All pool entities",
+            content = [Content(array = ArraySchema(schema = Schema(implementation = Entity::class)))],
+        ),
+    )
     fun list(): List<Entity> = store.listEntities()
 
     @PostMapping(
@@ -67,14 +87,17 @@ class ObjsEntitiesController(
     )
     @Operation(
         summary = "Matcher DSL (obj-expr) over the entity pool",
-        description = "Includes orphans (no graph membership). Accepts bare obj-expr or a chain of " +
-            "obj-expr only. Equality/`&&` pushdown uses SQL (`type = ?`, …). Edges are not returned " +
-            "(graph-local). Use /graphs/{id}/query or /graphs/query for graph-scoped selection.",
+        description = "Body is a matcher document in JSON or YAML (pick via Content-Type). Includes " +
+            "orphans (no graph membership). Accepts bare obj-expr or a chain of obj-expr only. " +
+            "Equality/`&&` pushdown uses SQL (`type = ?`, …). Edges are not returned (graph-local). " +
+            "Use /graphs/{id}/query or /graphs/query for graph-scoped selection. When `page` or `size` " +
+            "is set, the response is a paged envelope (`entities`, `edges`, `total`, `page`, `size`) " +
+            "instead of GraphContents.",
     )
     @ApiResponses(
         ApiResponse(
             responseCode = "200",
-            description = "Matching pool entities (edges empty)",
+            description = "Matching pool entities (edges empty); paged envelope when page/size is set",
             content = [Content(schema = Schema(implementation = GraphContents::class))],
         ),
         ApiResponse(
@@ -85,7 +108,9 @@ class ObjsEntitiesController(
     )
     fun query(
         request: HttpServletRequest,
+        @Parameter(description = "Zero-based page index; set page or size to switch to the paged envelope")
         @RequestParam(required = false) page: Int?,
+        @Parameter(description = "Page size; set page or size to switch to the paged envelope")
         @RequestParam(required = false) size: Int?,
     ): ResponseEntity<Any> {
         val matcher = matcherDsl.decode(readBody(request), resolveFormat(request))
@@ -129,15 +154,30 @@ class ObjsEntitiesController(
 
     @GetMapping("/{id}")
     @Operation(summary = "Fetch a pool entity by id")
-    fun get(@PathVariable id: UUID): ResponseEntity<Entity> {
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "Pool entity",
+            content = [Content(schema = Schema(implementation = Entity::class))],
+        ),
+        ApiResponse(responseCode = "404", description = "Entity not found"),
+    )
+    fun get(
+        @Parameter(description = "Pool entity id") @PathVariable id: UUID,
+    ): ResponseEntity<Entity> {
         val entity = store.getEntity(id) ?: return ResponseEntity.notFound().build()
         return ResponseEntity.ok(entity)
     }
 
     @GetMapping("/{id}/versions/stats")
-    @Operation(summary = "Entity version stats: total count + newest recent N")
+    @Operation(
+        summary = "Entity version stats: total count + newest recent N",
+        description = "Cheap history probe for UIs: full version count plus the newest [recent] summaries.",
+    )
+    @ApiResponse(responseCode = "200", description = "Version count and newest summaries")
     fun versionStats(
-        @PathVariable id: UUID,
+        @Parameter(description = "Pool entity id") @PathVariable id: UUID,
+        @Parameter(description = "How many of the newest version summaries to include")
         @RequestParam(defaultValue = "5") recent: Int,
     ) = store.entityVersionStats(id, recent)
 
@@ -147,9 +187,15 @@ class ObjsEntitiesController(
         description = "Ignores deep-version pins. [total] is unfiltered live count; [items] may be " +
             "filtered by q (open-graph text match) and limited. Sorted by graph updatedAt desc.",
     )
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "Envelope with `items` (graph headers) and `total`"),
+        ApiResponse(responseCode = "404", description = "Entity not found"),
+    )
     fun listLiveGraphs(
-        @PathVariable id: UUID,
+        @Parameter(description = "Pool entity id") @PathVariable id: UUID,
+        @Parameter(description = "Open-graph text filter over graph id and annotation key/value")
         @RequestParam(required = false) q: String?,
+        @Parameter(description = "Maximum number of graph headers in `items`; `total` stays unfiltered")
         @RequestParam(required = false) limit: Int?,
     ): ResponseEntity<Any> {
         if (store.getEntity(id) == null) {
@@ -166,21 +212,31 @@ class ObjsEntitiesController(
 
     @GetMapping("/{id}/versions")
     @Operation(summary = "List entity deep-capture versions, newest first")
-    fun listVersions(@PathVariable id: UUID) = store.listEntityVersions(id)
+    @ApiResponse(responseCode = "200", description = "Entity version summaries")
+    fun listVersions(
+        @Parameter(description = "Pool entity id") @PathVariable id: UUID,
+    ) = store.listEntityVersions(id)
 
     @PostMapping("/{id}/compact")
     @Operation(
         summary = "Compact orphan entity version rows",
         description = "Deletes entity version rows not pinned by any graph freeze and not equal to live head_version.",
     )
-    fun compact(@PathVariable id: UUID): Map<String, Int> =
+    @ApiResponse(responseCode = "200", description = "`removed`: number of version rows deleted")
+    fun compact(
+        @Parameter(description = "Pool entity id") @PathVariable id: UUID,
+    ): Map<String, Int> =
         mapOf("removed" to store.compactEntity(id))
 
     @GetMapping("/{id}/versions/{version}")
     @Operation(summary = "Fetch one entity deep-capture version")
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "Frozen entity at that version"),
+        ApiResponse(responseCode = "404", description = "Entity or version not found"),
+    )
     fun getVersion(
-        @PathVariable id: UUID,
-        @PathVariable version: Long,
+        @Parameter(description = "Pool entity id") @PathVariable id: UUID,
+        @Parameter(description = "Entity version number") @PathVariable version: Long,
     ): ResponseEntity<Any> =
         try {
             ResponseEntity.ok(store.getEntityVersion(id, version))
@@ -193,7 +249,11 @@ class ObjsEntitiesController(
     @PutMapping("/{id}")
     @Operation(summary = "Update payload/annotations/type/schemaVersion of an existing pool entity")
     @ApiResponses(
-        ApiResponse(responseCode = "200", description = "Updated pool entity"),
+        ApiResponse(
+            responseCode = "200",
+            description = "Updated pool entity",
+            content = [Content(schema = Schema(implementation = Entity::class))],
+        ),
         ApiResponse(responseCode = "404", description = "Entity not found"),
         ApiResponse(
             responseCode = "400",
@@ -202,7 +262,7 @@ class ObjsEntitiesController(
         ),
     )
     fun update(
-        @PathVariable id: UUID,
+        @Parameter(description = "Pool entity id; wins over any `id` in the body") @PathVariable id: UUID,
         @RequestBody body: EntityWriteBody,
     ): ResponseEntity<Any> {
         if (store.getEntity(id) == null) {
@@ -223,9 +283,20 @@ class ObjsEntitiesController(
     )
     @ApiResponses(
         ApiResponse(responseCode = "204", description = "Deleted"),
-        ApiResponse(responseCode = "404", description = "Entity not found"),
+        ApiResponse(
+            responseCode = "404",
+            description = "Entity not found",
+            content = [Content(schema = Schema(implementation = ValidationResult::class))],
+        ),
+        ApiResponse(
+            responseCode = "400",
+            description = "Delete rejected",
+            content = [Content(schema = Schema(implementation = ValidationResult::class))],
+        ),
     )
-    fun delete(@PathVariable id: UUID): ResponseEntity<Any> {
+    fun delete(
+        @Parameter(description = "Pool entity id") @PathVariable id: UUID,
+    ): ResponseEntity<Any> {
         val result = store.deleteEntity(id)
         if (!result.isValid) {
             val notFound = result.issues.any { it.code == "ENTITY_NOT_FOUND" }

@@ -23,13 +23,20 @@ import org.springframework.web.bind.annotation.RestController
 
 @RestController
 @RequestMapping("/api/v1/objs")
-@Tag(name = "graph-algorithms")
+@Tag(
+    name = "algorithms",
+    description = "JGraphT graph analysis: capability probe and cycle detection",
+)
 class ObjsGraphAlgorithmsController(
     private val algorithms: GraphAlgorithmService,
     private val matcherDsl: MatcherDsl = MatcherDsl.create(),
 ) {
     @GetMapping("/graph/algorithms/capabilities")
-    @Operation(summary = "List supported graph analysis algorithms and materialization modes")
+    @Operation(
+        summary = "List supported graph analysis algorithms and materialization modes",
+        description = "Probe the names accepted by the `algorithm` and `materialization` fields of the " +
+            "analysis endpoints.",
+    )
     @ApiResponses(
         ApiResponse(
             responseCode = "200",
@@ -56,6 +63,7 @@ class ObjsGraphAlgorithmsController(
             description = "Invalid matcher, materialization mode, or unresolved fragment",
             content = [Content(schema = Schema(implementation = ValidationResult::class))],
         ),
+        ApiResponse(responseCode = "404", description = "Graph or graph version not found (`error` + `code`)"),
     )
     fun cycles(@RequestBody body: GraphCycleAnalysisRequest): ResponseEntity<Any> =
         try {

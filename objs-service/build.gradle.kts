@@ -33,6 +33,7 @@ testing {
                     implementation(project())
                     implementation(libs.boot.starter.test)
                     implementation(libs.boot.starter.webmvc.test)
+                    runtimeOnly(libs.h2.database)
                 }
             }
         }

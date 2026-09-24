@@ -6,7 +6,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import java.util.UUID;
 import org.poc.objs.assetrepository.domain.CollectionEntity;
@@ -30,7 +29,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/asset-repository")
-@Tag(name = "asset-repository", description = "Collections and objects (domain API)")
 public class AssetRepositoryController {
 
     private final CollectionService collections;
@@ -48,7 +46,7 @@ public class AssetRepositoryController {
     }
 
     @GetMapping("/schema-catalog")
-    @Operation(summary = "Latest object schema per type, with collections that use it")
+    @Operation(tags = "schemas", summary = "Latest object schema per type, with collections that use it")
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
@@ -61,19 +59,19 @@ public class AssetRepositoryController {
     }
 
     @GetMapping("/schemas")
-    @Operation(summary = "List object schemas", description = "Optional type filter.")
+    @Operation(tags = "schemas", summary = "List object schemas", description = "Optional type filter.")
     List<org.poc.objs.api.domain.Schema> listSchemas(@RequestParam(required = false) String type) {
         return schemaQuery.list(type);
     }
 
     @GetMapping("/schemas/{type}")
-    @Operation(summary = "List schema versions for a type")
+    @Operation(tags = "schemas", summary = "List schema versions for a type")
     List<org.poc.objs.api.domain.Schema> listSchemasByType(@PathVariable("type") String type) {
         return schemaQuery.listByType(type);
     }
 
     @GetMapping("/schemas/{type}/{version}")
-    @Operation(summary = "Get object schema by type and version")
+    @Operation(tags = "schemas", summary = "Get object schema by type and version")
     org.poc.objs.api.domain.Schema getSchema(
             @PathVariable("type") String type,
             @PathVariable("version") String version
@@ -82,19 +80,22 @@ public class AssetRepositoryController {
     }
 
     @GetMapping("/schema-catalog/{type}/allowed-edges")
-    @Operation(summary = "Allowed-edge rules for a type, including wildcards")
+    @Operation(tags = "schemas", summary = "Allowed-edge rules for a type, including wildcards")
     ApiDtos.TypeAllowedEdgesDto allowedEdges(@PathVariable("type") String type) {
         return schemaQuery.allowedEdgesForType(type);
     }
 
     @GetMapping("/collections/{id}/schemas")
-    @Operation(summary = "Schemas for a collection's accepted types")
+    @Operation(tags = "schemas", summary = "Schemas for a collection's accepted types")
     List<org.poc.objs.api.domain.Schema> collectionSchemas(@PathVariable("id") UUID id) {
         return schemaQuery.forCollection(id);
     }
 
     @GetMapping("/collections")
-    @Operation(summary = "List collections", description = "Filter by name contains, owner, or accepted type.")
+    @Operation(
+            tags = "collections",
+            summary = "List collections",
+            description = "Filter by name contains, owner, or accepted type.")
     List<ApiDtos.CollectionDto> listCollections(
             @RequestParam(required = false) String name,
             @RequestParam(required = false) String owner,
@@ -105,7 +106,7 @@ public class AssetRepositoryController {
 
     @PostMapping("/collections")
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Create collection")
+    @Operation(tags = "collections", summary = "Create collection")
     @ApiResponses({
             @ApiResponse(
                     responseCode = "201",
@@ -130,7 +131,7 @@ public class AssetRepositoryController {
     }
 
     @GetMapping("/collections/{id}")
-    @Operation(summary = "Get collection")
+    @Operation(tags = "collections", summary = "Get collection")
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
@@ -147,7 +148,10 @@ public class AssetRepositoryController {
 
     @PostMapping("/collections/{id}/copy")
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Copy collection", description = "Live copy: shared object ids, new graph_id. Optional name, default Copy of {name}.")
+    @Operation(
+            tags = "collections",
+            summary = "Copy collection",
+            description = "Live copy: shared object ids, new graph_id. Optional name, default Copy of {name}.")
     ApiDtos.CollectionDto copyCollection(
             @PathVariable("id") UUID id,
             @RequestBody(required = false) ApiDtos.CopyCollectionRequest request
@@ -158,6 +162,7 @@ public class AssetRepositoryController {
 
     @GetMapping("/collections/{id}/statistics")
     @Operation(
+            tags = "collections",
             summary = "Collection statistics",
             description = "Collection object and in-graph edge counts; lastUpdated reserved for later.")
     ApiDtos.CollectionStatisticsDto collectionStatistics(@PathVariable("id") UUID id) {
@@ -170,7 +175,7 @@ public class AssetRepositoryController {
     }
 
     @PatchMapping("/collections/{id}")
-    @Operation(summary = "Update collection metadata")
+    @Operation(tags = "collections", summary = "Update collection metadata")
     ApiDtos.CollectionDto patchCollection(
             @PathVariable("id") UUID id,
             @RequestBody ApiDtos.PatchCollectionRequest request
@@ -193,13 +198,13 @@ public class AssetRepositoryController {
     }
 
     @GetMapping("/collections/{id}/objects")
-    @Operation(summary = "List objects in a collection")
+    @Operation(tags = "objects", summary = "List objects in a collection")
     List<ApiDtos.ObjectDto> listObjects(@PathVariable("id") UUID id) {
         return objects.listObjects(id);
     }
 
     @GetMapping("/collections/{id}/objects/{objectId}")
-    @Operation(summary = "Get object")
+    @Operation(tags = "objects", summary = "Get object")
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
@@ -215,7 +220,10 @@ public class AssetRepositoryController {
     }
 
     @GetMapping("/collections/{id}/objects/{objectId}/relations")
-    @Operation(summary = "List related objects", description = "In-collection edges incident to this object.")
+    @Operation(
+            tags = "objects",
+            summary = "List related objects",
+            description = "In-collection edges incident to this object.")
     List<ApiDtos.ObjectRelationDto> listRelations(
             @PathVariable("id") UUID id,
             @PathVariable("objectId") UUID objectId
@@ -225,7 +233,10 @@ public class AssetRepositoryController {
 
     @PostMapping("/collections/{id}/objects")
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Create or update object", description = "Identity resolve per collection object_write_mode. When id matches an existing object, payload is a partial merge (omitted fields kept).")
+    @Operation(
+            tags = "objects",
+            summary = "Create or update object",
+            description = "Identity resolve per collection object_write_mode. When id matches an existing object, payload is a partial merge (omitted fields kept).")
     @ApiResponses({
             @ApiResponse(
                     responseCode = "201",
@@ -238,7 +249,10 @@ public class AssetRepositoryController {
 
     @PostMapping("/collections/{id}/compositions")
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Write composition", description = "Objects plus in-collection relations (e.g. Database CONTAINS Dataset).")
+    @Operation(
+            tags = "objects",
+            summary = "Write composition",
+            description = "Objects plus in-collection relations (e.g. Database CONTAINS Dataset).")
     List<ApiDtos.ObjectDto> writeComposition(
             @PathVariable("id") UUID id,
             @RequestBody ApiDtos.CompositionRequest request
@@ -247,7 +261,10 @@ public class AssetRepositoryController {
     }
 
     @PostMapping("/collections/{id}/objects/search")
-    @Operation(summary = "Search objects", description = "Collection-scoped matchers via filters or matcherExpr.")
+    @Operation(
+            tags = "objects",
+            summary = "Search objects",
+            description = "Collection-scoped matchers via filters or matcherExpr.")
     List<ApiDtos.ObjectDto> search(
             @PathVariable("id") UUID id,
             @RequestBody(required = false) ApiDtos.SearchRequest request
@@ -257,7 +274,7 @@ public class AssetRepositoryController {
 
     @DeleteMapping("/collections/{id}/objects/{objectId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @Operation(summary = "Delete object")
+    @Operation(tags = "objects", summary = "Delete object")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "Object deleted")
     })

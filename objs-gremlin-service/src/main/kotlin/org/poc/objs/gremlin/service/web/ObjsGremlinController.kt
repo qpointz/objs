@@ -29,7 +29,10 @@ import org.springframework.web.bind.annotation.RestController
  */
 @RestController
 @RequestMapping("/api/v1/objs")
-@Tag(name = "traverse")
+@Tag(
+    name = "traverse",
+    description = "Gremlin traversal over a materialized graph (gremlin-lang)",
+)
 class ObjsGremlinController(
     private val store: GraphStore,
     private val engine: GremlinEngine,
@@ -46,7 +49,7 @@ class ObjsGremlinController(
     @ApiResponses(
         ApiResponse(
             responseCode = "200",
-            description = "Projected Gremlin result",
+            description = "Projected Gremlin result: kind-tagged items plus graph/table/scalar views and meta",
             content = [Content(schema = Schema(implementation = GremlinResult::class))],
         ),
         ApiResponse(
@@ -54,6 +57,7 @@ class ObjsGremlinController(
             description = "Invalid matcher, script, options, or evaluation failure",
             content = [Content(schema = Schema(implementation = ValidationResult::class))],
         ),
+        ApiResponse(responseCode = "404", description = "Graph or graph version not found (`error` + `code`)"),
     )
     fun traverse(@RequestBody body: GremlinTraverseRequest): ResponseEntity<Any> {
         if (body.script.isBlank()) {

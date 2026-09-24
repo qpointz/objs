@@ -1,6 +1,9 @@
 package org.poc.objs.service.web
 
 import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import io.swagger.v3.oas.annotations.media.Content
+import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
@@ -36,7 +39,7 @@ import java.util.UUID
  */
 @RestController
 @RequestMapping("/api/v1/objs")
-@Tag(name = "graph")
+@Tag(name = "seeds", description = "Graph seed validate, import, and export")
 class ObjsGraphController(
     private val store: GraphStore,
     private val seedImporter: SeedImporter,
@@ -49,7 +52,11 @@ class ObjsGraphController(
         description = "Accepts the same GraphMutation body as graph mutate (entities/edges set and " +
             "optional unset) but never persists; use POST /graphs/{id}/validate for a graph-scoped dry-run.",
     )
-    @ApiResponse(responseCode = "200", description = "Validation result (may be invalid)")
+    @ApiResponse(
+        responseCode = "200",
+        description = "Validation result (may be invalid)",
+        content = [Content(schema = Schema(implementation = ValidationResult::class))],
+    )
     fun validateGraph(@RequestBody mutation: GraphMutation): ValidationResult =
         store.validateMutation(mutation)
 
@@ -58,9 +65,23 @@ class ObjsGraphController(
         consumes = [MediaType.MULTIPART_FORM_DATA_VALUE],
         produces = [MediaType.APPLICATION_JSON_VALUE],
     )
-    @Operation(summary = "Import Graph seed documents (MERGE, transactional)")
+    @Operation(
+        summary = "Import Graph seed documents (MERGE, transactional)",
+        description = "Multipart upload of a seed YAML holding Graph-kind documents. All documents apply " +
+            "in one transaction: any validation failure rolls the whole import back.",
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "Import summary (applied seed documents)"),
+        ApiResponse(
+            responseCode = "400",
+            description = "Unknown format, or seed parse/validation failure",
+            content = [Content(schema = Schema(implementation = ValidationResult::class))],
+        ),
+    )
     fun importGraph(
+        @Parameter(description = "Payload format; only `seeds` is supported")
         @RequestParam format: String,
+        @Parameter(description = "Seed YAML file holding Graph-kind documents")
         @RequestPart("file") file: MultipartFile,
     ): ResponseEntity<Any> {
         if (format != ObjsIoFormats.SEEDS) {
@@ -80,12 +101,22 @@ class ObjsGraphController(
         description = "Requires a `graphId` query param naming an existing graph; never dumps the entire pool.",
     )
     @ApiResponses(
-        ApiResponse(responseCode = "200", description = "Seed YAML for the graph's members + graph-local edges"),
-        ApiResponse(responseCode = "400", description = "Missing graphId or unknown format"),
+        ApiResponse(
+            responseCode = "200",
+            description = "Seed YAML for the graph's members + graph-local edges",
+            content = [Content(mediaType = ObjsIoFormats.YAML_MEDIA_TYPE, schema = Schema(type = "string"))],
+        ),
+        ApiResponse(
+            responseCode = "400",
+            description = "Missing graphId or unknown format",
+            content = [Content(schema = Schema(implementation = ValidationResult::class))],
+        ),
         ApiResponse(responseCode = "404", description = "Graph not found"),
     )
     fun exportGraph(
+        @Parameter(description = "Payload format; only `seeds` is supported")
         @RequestParam format: String,
+        @Parameter(description = "Graph to export; required — the endpoint refuses to dump the whole pool")
         @RequestParam(required = false) graphId: UUID?,
     ): ResponseEntity<Any> {
         if (format != ObjsIoFormats.SEEDS) {

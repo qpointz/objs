@@ -5,7 +5,6 @@ import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
-import io.swagger.v3.oas.annotations.tags.Tag
 import org.poc.objs.sbom.domain.ApplicationFingerprintSummary
 import org.poc.objs.sbom.domain.ApplicationPortalStats
 import org.poc.objs.sbom.domain.ApplicationSummary
@@ -50,7 +49,6 @@ import java.util.UUID
 
 @RestController
 @RequestMapping("/api/v1/inventory/applications")
-@Tag(name = "inventory")
 class ApplicationInventoryController(
     private val inventory: ApplicationInventoryService,
     private val versions: ApplicationVersionService,
@@ -58,12 +56,15 @@ class ApplicationInventoryController(
     private val cycloneDx: CycloneDxExportService,
 ) {
     @GetMapping
-    @Operation(summary = "Search or list applications")
+    @Operation(tags = ["applications"], summary = "Search or list applications")
     fun search(@RequestParam(required = false) q: String?): List<ApplicationSummary> =
         inventory.search(q)
 
     @PostMapping
-    @Operation(summary = "Create an application with a required target version and one empty BOM")
+    @Operation(
+        tags = ["applications"],
+        summary = "Create an application with a required target version and one empty BOM",
+    )
     @ApiResponses(
         ApiResponse(
             responseCode = "200",
@@ -79,33 +80,42 @@ class ApplicationInventoryController(
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Fetch an application by id")
+    @Operation(tags = ["applications"], summary = "Fetch an application by id")
     fun get(@PathVariable id: UUID): ApplicationSummary =
         inventory.get(id)
 
     @PutMapping("/{id}")
-    @Operation(summary = "Update application name, description, or tags")
+    @Operation(tags = ["applications"], summary = "Update application name, description, or tags")
     fun update(
         @PathVariable id: UUID,
         @RequestBody body: UpdateApplicationRequest,
     ): ApplicationSummary = inventory.update(id, body)
 
     @GetMapping("/{id}/stats")
-    @Operation(summary = "Lazy portal stats for one application (versions, BOMs, latest RELEASED)")
+    @Operation(
+        tags = ["applications"],
+        summary = "Lazy portal stats for one application (versions, BOMs, latest RELEASED)",
+    )
     fun stats(@PathVariable id: UUID): ApplicationPortalStats = inventory.portalStats(id)
 
     @GetMapping("/{id}/depends-on")
-    @Operation(summary = "Inferred application dependencies from the latest released BOM")
+    @Operation(
+        tags = ["applications"],
+        summary = "Inferred application dependencies from the latest released BOM",
+    )
     fun dependsOn(@PathVariable id: UUID): List<InferredAppDependency> =
         inventory.inferDependsOn(id)
 
     @GetMapping("/{id}/versions")
-    @Operation(summary = "List application versions")
+    @Operation(tags = ["application-versions"], summary = "List application versions")
     fun listVersions(@PathVariable id: UUID): List<ApplicationVersionSummary> =
         versions.list(id)
 
     @PostMapping("/{id}/versions")
-    @Operation(summary = "Create a DRAFT from a version or fingerprint, with a unique target version")
+    @Operation(
+        tags = ["application-versions"],
+        summary = "Create a DRAFT from a version or fingerprint, with a unique target version",
+    )
     @ApiResponses(
         ApiResponse(
             responseCode = "200",
@@ -131,13 +141,16 @@ class ApplicationInventoryController(
     }
 
     @GetMapping("/{id}/versions/latest")
-    @Operation(summary = "Latest RELEASED version metadata")
+    @Operation(tags = ["application-versions"], summary = "Latest RELEASED version metadata")
     fun latestVersion(@PathVariable id: UUID): ApplicationVersionSummary =
         versions.latest(id)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "No released versions for application: $id")
 
     @GetMapping("/{id}/versions/{versionId}")
-    @Operation(summary = "Version metadata plus Combined SBOM (ephemeral union of all BOMs)")
+    @Operation(
+        tags = ["application-versions"],
+        summary = "Version metadata plus Combined SBOM (ephemeral union of all BOMs)",
+    )
     fun getVersion(
         @PathVariable id: UUID,
         @PathVariable versionId: UUID,
@@ -153,7 +166,7 @@ class ApplicationInventoryController(
     }
 
     @PatchMapping("/{id}/versions/{versionId}")
-    @Operation(summary = "Patch DRAFT target version and/or tags")
+    @Operation(tags = ["application-versions"], summary = "Patch DRAFT target version and/or tags")
     fun patchVersion(
         @PathVariable id: UUID,
         @PathVariable versionId: UUID,
@@ -162,7 +175,10 @@ class ApplicationInventoryController(
 
     @DeleteMapping("/{id}/versions/{versionId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @Operation(summary = "Delete a DRAFT and cascade dependent drafts after confirm")
+    @Operation(
+        tags = ["application-versions"],
+        summary = "Delete a DRAFT and cascade dependent drafts after confirm",
+    )
     @ApiResponses(
         ApiResponse(responseCode = "204", description = "Draft deleted"),
     )
@@ -175,14 +191,20 @@ class ApplicationInventoryController(
     }
 
     @GetMapping("/{id}/versions/{versionId}/dependents")
-    @Operation(summary = "List drafts that would be deleted with this DRAFT")
+    @Operation(
+        tags = ["application-versions"],
+        summary = "List drafts that would be deleted with this DRAFT",
+    )
     fun deleteImpact(
         @PathVariable id: UUID,
         @PathVariable versionId: UUID,
     ): List<ApplicationVersionSummary> = versions.deleteImpact(id, versionId)
 
     @GetMapping("/{id}/versions/{versionId}/combined")
-    @Operation(summary = "Ephemeral Combined SBOM union (optionally a selected BOM subset)")
+    @Operation(
+        tags = ["application-versions"],
+        summary = "Ephemeral Combined SBOM union (optionally a selected BOM subset)",
+    )
     @ApiResponses(
         ApiResponse(
             responseCode = "200",
@@ -197,7 +219,10 @@ class ApplicationInventoryController(
     ): CombinedBomView = boms.combined(id, versionId, sbomIds)
 
     @PutMapping("/{id}/versions/{versionId}/combined")
-    @Operation(summary = "Combined SBOM is read-only; writes are rejected with 405")
+    @Operation(
+        tags = ["application-versions"],
+        summary = "Combined SBOM is read-only; writes are rejected with 405",
+    )
     @ApiResponses(
         ApiResponse(
             responseCode = "405",
@@ -211,14 +236,14 @@ class ApplicationInventoryController(
     ): Nothing = throw ResponseStatusException(HttpStatus.METHOD_NOT_ALLOWED, "Combined SBOM is read-only")
 
     @GetMapping("/{id}/versions/{versionId}/sboms")
-    @Operation(summary = "List constituent BOMs for a version")
+    @Operation(tags = ["application-sboms"], summary = "List constituent BOMs for a version")
     fun listBoms(
         @PathVariable id: UUID,
         @PathVariable versionId: UUID,
     ): List<BomSummary> = boms.list(id, versionId)
 
     @PostMapping("/{id}/versions/{versionId}/sboms")
-    @Operation(summary = "Create a constituent BOM on a DRAFT")
+    @Operation(tags = ["application-sboms"], summary = "Create a constituent BOM on a DRAFT")
     fun createBom(
         @PathVariable id: UUID,
         @PathVariable versionId: UUID,
@@ -226,7 +251,7 @@ class ApplicationInventoryController(
     ): BomSummary = boms.create(id, versionId, body)
 
     @GetMapping("/{id}/versions/{versionId}/sboms/{sbomId}")
-    @Operation(summary = "Get one constituent BOM graph")
+    @Operation(tags = ["application-sboms"], summary = "Get one constituent BOM graph")
     fun getBom(
         @PathVariable id: UUID,
         @PathVariable versionId: UUID,
@@ -234,7 +259,7 @@ class ApplicationInventoryController(
     ): VersionBomView = boms.get(id, versionId, sbomId)
 
     @PutMapping("/{id}/versions/{versionId}/sboms/{sbomId}")
-    @Operation(summary = "Replace assets and relations on one DRAFT BOM")
+    @Operation(tags = ["application-sboms"], summary = "Replace assets and relations on one DRAFT BOM")
     fun putBom(
         @PathVariable id: UUID,
         @PathVariable versionId: UUID,
@@ -243,7 +268,7 @@ class ApplicationInventoryController(
     ): VersionBomView = versions.replaceBom(id, versionId, body, sbomId)
 
     @PatchMapping("/{id}/versions/{versionId}/sboms/{sbomId}")
-    @Operation(summary = "Patch BOM name, description, or tags")
+    @Operation(tags = ["application-sboms"], summary = "Patch BOM name, description, or tags")
     fun patchBom(
         @PathVariable id: UUID,
         @PathVariable versionId: UUID,
@@ -253,7 +278,7 @@ class ApplicationInventoryController(
 
     @DeleteMapping("/{id}/versions/{versionId}/sboms/{sbomId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @Operation(summary = "Delete a constituent BOM (not the last one)")
+    @Operation(tags = ["application-sboms"], summary = "Delete a constituent BOM (not the last one)")
     @ApiResponses(
         ApiResponse(responseCode = "204", description = "BOM deleted"),
     )
@@ -267,6 +292,7 @@ class ApplicationInventoryController(
 
     @PutMapping("/{id}/versions/{versionId}")
     @Operation(
+        tags = ["application-sboms"],
         summary = "Replace the primary DRAFT BOM graph",
         description = "Writes assets and relations onto the version's default/primary BOM.",
     )
@@ -277,7 +303,7 @@ class ApplicationInventoryController(
     ): VersionBomView = versions.replaceBom(id, versionId, body)
 
     @PostMapping("/{id}/versions/{versionId}/promote")
-    @Operation(summary = "Promote a DRAFT to RELEASED")
+    @Operation(tags = ["application-versions"], summary = "Promote a DRAFT to RELEASED")
     fun promote(
         @PathVariable id: UUID,
         @PathVariable versionId: UUID,
@@ -285,7 +311,7 @@ class ApplicationInventoryController(
     ): VersionBomView = versions.promote(id, versionId, body)
 
     @PostMapping("/{id}/versions/{versionId}/assets")
-    @Operation(summary = "Add an asset to the DRAFT primary BOM")
+    @Operation(tags = ["application-sboms"], summary = "Add an asset to the DRAFT primary BOM")
     fun addAsset(
         @PathVariable id: UUID,
         @PathVariable versionId: UUID,
@@ -293,7 +319,7 @@ class ApplicationInventoryController(
     ): VersionBomView = versions.addAsset(id, versionId, body)
 
     @DeleteMapping("/{id}/versions/{versionId}/assets/{assetId}")
-    @Operation(summary = "Remove an asset from the DRAFT primary BOM")
+    @Operation(tags = ["application-sboms"], summary = "Remove an asset from the DRAFT primary BOM")
     fun removeAsset(
         @PathVariable id: UUID,
         @PathVariable versionId: UUID,
@@ -301,7 +327,7 @@ class ApplicationInventoryController(
     ): VersionBomView = versions.removeAsset(id, versionId, assetId)
 
     @PostMapping("/{id}/versions/{versionId}/relations")
-    @Operation(summary = "Add a relation to the DRAFT primary BOM")
+    @Operation(tags = ["application-sboms"], summary = "Add a relation to the DRAFT primary BOM")
     fun addRelation(
         @PathVariable id: UUID,
         @PathVariable versionId: UUID,
@@ -309,7 +335,7 @@ class ApplicationInventoryController(
     ): VersionBomView = versions.addRelation(id, versionId, body)
 
     @DeleteMapping("/{id}/versions/{versionId}/relations/{relationId}")
-    @Operation(summary = "Remove a relation from the DRAFT primary BOM")
+    @Operation(tags = ["application-sboms"], summary = "Remove a relation from the DRAFT primary BOM")
     fun removeRelation(
         @PathVariable id: UUID,
         @PathVariable versionId: UUID,
@@ -317,21 +343,24 @@ class ApplicationInventoryController(
     ): VersionBomView = versions.removeRelation(id, versionId, relationId)
 
     @GetMapping("/{id}/versions/{versionId}/depends-on")
-    @Operation(summary = "Inferred application dependencies for one version")
+    @Operation(
+        tags = ["application-versions"],
+        summary = "Inferred application dependencies for one version",
+    )
     fun versionDependsOn(
         @PathVariable id: UUID,
         @PathVariable versionId: UUID,
     ): List<InferredAppDependency> = versions.inferDependsOn(id, versionId)
 
     @GetMapping("/{id}/versions/{versionId}/fingerprints")
-    @Operation(summary = "List fingerprints for a version")
+    @Operation(tags = ["application-versions"], summary = "List fingerprints for a version")
     fun listFingerprints(
         @PathVariable id: UUID,
         @PathVariable versionId: UUID,
     ): List<ApplicationFingerprintSummary> = versions.listFingerprints(id, versionId)
 
     @GetMapping("/{id}/versions/{versionId}/fingerprints/{fingerprintId}")
-    @Operation(summary = "Fetch a fingerprint BOM snapshot")
+    @Operation(tags = ["application-versions"], summary = "Fetch a fingerprint BOM snapshot")
     fun getFingerprint(
         @PathVariable id: UUID,
         @PathVariable versionId: UUID,
@@ -347,7 +376,10 @@ class ApplicationInventoryController(
     }
 
     @PostMapping("/{id}/versions/{versionId}/fingerprints")
-    @Operation(summary = "Snapshot the full Combined SBOM as a named fingerprint")
+    @Operation(
+        tags = ["application-versions"],
+        summary = "Snapshot the full Combined SBOM as a named fingerprint",
+    )
     fun createFingerprint(
         @PathVariable id: UUID,
         @PathVariable versionId: UUID,
@@ -364,7 +396,7 @@ class ApplicationInventoryController(
     }
 
     @PutMapping("/{id}/versions/{versionId}/fingerprints/{fingerprintId}")
-    @Operation(summary = "Fingerprints are immutable; PUT is rejected")
+    @Operation(tags = ["application-versions"], summary = "Fingerprints are immutable; PUT is rejected")
     @ApiResponses(
         ApiResponse(responseCode = "403", description = "Fingerprints are immutable"),
     )
@@ -376,7 +408,10 @@ class ApplicationInventoryController(
     ): VersionBomView = versions.rejectFingerprintWrite(id, versionId, fingerprintId)
 
     @DeleteMapping("/{id}/versions/{versionId}/fingerprints/{fingerprintId}")
-    @Operation(summary = "Fingerprints are immutable; DELETE is rejected")
+    @Operation(
+        tags = ["application-versions"],
+        summary = "Fingerprints are immutable; DELETE is rejected",
+    )
     @ApiResponses(
         ApiResponse(responseCode = "403", description = "Fingerprints are immutable"),
     )
@@ -387,7 +422,7 @@ class ApplicationInventoryController(
     ): VersionBomView = versions.rejectFingerprintWrite(id, versionId, fingerprintId)
 
     @PostMapping("/{id}/versions/{versionId}/fingerprints/{fingerprintId}")
-    @Operation(summary = "Fingerprints are immutable; POST is rejected")
+    @Operation(tags = ["application-versions"], summary = "Fingerprints are immutable; POST is rejected")
     @ApiResponses(
         ApiResponse(responseCode = "403", description = "Fingerprints are immutable"),
     )
@@ -399,7 +434,10 @@ class ApplicationInventoryController(
     ): VersionBomView = versions.rejectFingerprintWrite(id, versionId, fingerprintId)
 
     @GetMapping("/{id}/versions/{versionId}/export/cyclonedx")
-    @Operation(summary = "Export a version Combined SBOM as CycloneDX JSON")
+    @Operation(
+        tags = ["application-versions"],
+        summary = "Export a version Combined SBOM as CycloneDX JSON",
+    )
     @ApiResponses(
         ApiResponse(
             responseCode = "200",

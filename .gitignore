@@ -32,6 +32,8 @@ target/
 .tmp/
 .temp/
 /.certs/
+.tmp/openapi-generator/
+.tmp/openapi-codegen-out/
 
 **/__pycache__/
 *.py[cod]

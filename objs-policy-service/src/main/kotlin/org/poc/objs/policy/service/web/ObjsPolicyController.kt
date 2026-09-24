@@ -1,7 +1,12 @@
 package org.poc.objs.policy.service.web
 
 import io.swagger.v3.oas.annotations.Operation
-import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Parameter
+import io.swagger.v3.oas.annotations.media.ArraySchema
+import io.swagger.v3.oas.annotations.media.Content
+import io.swagger.v3.oas.annotations.media.Schema
+import io.swagger.v3.oas.annotations.responses.ApiResponse
+import io.swagger.v3.oas.annotations.responses.ApiResponses
 import org.poc.objs.api.domain.GraphException
 import org.poc.objs.api.domain.GraphMaterializationException
 import org.poc.objs.api.match.MatcherDsl
@@ -34,50 +39,117 @@ import java.util.UUID
 
 @RestController
 @RequestMapping("/api/v1/objs/policy")
-@Tag(name = "policy")
 class ObjsPolicyController(
     private val play: PolicyPlayService,
     private val matcherDsl: MatcherDsl = MatcherDsl.create(),
 ) {
     @GetMapping("/capabilities")
-    @Operation(summary = "Policy playground capability probe")
+    @Operation(
+        tags = ["catalog"],
+        summary = "Policy playground capability probe",
+        description = "Reports which engines and archive features are on the classpath; use it to " +
+            "hide unsupported UI affordances rather than probing endpoints for failures.",
+    )
+    @ApiResponse(
+        responseCode = "200",
+        description = "Available engines and playground features",
+        content = [Content(schema = Schema(implementation = PolicyCapabilities::class))],
+    )
     fun capabilities(): PolicyCapabilities = play.capabilities()
 
     @GetMapping("/export")
-    @Operation(summary = "Export full policy catalog as REPLACE seed YAML")
+    @Operation(
+        tags = ["catalog"],
+        summary = "Export full policy catalog as REPLACE seed YAML",
+        description = "Round-trippable dump of categories, policies, and suites; importing it replaces " +
+            "the catalog.",
+    )
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "Seed YAML attachment",
+            content = [Content(mediaType = "application/x-yaml", schema = Schema(type = "string"))],
+        ),
+        ApiResponse(responseCode = "400", description = "Unsupported format"),
+    )
     fun exportCatalog(
+        @Parameter(description = "Payload format; only `seeds` is supported")
         @RequestParam(defaultValue = "seeds") format: String,
     ): ResponseEntity<String> {
         if (format != "seeds") {
             return ResponseEntity.badRequest().body("Only format=seeds is supported")
         }
         return ResponseEntity.ok()
-            .header("Content-Disposition", "attachment; filename=\"policy-catalog-seeds.yaml\"")
+            .header("Content-Disposition", "attachment; filename=\"catalog-seeds.yaml\"")
             .header("Content-Type", "application/x-yaml")
             .body(play.exportCatalogSeeds())
     }
 
     @GetMapping("/categories")
-    @Operation(summary = "List policy categories")
+    @Operation(tags = ["catalog"], summary = "List policy categories")
+    @ApiResponse(
+        responseCode = "200",
+        description = "All categories",
+        content = [Content(array = ArraySchema(schema = Schema(implementation = Category::class)))],
+    )
     fun listCategories(): List<Category> = play.listCategories()
 
     @GetMapping("/categories/{id}")
-    fun getCategory(@PathVariable id: UUID): ResponseEntity<Category> =
+    @Operation(tags = ["catalog"], summary = "Get a policy category by id")
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "Category",
+            content = [Content(schema = Schema(implementation = Category::class))],
+        ),
+        ApiResponse(responseCode = "404", description = "Category not found"),
+    )
+    fun getCategory(
+        @Parameter(description = "Category id") @PathVariable id: UUID,
+    ): ResponseEntity<Category> =
         play.getCategory(id)?.let { ResponseEntity.ok(it) } ?: ResponseEntity.notFound().build()
 
     @PostMapping("/categories")
+    @Operation(tags = ["catalog"], summary = "Create a policy category")
+    @ApiResponse(
+        responseCode = "200",
+        description = "Created category",
+        content = [Content(schema = Schema(implementation = Category::class))],
+    )
     fun createCategory(@RequestBody write: CategoryWrite): Category = play.createCategory(write)
 
     @PutMapping("/categories/{id}")
+    @Operation(tags = ["catalog"], summary = "Update a policy category")
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "Updated category",
+            content = [Content(schema = Schema(implementation = Category::class))],
+        ),
+        ApiResponse(responseCode = "404", description = "Category not found"),
+    )
     fun updateCategory(
-        @PathVariable id: UUID,
+        @Parameter(description = "Category id") @PathVariable id: UUID,
         @RequestBody write: CategoryWrite,
     ): ResponseEntity<Category> =
         play.updateCategory(id, write)?.let { ResponseEntity.ok(it) }
             ?: ResponseEntity.notFound().build()
 
     @DeleteMapping("/categories/{id}")
-    fun deleteCategory(@PathVariable id: UUID): ResponseEntity<Any> =
+    @Operation(
+        tags = ["catalog"],
+        summary = "Delete a policy category (rejected while in use)",
+        description = "Reassign or delete the policies in the category first.",
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "204", description = "Deleted"),
+        ApiResponse(responseCode = "400", description = "Invalid request"),
+        ApiResponse(responseCode = "404", description = "Category not found"),
+        ApiResponse(responseCode = "409", description = "Category still referenced by policies"),
+    )
+    fun deleteCategory(
+        @Parameter(description = "Category id") @PathVariable id: UUID,
+    ): ResponseEntity<Any> =
         try {
             if (play.deleteCategory(id)) ResponseEntity.noContent().build()
             else ResponseEntity.notFound().build()
@@ -88,12 +160,26 @@ class ObjsPolicyController(
         }
 
     @GetMapping("/policies")
-    @Operation(summary = "List / query policies in the playground repository")
+    @Operation(
+        tags = ["catalog"],
+        summary = "List / query policies in the playground repository",
+        description = "All filters are ANDed; omit every filter to list the whole catalog.",
+    )
+    @ApiResponse(
+        responseCode = "200",
+        description = "Matching policies",
+        content = [Content(array = ArraySchema(schema = Schema(implementation = Policy::class)))],
+    )
     fun list(
+        @Parameter(description = "Restrict to policies in this category")
         @RequestParam(required = false) categoryId: UUID?,
+        @Parameter(description = "Repeatable: policy must carry every given tag")
         @RequestParam(required = false) tag: List<String>?,
+        @Parameter(description = "Case-sensitive substring match on policy name")
         @RequestParam(required = false) name: String?,
+        @Parameter(description = "Case-sensitive substring match on policy key")
         @RequestParam(required = false) key: String?,
+        @Parameter(description = "Repeatable `key=value` annotation filter; entries without `=` are ignored")
         @RequestParam(required = false) annotation: List<String>?,
     ): List<Policy> {
         val annotations = linkedMapOf<String, String>()
@@ -113,10 +199,34 @@ class ObjsPolicyController(
     }
 
     @GetMapping("/policies/{id}")
-    fun get(@PathVariable id: UUID): ResponseEntity<Policy> =
+    @Operation(tags = ["catalog"], summary = "Get a policy by id")
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "Policy",
+            content = [Content(schema = Schema(implementation = Policy::class))],
+        ),
+        ApiResponse(responseCode = "404", description = "Policy not found"),
+    )
+    fun get(
+        @Parameter(description = "Policy id") @PathVariable id: UUID,
+    ): ResponseEntity<Policy> =
         play.get(id)?.let { ResponseEntity.ok(it) } ?: ResponseEntity.notFound().build()
 
     @PostMapping("/policies")
+    @Operation(
+        tags = ["catalog"],
+        summary = "Create a policy",
+        description = "`engineKind` defaults to DROOLS and `applicabilityKind` to ALWAYS_APPLY when blank.",
+    )
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "Created policy",
+            content = [Content(schema = Schema(implementation = Policy::class))],
+        ),
+        ApiResponse(responseCode = "400", description = "Invalid policy write (message body)"),
+    )
     fun create(@RequestBody write: PolicyWrite): ResponseEntity<Any> =
         try {
             ResponseEntity.ok(
@@ -132,7 +242,20 @@ class ObjsPolicyController(
         }
 
     @PutMapping("/policies/{id}")
-    fun update(@PathVariable id: UUID, @RequestBody write: PolicyWrite): ResponseEntity<Any> =
+    @Operation(tags = ["catalog"], summary = "Update a policy")
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "Updated policy",
+            content = [Content(schema = Schema(implementation = Policy::class))],
+        ),
+        ApiResponse(responseCode = "400", description = "Invalid policy write (message body)"),
+        ApiResponse(responseCode = "404", description = "Policy not found"),
+    )
+    fun update(
+        @Parameter(description = "Policy id") @PathVariable id: UUID,
+        @RequestBody write: PolicyWrite,
+    ): ResponseEntity<Any> =
         try {
             play.update(id, write)?.let { ResponseEntity.ok(it) }
                 ?: ResponseEntity.notFound().build()
@@ -141,12 +264,29 @@ class ObjsPolicyController(
         }
 
     @DeleteMapping("/policies/{id}")
-    fun delete(@PathVariable id: UUID): ResponseEntity<Void> =
+    @Operation(tags = ["catalog"], summary = "Delete a policy")
+    @ApiResponses(
+        ApiResponse(responseCode = "204", description = "Deleted"),
+        ApiResponse(responseCode = "404", description = "Policy not found"),
+    )
+    fun delete(
+        @Parameter(description = "Policy id") @PathVariable id: UUID,
+    ): ResponseEntity<Void> =
         if (play.delete(id)) ResponseEntity.noContent().build()
         else ResponseEntity.notFound().build()
 
     @PostMapping("/check")
-    @Operation(summary = "Compile/validate a DROOLS policy body")
+    @Operation(
+        tags = ["evaluate"],
+        summary = "Compile/validate a DROOLS policy body",
+        description = "Always 200: compilation problems come back inside the result rather than as an " +
+            "error status. Nothing is stored or executed.",
+    )
+    @ApiResponse(
+        responseCode = "200",
+        description = "Compilation outcome with any diagnostics",
+        content = [Content(schema = Schema(implementation = PolicyCheckResult::class))],
+    )
     fun check(@RequestBody request: PolicyCheckRequest): PolicyCheckResult =
         play.check(
             body = request.body,
@@ -154,7 +294,34 @@ class ObjsPolicyController(
         )
 
     @PostMapping("/evaluate")
-    @Operation(summary = "Evaluate a policy against a matcher-selected graph fragment")
+    @Operation(
+        tags = ["evaluate"],
+        summary = "Evaluate a policy against a matcher-selected graph fragment",
+        description = "Runs a stored policy (`policyId`) or an inline `body`. The matcher selects the " +
+            "input fragment the same way as graph query; nothing is archived — use " +
+            "POST /policy/evaluations/suite to save a suite run.",
+    )
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "Evaluation result",
+            content = [
+                Content(
+                    schema = Schema(implementation = org.poc.objs.policy.api.EvaluationResult::class),
+                ),
+            ],
+        ),
+        ApiResponse(
+            responseCode = "400",
+            description = "Invalid matcher, unresolved fragment, or bad policy reference",
+            content = [
+                Content(
+                    schema = Schema(implementation = org.poc.objs.api.validation.ValidationResult::class),
+                ),
+            ],
+        ),
+        ApiResponse(responseCode = "404", description = "Graph or graph version not found"),
+    )
     fun evaluate(@RequestBody request: PolicyEvaluateRequest): ResponseEntity<Any> =
         try {
             val matcherNode =
@@ -189,15 +356,44 @@ class ObjsPolicyController(
         }
 
     @GetMapping("/suites")
-    @Operation(summary = "List policy suites")
+    @Operation(tags = ["suites"], summary = "List policy suites")
+    @ApiResponse(
+        responseCode = "200",
+        description = "All suites with their folder trees",
+        content = [Content(array = ArraySchema(schema = Schema(implementation = PolicySuiteDto::class)))],
+    )
     fun listSuites(): List<PolicySuiteDto> = play.listSuites().map { SuiteHttpMapping.toDto(it) }
 
     @GetMapping("/suites/{id}")
-    fun getSuite(@PathVariable id: UUID): ResponseEntity<PolicySuiteDto> =
+    @Operation(tags = ["suites"], summary = "Get a policy suite by id")
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "Suite with its folder tree",
+            content = [Content(schema = Schema(implementation = PolicySuiteDto::class))],
+        ),
+        ApiResponse(responseCode = "404", description = "Suite not found"),
+    )
+    fun getSuite(
+        @Parameter(description = "Suite id") @PathVariable id: UUID,
+    ): ResponseEntity<PolicySuiteDto> =
         play.getSuite(id)?.let { ResponseEntity.ok(SuiteHttpMapping.toDto(it)) }
             ?: ResponseEntity.notFound().build()
 
     @PostMapping("/suites")
+    @Operation(
+        tags = ["suites"],
+        summary = "Create a policy suite",
+        description = "The whole folder tree is written in one call; folder ids are assigned by the store.",
+    )
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "Created suite",
+            content = [Content(schema = Schema(implementation = PolicySuiteDto::class))],
+        ),
+        ApiResponse(responseCode = "400", description = "Unknown matcher kind, mode, or participation"),
+    )
     fun createSuite(@RequestBody dto: PolicySuiteDto): ResponseEntity<Any> =
         try {
             ResponseEntity.ok(SuiteHttpMapping.toDto(play.createSuite(SuiteHttpMapping.toWrite(dto))))
@@ -206,7 +402,24 @@ class ObjsPolicyController(
         }
 
     @PutMapping("/suites/{id}")
-    fun updateSuite(@PathVariable id: UUID, @RequestBody dto: PolicySuiteDto): ResponseEntity<Any> =
+    @Operation(
+        tags = ["suites"],
+        summary = "Update a policy suite",
+        description = "Full replace of the suite and its folder tree; folders absent from the body are removed.",
+    )
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "Updated suite",
+            content = [Content(schema = Schema(implementation = PolicySuiteDto::class))],
+        ),
+        ApiResponse(responseCode = "400", description = "Unknown matcher kind, mode, or participation"),
+        ApiResponse(responseCode = "404", description = "Suite not found"),
+    )
+    fun updateSuite(
+        @Parameter(description = "Suite id") @PathVariable id: UUID,
+        @RequestBody dto: PolicySuiteDto,
+    ): ResponseEntity<Any> =
         try {
             play.updateSuite(id, SuiteHttpMapping.toWrite(dto))
                 ?.let { ResponseEntity.ok(SuiteHttpMapping.toDto(it)) }
@@ -216,12 +429,35 @@ class ObjsPolicyController(
         }
 
     @DeleteMapping("/suites/{id}")
-    fun deleteSuite(@PathVariable id: UUID): ResponseEntity<Void> =
+    @Operation(
+        tags = ["suites"],
+        summary = "Delete a policy suite",
+        description = "Removes the suite and its folders; the referenced policies are kept.",
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "204", description = "Deleted"),
+        ApiResponse(responseCode = "404", description = "Suite not found"),
+    )
+    fun deleteSuite(
+        @Parameter(description = "Suite id") @PathVariable id: UUID,
+    ): ResponseEntity<Void> =
         if (play.deleteSuite(id)) ResponseEntity.noContent().build()
         else ResponseEntity.notFound().build()
 
     @PostMapping("/suites/selection")
-    @Operation(summary = "Preview effective policy selection for a suite scope")
+    @Operation(
+        tags = ["suites"],
+        summary = "Preview effective policy selection for a suite scope",
+        description = "Resolves matchers without evaluating anything; `missing` lists pinned policies " +
+            "that no longer resolve.",
+    )
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "Envelope with `policies`, `placementByPolicyId`, and `missing`",
+        ),
+        ApiResponse(responseCode = "400", description = "Unknown scope, or missing folderId/folderIds/policyIds"),
+    )
     fun suiteSelection(@RequestBody request: SuiteSelectionRequest): ResponseEntity<Any> =
         try {
             val scope = SuiteHttpMapping.parseScope(
@@ -243,7 +479,33 @@ class ObjsPolicyController(
         }
 
     @PostMapping("/suites/evaluate")
-    @Operation(summary = "Evaluate a suite against a matcher-selected graph fragment")
+    @Operation(
+        tags = ["suites"],
+        summary = "Evaluate a suite against a matcher-selected graph fragment",
+        description = "Runs the selection resolved by POST /policy/suites/selection. The result is not " +
+            "archived; POST it to /policy/evaluations/suite to save it.",
+    )
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "Suite evaluation result",
+            content = [
+                Content(
+                    schema = Schema(implementation = org.poc.objs.policy.api.SuiteEvaluationResult::class),
+                ),
+            ],
+        ),
+        ApiResponse(
+            responseCode = "400",
+            description = "Invalid matcher, unresolved fragment, or bad scope",
+            content = [
+                Content(
+                    schema = Schema(implementation = org.poc.objs.api.validation.ValidationResult::class),
+                ),
+            ],
+        ),
+        ApiResponse(responseCode = "404", description = "Graph or graph version not found"),
+    )
     fun evaluateSuite(@RequestBody request: SuiteEvaluateRequest): ResponseEntity<Any> =
         try {
             val matcherNode =
@@ -282,7 +544,22 @@ class ObjsPolicyController(
         }
 
     @PostMapping("/evaluations/suite")
-    @Operation(summary = "Persist a suite evaluation archive (explicit save)")
+    @Operation(
+        tags = ["suites"],
+        summary = "Persist a suite evaluation archive (explicit save)",
+        description = "Content axes come from `axes` when given, otherwise from `presetName` " +
+            "(STANDARD default). When the input axis is on, the fragment is rematerialized from " +
+            "`matcher` + graph scope. Requires an evaluation archive on the classpath.",
+    )
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "Archive id",
+            content = [Content(schema = Schema(implementation = PersistEvaluationResponse::class))],
+        ),
+        ApiResponse(responseCode = "400", description = "No durable axes selected, or invalid matcher/scope"),
+        ApiResponse(responseCode = "503", description = "No evaluation archive configured"),
+    )
     fun persistSuiteEvaluation(@RequestBody request: PersistSuiteEvaluationRequest): ResponseEntity<Any> {
         return try {
             val axesDto = request.axes
@@ -358,11 +635,23 @@ class ObjsPolicyController(
     }
 
     @GetMapping("/evaluations")
-    @Operation(summary = "List evaluation archive summaries (newest first)")
+    @Operation(tags = ["archives"], summary = "List evaluation archive summaries (newest first)")
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "Archive summaries",
+            content = [Content(schema = Schema(implementation = EvaluationArchiveListResponse::class))],
+        ),
+        ApiResponse(responseCode = "503", description = "No evaluation archive configured"),
+    )
     fun listEvaluations(
+        @Parameter(description = "Page size; defaults to the archive list limit")
         @RequestParam(required = false) limit: Int?,
+        @Parameter(description = "Row offset for paging; defaults to 0")
         @RequestParam(required = false) offset: Int?,
+        @Parameter(description = "Filter by archive kind, e.g. the suite evaluation kind")
         @RequestParam(required = false) kind: String?,
+        @Parameter(description = "Filter by a single archive tag")
         @RequestParam(required = false) tag: String?,
     ): ResponseEntity<Any> =
         try {
@@ -382,9 +671,31 @@ class ObjsPolicyController(
         }
 
     @GetMapping("/evaluations/{id}")
-    @Operation(summary = "Load an evaluation archive (full or STANDARD view)")
+    @Operation(
+        tags = ["archives"],
+        summary = "Load an evaluation archive (full or STANDARD view)",
+        description = "`view=standard` drops the stored input fragment and returns results plus " +
+            "execution context only.",
+    )
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "Archive document",
+            content = [
+                Content(
+                    schema = Schema(
+                        implementation = org.poc.objs.policy.api.EvaluationArchiveDocument::class,
+                    ),
+                ),
+            ],
+        ),
+        ApiResponse(responseCode = "400", description = "Unknown `view` value"),
+        ApiResponse(responseCode = "404", description = "Archive not found"),
+        ApiResponse(responseCode = "503", description = "No evaluation archive configured"),
+    )
     fun getEvaluation(
-        @PathVariable id: UUID,
+        @Parameter(description = "Archive id") @PathVariable id: UUID,
+        @Parameter(description = "Omit for the full document, or pass `standard` for the STANDARD view")
         @RequestParam(required = false) view: String?,
     ): ResponseEntity<Any> {
         val standardView =
@@ -402,8 +713,15 @@ class ObjsPolicyController(
     }
 
     @DeleteMapping("/evaluations/{id}")
-    @Operation(summary = "Delete an evaluation archive")
-    fun deleteEvaluation(@PathVariable id: UUID): ResponseEntity<Any> =
+    @Operation(tags = ["archives"], summary = "Delete an evaluation archive")
+    @ApiResponses(
+        ApiResponse(responseCode = "204", description = "Deleted"),
+        ApiResponse(responseCode = "404", description = "Archive not found"),
+        ApiResponse(responseCode = "503", description = "No evaluation archive configured"),
+    )
+    fun deleteEvaluation(
+        @Parameter(description = "Archive id") @PathVariable id: UUID,
+    ): ResponseEntity<Any> =
         try {
             if (play.deleteEvaluation(id)) ResponseEntity.noContent().build()
             else ResponseEntity.notFound().build()

@@ -1,11 +1,12 @@
 package org.poc.objs.service.web
 
 import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import io.swagger.v3.oas.annotations.media.ArraySchema
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
-import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.servlet.http.HttpServletRequest
 import org.poc.objs.api.domain.Edge
 import org.poc.objs.api.domain.GraphMutation
@@ -48,7 +49,6 @@ import java.util.UUID
  */
 @RestController
 @RequestMapping("/api/v1/objs/graphs")
-@Tag(name = "graphs")
 class ObjsGraphsController(
     private val namedGraphs: NamedGraphStore,
     private val graphStore: GraphStore,
@@ -56,59 +56,118 @@ class ObjsGraphsController(
 ) {
     @Schema(description = "Graph header write body")
     data class GraphWriteBody(
+        @field:Schema(description = "Caller-chosen graph id; omit to let the store assign one")
         val id: UUID? = null,
+        @field:Schema(description = "Free-form graph annotations (string key/value), e.g. `name`, `env`")
         val annotations: Map<String, String> = emptyMap(),
+        @field:Schema(description = "Existing pool entity ids to seed membership with (create only)")
         val entityIds: Set<UUID> = emptySet(),
     )
 
     @Schema(description = "Graph header response: id + annotations + resolved GraphContents")
     data class GraphResponse(
+        @field:Schema(description = "Graph id")
         val id: UUID,
+        @field:Schema(description = "Graph annotations")
         val annotations: Map<String, String>,
+        @field:Schema(description = "Resolved members and graph-local edges")
         val graph: GraphContents,
     )
 
+    @Schema(description = "Clone body: annotations for the new, independent graph")
     data class CloneBody(
+        @field:Schema(description = "Annotations of the clone; source annotations are not copied")
         val annotations: Map<String, String> = emptyMap(),
     )
 
     @Schema(description = "Create deep graph version; optional createdAt for backdated freeze (G-O1 Option B)")
     data class CreateVersionBody(
+        @field:Schema(description = "Annotations stored on the version row")
         val annotations: Map<String, String> = emptyMap(),
+        @field:Schema(description = "Backdated freeze instant; omit for now()")
         val createdAt: java.time.Instant? = null,
     )
 
     @Schema(description = "Open-graph search envelope (G-U10); additive fields may appear later")
     data class GraphSearchResponse(
+        @field:Schema(description = "Matching graph headers, best match first")
         val items: List<GraphHeader>,
     )
 
+    @Schema(description = "Compaction outcome")
     data class CompactResult(
+        @field:Schema(description = "Number of version rows removed")
         val removed: Int,
     )
 
     @GetMapping
-    @Operation(summary = "List graph headers")
+    @Operation(
+        tags = ["graphs"],
+        summary = "List graph headers",
+        description = "Whole live catalog with member/edge counts; use GET /graphs/search for large stores.",
+    )
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "All live graph headers",
+            content = [
+                Content(array = ArraySchema(schema = Schema(implementation = GraphListItem::class))),
+            ],
+        ),
+    )
     fun list(): List<GraphListItem> = namedGraphs.list()
 
     @GetMapping("/search")
     @Operation(
+        tags = ["graphs"],
         summary = "Search graph headers (open-graph dialog)",
         description = "G-U10 extensible search contract. Empty `q` without `expr` returns `{ items: [] }` " +
             "(never the full catalog). v1 match: id / UUID-prefix + case-insensitive substring on id and " +
             "annotation key/value; optional `expr` is a graph-expr (AND with `q` when both set). " +
             "Additive query params and response fields may be added later; FTS is out of scope for v1.",
     )
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "Search envelope (empty items when neither q nor expr is given)",
+            content = [Content(schema = Schema(implementation = GraphSearchResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "400",
+            description = "Invalid graph-expr",
+            content = [Content(schema = Schema(implementation = ValidationResult::class))],
+        ),
+    )
     fun search(
+        @Parameter(description = "Free text: graph id, UUID prefix, or substring of an annotation key/value")
         @RequestParam(required = false) q: String?,
+        @Parameter(description = "Graph-expr predicate over graph annotations; ANDed with `q` when both are set")
         @RequestParam(required = false) expr: String?,
+        @Parameter(description = "Maximum number of headers returned")
         @RequestParam(required = false, defaultValue = "15") limit: Int,
     ): GraphSearchResponse = GraphSearchResponse(
         items = namedGraphs.search(q = q, expr = expr, limit = limit),
     )
 
     @PostMapping
-    @Operation(summary = "Create a graph header, optionally seeding membership with existing pool entity ids")
+    @Operation(
+        tags = ["graphs"],
+        summary = "Create a graph header, optionally seeding membership with existing pool entity ids",
+        description = "Only attaches entities that already exist in the pool; it never creates them. " +
+            "Use POST /entities first, or a graph mutate, to create new entities.",
+    )
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "201",
+            description = "Created graph header with resolved contents",
+            content = [Content(schema = Schema(implementation = GraphResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "400",
+            description = "Validation failed (e.g. unknown entity id)",
+            content = [Content(schema = Schema(implementation = ValidationResult::class))],
+        ),
+    )
     fun create(@RequestBody body: GraphWriteBody): ResponseEntity<GraphResponse> {
         val created = namedGraphs.create(
             GraphSpec(id = body.id, annotations = body.annotations, entityIds = body.entityIds),
@@ -117,20 +176,34 @@ class ObjsGraphsController(
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Get graph header + resolved members and graph-local edges")
-    fun get(@PathVariable id: UUID): ResponseEntity<GraphResponse> {
+    @Operation(tags = ["graphs"], summary = "Get graph header + resolved members and graph-local edges")
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "Resolved graph",
+            content = [Content(schema = Schema(implementation = GraphResponse::class))],
+        ),
+        ApiResponse(responseCode = "404", description = "Graph not found"),
+    )
+    fun get(
+        @Parameter(description = "Graph id") @PathVariable id: UUID,
+    ): ResponseEntity<GraphResponse> {
         val resolved = namedGraphs.get(id) ?: return ResponseEntity.notFound().build()
         return ResponseEntity.ok(resolved.toResponse())
     }
 
     @PutMapping("/{id}/annotations")
-    @Operation(summary = "Replace graph header annotations (membership unchanged)")
+    @Operation(tags = ["graphs"], summary = "Replace graph header annotations (membership unchanged)")
     @ApiResponses(
-        ApiResponse(responseCode = "200", description = "Updated graph"),
+        ApiResponse(
+            responseCode = "200",
+            description = "Updated graph",
+            content = [Content(schema = Schema(implementation = GraphResponse::class))],
+        ),
         ApiResponse(responseCode = "404", description = "Graph not found"),
     )
     fun updateAnnotations(
-        @PathVariable id: UUID,
+        @Parameter(description = "Graph id") @PathVariable id: UUID,
         @RequestBody body: GraphWriteBody,
     ): ResponseEntity<GraphResponse> {
         val updated = namedGraphs.updateAnnotations(id, body.annotations)
@@ -139,67 +212,120 @@ class ObjsGraphsController(
 
     @PatchMapping("/{id}")
     @Operation(
+        tags = ["mutations"],
         summary = "MERGE-mutate this graph (patch)",
         description = "MERGE: `entities.set` / `edges.set` upsert; `entities.unset` detaches membership " +
             "(pool kept); `edges.unset` drops this graph's edges. Omission never deletes. " +
             "Verb sets mode (omit `mode` on wire or it must be MERGE).",
     )
     @ApiResponses(
-        ApiResponse(responseCode = "200", description = "Resolved graph after mutation"),
+        ApiResponse(
+            responseCode = "200",
+            description = "Resolved graph after mutation",
+            content = [Content(schema = Schema(implementation = GraphResponse::class))],
+        ),
         ApiResponse(
             responseCode = "400",
-            description = "Validation failed",
+            description = "Validation failed, or body `mode` disagrees with the HTTP verb",
             content = [Content(schema = Schema(implementation = ValidationResult::class))],
         ),
         ApiResponse(responseCode = "404", description = "Graph not found"),
     )
     fun mutateMerge(
-        @PathVariable id: UUID,
+        @Parameter(description = "Graph id") @PathVariable id: UUID,
         @RequestBody mutation: GraphMutation,
     ): ResponseEntity<Any> = mutateWithMode(id, mutation, MutationMode.MERGE)
 
     @PutMapping("/{id}")
     @Operation(
+        tags = ["mutations"],
         summary = "REPLACE-mutate this graph (overwrite contents)",
         description = "REPLACE: `entities.set` + `edges.set` are the full desired membership and " +
             "graph-local edges; unlisted members detach / edges drop. Non-empty `unset` is rejected. " +
             "Verb sets mode (omit `mode` on wire or it must be REPLACE).",
     )
     @ApiResponses(
-        ApiResponse(responseCode = "200", description = "Resolved graph after mutation"),
+        ApiResponse(
+            responseCode = "200",
+            description = "Resolved graph after mutation",
+            content = [Content(schema = Schema(implementation = GraphResponse::class))],
+        ),
         ApiResponse(
             responseCode = "400",
-            description = "Validation failed",
+            description = "Validation failed, or body `mode` disagrees with the HTTP verb",
             content = [Content(schema = Schema(implementation = ValidationResult::class))],
         ),
         ApiResponse(responseCode = "404", description = "Graph not found"),
     )
     fun mutateReplace(
-        @PathVariable id: UUID,
+        @Parameter(description = "Graph id") @PathVariable id: UUID,
         @RequestBody mutation: GraphMutation,
     ): ResponseEntity<Any> = mutateWithMode(id, mutation, MutationMode.REPLACE)
 
     @PatchMapping("/{id}/validate")
-    @Operation(summary = "Dry-run MERGE validate (no persist)")
+    @Operation(
+        tags = ["mutations"],
+        summary = "Dry-run MERGE validate (no persist)",
+        description = "Same body and rules as PATCH /graphs/{id}; returns the ValidationResult instead of persisting.",
+    )
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "Validation result (may be invalid)",
+            content = [Content(schema = Schema(implementation = ValidationResult::class))],
+        ),
+        ApiResponse(
+            responseCode = "400",
+            description = "Body `mode` disagrees with the HTTP verb",
+            content = [Content(schema = Schema(implementation = ValidationResult::class))],
+        ),
+        ApiResponse(responseCode = "404", description = "Graph not found"),
+    )
     fun validateMerge(
-        @PathVariable id: UUID,
+        @Parameter(description = "Graph id") @PathVariable id: UUID,
         @RequestBody mutation: GraphMutation,
     ): ResponseEntity<Any> = validateWithMode(id, mutation, MutationMode.MERGE)
 
     @PutMapping("/{id}/validate")
-    @Operation(summary = "Dry-run REPLACE validate (no persist)")
+    @Operation(
+        tags = ["mutations"],
+        summary = "Dry-run REPLACE validate (no persist)",
+        description = "Same body and rules as PUT /graphs/{id}; returns the ValidationResult instead of persisting.",
+    )
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "Validation result (may be invalid)",
+            content = [Content(schema = Schema(implementation = ValidationResult::class))],
+        ),
+        ApiResponse(
+            responseCode = "400",
+            description = "Body `mode` disagrees with the HTTP verb",
+            content = [Content(schema = Schema(implementation = ValidationResult::class))],
+        ),
+        ApiResponse(responseCode = "404", description = "Graph not found"),
+    )
     fun validateReplace(
-        @PathVariable id: UUID,
+        @Parameter(description = "Graph id") @PathVariable id: UUID,
         @RequestBody mutation: GraphMutation,
     ): ResponseEntity<Any> = validateWithMode(id, mutation, MutationMode.REPLACE)
 
     @PostMapping("/{id}/validate")
     @Operation(
+        tags = ["mutations"],
         summary = "Dry-run MERGE validate (no persist)",
         description = "Alias of PATCH /graphs/{id}/validate (MERGE). Prefer PATCH.",
     )
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "Validation result (may be invalid)",
+            content = [Content(schema = Schema(implementation = ValidationResult::class))],
+        ),
+        ApiResponse(responseCode = "404", description = "Graph not found"),
+    )
     fun validatePost(
-        @PathVariable id: UUID,
+        @Parameter(description = "Graph id") @PathVariable id: UUID,
         @RequestBody mutation: GraphMutation,
     ): ResponseEntity<Any> = validateWithMode(id, mutation, MutationMode.MERGE)
 
@@ -245,6 +371,7 @@ class ObjsGraphsController(
 
     @DeleteMapping("/{id}")
     @Operation(
+        tags = ["graphs"],
         summary = "Softish delete: drop live graph header + membership + edges; history kept",
         description = "Pool entities kept. Deep version rows remain readable via GET …/versions. " +
             "Use DELETE …/destroy to wipe history too.",
@@ -253,21 +380,35 @@ class ObjsGraphsController(
         ApiResponse(responseCode = "204", description = "Deleted"),
         ApiResponse(responseCode = "404", description = "Graph not found"),
     )
-    fun delete(@PathVariable id: UUID): ResponseEntity<Void> {
+    fun delete(
+        @Parameter(description = "Graph id") @PathVariable id: UUID,
+    ): ResponseEntity<Void> {
         namedGraphs.delete(id)
         return ResponseEntity.noContent().build()
     }
 
     @PostMapping("/{id}/clear")
     @Operation(
+        tags = ["housekeeping"],
         summary = "Clear live HEAD membership and graph-local edges; keep header and history",
         description = "Equivalent to REPLACE mutate with empty sets (`clearGraph`).",
     )
     @ApiResponses(
-        ApiResponse(responseCode = "200", description = "Cleared graph"),
+        ApiResponse(
+            responseCode = "200",
+            description = "Cleared graph",
+            content = [Content(schema = Schema(implementation = GraphResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "400",
+            description = "Clear rejected",
+            content = [Content(schema = Schema(implementation = ValidationResult::class))],
+        ),
         ApiResponse(responseCode = "404", description = "Graph not found"),
     )
-    fun clear(@PathVariable id: UUID): ResponseEntity<Any> {
+    fun clear(
+        @Parameter(description = "Graph id") @PathVariable id: UUID,
+    ): ResponseEntity<Any> {
         val result = namedGraphs.clearGraph(id)
         if (!result.isValid) {
             return ResponseEntity.badRequest().body(result)
@@ -277,6 +418,7 @@ class ObjsGraphsController(
 
     @DeleteMapping("/{id}/destroy")
     @Operation(
+        tags = ["housekeeping"],
         summary = "Destroy graph: wipe live HEAD and all deep version history",
         description = "Fails with GRAPH_VERSION_IN_USE when app references (e.g. SBOM fingerprints) block removal.",
     )
@@ -284,35 +426,50 @@ class ObjsGraphsController(
         ApiResponse(responseCode = "204", description = "Destroyed"),
         ApiResponse(responseCode = "404", description = "Graph not found"),
         ApiResponse(responseCode = "400", description = "In use or other graph operation failure"),
+        ApiResponse(responseCode = "409", description = "GRAPH_VERSION_IN_USE / GRAPH_IN_USE"),
     )
-    fun destroy(@PathVariable id: UUID): ResponseEntity<Void> {
+    fun destroy(
+        @Parameter(description = "Graph id") @PathVariable id: UUID,
+    ): ResponseEntity<Void> {
         namedGraphs.destroyGraph(id)
         return ResponseEntity.noContent().build()
     }
 
     @PostMapping("/{id}/entities/{entityId}")
-    @Operation(summary = "Attach an existing pool entity to this graph (membership row only)")
+    @Operation(
+        tags = ["entities"],
+        summary = "Attach an existing pool entity to this graph (membership row only)",
+        description = "Idempotent; the entity payload is untouched and stays shared with other graphs.",
+    )
     @ApiResponses(
-        ApiResponse(responseCode = "200", description = "Resolved graph after attach"),
+        ApiResponse(
+            responseCode = "200",
+            description = "Resolved graph after attach",
+            content = [Content(schema = Schema(implementation = GraphResponse::class))],
+        ),
         ApiResponse(responseCode = "404", description = "Graph or entity not found"),
     )
     fun attach(
-        @PathVariable id: UUID,
-        @PathVariable entityId: UUID,
+        @Parameter(description = "Graph id") @PathVariable id: UUID,
+        @Parameter(description = "Pool entity id to attach") @PathVariable entityId: UUID,
     ): ResponseEntity<GraphResponse> {
         namedGraphs.attach(id, entityId)
         return ResponseEntity.ok(requireNotNull(namedGraphs.get(id)).toResponse())
     }
 
     @DeleteMapping("/{id}/entities/{entityId}")
-    @Operation(summary = "Detach an entity from this graph (pool entity kept)")
+    @Operation(
+        tags = ["entities"],
+        summary = "Detach an entity from this graph (pool entity kept)",
+        description = "Removes the membership row only; use DELETE /entities/{id} to drop the pool entity.",
+    )
     @ApiResponses(
         ApiResponse(responseCode = "204", description = "Detached"),
         ApiResponse(responseCode = "404", description = "Graph not found"),
     )
     fun detach(
-        @PathVariable id: UUID,
-        @PathVariable entityId: UUID,
+        @Parameter(description = "Graph id") @PathVariable id: UUID,
+        @Parameter(description = "Pool entity id to detach") @PathVariable entityId: UUID,
     ): ResponseEntity<Void> {
         namedGraphs.detach(id, entityId)
         return ResponseEntity.noContent().build()
@@ -320,11 +477,16 @@ class ObjsGraphsController(
 
     @PostMapping("/{id}/edges")
     @Operation(
+        tags = ["edges"],
         summary = "Create/upsert an edge in this graph",
         description = "Thin MERGE wrapper: forces graphId from path; body = one mutate edges.set item.",
     )
     @ApiResponses(
-        ApiResponse(responseCode = "200", description = "Resolved graph after create"),
+        ApiResponse(
+            responseCode = "200",
+            description = "Resolved graph after create",
+            content = [Content(schema = Schema(implementation = GraphResponse::class))],
+        ),
         ApiResponse(
             responseCode = "400",
             description = "Validation failed",
@@ -333,7 +495,7 @@ class ObjsGraphsController(
         ApiResponse(responseCode = "404", description = "Graph not found"),
     )
     fun createEdge(
-        @PathVariable id: UUID,
+        @Parameter(description = "Graph id") @PathVariable id: UUID,
         @RequestBody edge: Edge,
     ): ResponseEntity<Any> {
         edge.graphId = id
@@ -349,11 +511,16 @@ class ObjsGraphsController(
 
     @PutMapping("/{id}/edges/{edgeId}")
     @Operation(
+        tags = ["edges"],
         summary = "Update an edge in this graph",
         description = "Thin MERGE wrapper; path edgeId wins; rejects body graphId mismatch with path graph.",
     )
     @ApiResponses(
-        ApiResponse(responseCode = "200", description = "Resolved graph after update"),
+        ApiResponse(
+            responseCode = "200",
+            description = "Resolved graph after update",
+            content = [Content(schema = Schema(implementation = GraphResponse::class))],
+        ),
         ApiResponse(
             responseCode = "400",
             description = "Validation failed or graphId mismatch",
@@ -362,8 +529,8 @@ class ObjsGraphsController(
         ApiResponse(responseCode = "404", description = "Graph not found"),
     )
     fun updateEdge(
-        @PathVariable id: UUID,
-        @PathVariable edgeId: UUID,
+        @Parameter(description = "Graph id") @PathVariable id: UUID,
+        @Parameter(description = "Edge id; overrides any `id` in the body") @PathVariable edgeId: UUID,
         @RequestBody edge: Edge,
     ): ResponseEntity<Any> {
         if (edge.graphId != null && edge.graphId != id) {
@@ -390,11 +557,16 @@ class ObjsGraphsController(
 
     @DeleteMapping("/{id}/edges/{edgeId}")
     @Operation(
+        tags = ["edges"],
         summary = "Delete an edge from this graph",
         description = "Same as MERGE edges.unset for this edge id.",
     )
     @ApiResponses(
-        ApiResponse(responseCode = "200", description = "Resolved graph after delete"),
+        ApiResponse(
+            responseCode = "200",
+            description = "Resolved graph after delete",
+            content = [Content(schema = Schema(implementation = GraphResponse::class))],
+        ),
         ApiResponse(
             responseCode = "400",
             description = "Validation failed",
@@ -403,8 +575,8 @@ class ObjsGraphsController(
         ApiResponse(responseCode = "404", description = "Graph not found"),
     )
     fun deleteEdge(
-        @PathVariable id: UUID,
-        @PathVariable edgeId: UUID,
+        @Parameter(description = "Graph id") @PathVariable id: UUID,
+        @Parameter(description = "Edge id") @PathVariable edgeId: UUID,
     ): ResponseEntity<Any> =
         mutateWithMode(
             id,
@@ -424,7 +596,12 @@ class ObjsGraphsController(
             "application/x-yaml",
         ],
     )
-    @Operation(summary = "Matcher DSL (obj-expr / chained) scoped to this graph's stored members")
+    @Operation(
+        tags = ["query"],
+        summary = "Matcher DSL (obj-expr / chained) scoped to this graph's stored members",
+        description = "Body is a matcher document in JSON or YAML (pick via Content-Type). Only this " +
+            "graph's members are candidates; returned edges are induced graph-local edges.",
+    )
     @ApiResponses(
         ApiResponse(
             responseCode = "200",
@@ -439,7 +616,7 @@ class ObjsGraphsController(
         ApiResponse(responseCode = "404", description = "Graph not found"),
     )
     fun queryInGraph(
-        @PathVariable id: UUID,
+        @Parameter(description = "Graph id") @PathVariable id: UUID,
         request: HttpServletRequest,
     ): ResponseEntity<Any> {
         val matcher = matcherDsl.decode(readBody(request), resolveFormat(request))
@@ -456,6 +633,7 @@ class ObjsGraphsController(
         ],
     )
     @Operation(
+        tags = ["query"],
         summary = "Matcher DSL over graph headers (requires stage-0 all or graph-expr)",
         description = "Fails closed (400, MATCHER_GRAPH_SCOPE_REQUIRED) unless the matcher is (or starts " +
             "with) all / graph-expr — there is no whole-store-as-graph scan. `all: true` unions every " +
@@ -479,13 +657,22 @@ class ObjsGraphsController(
     }
 
     @PostMapping("/{id}/clone")
-    @Operation(summary = "Clone this graph's members + edges into a new, independent graph")
+    @Operation(
+        tags = ["housekeeping"],
+        summary = "Clone this graph's members + edges into a new, independent graph",
+        description = "Membership is copied by reference (pool entities are shared); graph-local edges " +
+            "are duplicated for the new graph. Version history is not cloned.",
+    )
     @ApiResponses(
-        ApiResponse(responseCode = "201", description = "New cloned graph"),
+        ApiResponse(
+            responseCode = "201",
+            description = "New cloned graph",
+            content = [Content(schema = Schema(implementation = GraphResponse::class))],
+        ),
         ApiResponse(responseCode = "404", description = "Source graph not found"),
     )
     fun clone(
-        @PathVariable id: UUID,
+        @Parameter(description = "Source graph id") @PathVariable id: UUID,
         @RequestBody(required = false) body: CloneBody?,
     ): ResponseEntity<GraphResponse> {
         val cloned = namedGraphs.clone(id, body?.annotations ?: emptyMap())
@@ -494,12 +681,26 @@ class ObjsGraphsController(
 
     @PostMapping("/{id}/versions")
     @Operation(
+        tags = ["versions"],
         summary = "Snapshot: pin current HEAD as a deep graph version (same graph id)",
         description = "Optional `createdAt` backdates version key + new freeze clocks (Option B). " +
             "Omitted → now. Live entity/edge HEAD clocks are not rewritten.",
     )
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "201",
+            description = "Created version summary",
+            content = [
+                Content(
+                    schema = Schema(implementation = org.poc.objs.api.domain.GraphVersionSummary::class),
+                ),
+            ],
+        ),
+        ApiResponse(responseCode = "404", description = "Graph not found"),
+        ApiResponse(responseCode = "400", description = "Snapshot rejected"),
+    )
     fun createVersion(
-        @PathVariable id: UUID,
+        @Parameter(description = "Graph id") @PathVariable id: UUID,
         @RequestBody(required = false) body: CreateVersionBody?,
     ): ResponseEntity<org.poc.objs.api.domain.GraphVersionSummary> {
         val created = namedGraphs.createDeepGraphVersion(
@@ -511,28 +712,60 @@ class ObjsGraphsController(
     }
 
     @GetMapping("/{id}/versions")
-    @Operation(summary = "List deep graph versions, newest first")
-    fun listVersions(@PathVariable id: UUID) = namedGraphs.listGraphVersions(id)
+    @Operation(tags = ["versions"], summary = "List deep graph versions, newest first")
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "Version summaries",
+            content = [
+                Content(
+                    array = ArraySchema(
+                        schema = Schema(implementation = org.poc.objs.api.domain.GraphVersionSummary::class),
+                    ),
+                ),
+            ],
+        ),
+        ApiResponse(responseCode = "404", description = "Graph not found"),
+    )
+    fun listVersions(
+        @Parameter(description = "Graph id") @PathVariable id: UUID,
+    ) = namedGraphs.listGraphVersions(id)
 
     @DeleteMapping("/{id}/versions")
     @Operation(
+        tags = ["housekeeping"],
         summary = "Purge all deep graph versions; null head_version; live HEAD intact",
     )
     @ApiResponses(
         ApiResponse(responseCode = "204", description = "Purged"),
         ApiResponse(responseCode = "404", description = "Graph not found"),
         ApiResponse(responseCode = "400", description = "In use or other failure"),
+        ApiResponse(responseCode = "409", description = "A version is pinned by an application reference"),
     )
-    fun purgeAllVersions(@PathVariable id: UUID): ResponseEntity<Void> {
+    fun purgeAllVersions(
+        @Parameter(description = "Graph id") @PathVariable id: UUID,
+    ): ResponseEntity<Void> {
         namedGraphs.purgeAllGraphVersions(id)
         return ResponseEntity.noContent().build()
     }
 
     @GetMapping("/{id}/versions/{version}")
-    @Operation(summary = "Reconstruct a deep graph version (read-only)")
+    @Operation(
+        tags = ["versions"],
+        summary = "Reconstruct a deep graph version (read-only)",
+        description = "Returns the frozen membership, edges, and payloads; live HEAD is not touched.",
+    )
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "Reconstructed graph version",
+            content = [Content(schema = Schema(implementation = GraphResponse::class))],
+        ),
+        ApiResponse(responseCode = "404", description = "Graph or version not found"),
+    )
     fun getVersion(
-        @PathVariable id: UUID,
-        @PathVariable version: Long,
+        @Parameter(description = "Graph id") @PathVariable id: UUID,
+        @Parameter(description = "Deep graph version number") @PathVariable version: Long,
     ): ResponseEntity<GraphResponse> {
         val resolved = namedGraphs.getGraphVersion(id, version)
         return ResponseEntity.ok(resolved.toResponse())
@@ -540,6 +773,7 @@ class ObjsGraphsController(
 
     @DeleteMapping("/{id}/versions/{version}")
     @Operation(
+        tags = ["versions"],
         summary = "Purge one deep graph version (pins + graph version row)",
         description = "Rejects current head_version (GRAPH_VERSION_IS_HEAD). Does not compact entity/edge orphans.",
     )
@@ -547,10 +781,11 @@ class ObjsGraphsController(
         ApiResponse(responseCode = "204", description = "Purged"),
         ApiResponse(responseCode = "404", description = "Graph or version not found"),
         ApiResponse(responseCode = "400", description = "Head version or in-use"),
+        ApiResponse(responseCode = "409", description = "GRAPH_VERSION_IS_HEAD / GRAPH_VERSION_IN_USE"),
     )
     fun purgeVersion(
-        @PathVariable id: UUID,
-        @PathVariable version: Long,
+        @Parameter(description = "Graph id") @PathVariable id: UUID,
+        @Parameter(description = "Deep graph version number") @PathVariable version: Long,
     ): ResponseEntity<Void> {
         namedGraphs.purgeGraphVersion(id, version)
         return ResponseEntity.noContent().build()
@@ -558,13 +793,28 @@ class ObjsGraphsController(
 
     @PostMapping("/{id}/versions/{version}/reset")
     @Operation(
+        tags = ["versions"],
         summary = "Travel back: restore HEAD membership, edges, and payloads from a freeze",
         description = "Sets head_version to the target. Optional truncateAfter drops newer freezes. " +
             "Shared-pool rewrite of live entity/edge bytes is intentional.",
     )
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "Resolved graph after reset",
+            content = [Content(schema = Schema(implementation = GraphResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "400",
+            description = "Reset rejected",
+            content = [Content(schema = Schema(implementation = ValidationResult::class))],
+        ),
+        ApiResponse(responseCode = "404", description = "Graph or version not found"),
+    )
     fun resetToVersion(
-        @PathVariable id: UUID,
-        @PathVariable version: Long,
+        @Parameter(description = "Graph id") @PathVariable id: UUID,
+        @Parameter(description = "Deep graph version to restore") @PathVariable version: Long,
+        @Parameter(description = "Also purge every freeze newer than the target version")
         @RequestParam(defaultValue = "false") truncateAfter: Boolean,
     ): ResponseEntity<Any> {
         val result = namedGraphs.resetGraphToVersion(id, version, truncateAfter)
@@ -576,12 +826,26 @@ class ObjsGraphsController(
 
     @PostMapping("/{id}/versions/{version}/apply-structure")
     @Operation(
+        tags = ["versions"],
         summary = "Apply freeze entity/edge topology; keep live payloads",
         description = "Does not change head_version. Missing live entities/edges fall back to freeze rows.",
     )
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "Resolved graph after applying the frozen topology",
+            content = [Content(schema = Schema(implementation = GraphResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "400",
+            description = "Apply rejected",
+            content = [Content(schema = Schema(implementation = ValidationResult::class))],
+        ),
+        ApiResponse(responseCode = "404", description = "Graph or version not found"),
+    )
     fun applyStructure(
-        @PathVariable id: UUID,
-        @PathVariable version: Long,
+        @Parameter(description = "Graph id") @PathVariable id: UUID,
+        @Parameter(description = "Deep graph version whose topology is applied") @PathVariable version: Long,
     ): ResponseEntity<Any> {
         val result = namedGraphs.applyGraphVersionStructure(id, version)
         if (!result.isValid) {
@@ -599,10 +863,28 @@ class ObjsGraphsController(
             "application/x-yaml",
         ],
     )
-    @Operation(summary = "Matcher DSL scoped to a reconstructed deep graph version")
+    @Operation(
+        tags = ["query"],
+        summary = "Matcher DSL scoped to a reconstructed deep graph version",
+        description = "Same matcher body as POST /graphs/{id}/query, evaluated against the freeze " +
+            "rather than live HEAD.",
+    )
+    @ApiResponses(
+        ApiResponse(
+            responseCode = "200",
+            description = "Graph contents from the reconstructed version",
+            content = [Content(schema = Schema(implementation = GraphContents::class))],
+        ),
+        ApiResponse(
+            responseCode = "400",
+            description = "Invalid matcher DSL or expression",
+            content = [Content(schema = Schema(implementation = ValidationResult::class))],
+        ),
+        ApiResponse(responseCode = "404", description = "Graph or version not found"),
+    )
     fun queryInGraphVersion(
-        @PathVariable id: UUID,
-        @PathVariable version: Long,
+        @Parameter(description = "Graph id") @PathVariable id: UUID,
+        @Parameter(description = "Deep graph version number") @PathVariable version: Long,
         request: HttpServletRequest,
     ): ResponseEntity<Any> {
         val matcher = matcherDsl.decode(readBody(request), resolveFormat(request))
