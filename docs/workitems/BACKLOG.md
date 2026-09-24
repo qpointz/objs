@@ -54,6 +54,8 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | C-37 | Spring integration how-to + transaction recipes (Boot join / non-Spring UoW) | docs | done | [`completed/20260912-transaction-recipes/`](completed/20260912-transaction-recipes/STORY.md) |
 | C-38 | Store/validation API gaps: `NamedGraphStore.exists` + structured `ValidationIssue` | improvement | done | [`completed/20260914-api-store-improvements/`](completed/20260914-api-store-improvements/STORY.md) |
 | C-39 | Evaluation archive list/load HTTP + Policy in-page Archives mode (axes) | feature | done | [`completed/20260917-policy-archive-workbench/`](completed/20260917-policy-archive-workbench/STORY.md), also [U-12](#ui--workbench) |
+| C-40 | Graph entity/edge vocabulary: freeze SQL + REST `/members`→`/entities` + graph `/edges` CRUD | refactoring | in-progress | [`in-progress/graph-entity-edge-vocab/`](in-progress/graph-entity-edge-vocab/STORY.md) |
+| C-41 | Freeze-scoped edge history (graph version owns edge snapshots; drop separate edge pin+instance clock) | refactoring | backlog | Deferred after C-40 discussion; domain clarity not storage; no payload COW; [`in-progress/graph-entity-edge-vocab/GAPS.md`](in-progress/graph-entity-edge-vocab/GAPS.md) G-X4 |
 
 ---
 
@@ -109,7 +111,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 
 | Status | Count |
 |--------|------:|
-| backlog | 2 |
+| backlog | 3 |
 | planned | 1 |
-| in-progress | 1 |
+| in-progress | 2 |
 | done | 46 |

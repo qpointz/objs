@@ -74,7 +74,7 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 
 ### In progress
 
-_(none)_
+- [`graph-entity-edge-vocab`](in-progress/graph-entity-edge-vocab/STORY.md) — Freeze SQL + REST entity/edge vocabulary (no member); graph-scoped `/edges` CRUD (C-40).
 
 ### Planned
 
