@@ -40,6 +40,6 @@ class ObjsFlywayIntoExistingAppSchemaTest {
 
         assertThat(count("SELECT COUNT(*) FROM app_existing")).isZero()
         assertThat(count("SELECT COUNT(*) FROM objs_entity")).isZero()
-        assertThat(flyway.info().current()?.version?.toString()).isEqualTo("8")
+        assertThat(flyway.info().current()?.version?.toString()).isEqualTo("9")
     }
 }

@@ -35,16 +35,16 @@ class GraphRecord(
     var headVersion: Long? = null,
 )
 
-data class GraphMembershipId(
+data class GraphEntitiesId(
     var graphId: UUID = UUID.randomUUID(),
     var entityId: UUID = UUID.randomUUID(),
 ) : Serializable
 
-/** Membership M2M: graph ↔ entity (C-13: objs_graph_entity). */
-@Entity(name = "BoMGraphMembershipRecord")
+/** Graph↔entity M2M (C-13: objs_graph_entity). */
+@Entity(name = "BoMGraphEntitiesRecord")
 @Table(name = "objs_graph_entity")
-@IdClass(GraphMembershipId::class)
-class GraphMembershipRecord(
+@IdClass(GraphEntitiesId::class)
+class GraphEntitiesRecord(
     @Id
     @Column(name = "graph_id", nullable = false)
     var graphId: UUID = UUID.randomUUID(),

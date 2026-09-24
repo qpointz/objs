@@ -34,8 +34,8 @@ class GraphPersistenceTest : ObjsPersistenceFixture() {
         graphs.save(GraphRecord(id = sgId, annotations = mutableMapOf("pack" to "demo")))
         memberships.saveAll(
             listOf(
-                GraphMembershipRecord(graphId = sgId, entityId = e1),
-                GraphMembershipRecord(graphId = sgId, entityId = e2),
+                GraphEntitiesRecord(graphId = sgId, entityId = e1),
+                GraphEntitiesRecord(graphId = sgId, entityId = e2),
             ),
         )
 
@@ -63,8 +63,8 @@ class GraphPersistenceTest : ObjsPersistenceFixture() {
         graphs.save(GraphRecord(id = sgId, annotations = mutableMapOf()))
         memberships.saveAll(
             listOf(
-                GraphMembershipRecord(graphId = sgId, entityId = e1),
-                GraphMembershipRecord(graphId = sgId, entityId = e2),
+                GraphEntitiesRecord(graphId = sgId, entityId = e1),
+                GraphEntitiesRecord(graphId = sgId, entityId = e2),
             ),
         )
         val edgeId = UUID.randomUUID()
@@ -121,7 +121,7 @@ class GraphPersistenceTest : ObjsPersistenceFixture() {
         )
         val sgId = UUID.randomUUID()
         graphs.save(GraphRecord(id = sgId, annotations = mutableMapOf("x" to "y")))
-        memberships.save(GraphMembershipRecord(graphId = sgId, entityId = e1))
+        memberships.save(GraphEntitiesRecord(graphId = sgId, entityId = e1))
 
         graphs.deleteById(sgId)
         graphs.flush()

@@ -136,16 +136,16 @@ class EdgeVersionRecord(
     var headDeletedAt: Instant? = null,
 )
 
-data class GraphVersionMemberId(
+data class GraphVersionEntityId(
     var graphId: UUID = UUID.randomUUID(),
     var graphVersion: Long = 0,
     var entityId: UUID = UUID.randomUUID(),
 ) : Serializable
 
-@Entity(name = "BoMGraphVersionMemberRecord")
-@Table(name = "objs_graph_version_member")
-@IdClass(GraphVersionMemberId::class)
-class GraphVersionMemberRecord(
+@Entity(name = "BoMGraphVersionEntityRecord")
+@Table(name = "objs_graph_version_entity")
+@IdClass(GraphVersionEntityId::class)
+class GraphVersionEntityRecord(
     @Id
     @Column(name = "graph_id", nullable = false)
     var graphId: UUID = UUID.randomUUID(),

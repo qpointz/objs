@@ -972,7 +972,7 @@ class NamedGraphStoreTest : ObjsPersistenceFixture() {
     }
 
     @Test
-    fun shouldApplyGraphVersionMembership_keepingLivePayloads() {
+    fun shouldApplyGraphVersionStructure_keepingLivePayloads() {
         val graph = namedGraphs.create(GraphSpec(entityIds = setOf(a, b)))
         addEdge(graph.id, a, b)
         val v1 = namedGraphs.createDeepGraphVersion(graph.id)
@@ -983,7 +983,7 @@ class NamedGraphStoreTest : ObjsPersistenceFixture() {
         namedGraphs.clearGraph(graph.id)
         assertThat(namedGraphs.get(graph.id)!!.contents.entities).isEmpty()
         val headBefore = uow.read { graphDao.findById(graph.id) }!!.headVersion
-        assertThat(namedGraphs.applyGraphVersionMembership(graph.id, v1.version).isValid).isTrue()
+        assertThat(namedGraphs.applyGraphVersionStructure(graph.id, v1.version).isValid).isTrue()
         val live = namedGraphs.get(graph.id)!!
         assertThat(live.contents.entities.map { it.id }).containsExactlyInAnyOrder(a, b)
         assertThat(live.contents.entities.single { it.id == a }.payload["name"]).isEqualTo("A-live")

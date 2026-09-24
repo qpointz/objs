@@ -16,11 +16,11 @@ import org.poc.objs.core.persistence.EdgeVersionDao
 import org.poc.objs.core.persistence.EntityDao
 import org.poc.objs.core.persistence.EntityVersionDao
 import org.poc.objs.core.persistence.GraphDao
-import org.poc.objs.core.persistence.GraphMembershipDao
+import org.poc.objs.core.persistence.GraphEntitiesDao
 import org.poc.objs.core.persistence.GraphStore
 import org.poc.objs.core.persistence.GraphVersionDao
 import org.poc.objs.core.persistence.GraphVersionEdgeDao
-import org.poc.objs.core.persistence.GraphVersionMemberDao
+import org.poc.objs.core.persistence.GraphVersionEntityDao
 import org.poc.objs.core.persistence.JpaAllowedEdgeCatalog
 import org.poc.objs.core.persistence.JpaSchemaCatalog
 import org.poc.objs.core.persistence.NamedGraphStore
@@ -98,7 +98,7 @@ class ObjsCoreAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    fun graphMembershipDao(uow: UnitOfWork) = GraphMembershipDao(uow)
+    fun graphEntitiesDao(uow: UnitOfWork) = GraphEntitiesDao(uow)
 
     @Bean
     @ConditionalOnMissingBean
@@ -114,7 +114,7 @@ class ObjsCoreAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    fun graphVersionMemberDao(uow: UnitOfWork) = GraphVersionMemberDao(uow)
+    fun graphVersionEntityDao(uow: UnitOfWork) = GraphVersionEntityDao(uow)
 
     @Bean
     @ConditionalOnMissingBean
@@ -182,13 +182,13 @@ class ObjsCoreAutoConfiguration {
     @ConditionalOnMissingBean
     fun deepGraphVersionService(
         graphDao: GraphDao,
-        membershipDao: GraphMembershipDao,
+        membershipDao: GraphEntitiesDao,
         entityDao: EntityDao,
         edgeDao: EdgeDao,
         entityVersionDao: EntityVersionDao,
         graphVersionDao: GraphVersionDao,
         edgeVersionDao: EdgeVersionDao,
-        graphVersionMemberDao: GraphVersionMemberDao,
+        graphVersionEntityDao: GraphVersionEntityDao,
         graphVersionEdgeDao: GraphVersionEdgeDao,
         uow: UnitOfWork,
     ) = DeepGraphVersionService(
@@ -199,7 +199,7 @@ class ObjsCoreAutoConfiguration {
         entityVersions = entityVersionDao,
         graphVersions = graphVersionDao,
         edgeVersions = edgeVersionDao,
-        versionMembers = graphVersionMemberDao,
+        versionMembers = graphVersionEntityDao,
         versionEdges = graphVersionEdgeDao,
         uow = uow,
     )
@@ -212,12 +212,12 @@ class ObjsCoreAutoConfiguration {
     @ConditionalOnMissingBean
     fun namedGraphStore(
         graphDao: GraphDao,
-        membershipDao: GraphMembershipDao,
+        membershipDao: GraphEntitiesDao,
         entityDao: EntityDao,
         edgeDao: EdgeDao,
         validator: Validator,
         deepVersions: DeepGraphVersionService,
-        versionMemberDao: GraphVersionMemberDao,
+        versionMemberDao: GraphVersionEntityDao,
         uow: UnitOfWork,
         versionReferenceGuard: org.poc.objs.api.store.GraphVersionReferenceGuard,
     ) = NamedGraphStore(

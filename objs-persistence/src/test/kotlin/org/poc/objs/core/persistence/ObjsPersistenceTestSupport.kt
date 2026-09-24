@@ -57,11 +57,11 @@ class ObjsPersistenceTestSupport private constructor(
     val entityDao = EntityDao(uow)
     val edgeDao = EdgeDao(uow)
     val graphDao = GraphDao(uow)
-    val membershipDao = GraphMembershipDao(uow)
+    val membershipDao = GraphEntitiesDao(uow)
     val entityVersionDao = EntityVersionDao(uow)
     val graphVersionDao = GraphVersionDao(uow)
     val edgeVersionDao = EdgeVersionDao(uow)
-    val graphVersionMemberDao = GraphVersionMemberDao(uow)
+    val graphVersionEntityDao = GraphVersionEntityDao(uow)
     val graphVersionEdgeDao = GraphVersionEdgeDao(uow)
     val schemaCatalogDao = SchemaCatalogDao(uow)
     val allowedEdgeRuleDao = AllowedEdgeRuleDao(uow)
@@ -93,7 +93,7 @@ class ObjsPersistenceTestSupport private constructor(
         entityVersions = entityVersionDao,
         graphVersions = graphVersionDao,
         edgeVersions = edgeVersionDao,
-        versionMembers = graphVersionMemberDao,
+        versionMembers = graphVersionEntityDao,
         versionEdges = graphVersionEdgeDao,
         uow = uow,
     )
@@ -104,7 +104,7 @@ class ObjsPersistenceTestSupport private constructor(
         edgeDao = edgeDao,
         validator = validator,
         deepVersions = deepVersions,
-        versionMemberDao = graphVersionMemberDao,
+        versionMemberDao = graphVersionEntityDao,
         uow = uow,
     )
     val graphStore = GraphStore(
@@ -239,14 +239,14 @@ class ObjsPersistenceTestSupport private constructor(
             EntityRecord::class.java,
             EdgeRecord::class.java,
             GraphRecord::class.java,
-            GraphMembershipRecord::class.java,
+            GraphEntitiesRecord::class.java,
             SchemaCatalogRecord::class.java,
             AllowedEdgeRuleRecord::class.java,
             SeedLedgerRecord::class.java,
             EntityVersionRecord::class.java,
             GraphVersionRecord::class.java,
             EdgeVersionRecord::class.java,
-            GraphVersionMemberRecord::class.java,
+            GraphVersionEntityRecord::class.java,
             GraphVersionEdgeRecord::class.java,
             PolicyCategoryRecord::class.java,
             PolicyRecord::class.java,

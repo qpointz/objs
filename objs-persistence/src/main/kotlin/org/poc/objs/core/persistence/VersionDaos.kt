@@ -168,11 +168,11 @@ class EdgeVersionDao(private val uow: UnitOfWork) {
     }
 }
 
-class GraphVersionMemberDao(private val uow: UnitOfWork) {
+class GraphVersionEntityDao(private val uow: UnitOfWork) {
     private val em get() = uow.entityManager()
-    fun save(entity: GraphVersionMemberRecord): GraphVersionMemberRecord {
-        val id = GraphVersionMemberId(entity.graphId, entity.graphVersion, entity.entityId)
-        return if (em.find(GraphVersionMemberRecord::class.java, id) == null) {
+    fun save(entity: GraphVersionEntityRecord): GraphVersionEntityRecord {
+        val id = GraphVersionEntityId(entity.graphId, entity.graphVersion, entity.entityId)
+        return if (em.find(GraphVersionEntityRecord::class.java, id) == null) {
             em.persist(entity)
             entity
         } else {
@@ -180,13 +180,13 @@ class GraphVersionMemberDao(private val uow: UnitOfWork) {
         }
     }
 
-    fun findByGraphIdAndGraphVersion(graphId: UUID, graphVersion: Long): List<GraphVersionMemberRecord> =
+    fun findByGraphIdAndGraphVersion(graphId: UUID, graphVersion: Long): List<GraphVersionEntityRecord> =
         em.createQuery(
             """
-            select m from BoMGraphVersionMemberRecord m
+            select m from BoMGraphVersionEntityRecord m
             where m.graphId = :graphId and m.graphVersion = :graphVersion
             """.trimIndent(),
-            GraphVersionMemberRecord::class.java,
+            GraphVersionEntityRecord::class.java,
         )
             .setParameter("graphId", graphId)
             .setParameter("graphVersion", graphVersion)
@@ -195,7 +195,7 @@ class GraphVersionMemberDao(private val uow: UnitOfWork) {
     fun findDistinctGraphIdsByEntityId(entityId: UUID): List<UUID> =
         em.createQuery(
             """
-            select distinct m.graphId from BoMGraphVersionMemberRecord m
+            select distinct m.graphId from BoMGraphVersionEntityRecord m
             where m.entityId = :entityId
             """.trimIndent(),
             UUID::class.java,
@@ -207,14 +207,14 @@ class GraphVersionMemberDao(private val uow: UnitOfWork) {
 
     fun deleteAllByGraphId(graphId: UUID) {
         em.createQuery(
-            "delete from BoMGraphVersionMemberRecord m where m.graphId = :graphId",
+            "delete from BoMGraphVersionEntityRecord m where m.graphId = :graphId",
         ).setParameter("graphId", graphId).executeUpdate()
     }
 
     fun countByEntityIdAndEntityVersion(entityId: UUID, entityVersion: Long): Long =
         em.createQuery(
             """
-            select count(m) from BoMGraphVersionMemberRecord m
+            select count(m) from BoMGraphVersionEntityRecord m
             where m.entityId = :entityId and m.entityVersion = :entityVersion
             """.trimIndent(),
             Long::class.javaObjectType,

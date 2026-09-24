@@ -38,12 +38,12 @@ import java.util.UUID
  */
 class NamedGraphStore(
     private val graphDao: GraphDao,
-    private val membershipDao: GraphMembershipDao,
+    private val membershipDao: GraphEntitiesDao,
     private val entityDao: EntityDao,
     private val edgeDao: EdgeDao,
     private val validator: Validator,
     private val deepVersions: DeepGraphVersionService,
-    private val versionMemberDao: GraphVersionMemberDao,
+    private val versionMemberDao: GraphVersionEntityDao,
     private val uow: UnitOfWork,
     private val versionReferenceGuard: org.poc.objs.api.store.GraphVersionReferenceGuard =
         org.poc.objs.api.store.AllowAllGraphVersionReferenceGuard,
@@ -229,7 +229,7 @@ class NamedGraphStore(
      * Membership-only apply: restore membership + edge topology from [version], keep **live**
      * entity/edge payloads when present. Does **not** change [GraphRecord.headVersion] (G-O16b).
      */
-    fun applyGraphVersionMembership(graphId: UUID, version: Long): ValidationResult {
+    fun applyGraphVersionStructure(graphId: UUID, version: Long): ValidationResult {
         val freeze = deepVersions.getGraphVersion(graphId, version)
         val entities =
             uow.read {
@@ -480,7 +480,7 @@ class NamedGraphStore(
         }
         if (newEntities.isNotEmpty()) {
             membershipDao.saveAll(
-                newEntities.map { GraphMembershipRecord(graphId = newGraphId, entityId = requireNotNull(it.id)) },
+                newEntities.map { GraphEntitiesRecord(graphId = newGraphId, entityId = requireNotNull(it.id)) },
             )
         }
         return requireNotNull(get(newGraphId))
@@ -728,7 +728,7 @@ class NamedGraphStore(
         if (!entityDao.existsById(entityId)) {
             throw GraphException(code = "GRAPH_ENTITY_MISSING", message = "Entity not found: $entityId")
         }
-        membershipDao.save(GraphMembershipRecord(graphId = graphId, entityId = entityId))
+        membershipDao.save(GraphEntitiesRecord(graphId = graphId, entityId = entityId))
         touch(graphId)
     }
 
@@ -903,7 +903,7 @@ class NamedGraphStore(
             graphStore.upsertEntities(mutation.entities.set)
             mutation.entities.set.forEach { entity ->
                 membershipDao.save(
-                    GraphMembershipRecord(graphId = graphId, entityId = requireNotNull(entity.id)),
+                    GraphEntitiesRecord(graphId = graphId, entityId = requireNotNull(entity.id)),
                 )
             }
         }
@@ -1004,7 +1004,7 @@ class NamedGraphStore(
     private fun replaceMembership(graphId: UUID, entityIds: Set<UUID>, edgeIds: Set<UUID>) {
         if (entityIds.isNotEmpty()) {
             membershipDao.saveAll(
-                entityIds.map { GraphMembershipRecord(graphId = graphId, entityId = it) },
+                entityIds.map { GraphEntitiesRecord(graphId = graphId, entityId = it) },
             )
         }
         val currentEdgeIds = edgeDao.findByGraphId(graphId).mapNotNullTo(linkedSetOf()) { it.id }

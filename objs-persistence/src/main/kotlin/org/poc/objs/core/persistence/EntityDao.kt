@@ -66,7 +66,7 @@ class EntityDao(private val uow: UnitOfWork) {
         val rows = em.createQuery(
             """
             select e.type, count(e)
-            from BoMEntityRecord e, BoMGraphMembershipRecord m
+            from BoMEntityRecord e, BoMGraphEntitiesRecord m
             where m.entityId = e.id and m.graphId = :graphId
             group by e.type
             """.trimIndent(),
@@ -240,14 +240,14 @@ class GraphDao(private val uow: UnitOfWork) {
     }
 }
 
-class GraphMembershipDao(private val uow: UnitOfWork) {
+class GraphEntitiesDao(private val uow: UnitOfWork) {
     private val em get() = uow.entityManager()
-    fun findById(id: GraphMembershipId): GraphMembershipRecord? =
-        em.find(GraphMembershipRecord::class.java, id)
+    fun findById(id: GraphEntitiesId): GraphEntitiesRecord? =
+        em.find(GraphEntitiesRecord::class.java, id)
 
-    fun save(entity: GraphMembershipRecord): GraphMembershipRecord {
-        val id = GraphMembershipId(entity.graphId, entity.entityId)
-        return if (em.find(GraphMembershipRecord::class.java, id) == null) {
+    fun save(entity: GraphEntitiesRecord): GraphEntitiesRecord {
+        val id = GraphEntitiesId(entity.graphId, entity.entityId)
+        return if (em.find(GraphEntitiesRecord::class.java, id) == null) {
             em.persist(entity)
             entity
         } else {
@@ -255,30 +255,30 @@ class GraphMembershipDao(private val uow: UnitOfWork) {
         }
     }
 
-    fun saveAll(entities: Iterable<GraphMembershipRecord>): List<GraphMembershipRecord> =
+    fun saveAll(entities: Iterable<GraphEntitiesRecord>): List<GraphEntitiesRecord> =
         entities.map { save(it) }
 
-    fun findByGraphId(graphId: UUID): List<GraphMembershipRecord> =
+    fun findByGraphId(graphId: UUID): List<GraphEntitiesRecord> =
         em.createQuery(
-            "select m from BoMGraphMembershipRecord m where m.graphId = :graphId",
-            GraphMembershipRecord::class.java,
+            "select m from BoMGraphEntitiesRecord m where m.graphId = :graphId",
+            GraphEntitiesRecord::class.java,
         ).setParameter("graphId", graphId).resultList
 
-    fun findByEntityId(entityId: UUID): List<GraphMembershipRecord> =
+    fun findByEntityId(entityId: UUID): List<GraphEntitiesRecord> =
         em.createQuery(
-            "select m from BoMGraphMembershipRecord m where m.entityId = :entityId",
-            GraphMembershipRecord::class.java,
+            "select m from BoMGraphEntitiesRecord m where m.entityId = :entityId",
+            GraphEntitiesRecord::class.java,
         ).setParameter("entityId", entityId).resultList
 
     fun deleteByGraphId(graphId: UUID) {
-        em.createQuery("delete from BoMGraphMembershipRecord m where m.graphId = :graphId")
+        em.createQuery("delete from BoMGraphEntitiesRecord m where m.graphId = :graphId")
             .setParameter("graphId", graphId)
             .executeUpdate()
     }
 
     fun deleteByGraphIdAndEntityId(graphId: UUID, entityId: UUID) {
         em.createQuery(
-            "delete from BoMGraphMembershipRecord m where m.graphId = :graphId and m.entityId = :entityId",
+            "delete from BoMGraphEntitiesRecord m where m.graphId = :graphId and m.entityId = :entityId",
         )
             .setParameter("graphId", graphId)
             .setParameter("entityId", entityId)
@@ -287,7 +287,7 @@ class GraphMembershipDao(private val uow: UnitOfWork) {
 
     fun countByGraphId(graphId: UUID): Long =
         em.createQuery(
-            "select count(m) from BoMGraphMembershipRecord m where m.graphId = :graphId",
+            "select count(m) from BoMGraphEntitiesRecord m where m.graphId = :graphId",
             Long::class.javaObjectType,
         ).setParameter("graphId", graphId).singleResult
 }

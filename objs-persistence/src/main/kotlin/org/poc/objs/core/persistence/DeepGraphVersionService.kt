@@ -15,13 +15,13 @@ import kotlin.math.max
 
 class DeepGraphVersionService(
     private val graphDao: GraphDao,
-    private val membershipDao: GraphMembershipDao,
+    private val membershipDao: GraphEntitiesDao,
     private val entityDao: EntityDao,
     private val edgeDao: EdgeDao,
     private val entityVersions: EntityVersionDao,
     private val graphVersions: GraphVersionDao,
     private val edgeVersions: EdgeVersionDao,
-    private val versionMembers: GraphVersionMemberDao,
+    private val versionMembers: GraphVersionEntityDao,
     private val versionEdges: GraphVersionEdgeDao,
     private val uow: UnitOfWork,
 ) {
@@ -62,7 +62,7 @@ class DeepGraphVersionService(
             row.headVersion = version
             entityDao.save(row)
             versionMembers.save(
-                GraphVersionMemberRecord(
+                GraphVersionEntityRecord(
                     graphId = graphId,
                     graphVersion = graphVersion,
                     entityId = id,
