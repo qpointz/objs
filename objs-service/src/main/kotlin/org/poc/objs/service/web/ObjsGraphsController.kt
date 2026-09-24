@@ -7,10 +7,12 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.servlet.http.HttpServletRequest
+import org.poc.objs.api.domain.Edge
 import org.poc.objs.api.domain.GraphMutation
 import org.poc.objs.api.domain.MutationMode
 import org.poc.objs.api.domain.ResolvedGraph
 import org.poc.objs.api.domain.GraphContents
+import org.poc.objs.api.domain.graphMutation
 import org.poc.objs.api.GraphOperationException
 import org.poc.objs.api.domain.GraphException
 import org.poc.objs.api.domain.GraphHeader
@@ -288,7 +290,7 @@ class ObjsGraphsController(
         return ResponseEntity.noContent().build()
     }
 
-    @PostMapping("/{id}/members/{entityId}")
+    @PostMapping("/{id}/entities/{entityId}")
     @Operation(summary = "Attach an existing pool entity to this graph (membership row only)")
     @ApiResponses(
         ApiResponse(responseCode = "200", description = "Resolved graph after attach"),
@@ -302,7 +304,7 @@ class ObjsGraphsController(
         return ResponseEntity.ok(requireNotNull(namedGraphs.get(id)).toResponse())
     }
 
-    @DeleteMapping("/{id}/members/{entityId}")
+    @DeleteMapping("/{id}/entities/{entityId}")
     @Operation(summary = "Detach an entity from this graph (pool entity kept)")
     @ApiResponses(
         ApiResponse(responseCode = "204", description = "Detached"),
@@ -315,6 +317,103 @@ class ObjsGraphsController(
         namedGraphs.detach(id, entityId)
         return ResponseEntity.noContent().build()
     }
+
+    @PostMapping("/{id}/edges")
+    @Operation(
+        summary = "Create/upsert an edge in this graph",
+        description = "Thin MERGE wrapper: forces graphId from path; body = one mutate edges.set item.",
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "Resolved graph after create"),
+        ApiResponse(
+            responseCode = "400",
+            description = "Validation failed",
+            content = [Content(schema = Schema(implementation = ValidationResult::class))],
+        ),
+        ApiResponse(responseCode = "404", description = "Graph not found"),
+    )
+    fun createEdge(
+        @PathVariable id: UUID,
+        @RequestBody edge: Edge,
+    ): ResponseEntity<Any> {
+        edge.graphId = id
+        return mutateWithMode(
+            id,
+            graphMutation {
+                mode(MutationMode.MERGE)
+                edges { set(edge) }
+            },
+            MutationMode.MERGE,
+        )
+    }
+
+    @PutMapping("/{id}/edges/{edgeId}")
+    @Operation(
+        summary = "Update an edge in this graph",
+        description = "Thin MERGE wrapper; path edgeId wins; rejects body graphId mismatch with path graph.",
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "Resolved graph after update"),
+        ApiResponse(
+            responseCode = "400",
+            description = "Validation failed or graphId mismatch",
+            content = [Content(schema = Schema(implementation = ValidationResult::class))],
+        ),
+        ApiResponse(responseCode = "404", description = "Graph not found"),
+    )
+    fun updateEdge(
+        @PathVariable id: UUID,
+        @PathVariable edgeId: UUID,
+        @RequestBody edge: Edge,
+    ): ResponseEntity<Any> {
+        if (edge.graphId != null && edge.graphId != id) {
+            return ResponseEntity.badRequest().body(
+                ValidationResult.of(
+                    ValidationIssue(
+                        code = "GRAPH_ID_MISMATCH",
+                        message = "Edge graphId ${edge.graphId} does not match path graph $id",
+                    ),
+                ),
+            )
+        }
+        edge.id = edgeId
+        edge.graphId = id
+        return mutateWithMode(
+            id,
+            graphMutation {
+                mode(MutationMode.MERGE)
+                edges { set(edge) }
+            },
+            MutationMode.MERGE,
+        )
+    }
+
+    @DeleteMapping("/{id}/edges/{edgeId}")
+    @Operation(
+        summary = "Delete an edge from this graph",
+        description = "Same as MERGE edges.unset for this edge id.",
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "Resolved graph after delete"),
+        ApiResponse(
+            responseCode = "400",
+            description = "Validation failed",
+            content = [Content(schema = Schema(implementation = ValidationResult::class))],
+        ),
+        ApiResponse(responseCode = "404", description = "Graph not found"),
+    )
+    fun deleteEdge(
+        @PathVariable id: UUID,
+        @PathVariable edgeId: UUID,
+    ): ResponseEntity<Any> =
+        mutateWithMode(
+            id,
+            graphMutation {
+                mode(MutationMode.MERGE)
+                edges { unset(edgeId) }
+            },
+            MutationMode.MERGE,
+        )
 
     @PostMapping(
         "/{id}/query",
@@ -475,16 +574,16 @@ class ObjsGraphsController(
         return ResponseEntity.ok(requireNotNull(namedGraphs.get(id)).toResponse())
     }
 
-    @PostMapping("/{id}/versions/{version}/apply-membership")
+    @PostMapping("/{id}/versions/{version}/apply-structure")
     @Operation(
-        summary = "Apply freeze membership + edge topology; keep live payloads",
+        summary = "Apply freeze entity/edge topology; keep live payloads",
         description = "Does not change head_version. Missing live entities/edges fall back to freeze rows.",
     )
-    fun applyMembership(
+    fun applyStructure(
         @PathVariable id: UUID,
         @PathVariable version: Long,
     ): ResponseEntity<Any> {
-        val result = namedGraphs.applyGraphVersionMembership(id, version)
+        val result = namedGraphs.applyGraphVersionStructure(id, version)
         if (!result.isValid) {
             return ResponseEntity.badRequest().body(result)
         }

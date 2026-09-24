@@ -21,7 +21,7 @@ import type { BoMGraphHeader, BoMGraphResponse } from './types'
 type Props = {
   opened: boolean
   onClose: () => void
-  /** Called with the opened graph's id + resolved header/members. */
+  /** Called with the opened graph's id + resolved header/entities. */
   onOpen: (graphId: string, resolved: BoMGraphResponse) => void
 }
 

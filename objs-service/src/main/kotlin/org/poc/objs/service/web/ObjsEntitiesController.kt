@@ -34,7 +34,7 @@ import java.util.UUID
 
 /**
  * Entity pool HTTP API under `/api/v1/objs/entities` (WI-004): plain CRUD, no graph scope.
- * Graph membership is managed via [ObjsGraphsController] (`/graphs/{id}/members/{entityId}`).
+ * Graph entity attachment is managed via [ObjsGraphsController] (`/graphs/{id}/entities/{entityId}`).
  */
 @RestController
 @RequestMapping("/api/v1/objs/entities")

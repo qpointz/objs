@@ -298,7 +298,7 @@ class ObjsGraphsControllerTest {
             ResolvedGraph(id, emptyMap(), GraphContents(listOf(Entity(id = entityId, type = "Person", schemaVersion = "1")), emptyList())),
         )
 
-        mockMvc.perform(post("/api/v1/objs/graphs/$id/members/$entityId"))
+        mockMvc.perform(post("/api/v1/objs/graphs/$id/entities/$entityId"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.graph.entities[0].id").value(entityId.toString()))
         verify(namedGraphs).attach(id, entityId)
@@ -311,7 +311,7 @@ class ObjsGraphsControllerTest {
         willThrow(GraphException("GRAPH_ENTITY_MISSING", "missing"))
             .given(namedGraphs).attach(id, entityId)
 
-        mockMvc.perform(post("/api/v1/objs/graphs/$id/members/$entityId"))
+        mockMvc.perform(post("/api/v1/objs/graphs/$id/entities/$entityId"))
             .andExpect(status().isBadRequest)
     }
 
@@ -319,7 +319,7 @@ class ObjsGraphsControllerTest {
     fun shouldDetachMember() {
         val id = UUID.randomUUID()
         val entityId = UUID.randomUUID()
-        mockMvc.perform(delete("/api/v1/objs/graphs/$id/members/$entityId"))
+        mockMvc.perform(delete("/api/v1/objs/graphs/$id/entities/$entityId"))
             .andExpect(status().isNoContent)
         verify(namedGraphs).detach(id, entityId)
     }
@@ -501,13 +501,86 @@ class ObjsGraphsControllerTest {
     }
 
     @Test
-    fun shouldApplyGraphVersionMembership() {
+    fun shouldApplyGraphVersionStructure() {
         val id = UUID.randomUUID()
-        given(namedGraphs.applyGraphVersionMembership(id, 7L)).willReturn(ValidationResult.ok())
+        given(namedGraphs.applyGraphVersionStructure(id, 7L)).willReturn(ValidationResult.ok())
         given(namedGraphs.get(id)).willReturn(
             ResolvedGraph(id, emptyMap(), GraphContents(emptyList(), emptyList())),
         )
-        mockMvc.perform(post("/api/v1/objs/graphs/$id/versions/7/apply-membership"))
+        mockMvc.perform(post("/api/v1/objs/graphs/$id/versions/7/apply-structure"))
             .andExpect(status().isOk)
+    }
+
+    @Test
+    fun shouldCreateEdge_viaGraphScopedPath() {
+        val id = UUID.randomUUID()
+        val edgeId = UUID.randomUUID()
+        val source = UUID.randomUUID()
+        val target = UUID.randomUUID()
+        given(namedGraphs.mutate(eqObj(id), anyObj())).willReturn(ValidationResult.ok())
+        given(namedGraphs.get(id)).willReturn(
+            ResolvedGraph(id, emptyMap(), GraphContents(emptyList(), emptyList())),
+        )
+        mockMvc.perform(
+            post("/api/v1/objs/graphs/$id/edges")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """{"id":"$edgeId","source":"$source","target":"$target","role":"depends"}""",
+                ),
+        )
+            .andExpect(status().isOk)
+        verify(namedGraphs).mutate(eqObj(id), anyObj())
+    }
+
+    @Test
+    fun shouldUpdateEdge_viaGraphScopedPath() {
+        val id = UUID.randomUUID()
+        val edgeId = UUID.randomUUID()
+        val source = UUID.randomUUID()
+        val target = UUID.randomUUID()
+        given(namedGraphs.mutate(eqObj(id), anyObj())).willReturn(ValidationResult.ok())
+        given(namedGraphs.get(id)).willReturn(
+            ResolvedGraph(id, emptyMap(), GraphContents(emptyList(), emptyList())),
+        )
+        mockMvc.perform(
+            put("/api/v1/objs/graphs/$id/edges/$edgeId")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """{"source":"$source","target":"$target","role":"depends"}""",
+                ),
+        )
+            .andExpect(status().isOk)
+        verify(namedGraphs).mutate(eqObj(id), anyObj())
+    }
+
+    @Test
+    fun shouldDeleteEdge_viaGraphScopedPath() {
+        val id = UUID.randomUUID()
+        val edgeId = UUID.randomUUID()
+        given(namedGraphs.mutate(eqObj(id), anyObj())).willReturn(ValidationResult.ok())
+        given(namedGraphs.get(id)).willReturn(
+            ResolvedGraph(id, emptyMap(), GraphContents(emptyList(), emptyList())),
+        )
+        mockMvc.perform(delete("/api/v1/objs/graphs/$id/edges/$edgeId"))
+            .andExpect(status().isOk)
+        verify(namedGraphs).mutate(eqObj(id), anyObj())
+    }
+
+    @Test
+    fun shouldRejectUpdateEdge_whenBodyGraphIdMismatchesPath() {
+        val id = UUID.randomUUID()
+        val other = UUID.randomUUID()
+        val edgeId = UUID.randomUUID()
+        val source = UUID.randomUUID()
+        val target = UUID.randomUUID()
+        mockMvc.perform(
+            put("/api/v1/objs/graphs/$id/edges/$edgeId")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """{"graphId":"$other","source":"$source","target":"$target","role":"depends"}""",
+                ),
+        )
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.issues[0].code").value("GRAPH_ID_MISMATCH"))
     }
 }

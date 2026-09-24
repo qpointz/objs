@@ -32,7 +32,7 @@ import {
   putGraphMutation,
   putGraphAnnotations,
   resetGraphToVersion,
-  applyGraphVersionMembership,
+  applyGraphVersionStructure,
   validateGraphMutation,
   toGraphData,
   type GraphMutationBody,
@@ -1241,7 +1241,7 @@ export function ObjectLinterPage() {
                     onClick={() => {
                       if (currentGraphId == null) return
                       setBusy(true)
-                      void applyGraphVersionMembership(currentGraphId, row.version)
+                      void applyGraphVersionStructure(currentGraphId, row.version)
                         .then((resolved) => {
                           applyGraphHeader(currentGraphId, resolved.annotations ?? {})
                           loadGraphMembers(resolved.graph)

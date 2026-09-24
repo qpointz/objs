@@ -332,12 +332,12 @@ export async function resetGraphToVersion(
   return parseResponse<BoMGraphResponse>(res)
 }
 
-export async function applyGraphVersionMembership(
+export async function applyGraphVersionStructure(
   id: string,
   version: number,
 ): Promise<BoMGraphResponse> {
   const res = await fetch(
-    `/api/v1/objs/graphs/${encodeURIComponent(id)}/versions/${encodeURIComponent(String(version))}/apply-membership`,
+    `/api/v1/objs/graphs/${encodeURIComponent(id)}/versions/${encodeURIComponent(String(version))}/apply-structure`,
     { method: 'POST' },
   )
   return parseResponse<BoMGraphResponse>(res)
