@@ -56,6 +56,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | C-39 | Evaluation archive list/load HTTP + Policy in-page Archives mode (axes) | feature | done | [`completed/20260917-policy-archive-workbench/`](completed/20260917-policy-archive-workbench/STORY.md), also [U-12](#ui--workbench) |
 | C-40 | Graph entity/edge vocabulary: freeze SQL + REST `/members`→`/entities` + graph `/edges` CRUD | refactoring | done | [`completed/20260924-graph-entity-edge-vocab/`](completed/20260924-graph-entity-edge-vocab/STORY.md) |
 | C-41 | Freeze-scoped edge history (graph version owns edge snapshots; drop separate edge pin+instance clock) | refactoring | backlog | Deferred after C-40 discussion; domain clarity not storage; no payload COW; [`completed/20260924-graph-entity-edge-vocab/GAPS.md`](completed/20260924-graph-entity-edge-vocab/GAPS.md) G-X4 |
+| C-42 | OpenAPI quality: tags/groups + completeness + Java/Python codegen smoke (`/api/v1/objs/**`, SBOM, AR) | improvement | in-progress | [`in-progress/openapi-tags/`](in-progress/openapi-tags/STORY.md); follows D-9 |
 
 ---
 
@@ -113,5 +114,5 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 |--------|------:|
 | backlog | 3 |
 | planned | 1 |
-| in-progress | 0 |
+| in-progress | 1 |
 | done | 47 |

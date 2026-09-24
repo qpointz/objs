@@ -75,7 +75,7 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 
 ### In progress
 
-_(none)_
+- [`openapi-tags`](in-progress/openapi-tags/STORY.md) — OpenAPI tags/groups + completeness + Java/Python codegen smoke (C-42).
 
 ### Planned
 
