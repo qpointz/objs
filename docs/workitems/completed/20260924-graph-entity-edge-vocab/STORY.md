@@ -2,15 +2,16 @@
 
 **Slug:** `graph-entity-edge-vocab`  
 **Branch:** `graph-entity-edge-vocab`  
-**Status:** in-progress  
-**Folder:** [`docs/workitems/in-progress/graph-entity-edge-vocab/`](.)  
+**Status:** completed  
+**Folder:** [`docs/workitems/completed/20260924-graph-entity-edge-vocab/`](.)  
 **Backlog:** [C-40](../../BACKLOG.md)  
 **Base:** `origin/dev`  
 **Depends on:** — (independent of C-20)  
 **Gaps:** [`GAPS.md`](GAPS.md)  
 **Design:** [`docs/design/service/rest-api.md`](../../../design/service/rest-api.md) · [`docs/design/graph/database-model.md`](../../../design/graph/database-model.md)  
 **Process:** [`docs/workitems/RULES.md`](../../RULES.md)  
-**Related backlog:** [C-41](../../BACKLOG.md) freeze-scoped edge history (**not** this story)
+**Related backlog:** [C-41](../../BACKLOG.md) freeze-scoped edge history (**not** this story)  
+**Closed:** 2026-09-24
 
 ## Goal
 
@@ -62,9 +63,8 @@ Align graph vocabulary on **entity** / **edge** (not **member**) across freeze S
 - Top-level `/edges/{id}` history/compact controller changes
 - Forcing examples onto new edge REST (persistence mutate OK; WI-007 reviews compile/copy only)
 - Store text search (C-20)
-- Story closure / archive (user must ask)
 
-## Acceptance (after implementation)
+## Acceptance
 
 - [x] Freeze entity pin table/index pairs with live `objs_graph_entity` the same way edges already pair
 - [x] No production references to `/members`, `objs_graph_version_member`, `GraphMembership`, or `GraphVersionMember`
@@ -75,6 +75,4 @@ Align graph vocabulary on **entity** / **edge** (not **member**) across freeze S
 
 ## Process notes
 
-1. One WI at a time; `[x]` + one commit + push per WI.  
-2. Do not start WI-002 until WI-001 checkboxes are done.  
-3. Do not close this story until the user asks.
+Closed 2026-09-24 after WI-000…WI-007; history squashed for MR !76.

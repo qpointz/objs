@@ -279,6 +279,8 @@ When an agent is asked to **review a merge request** (or MR feedback is left on 
 - Keep commits minimal — ideally **one commit per WI**, labelled with the WI identifier.
 - **Never** add `Co-Authored-By` or similar trailers to commit messages.
 - Follow the bracketed prefix style: `[feat]`, `[fix]`, `[change]`, `[refactor]`, `[docs]`, `[wip]`.
+- At **story closure** rewrite, do **not** leave consecutive `[docs]` commits — see **Completion
+  (Story level)** → **No consecutive `[docs]` commits**.
 
 ### Per-WI cadence (story implementation)
 
@@ -527,19 +529,28 @@ logical review units so reviewers see a deliberate history, not one commit per W
      sequence (same bar as below).
 4. **Ordering** — commits should read top-to-bottom as a coherent story (foundation → wiring →
    migration → tests → docs is a common pattern; match what the change actually needs).
-5. **MR-ready bar** — after rewrite, `git log <merge-base>..HEAD` should show:
+5. **No consecutive `[docs]` commits** — documentation-only changes (living design prose, ER diagrams,
+   story archive, `MILESTONE.md` / `BACKLOG.md` / `SEQUENCE.md`, process `RULES.md`, WI/story markdown,
+   and similar) **must not** appear as a run of adjacent `[docs]` commits. Fold any consecutive
+   docs-only commits into **one** `[docs]` commit. Split docs across commits only when a non-docs
+   commit (e.g. `[feat]`) must sit between them — for example park/trackers → implementation →
+   living docs + closure as a single trailing `[docs]` commit.
+6. **MR-ready bar** — after rewrite, `git log <merge-base>..HEAD` should show:
    - Clear messages (bracket prefix, imperative, under 72 chars).
    - No `[wip]` or fixup-only noise unless intentionally kept.
+   - No adjacent `[docs]`-only commits (see above).
    - **Guideline:** **~10 commits or fewer** above the merge base; more is OK when splitting reduces
      review risk (large refactors, unrelated modules).
 
 ### Then documentation closure
 
-6. With history rewritten and tests still green, continue **Story closure** steps **1–5**
+7. With history rewritten and tests still green, continue **Story closure** steps **1–5**
    (MILESTONE, BACKLOG `done`, design docs, public docs, archive to
-   `docs/workitems/completed/YYYYMMDD-<story-slug>/`). Commit those doc/tracker changes; working
-   tree must be clean before step **6** (verify) in **Story closure**. **BACKLOG row deletion** is
-   **not** part of story closure — it happens in **Release (version) process** above.
+   `docs/workitems/completed/YYYYMMDD-<story-slug>/`). Commit those doc/tracker changes **into the
+   same** trailing `[docs]` commit as any other consecutive docs-only work (do not add a second
+   `[docs]` commit after living-docs); working tree must be clean before step **6** (verify) in
+   **Story closure**. **BACKLOG row deletion** is **not** part of story closure — it happens in
+   **Release (version) process** above.
 
 ### Push after rewrite
 

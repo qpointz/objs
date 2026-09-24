@@ -28,7 +28,7 @@ No global graph: an entity **pool** (`objs_entity`) shared by many **graphs** (`
 | `objs_entity.created_at` / `updated_at` (and every other `objs_*`) | Store-owned clocks — **C-18** Flyway V3. Client JSON ignored. |
 | `head_version` on `objs_entity` / `objs_graph` / `objs_graph_edge` | Nullable last **capture**. NULL until first Snapshot. Composite FK to `*_version` when set. |
 | `objs_entity_version` / `objs_graph_version` / `objs_graph_edge_version` | Immutable history. PK `(parent_id, version BIGINT)`. No FK back to HEAD. |
-| `objs_graph_version_member` / `objs_graph_version_edge` | Deep-freeze pins for `createDeepGraphVersion`. Index on `objs_graph_version_member(entity_id)` for pin reverse lookup (C-19 Flyway V5). |
+| `objs_graph_version_entity` / `objs_graph_version_edge` | Deep-freeze pins for `createDeepGraphVersion`. Index on `objs_graph_version_entity(entity_id)` for pin reverse lookup (C-19 Flyway V5; renamed from `*_member` in V9 / C-40). |
 
 Live GET **never** joins `*_version`. Default persist is in-place HEAD (no version row). Capture is explicit `createDeepGraphVersion` (C-18 default `ExplicitOnlyVersioningStrategy`). DIY edits to `*_version` are **unsupported — at your own risk** (H2 demo). As-built schema: [`database-model.md`](database-model.md). Historical lock: [`ER.md`](../../workitems/completed/20260819-versions-and-snapshots/ER.md).
 

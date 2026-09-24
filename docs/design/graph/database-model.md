@@ -15,6 +15,7 @@ Objs Flyway: `classpath:org/poc/objs/core/db/migration/{vendor}` into `flyway_sc
 | V4 | `V4__version_store.sql` | `*_version` tables, nullable `head_version`, deep-freeze pins |
 | V5 | `V5__graph_version_member_entity_index.sql` | Reverse lookup index for deep-freeze pins |
 | V6 | `V6__rename_bom_tables_to_objs.sql` | Rename all Objs persistence tables to the `objs_*` namespace |
+| V9 | `V9__rename_graph_version_member_to_entity.sql` | `objs_graph_version_member` → `objs_graph_version_entity` (C-40) |
 
 Live GET never joins `*_version`. Default persist is in-place HEAD (`ExplicitOnlyVersioningStrategy`). Capture is `createDeepGraphVersion` (Composer **Create version**). `clone()` copies HEAD into new ids and does not copy `*_version`.
 
@@ -39,12 +40,12 @@ erDiagram
   objs_graph ||--o{ objs_graph_entity : "members"
   objs_graph ||--o{ objs_graph_edge : "owns"
 
-  objs_graph_version ||--o{ objs_graph_version_member : "deep_members"
+  objs_graph_version ||--o{ objs_graph_version_entity : "deep_entities"
   objs_graph_version ||--o{ objs_graph_version_edge : "deep_edges"
 
   objs_graph_edge ||--o{ objs_graph_edge_version : "head_and_history"
   objs_graph_edge_version ||--o{ objs_graph_version_edge : "pinned_edge_version"
-  objs_entity_version ||--o{ objs_graph_version_member : "pinned_entity_version"
+  objs_entity_version ||--o{ objs_graph_version_entity : "pinned_entity_version"
 
   objs_entity {
     uuid id PK
@@ -123,7 +124,7 @@ erDiagram
     timestamp head_deleted_at
   }
 
-  objs_graph_version_member {
+  objs_graph_version_entity {
     uuid graph_id PK
     bigint graph_version PK
     uuid entity_id PK
@@ -197,7 +198,7 @@ erDiagram
 |------|--------|-----------|
 | Live HEAD | `objs_entity`, `objs_graph`, `objs_graph_entity`, `objs_graph_edge` | Graph GET / pool GET |
 | History | `objs_entity_version`, `objs_graph_version`, `objs_graph_edge_version` | Capture + reconstruct |
-| Deep freeze children | `objs_graph_version_member`, `objs_graph_version_edge` | Pins original entity/edge **ids** + `version` |
+| Deep freeze children | `objs_graph_version_entity`, `objs_graph_version_edge` | Pins original entity/edge **ids** + `version` |
 
 `head_version` is nullable. NULL means never captured. When set, composite FK `(id, head_version) → *_version(parent_id, version)` (MATCH SIMPLE: NULL skips the check).
 
@@ -222,7 +223,7 @@ Every `objs_*` table has `created_at` / `updated_at` `TIMESTAMP NOT NULL`. Persi
 - `objs_entity (type, schema_version)` — `idx_objs_entity_type_schema_version`
 - `objs_graph_entity (entity_id)` — `idx_objs_graph_entity_entity`
 - `objs_graph_edge (graph_id)`, `(source_id)`, `(target_id)`, `(role)`, `(graph_id, source_id)`, `(graph_id, target_id)`
-- `objs_graph_version_member (entity_id)` — `idx_objs_graph_version_member_entity_id` (V5)
+- `objs_graph_version_entity (entity_id)` — `idx_objs_graph_version_entity_entity_id` (V5; renamed V9 / C-40)
 - PostgreSQL GIN `jsonb_path_ops` on `objs_entity.annotations` and `objs_graph.annotations`
 - `objs_seed_ledger (last_attempt_status)` — `idx_objs_seed_ledger_status`
 

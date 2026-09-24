@@ -71,10 +71,11 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`codegen-schema-evolution`](completed/20260923-codegen-schema-evolution/STORY.md) — L2 schema upgrade SPI + TypedGraphView hydrate; SBOM Component@1→2 + fingerprint dual view (C-35). WI-000…WI-004. Closes C-23 G-30.
 - [`sbom-ar-openapi`](completed/20260923-sbom-ar-openapi/STORY.md) — Domain OpenAPI + Swagger UI; demo purpose portfolios; portfolio Flat/By category results (D-9). WI-000…WI-005.
 - [`ar-perf-profile`](completed/20260924-ar-perf-profile/STORY.md) — AR `perf` multi-graph noise fill (objects/edges totals, versions/graph) + timed harness (D-10). WI-000…WI-003.
+- [`graph-entity-edge-vocab`](completed/20260924-graph-entity-edge-vocab/STORY.md) — Freeze SQL + REST entity/edge vocabulary (no member); graph-scoped `/edges` CRUD (C-40). WI-000…WI-007.
 
 ### In progress
 
-- [`graph-entity-edge-vocab`](in-progress/graph-entity-edge-vocab/STORY.md) — Freeze SQL + REST entity/edge vocabulary (no member); graph-scoped `/edges` CRUD (C-40).
+_(none)_
 
 ### Planned
 

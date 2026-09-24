@@ -105,16 +105,16 @@ REST: `POST /graphs/{id}/versions` body `{ "annotations": {}, "createdAt": "…"
 `DELETE /graphs/{id}/versions/{v}`, `DELETE /graphs/{id}/versions`,
 `POST /entities/{id}/compact`, `POST /edges/{id}/compact`.
 
-Stage D (travel-back reset / membership-only apply):
+Stage D (travel-back reset / structure-only apply):
 
 ```kotlin
 namedGraphs.resetGraphToVersion(g.id, vPast.version)              // restore payloads + set head
 namedGraphs.resetGraphToVersion(g.id, vPast.version, truncateAfter = true)
-namedGraphs.applyGraphVersionMembership(g.id, vPast.version)      // structure only; head unchanged
+namedGraphs.applyGraphVersionStructure(g.id, vPast.version)      // structure only; head unchanged
 ```
 
 REST: `POST /graphs/{id}/versions/{v}/reset?truncateAfter=`,
-`POST /graphs/{id}/versions/{v}/apply-membership`.
+`POST /graphs/{id}/versions/{v}/apply-structure`.
 
 ## Annotations vs catalog tags
 

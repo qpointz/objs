@@ -31,7 +31,9 @@ graph-local edges, resolve, query, clone, and graph versions. See [`../graph/mod
 | `DELETE` | `/graphs/{id}` | Softish delete: drop live header + membership + edges; **history kept**; pool entities kept; `204` | `:objs-service` |
 | `DELETE` | `/graphs/{id}/destroy` | Full wipe: live HEAD **and** all deep versions; fail closed if referenced (`GRAPH_VERSION_IN_USE`) | `:objs-service` |
 | `POST` | `/graphs/{id}/clear` | Clear live HEAD members+edges; keep header + history (`clearGraph` ≡ REPLACE-empty) | `:objs-service` |
-| `POST`/`DELETE` | `/graphs/{id}/members/{entityId}` | Attach / detach an existing pool entity id (membership row only; pool entity kept on detach) | `:objs-service` |
+| `POST`/`DELETE` | `/graphs/{id}/entities/{entityId}` | Attach / detach an existing pool entity id (membership row only; pool entity kept on detach) | `:objs-service` |
+| `POST` | `/graphs/{id}/edges` | Create/upsert one graph-local edge (thin MERGE; forces `graphId` from path) | `:objs-service` |
+| `PUT`/`DELETE` | `/graphs/{id}/edges/{edgeId}` | Update / remove one graph-local edge (thin MERGE; path id wins) | `:objs-service` |
 | `POST` | `/graphs/{id}/query` | Matcher DSL (`obj-expr` / chained) scoped to this graph's members; edges induced within scope | `:objs-service` |
 | `POST` | `/graphs/query` | Matcher DSL (`all`, `graph-expr`, or chained starting with either) over graph headers → matching graphs' stored members + graph-local edges (distinct by id) | `:objs-service` |
 | `POST` | `/graphs/{id}/clone` | Deep copy into a **new** independent graph (new entity/edge ids, current HEAD only); source unchanged; no parent/lineage link; clone history starts empty | `:objs-service` |
@@ -41,7 +43,7 @@ graph-local edges, resolve, query, clone, and graph versions. See [`../graph/mod
 | `GET` | `/graphs/{id}/versions/{version}` | Reconstruct pinned graph (read-only; slower OK). Works after HEAD delete | `:objs-service` |
 | `DELETE` | `/graphs/{id}/versions/{version}` | Purge one deep version (rejects current head); orphans until `compact` | `:objs-service` |
 | `POST` | `/graphs/{id}/versions/{version}/reset` | Travel back: restore HEAD from freeze; optional `truncateAfter` | `:objs-service` |
-| `POST` | `/graphs/{id}/versions/{version}/apply-membership` | Membership + edge topology from freeze; keep live payloads; head unchanged | `:objs-service` |
+| `POST` | `/graphs/{id}/versions/{version}/apply-structure` | Structure + edge topology from freeze; keep live payloads; head unchanged | `:objs-service` |
 | `POST` | `/entities/{id}/compact` | Delete orphan entity version rows (not pinned, not live head) | `:objs-service` |
 | `POST` | `/edges/{id}/compact` | Delete orphan edge version rows | `:objs-service` |
 | `POST` | `/graph/traverse/gremlin` | Matcher + gremlin-lang script → `BoMGremlinResult` (OpenAPI tag **`traverse`**); matcher DSL scoping rules as above | `:objs-gremlin-service` |
@@ -78,8 +80,8 @@ Empty both `set` under REPLACE clears contents (stable `graphId`).
 | **REPLACE** + `PUT /graphs/{id}` | Overwrite one graph’s membership + edges from `*.set` | Id-only membership swap; multi-graph union |
 | **`clearGraph`** / `POST …/clear` | Empty HEAD members+edges; history kept | Soft delete / destroy |
 | **`purgeGraphVersion(s)`** | Drop freeze(s); reject purge of current head | — |
-| **`resetGraphToVersion`** | Travel back: restore payloads + set head; optional truncate | Membership-only apply |
-| **`applyGraphVersionMembership`** | Structure from freeze; keep live payloads; head unchanged | Travel-back reset |
+| **`resetGraphToVersion`** | Travel back: restore payloads + set head; optional truncate | Structure-only apply |
+| **`applyGraphVersionStructure`** | Structure from freeze; keep live payloads; head unchanged | Travel-back reset |
 | **`destroyGraph`** / `DELETE …/destroy` | Wipe HEAD + history | Softish `delete` (history kept) |
 | **`compactEntity` / `compactEdge`** | Explicit orphan instance-version GC | Global batch GC |
 | **`replace(id, BoMGraphSpec)`** | Set membership/`edgeIds` by existing ids only | Payload REPLACE mutate |

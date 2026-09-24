@@ -44,7 +44,7 @@ C-24 flat evaluate
 **Content deps:** suite seed kinds need C-27; batch suite target needs C-27; result store needs C-27 shape + C-28 catalog boundary.  
 **Do not** start a story’s WI-002+ until that story’s own WI-001 closes its GAPS. Do not pull later-story gaps into an earlier design lock.
 
-**Policy family complete** (C-30 closed superseded 2026-09-15). Open foundation work outside this chain: e.g. [C-39](completed/20260917-policy-archive-workbench/STORY.md) archive viewer (done), [C-20](planned/store-text-search/STORY.md), [C-40](in-progress/graph-entity-edge-vocab/STORY.md) entity/edge vocab (in-progress), [C-35](completed/20260923-codegen-schema-evolution/STORY.md) (done).
+**Policy family complete** (C-30 closed superseded 2026-09-15). Open foundation work outside this chain: e.g. [C-39](completed/20260917-policy-archive-workbench/STORY.md) archive viewer (done), [C-20](planned/store-text-search/STORY.md), [C-40](completed/20260924-graph-entity-edge-vocab/STORY.md) entity/edge vocab (done), [C-35](completed/20260923-codegen-schema-evolution/STORY.md) (done).
 
 ---
 
@@ -86,5 +86,5 @@ C-24 flat evaluate
 
 | Id | Story | Status | Notes |
 |----|--------|--------|-------|
-| **C-40** | [`graph-entity-edge-vocab`](in-progress/graph-entity-edge-vocab/STORY.md) | in-progress | Rename freeze `*_version_member` → `*_version_entity`; REST `/members`→`/entities`; add `/graphs/{id}/edges` CRUD; `apply-structure`; ER WI-006. Edge SQL names unchanged. Independent of C-20 / policy family. |
+| **C-40** | [`graph-entity-edge-vocab`](completed/20260924-graph-entity-edge-vocab/STORY.md) | done | Rename freeze `*_version_member` → `*_version_entity`; REST `/members`→`/entities`; add `/graphs/{id}/edges` CRUD; `apply-structure`; ER WI-006. Edge SQL names unchanged. Independent of C-20 / policy family. |
 | **C-41** | — | backlog | Freeze-scoped edge history (not planned). See C-40 G-X4. |
