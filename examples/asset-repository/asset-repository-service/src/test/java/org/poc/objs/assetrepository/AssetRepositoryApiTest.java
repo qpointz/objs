@@ -61,7 +61,8 @@ class AssetRepositoryApiTest {
         mockMvc.perform(get("/api/v1/asset-repository/collections/" + collectionId + "/statistics"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.collectionId").value(collectionId))
-                .andExpect(jsonPath("$.objectCount").value(0));
+                .andExpect(jsonPath("$.objectCount").value(0))
+                .andExpect(jsonPath("$.edgeCount").value(0));
 
         String writeBody = mapper.writeValueAsString(Map.of(
                 "type", "Prompt",

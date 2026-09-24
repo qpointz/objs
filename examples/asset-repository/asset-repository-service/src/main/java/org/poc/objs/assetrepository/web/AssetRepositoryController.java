@@ -159,10 +159,14 @@ public class AssetRepositoryController {
     @GetMapping("/collections/{id}/statistics")
     @Operation(
             summary = "Collection statistics",
-            description = "Deferred stats for a collection. objectCount now; lastUpdated reserved for later.")
+            description = "Collection object and in-graph edge counts; lastUpdated reserved for later.")
     ApiDtos.CollectionStatisticsDto collectionStatistics(@PathVariable("id") UUID id) {
         var entity = collections.require(id);
-        return new ApiDtos.CollectionStatisticsDto(entity.getId(), collections.objectCount(entity), null);
+        return new ApiDtos.CollectionStatisticsDto(
+                entity.getId(),
+                collections.objectCount(entity),
+                collections.edgeCount(entity),
+                null);
     }
 
     @PatchMapping("/collections/{id}")

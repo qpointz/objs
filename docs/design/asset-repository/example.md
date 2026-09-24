@@ -25,12 +25,33 @@ Independent of the SBOM inventory example — packaging pattern and adapted type
 examples/asset-repository/
   asset-repository-service/       # Java 21; objs-core + objs-service
   asset-repository-service-ui/    # Domain SPA
-  scripts/                        # Python producer/consumer (WI-007)
+  scripts/                        # Python client + ar_perf_harness.py
+  demo/load-data/                 # optional qsynth CSV kit (D-4)
 ```
 
 Workbench (schema): `/workbench/` via `runtimeOnly` `:objs-service-ui` as a **sidecar** — operators manage schemas there. Domain UI: `/ar/`. Packaged SPAs use servlet filters (`SpaRoutingFilter`) so a browser refresh of a client route serves `index.html` instead of a 404. Static files (`*.js`, `*.css`, …) pass through; version path segments such as `1.0.0` are treated as SPA routes.
 
 **Run:** `./gradlew :asset-repository-service:run` (demo profile: ontology + sample collections). Operator guide: [`examples/asset-repository/README.md`](../../../examples/asset-repository/README.md). PostgreSQL: `--spring.profiles.active=demo,postgres` (`OBJS_DB_*` env). Collection list/search casts optional JPQL string params so PostgreSQL does not bind nulls as `bytea`.
+
+### Performance profile (`perf`)
+
+Story **D-10**: [`docs/workitems/completed/20260924-ar-perf-profile/`](../../workitems/completed/20260924-ar-perf-profile/STORY.md).
+
+| Concern | Behavior |
+|---------|----------|
+| Profile | `perf` (compose with `postgres`); ontology seeds only — not `demo` instance YAML |
+| Graphs | `ar.perf.graphs` / `AR_PERF_GRAPHS` collections; each is one named graph |
+| Objects / edges | **Totals** (`ar.perf.objects` / `edges`) split evenly across graphs; edges are graph-local |
+| Versions | `ar.perf.versions` deep snapshots **per graph** (costly at large N) |
+| Write path | Batched `NamedGraphStore.mutate` with preassigned UUIDs (no identity-scan `writeComposition`) |
+| Gate | `/api/**` → 503 until fill completes |
+| Stats | Collection statistics include `objectCount` and `edgeCount` |
+| Harness | [`scripts/ar_perf_harness.py`](../../../examples/asset-repository/scripts/ar_perf_harness.py) — use `--collection perf-noise-0` when `graphs>1` |
+| Alt path | Optional qsynth CSV kit: [`demo/load-data`](../../../examples/asset-repository/demo/load-data/README.md) |
+
+```bash
+./gradlew :asset-repository-service:run --args="--spring.profiles.active=perf,postgres --ar.perf.graphs=10 --ar.perf.objects=50000 --ar.perf.edges=100000 --ar.perf.versions=3"
+```
 
 **Rule:** domain Java, domain SPA, and Python client use **`objs-core` programmatic APIs** and **`/api/v1/asset-repository/**` only. Do **not** use foundation `/api/v1/objs/**` as the application data API (even though those endpoints may be reachable on the same process).
 

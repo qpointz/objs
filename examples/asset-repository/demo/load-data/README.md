@@ -2,6 +2,8 @@
 
 qsynth model + committed CSV extract + REST loader for the asset-repository demo ontology.
 
+For **absolute-N multi-graph fill in one Boot command** (`ar.perf.graphs` / objects / edges / versions), prefer the Spring **`perf`** profile and `scripts/ar_perf_harness.py` (see [`examples/asset-repository/README.md`](../../README.md) — D-10). This kit remains the optional ratio-scaled CSV / Docker regenerate path.
+
 - Domain API only: `/api/v1/asset-repository/**`
 - Base `rows` in [`asset-repository.yaml`](asset-repository.yaml) match the classpath demo mix
 - Scale volume with **`rows_multiply` only** (do not retune per-table `rows`)

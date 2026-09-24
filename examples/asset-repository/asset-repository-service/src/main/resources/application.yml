@@ -55,6 +55,33 @@ objs:
     on-failure: FAIL_FAST
 
 ---
+# Performance noise fill (ontology only — not demo volumes).
+# Totals objects/edges split across ar.perf.graphs collections; versions are per graph.
+#   ./gradlew :asset-repository-service:run --args="--spring.profiles.active=perf"
+#   ./gradlew :asset-repository-service:run --args="--spring.profiles.active=perf,postgres --ar.perf.graphs=10 --ar.perf.objects=50000 --ar.perf.edges=100000 --ar.perf.versions=3"
+# Env: AR_PERF_GRAPHS, AR_PERF_OBJECTS, AR_PERF_EDGES, AR_PERF_VERSIONS, AR_PERF_BATCH_SIZE, AR_PERF_COLLECTION
+spring:
+  config:
+    activate:
+      on-profile: perf
+
+objs:
+  seeds:
+    enabled: true
+    resources:
+      - classpath:seeds/asset-repository-ontology.yaml
+    on-failure: FAIL_FAST
+
+ar:
+  perf:
+    graphs: ${AR_PERF_GRAPHS:1}
+    objects: ${AR_PERF_OBJECTS:1000}
+    edges: ${AR_PERF_EDGES:2000}
+    batch-size: ${AR_PERF_BATCH_SIZE:500}
+    collection: ${AR_PERF_COLLECTION:perf-noise}
+    versions: ${AR_PERF_VERSIONS:0}
+
+---
 # PostgreSQL persistence. Start PostgreSQL separately, then run with:
 #   ./gradlew :asset-repository-service:run --args="--spring.profiles.active=demo,postgres"
 spring:

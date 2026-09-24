@@ -196,6 +196,15 @@ public class CollectionService {
                 .sum();
     }
 
+    @Transactional(readOnly = true)
+    public int edgeCount(CollectionEntity entity) {
+        var graph = graphs.get(entity.getGraphId());
+        if (graph == null || graph.getContents() == null || graph.getContents().getEdges() == null) {
+            return 0;
+        }
+        return graph.getContents().getEdges().size();
+    }
+
     public void assertAcceptedType(CollectionEntity collection, String type) {
         if (!collection.acceptedTypes().contains(type)) {
             throw new IllegalArgumentException(

@@ -61,6 +61,59 @@ Classpath seeds (no Java seeder):
 | `mcp-servers` | McpServer, Tool, Prompt, KnowledgeSource | ~50 servers plus provided components |
 | `customer-support` | all 10 types | Larger solution graph (~140 objects, dense wiring) |
 
+## Performance fill (`perf` profile)
+
+In-process noise fill for scale/perf experiments. Ontology seeds only — do **not** combine with `demo` for clean baselines.
+
+Each **collection = one named graph**. Configure how many graphs to create, then **distribute** total objects and edges across them. Deep versions are taken **per graph**.
+
+```bash
+# H2 defaults: 1 graph, 1000 objects, 2000 edges, 0 versions
+./gradlew :asset-repository-service:run --args="--spring.profiles.active=perf"
+
+# Postgres
+./gradlew :asset-repository-service:run --args="--spring.profiles.active=perf,postgres"
+```
+
+| Knob | Env / property | Default | Meaning |
+|------|----------------|---------|---------|
+| Graphs | `AR_PERF_GRAPHS` / `ar.perf.graphs` | `1` | Number of collections / named graphs |
+| Objects | `AR_PERF_OBJECTS` / `ar.perf.objects` | `1000` | **Total** objects (split evenly across graphs) |
+| Edges | `AR_PERF_EDGES` / `ar.perf.edges` | `2000` | **Total** edges (split; each edge stays inside one graph) |
+| Versions | `AR_PERF_VERSIONS` / `ar.perf.versions` | `0` | Deep graph snapshots **per graph** |
+| Batch size | `AR_PERF_BATCH_SIZE` / `ar.perf.batch-size` | `500` | Entities or edges per `NamedGraphStore.mutate` |
+| Name prefix | `AR_PERF_COLLECTION` / `ar.perf.collection` | `perf-noise` | `graphs=1` → exact name; `graphs>1` → `{prefix}-0` … `{prefix}-(n-1)` |
+
+Implementation notes:
+
+- Bulk path: preassigned UUIDs + batched `NamedGraphStore.mutate` (not domain `writeComposition` / identity scans).
+- Schema-valid minimal payloads; business ids like `perf-0-12`.
+- Collection statistics expose `objectCount` and `edgeCount` (UI shows both when edges > 0).
+- While fill runs, `/api/**` returns **503** until log line `Perf fill gate open`.
+- Idempotent / growable: restart tops up when targets increase; does not shrink/delete.
+
+Example — 10 graphs, 50k objects / 100k edges total (~5k / ~10k each), 3 deep versions on **each** graph:
+
+```bash
+./gradlew :asset-repository-service:run --args="--spring.profiles.active=perf,postgres --ar.perf.graphs=10 --ar.perf.objects=50000 --ar.perf.edges=100000 --ar.perf.versions=3"
+```
+
+Version cost scales roughly with **(per-graph size) × versions × graph count**.
+
+### Timed harness
+
+Wait for `Perf fill gate open`, then:
+
+```bash
+cd examples/asset-repository/scripts
+python ar_perf_harness.py --base-url http://localhost:8080 --collection perf-noise
+# multi-graph:
+python ar_perf_harness.py --collection perf-noise-0
+python ar_perf_harness.py --gremlin
+```
+
+Prints `objectCount` / `edgeCount` from statistics, then p50 / p95 / max / mean ms for list collections, full object list, statistics, and typed search (optional Gremlin). Observational only — no CI latency gates. Compare H2 vs `perf,postgres` by swapping profiles.
+
 ## Sample REST
 
 ```bash
@@ -99,9 +152,9 @@ python ar_client.py all --delete
 
 Calls **`/api/v1/asset-repository/**` only** (never foundation `/api/v1/objs/**`).
 
-## Synthetic load (performance)
+## Synthetic load (optional CSV path)
 
-[`demo/load-data`](demo/load-data/README.md) holds a qsynth model (demo-seed ratios), a committed CSV extract, and `load.py`. Load the default extract into a running app without Docker. Scale by changing `rows_multiply` and regenerating with `qpointz/qsynth:latest`.
+[`demo/load-data`](demo/load-data/README.md) holds a qsynth model (demo-seed ratios), a committed CSV extract, and `load.py`. Prefer the **`perf` profile** above for absolute-N multi-graph fill. Use this kit when you need ratio-scaled CSVs or offline regenerate-with-Docker workflows.
 
 ## Notes
 

@@ -10,6 +10,7 @@ docs/workitems/completed/YYYYMMDD-<story-slug>/
 
 ## Index (optional, newest first)
 
+- [`20260924-ar-perf-profile`](20260924-ar-perf-profile/STORY.md) — AR `perf` multi-graph noise fill + timed harness (D-10)
 - [`20260923-sbom-ar-openapi`](20260923-sbom-ar-openapi/STORY.md) — SBOM + AR domain OpenAPI / Swagger UI; demo portfolios; Flat/By category (D-9)
 - [`20260923-codegen-schema-evolution`](20260923-codegen-schema-evolution/STORY.md) — L2 schema upgrade SPI + TypedGraphView hydrate (C-35)
 - [`20260915-policy-consumer`](20260915-policy-consumer/STORY.md) — C-30 superseded (C-31 REST + SBOM assessment)

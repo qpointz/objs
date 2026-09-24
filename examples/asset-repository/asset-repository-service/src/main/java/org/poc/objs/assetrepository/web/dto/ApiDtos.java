@@ -31,6 +31,7 @@ public final class ApiDtos {
     public record CollectionStatisticsDto(
             UUID collectionId,
             int objectCount,
+            int edgeCount,
             java.time.Instant lastUpdated
     ) {
     }

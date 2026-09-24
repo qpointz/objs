@@ -36,7 +36,7 @@ Production sources: `src/main/kotlin`. Tests: `src/test/kotlin` (integration sui
 - GitLab CI: [`docs/design/platform/ci-pipeline.md`](docs/design/platform/ci-pipeline.md) — unit child on MRs; `testIT` on protected `dev` or `RUN_INTEGRATION=true`
 - `./gradlew :objs-service-app:run` — workbench only (H2, port 8081; `/workbench/` + `/api/v1/objs/**`)
 - `./gradlew :sbom-service:run` — SBOM inventory example (H2, port 8080; inventory UI `/sbom/`; must not call objs-service)
-- `./gradlew :asset-repository-service:run` — asset repository example (demo profile; domain UI `/ar/`)
+- `./gradlew :asset-repository-service:run` — asset repository example (demo profile; domain UI `/ar/`). Perf fill: `--args="--spring.profiles.active=perf"` — see [`examples/asset-repository/README.md`](examples/asset-repository/README.md)
 - `./gradlew clean` — remove build outputs
 
 ## Coding Style & Naming Conventions

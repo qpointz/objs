@@ -70,6 +70,7 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`policy-archive-workbench`](completed/20260917-policy-archive-workbench/STORY.md) — Archive list/load HTTP + Policy in-page Archives mode (Results / Policies / Input axes) (C-39 / U-12). WI-000…WI-005.
 - [`codegen-schema-evolution`](completed/20260923-codegen-schema-evolution/STORY.md) — L2 schema upgrade SPI + TypedGraphView hydrate; SBOM Component@1→2 + fingerprint dual view (C-35). WI-000…WI-004. Closes C-23 G-30.
 - [`sbom-ar-openapi`](completed/20260923-sbom-ar-openapi/STORY.md) — Domain OpenAPI + Swagger UI; demo purpose portfolios; portfolio Flat/By category results (D-9). WI-000…WI-005.
+- [`ar-perf-profile`](completed/20260924-ar-perf-profile/STORY.md) — AR `perf` multi-graph noise fill (objects/edges totals, versions/graph) + timed harness (D-10). WI-000…WI-003.
 
 ### In progress
 
@@ -78,4 +79,3 @@ _(none)_
 ### Planned
 
 - [`store-text-search`](planned/store-text-search/STORY.md) — FB-3 contains/`q`; design first (C-20). Does not block C-18.
-

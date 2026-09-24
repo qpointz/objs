@@ -53,6 +53,7 @@ export function useCollectionStatistics(collectionId: string) {
 export function CollectionObjectCount({ collectionId }: { collectionId: string }) {
   const { stats, loading, refresh } = useCollectionStatistics(collectionId)
   const count = stats?.objectCount
+  const edges = stats?.edgeCount
 
   function onRefresh(e: MouseEvent) {
     e.preventDefault()
@@ -60,13 +61,20 @@ export function CollectionObjectCount({ collectionId }: { collectionId: string }
     void refresh()
   }
 
+  const label =
+    count == null
+      ? null
+      : edges != null && edges > 0
+        ? `${count} object${count === 1 ? '' : 's'} · ${edges} edge${edges === 1 ? '' : 's'}`
+        : `${count} object${count === 1 ? '' : 's'}`
+
   return (
     <Group gap={6} wrap="nowrap">
-      {loading || count == null ? (
+      {loading || label == null ? (
         <Skeleton height={12} width={72} radius="sm" />
       ) : (
         <Text size="xs" c="dimmed">
-          {count} object{count === 1 ? '' : 's'}
+          {label}
         </Text>
       )}
       <Tooltip label="Refresh statistics" withArrow>

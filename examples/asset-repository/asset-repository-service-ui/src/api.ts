@@ -22,6 +22,7 @@ export type Collection = {
 export type CollectionStatistics = {
   collectionId: string
   objectCount: number
+  edgeCount?: number
   lastUpdated: string | null
 }
 
