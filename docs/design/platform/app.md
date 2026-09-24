@@ -18,8 +18,10 @@ launchables and do not use this module.
 ```bash
 ./gradlew :objs-service-app:run
 curl http://localhost:8081/api/v1/objs/status
-# Foundation OpenAPI: http://localhost:8081/swagger-ui.html  ·  /v3/api-docs
-# Traverse (gremlin): OpenAPI tag "traverse" · POST /api/v1/objs/graph/traverse/gremlin
+# Foundation OpenAPI: http://localhost:8081/swagger-ui.html  ·  /v3/api-docs/{graph|registry|policy}
+# Groups: graph (entities/edges/graphs + traverse + algorithms), registry, policy
+# Topic tags inside groups (not separate traverse group). Codegen: scripts/openapi-client-codegen-smoke.md
+# Traverse (gremlin): tag "traverse" · POST /api/v1/objs/graph/traverse/gremlin
 # Workbench Query: http://localhost:8081/workbench/query
 ```
 
@@ -37,4 +39,4 @@ SBOM inventory (separate process, **port 8080** — does not call this runner):
 | Gremlin traverse | `POST /api/v1/objs/graph/traverse/gremlin` — see [`../graph/gremlin.md`](../graph/gremlin.md) |
 | Workbench | `/workbench/**` — see [`../ui.md`](../ui.md) |
 
-SpringDoc **3.0.3** is on the classpath. Groups include `graph`, `registry`, `seeds`, and Gremlin **`traverse`**.
+SpringDoc **3.0.3** is on the classpath. Groups: **`graph`**, **`registry`**, **`policy`**. Traverse and algorithms are **tags** inside the `graph` group (not separate groups). Registry topic tags: `catalog` / `schemas` / `edges`.

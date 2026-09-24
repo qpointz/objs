@@ -72,10 +72,11 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`sbom-ar-openapi`](completed/20260923-sbom-ar-openapi/STORY.md) — Domain OpenAPI + Swagger UI; demo purpose portfolios; portfolio Flat/By category results (D-9). WI-000…WI-005.
 - [`ar-perf-profile`](completed/20260924-ar-perf-profile/STORY.md) — AR `perf` multi-graph noise fill (objects/edges totals, versions/graph) + timed harness (D-10). WI-000…WI-003.
 - [`graph-entity-edge-vocab`](completed/20260924-graph-entity-edge-vocab/STORY.md) — Freeze SQL + REST entity/edge vocabulary (no member); graph-scoped `/edges` CRUD (C-40). WI-000…WI-007.
+- [`openapi-tags`](completed/20260924-openapi-tags/STORY.md) — OpenAPI tags/groups + completeness + Java/Python codegen smoke (C-42). WI-000…WI-005.
 
 ### In progress
 
-- [`openapi-tags`](in-progress/openapi-tags/STORY.md) — OpenAPI tags/groups + completeness + Java/Python codegen smoke (C-42).
+_(none)_
 
 ### Planned
 

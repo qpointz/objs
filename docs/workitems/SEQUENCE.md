@@ -88,4 +88,4 @@ C-24 flat evaluate
 |----|--------|--------|-------|
 | **C-40** | [`graph-entity-edge-vocab`](completed/20260924-graph-entity-edge-vocab/STORY.md) | done | Rename freeze `*_version_member` → `*_version_entity`; REST `/members`→`/entities`; add `/graphs/{id}/edges` CRUD; `apply-structure`; ER WI-006. Edge SQL names unchanged. Independent of C-20 / policy family. |
 | **C-41** | — | backlog | Freeze-scoped edge history (not planned). See C-40 G-X4. |
-| **C-42** | [`openapi-tags`](in-progress/openapi-tags/STORY.md) | in-progress | OpenAPI tags/groups + completeness (Swagger as primary docs) + Java/Python client codegen smoke. Scope: `/api/v1/objs/**` + SBOM + AR. Follows D-9; independent of C-20 / C-41. |
+| **C-42** | [`openapi-tags`](completed/20260924-openapi-tags/STORY.md) | done | OpenAPI tags/groups + completeness (Swagger as primary docs) + Java/Python client codegen smoke. Scope: `/api/v1/objs/**` + SBOM + AR. Follows D-9; independent of C-20 / C-41. |

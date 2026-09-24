@@ -288,7 +288,7 @@ Illustrative routes (inventory OpenAPI group on `:sbom-service`):
 
 OpenAPI is published for these domain endpoints on `:sbom-service` (group **`inventory`** only).
 
-**Swagger UI:** `./gradlew :sbom-service:run` → http://localhost:8080/swagger-ui.html (select group **inventory**; raw `/v3/api-docs/inventory`). Tags: **inventory**, **assets**, **portfolios**, **schemas**, **assessment**. Operations document request/response DTO schemas. Port **8080** by default — run one example app at a time (or set `server.port`).
+**Swagger UI:** `./gradlew :sbom-service:run` → http://localhost:8080/swagger-ui.html (select group **inventory**; raw `/v3/api-docs/inventory`). Topic tags: **applications**, **application-versions**, **application-sboms**, **assets**, **portfolios**, **schemas**, **assessment**. Operations document request/response DTO schemas. Port **8080** by default — run one example app at a time (or set `server.port`). Codegen readiness: `scripts/openapi-client-codegen-smoke.md` (`--groups inventory --readiness-only`).
 
 ---
 

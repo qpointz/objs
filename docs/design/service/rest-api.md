@@ -5,7 +5,10 @@
 Swagger UI)  
 **Base path:** `/api/v1/objs`  
 **Auth:** none (G-R15)  
-**OpenAPI:** springdoc-openapi **3.0.3** — UI via `:objs-service-app:run` (`/swagger-ui.html`, `/v3/api-docs`, groups `graph` / `registry` / `traverse` / …)
+**OpenAPI:** springdoc-openapi **3.0.3** — UI via `:objs-service-app:run` (`/swagger-ui.html`, `/v3/api-docs`).  
+**Groups (definitions):** `graph` (graphs/entities/edges/status + traverse + algorithms paths), `registry`, `policy` (bean in `:objs-policy-service`).  
+**Topic tags** (scannable sections inside a group; no group-name prefix): e.g. `graphs`, `mutations`, `entities`, `edges`, `versions`, `housekeeping`, `query`, `seeds`, `traverse`, `algorithms`; registry `catalog` / `schemas` / `edges`; policy `catalog` / `evaluate` / `suites` / `archives`.  
+**Client codegen smoke:** [`scripts/openapi-client-codegen-smoke.md`](../../scripts/openapi-client-codegen-smoke.md) (Java + Python via openapi-generator-cli; default `localhost:8080`, workbench often `:8081`).
 
 ## Graphs + entity pool
 
@@ -47,7 +50,7 @@ graph-local edges, resolve, query, clone, and graph versions. See [`../graph/mod
 | `POST` | `/entities/{id}/compact` | Delete orphan entity version rows (not pinned, not live head) | `:objs-service` |
 | `POST` | `/edges/{id}/compact` | Delete orphan edge version rows | `:objs-service` |
 | `POST` | `/graph/traverse/gremlin` | Matcher + gremlin-lang script → `BoMGremlinResult` (OpenAPI tag **`traverse`**); matcher DSL scoping rules as above | `:objs-gremlin-service` |
-| `GET` | `/graph/algorithms/capabilities` | Supported analysis algorithms and materialization modes (OpenAPI tag **`graph-algorithms`**) | `:objs-jgrapht-service` |
+| `GET` | `/graph/algorithms/capabilities` | Supported analysis algorithms and materialization modes (OpenAPI tag **`algorithms`**) | `:objs-jgrapht-service` |
 | `POST` | `/graph/algorithms/cycles` | Directed SCC cycle-region analysis for matcher-selected fragment (`materialization`: **`GENERIC`** default) | `:objs-jgrapht-service` |
 
 **Fail closed:** bare `obj-expr` on `/graphs/query` with no stage-0 `all` / `graph-expr` → `400`

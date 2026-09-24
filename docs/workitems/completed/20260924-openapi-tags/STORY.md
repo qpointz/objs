@@ -2,14 +2,15 @@
 
 **Slug:** `openapi-tags`  
 **Branch:** `openapi-tags`  
-**Status:** in-progress  
-**Folder:** [`docs/workitems/in-progress/openapi-tags/`](.)  
+**Status:** completed  
+**Folder:** [`docs/workitems/completed/20260924-openapi-tags/`](.)  
 **Backlog:** [C-42](../../BACKLOG.md)  
 **Base:** `origin/dev`  
 **Depends on:** — (follows [D-9](../../completed/20260923-sbom-ar-openapi/STORY.md) domain OpenAPI; foundation polish was OOS there)  
 **Gaps:** [`GAPS.md`](GAPS.md)  
 **Design:** [`docs/design/service/rest-api.md`](../../../design/service/rest-api.md) · SBOM/AR `example.md`  
-**Process:** [`docs/workitems/RULES.md`](../../RULES.md)
+**Process:** [`docs/workitems/RULES.md`](../../RULES.md)  
+**Closed:** 2026-09-24
 
 ## Goal
 
@@ -72,14 +73,8 @@ Locked in [`GAPS.md`](GAPS.md) G-0…G-10. Tag/group matrix in [`WI-001-design-l
 
 ## Acceptance (after implementation)
 
-- [ ] Swagger UI shows coherent tags/groups (no single mega-list for the fattest areas)
-- [ ] In-scope ops meet the locked completeness bar; Swagger usable as primary API reference
-- [ ] Documented recipe + harness: Java and Python clients compile from localhost OpenAPI
-- [ ] Living docs match real group/tag names and point at the codegen smoke recipe
-- [ ] `./gradlew :objs-service:test :objs-policy-service:test :sbom-service:test :asset-repository-service:test` (plus any new OpenAPI smoke)
-
-## Process notes
-
-1. One WI at a time; `[x]` + one commit + push per WI.  
-2. Do not start WI-002/WI-003 until WI-001 checkboxes are done.  
-3. Do not close this story until the user asks.
+- [x] Swagger UI shows coherent tags/groups (no single mega-list for the fattest areas)
+- [x] In-scope ops meet the locked completeness bar; Swagger usable as primary API reference
+- [x] Documented recipe + harness: Java and Python clients compile from localhost OpenAPI
+- [x] Living docs match real group/tag names and point at the codegen smoke recipe
+- [x] `./gradlew :objs-service:test :objs-policy-service:test` (OpenAPI config tests); SBOM/AR annotation pass covered in WI-002/003

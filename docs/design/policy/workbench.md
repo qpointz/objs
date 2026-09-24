@@ -13,7 +13,7 @@ Mirror jgrapht/gremlin:
 
 - New module, Boot autoconfig, **not** on `:objs-service` by default
 - Wire on `:objs-service-app` only
-- OpenAPI tag `policy`
+- OpenAPI group **`policy`**; topic tags `catalog` / `evaluate` / `suites` / `archives`
 - `GET …/policy/capabilities` — UI soft-fail when absent (Policy nav stays visible)
 - CRUD policies (JPA when persistence wired; in-memory fallback)
 - `GET …/policy/export?format=seeds` — full catalog REPLACE seed YAML (C-28)

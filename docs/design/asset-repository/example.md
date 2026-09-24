@@ -97,9 +97,9 @@ Prefix `/api/v1/asset-repository`:
 - Schema reads: `GET …/schema-catalog` (latest ENTITY schema per type + collections that accept it — “used in” stays domain), `GET …/schema-catalog/{type}/allowed-edges` (core `allowedEdgesForType`, including `*`), `GET …/schemas`, `GET …/schemas/{type}`, `GET …/schemas/{type}/{version}`, `GET …/collections/{id}/schemas`  
 - Object list uses graph members (not full graph + edges). `objectCount` uses graph-scoped `countByType`. Object relations use `listIncidentEdges`. Object list paging uses `listMembers(graphId, page)`. Object text `q` is C-20. Collection name `LIKE` stays domain.  
 
-OpenAPI group **`asset-repository`** in Swagger UI (`/swagger-ui.html`, `/v3/api-docs/asset-repository`).
+OpenAPI group **`asset-repository`** in Swagger UI (`/swagger-ui.html`, `/v3/api-docs/asset-repository`). Topic tags: **collections**, **objects**, **schemas**.
 
-**Run:** `./gradlew :asset-repository-service:run` → http://localhost:8080/swagger-ui.html (select **asset-repository**). Domain operations document request/response DTO schemas (`CollectionDto`, `ObjectDto`, …). Port **8080** by default — do not run `:sbom-service` on the same port concurrently.
+**Run:** `./gradlew :asset-repository-service:run` → http://localhost:8080/swagger-ui.html (select **asset-repository**). Domain operations document request/response DTO schemas (`CollectionDto`, `ObjectDto`, …). Port **8080** by default — do not run `:sbom-service` on the same port concurrently. Codegen readiness: `scripts/openapi-client-codegen-smoke.md` (`--groups asset-repository --readiness-only`).
 
 ## Domain UI
 

@@ -26,7 +26,7 @@ Depends on `:objs-autoconfigure` (brings `:objs-persistence`; no `:objs-service-
 | Graph I/O | `ObjsGraphController` (import/export/validate under `/graph`) |
 | Registry | `ObjsRegistryController` |
 | Workbench SPA | `ObjsWorkbenchUiConfiguration` |
-| OpenAPI | `ObjsOpenApiConfiguration` (`GroupedOpenApi` graph / registry; includes `/graphs/**` + `/entities/**`) |
+| OpenAPI | `ObjsOpenApiConfiguration` groups **`graph`** (incl. entities/edges + traverse/algorithms paths) and **`registry`**; **`policy`** group in `:objs-policy-service`. Topic tags split fat controllers. Codegen smoke: `scripts/openapi-client-codegen-smoke.md` |
 
 `testIT` suite is registered (ready for broader wiring tests).
 
