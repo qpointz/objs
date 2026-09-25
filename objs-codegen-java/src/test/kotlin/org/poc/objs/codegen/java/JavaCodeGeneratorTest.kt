@@ -35,6 +35,8 @@ class JavaCodeGeneratorTest {
             "GeneratedRelationMetadata.java",
             "GraphMutationBuilder.java",
             "GeneratedReadView.java",
+            "EntityCatalog.java",
+            "EdgeCatalog.java",
             "ProductRef.java",
             "ProductNode.java",
             "ProductReadNode.java",
@@ -50,6 +52,25 @@ class JavaCodeGeneratorTest {
         assertThat(builderSource)
             .contains("addProduct")
             .contains("related")
+            .contains("public GeneratedNode<?> add(Object payload)")
+            .contains("public GeneratedNode<?> add(UUID id, Object payload)")
+            .contains("public GeneratedNode<?> add(GeneratedNode<?> node)")
+            .contains("public TypedEntity<?> add(TypedEntity<?> typed)")
+            .contains("EntityCatalog.toNode")
+        val entityCatalog = Files.readString(output.resolve("com/example/generated/EntityCatalog.java"))
+        assertThat(entityCatalog)
+            .contains("ProductDto.class")
+            .contains("ProductType.META")
+            .contains("toEntity")
+            .contains("toNode")
+            .contains("toTyped")
+            .contains("fromEntity")
+            .contains("IllegalArgumentException")
+        assertThat(Files.readString(output.resolve("com/example/generated/EdgeCatalog.java")))
+            .contains("class EdgeCatalog")
+            .doesNotContain("toEntity")
+            .doesNotContain("toNode")
+            .doesNotContain("toTyped")
 
         val first = Files.readAllBytes(output.resolve("com/example/generated/ProductNode.java"))
         JavaCodeGenerator().generate(document(), output, "com.example.generated")
@@ -88,6 +109,157 @@ class JavaCodeGeneratorTest {
             *sourceFiles.map { it.toString() }.toTypedArray(),
         )
         assertThat(result).isZero()
+    }
+
+    @Test
+    fun shouldEmitEntityCatalogConversions_andFailClosedOnUnknownClass() {
+        val output = tempDirectory.resolve("generated")
+        JavaCodeGenerator().generate(document(), output, "com.example.generated")
+        Files.writeString(
+            output.resolve("com/example/generated/ProductDto.java"),
+            "package com.example.generated; public class ProductDto {}",
+        )
+        val classes = tempDirectory.resolve("catalog-classes")
+        Files.createDirectories(classes)
+        val sourceFiles = Files.walk(output).use { stream ->
+            stream.filter { it.toString().endsWith(".java") }.toList()
+        }
+        val compiler = ToolProvider.getSystemJavaCompiler()
+        requireNotNull(compiler)
+        assertThat(
+            compiler.run(
+                null,
+                null,
+                null,
+                "-classpath",
+                System.getProperty("java.class.path"),
+                "-d",
+                classes.toString(),
+                *sourceFiles.map { it.toString() }.toTypedArray(),
+            ),
+        ).isZero()
+
+        URLClassLoader(arrayOf(classes.toUri().toURL()), javaClass.classLoader).use { loader ->
+            val dtoClass = loader.loadClass("com.example.generated.ProductDto")
+            val catalog = loader.loadClass("com.example.generated.EntityCatalog")
+            val mapper = PayloadMapper(JsonMapper.builder().build())
+            val payload = dtoClass.getConstructor().newInstance()
+            val id = UUID.randomUUID()
+
+            assertThat(catalog.getMethod("contains", Class::class.java).invoke(null, dtoClass)).isEqualTo(true)
+            assertThat(catalog.getMethod("supports", Class::class.java).invoke(null, String::class.java))
+                .isEqualTo(false)
+
+            val meta = catalog.getMethod("meta", Class::class.java).invoke(null, dtoClass)
+            assertThat(meta.javaClass.getMethod("getType").invoke(meta)).isEqualTo("Product")
+            assertThat(meta.javaClass.getMethod("getSchemaVersion").invoke(meta)).isEqualTo("1.0.0")
+
+            val entity = catalog
+                .getMethod("toEntity", UUID::class.java, Any::class.java, PayloadMapper::class.java)
+                .invoke(null, id, payload, mapper) as Entity
+            assertThat(entity.id).isEqualTo(id)
+            assertThat(entity.type).isEqualTo("Product")
+            assertThat(entity.schemaVersion).isEqualTo("1.0.0")
+
+            val node = catalog
+                .getMethod("toNode", UUID::class.java, Any::class.java)
+                .invoke(null, id, payload)
+            assertThat(node.javaClass.name).isEqualTo("com.example.generated.ProductNode")
+
+            val typed = catalog.getMethod("toTyped", Any::class.java).invoke(null, payload)
+            assertThat(typed.javaClass.name).isEqualTo("com.example.generated.ProductNode")
+
+            val fromEntity = catalog
+                .getMethod("fromEntity", Entity::class.java, PayloadMapper::class.java)
+                .invoke(null, entity, mapper)
+            assertThat(fromEntity.javaClass.name).isEqualTo("com.example.generated.ProductNode")
+            assertThat(fromEntity.javaClass.getMethod("id").invoke(fromEntity)).isEqualTo(id)
+
+            val map = catalog
+                .getMethod("toMap", Any::class.java, PayloadMapper::class.java)
+                .invoke(null, payload, mapper)
+            @Suppress("UNCHECKED_CAST")
+            val roundTrip = catalog
+                .getMethod("fromMap", Map::class.java, Class::class.java, PayloadMapper::class.java)
+                .invoke(null, map as Map<String, Any?>, dtoClass, mapper)
+            assertThat(roundTrip.javaClass).isEqualTo(dtoClass)
+
+            assertThatThrownBy {
+                catalog.getMethod("meta", Class::class.java).invoke(null, String::class.java)
+            }.hasRootCauseInstanceOf(IllegalArgumentException::class.java)
+        }
+    }
+
+    @Test
+    fun shouldKeepLatestEntityPin_whenSameJavaTypeSpansVersions() {
+        val document = document().toMutableMap()
+        @Suppress("UNCHECKED_CAST")
+        val codegen = (document["x-objs-codegen"] as Map<String, Any?>).toMutableMap()
+        codegen["definitions"] = listOf(
+            mapOf(
+                "definitionKey" to "Product",
+                "kind" to "ENTITY",
+                "type" to "Product",
+                "schemaVersion" to "1.0.0",
+                "generated" to true,
+                "skip" to false,
+                "javaTypeName" to "ProductDto",
+                "interfaces" to emptyList<String>(),
+            ),
+            mapOf(
+                "definitionKey" to "Product",
+                "kind" to "ENTITY",
+                "type" to "Product",
+                "schemaVersion" to "2.0.0",
+                "generated" to true,
+                "skip" to false,
+                "javaTypeName" to "ProductDto",
+                "interfaces" to emptyList<String>(),
+            ),
+        )
+        document["x-objs-codegen"] = codegen
+
+        val output = tempDirectory.resolve("generated")
+        JavaCodeGenerator().generate(document, output, "com.example.generated")
+        val catalog = Files.readString(output.resolve("com/example/generated/EntityCatalog.java"))
+        val typeSource = Files.readString(output.resolve("com/example/generated/ProductType.java"))
+
+        assertThat(typeSource).contains("SCHEMA_VERSION = \"2.0.0\"")
+        assertThat(catalog).contains("ProductType.META")
+        assertThat(catalog).doesNotContain("1.0.0")
+    }
+
+    @Test
+    fun shouldEmitEdgeCatalogEntries_forGeneratedEdgeProperties() {
+        val document = document().toMutableMap()
+        document["\$defs"] = mapOf(
+            "Product" to mapOf("type" to "object", "properties" to emptyMap<String, Any?>()),
+            "ProductEdge" to mapOf("type" to "object", "properties" to emptyMap<String, Any?>()),
+        )
+        @Suppress("UNCHECKED_CAST")
+        val codegen = (document["x-objs-codegen"] as Map<String, Any?>).toMutableMap()
+        @Suppress("UNCHECKED_CAST")
+        val definitions = (codegen["definitions"] as List<Map<String, Any?>>).toMutableList()
+        definitions += mapOf(
+            "definitionKey" to "ProductEdge",
+            "kind" to "EDGE_PROPERTIES",
+            "type" to "ProductEdge",
+            "schemaVersion" to "1.0.0",
+            "generated" to true,
+            "skip" to false,
+            "javaTypeName" to "ProductEdge",
+            "interfaces" to emptyList<String>(),
+        )
+        codegen["definitions"] = definitions
+        document["x-objs-codegen"] = codegen
+
+        val output = tempDirectory.resolve("generated")
+        JavaCodeGenerator().generate(document, output, "com.example.generated")
+        assertThat(Files.readString(output.resolve("com/example/generated/EdgeCatalog.java")))
+            .contains("ProductEdge.class")
+            .contains("ProductEdge")
+            .contains("1.0.0")
+            .doesNotContain("toEntity")
     }
 
     @Test
@@ -171,6 +343,91 @@ class JavaCodeGeneratorTest {
             assertThatThrownBy {
                 add.invoke(builder, firstId, dtoClass.getConstructor().newInstance())
             }.hasRootCauseInstanceOf(IllegalArgumentException::class.java)
+        }
+    }
+
+    @Test
+    fun shouldRegisterEntitiesViaGenericAdd_matchingTypedAddProduct() {
+        val output = tempDirectory.resolve("generated")
+        JavaCodeGenerator().generate(document(), output, "com.example.generated")
+        Files.writeString(
+            output.resolve("com/example/generated/ProductDto.java"),
+            "package com.example.generated; public class ProductDto {}",
+        )
+        val classes = tempDirectory.resolve("generic-add-classes")
+        Files.createDirectories(classes)
+        val sourceFiles = Files.walk(output).use { stream ->
+            stream.filter { it.toString().endsWith(".java") }.toList()
+        }
+        val compiler = ToolProvider.getSystemJavaCompiler()
+        requireNotNull(compiler)
+        assertThat(
+            compiler.run(
+                null,
+                null,
+                null,
+                "-classpath",
+                System.getProperty("java.class.path"),
+                "-d",
+                classes.toString(),
+                *sourceFiles.map { it.toString() }.toTypedArray(),
+            ),
+        ).isZero()
+
+        URLClassLoader(arrayOf(classes.toUri().toURL()), javaClass.classLoader).use { loader ->
+            val dtoClass = loader.loadClass("com.example.generated.ProductDto")
+            val nodeClass = loader.loadClass("com.example.generated.ProductNode")
+            val builderClass = loader.loadClass("com.example.generated.GraphMutationBuilder")
+            val mapper = PayloadMapper(JsonMapper.builder().build())
+
+            val typedBuilder = builderClass.getConstructor(PayloadMapper::class.java).newInstance(mapper)
+            val genericBuilder = builderClass.getConstructor(PayloadMapper::class.java).newInstance(mapper)
+            val id = UUID.randomUUID()
+            val payload = dtoClass.getConstructor().newInstance()
+
+            val typedNode = builderClass
+                .getMethod("addProduct", UUID::class.java, dtoClass)
+                .invoke(typedBuilder, id, payload)
+            val genericNode = builderClass
+                .getMethod("add", UUID::class.java, Any::class.java)
+                .invoke(genericBuilder, id, payload)
+
+            assertThat(genericNode.javaClass).isEqualTo(nodeClass)
+            assertThat(genericNode.javaClass.getMethod("id").invoke(genericNode)).isEqualTo(id)
+
+            val typedMutation = builderClass.getMethod("build").invoke(typedBuilder)
+            val genericMutation = builderClass.getMethod("build").invoke(genericBuilder)
+            val typedEntities = typedMutation.javaClass.getMethod("getEntities").invoke(typedMutation)
+            val genericEntities = genericMutation.javaClass.getMethod("getEntities").invoke(genericMutation)
+            @Suppress("UNCHECKED_CAST")
+            val typedSet = typedEntities.javaClass.getMethod("getSet").invoke(typedEntities) as List<Entity>
+            @Suppress("UNCHECKED_CAST")
+            val genericSet = genericEntities.javaClass.getMethod("getSet").invoke(genericEntities) as List<Entity>
+            assertThat(genericSet).hasSize(1)
+            assertThat(genericSet[0].id).isEqualTo(typedSet[0].id)
+            assertThat(genericSet[0].type).isEqualTo(typedSet[0].type)
+            assertThat(genericSet[0].schemaVersion).isEqualTo(typedSet[0].schemaVersion)
+
+            val nodeBuilder = builderClass.getConstructor(PayloadMapper::class.java).newInstance(mapper)
+            val nodeId = UUID.randomUUID()
+            val node = nodeClass.getConstructor(UUID::class.java, dtoClass)
+                .newInstance(nodeId, dtoClass.getConstructor().newInstance())
+            builderClass.getMethod("add", loader.loadClass("com.example.generated.GeneratedNode"))
+                .invoke(nodeBuilder, node)
+            val nodeMutation = builderClass.getMethod("build").invoke(nodeBuilder)
+            val nodeEntities = nodeMutation.javaClass.getMethod("getEntities").invoke(nodeMutation)
+            @Suppress("UNCHECKED_CAST")
+            val nodeSet = nodeEntities.javaClass.getMethod("getSet").invoke(nodeEntities) as List<Entity>
+            assertThat(nodeSet[0].id).isEqualTo(nodeId)
+            assertThat(nodeSet[0].type).isEqualTo("Product")
+
+            assertThatThrownBy {
+                builderClass
+                    .getMethod("add", Any::class.java)
+                    .invoke(genericBuilder, "not-a-payload")
+            }.hasRootCauseInstanceOf(IllegalArgumentException::class.java)
+
+            assertThat(typedNode).isNotNull()
         }
     }
 

@@ -23,7 +23,9 @@ Objs is an **entity store**: independent informational **entities** linked by **
 | [gremlin-examples.md](gremlin-examples.md) | Sample gremlin-lang scripts (vertices, tables, SBOM roles) |
 | [validation.md](validation.md) | Persist gate, batch two-stage validation, create/update by id |
 | [persist-sketch.md](persist-sketch.md) | Write path sketch: create graph → mutation → persist |
-| [programmatic-recipes.md](programmatic-recipes.md) | Copy-paste Kotlin: wiring, clear/purge/destroy, versions, annotations vs tags |
+| [codegen-and-builder.md](codegen-and-builder.md) | Objs codegen + graph builder; **EntityCatalog** / **EdgeCatalog** (C-43) |
+| [typed-conversion-recipes.md](typed-conversion-recipes.md) | Write-catalog convert recipes: payload ↔ Entity/Node, identity, create |
+| [api-and-codegen.md](api-and-codegen.md) | Foundation vs app-owned generated bindings |
 | [../core/spring-integration.md](../core/spring-integration.md) | Boot `:objs-autoconfigure` how-to |
 | [../core/transaction-recipes.md](../core/transaction-recipes.md) | Spring / non-Spring transaction recipes |
 | [persistence.md](persistence.md) | PostgreSQL, JSONB, two Flyway lines, H2 tests |

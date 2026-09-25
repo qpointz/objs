@@ -44,7 +44,7 @@ C-24 flat evaluate
 **Content deps:** suite seed kinds need C-27; batch suite target needs C-27; result store needs C-27 shape + C-28 catalog boundary.  
 **Do not** start a story’s WI-002+ until that story’s own WI-001 closes its GAPS. Do not pull later-story gaps into an earlier design lock.
 
-**Policy family complete** (C-30 closed superseded 2026-09-15). Open foundation work outside this chain: e.g. [C-39](completed/20260917-policy-archive-workbench/STORY.md) archive viewer (done), [C-20](planned/store-text-search/STORY.md), [C-40](completed/20260924-graph-entity-edge-vocab/STORY.md) entity/edge vocab (done), [C-35](completed/20260923-codegen-schema-evolution/STORY.md) (done).
+**Policy family complete** (C-30 closed superseded 2026-09-15). Open foundation work outside this chain: e.g. [C-39](completed/20260917-policy-archive-workbench/STORY.md) archive viewer (done), [C-20](planned/store-text-search/STORY.md), [C-40](completed/20260924-graph-entity-edge-vocab/STORY.md) entity/edge vocab (done), [C-35](completed/20260923-codegen-schema-evolution/STORY.md) (done), [C-43](in-progress/codegen-write-type-catalog/STORY.md) / [C-44](planned/codegen-aggregate-materializer/STORY.md) codegen (C-43 in-progress).
 
 ---
 
@@ -62,6 +62,9 @@ C-24 flat evaluate
 | Id | Story | Status | Notes |
 |----|--------|--------|-------|
 | **C-35** | [`codegen-schema-evolution`](completed/20260923-codegen-schema-evolution/STORY.md) | done | After **C-23**. L2 typed upgrade-to-latest hydrate; ClassToClass/MapToClass + additive fallback; SBOM Component@1→2 dual view. [`DESIGN.md`](completed/20260923-codegen-schema-evolution/DESIGN.md). Independent of C-20 and policy family. Closes C-23 G-30. |
+| **C-43** | [`codegen-write-type-catalog`](in-progress/codegen-write-type-catalog/STORY.md) | in-progress | After **C-23** / **C-35**. Write-side generated catalog: payload `Class`/`Object` → `EntityTypeMeta` / `toEntity` / `toNode` (inverse of `GeneratedReadView` bindings). Enables generic identity + create/validate without per-type service methods. Independent of C-20 / policy family. |
+| **C-44** | [`codegen-aggregate-materializer`](planned/codegen-aggregate-materializer/STORY.md) | planned | After **C-23**; prefer after **C-43**. Explicit nested POJO → `GraphMutation` (C-23 G-19). Independent of C-20 / policy family. |
+| **C-45…C-47** | — | backlog | Migration follow-ups / Kotlin codegen / HTTP client — see [`BACKLOG.md`](BACKLOG.md); no story folders yet. |
 
 ---
 

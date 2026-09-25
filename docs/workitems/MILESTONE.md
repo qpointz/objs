@@ -76,8 +76,9 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 
 ### In progress
 
-_(none)_
+- [`codegen-write-type-catalog`](in-progress/codegen-write-type-catalog/STORY.md) — Generated write catalog: payload → meta / `Entity` / node (C-43). WI-000 done.
 
 ### Planned
 
 - [`store-text-search`](planned/store-text-search/STORY.md) — FB-3 contains/`q`; design first (C-20). Does not block C-18.
+- [`codegen-aggregate-materializer`](planned/codegen-aggregate-materializer/STORY.md) — Explicit nested POJO → `GraphMutation` (C-44 / C-23 G-19). Prefer after C-43; design first.

@@ -12,6 +12,8 @@ import org.poc.objs.api.domain.MutationMode;
 import org.poc.objs.api.typed.PayloadMapper;
 import org.poc.objs.assetrepository.codegen.generated.AiAgent;
 import org.poc.objs.assetrepository.codegen.generated.AiAgentNode;
+import org.poc.objs.assetrepository.codegen.generated.EntityCatalog;
+import org.poc.objs.assetrepository.codegen.generated.GeneratedNode;
 import org.poc.objs.assetrepository.codegen.generated.GeneratedReadView;
 import org.poc.objs.assetrepository.codegen.generated.Guardrail;
 import org.poc.objs.assetrepository.codegen.generated.GuardrailNode;
@@ -75,5 +77,22 @@ class GeneratedAssetRepositoryBindingsTest {
         assertThat(deletion.getEntities().getUnset()).containsExactly(agent.id());
         assertThat(deletion.getEdges().getSet()).isEmpty();
         assertThat(deletion.getEdges().getUnset()).containsExactly(edge.getId());
+    }
+
+    @Test
+    void shouldConvertAiAgentViaEntityCatalog() {
+        PayloadMapper mapper = new PayloadMapper(JsonMapper.builder().build());
+        AiAgent payload = new AiAgent().withName("support-agent");
+
+        assertThat(EntityCatalog.supports(AiAgent.class)).isTrue();
+        AiAgentNode node = EntityCatalog.toAiAgentNode(payload);
+        assertThat(node.payload().getName()).isEqualTo("support-agent");
+
+        Entity entity = EntityCatalog.toEntity(payload, mapper);
+        assertThat(entity.getType()).isEqualTo("AiAgent");
+        assertThat(entity.getPayload()).containsEntry("name", "support-agent");
+
+        GeneratedNode<?> viaGenericAdd = new GraphMutationBuilder(mapper).add(payload);
+        assertThat(viaGenericAdd).isInstanceOf(AiAgentNode.class);
     }
 }

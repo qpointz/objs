@@ -1,5 +1,6 @@
 package org.poc.objs.codegen.java
 
+import org.poc.objs.api.domain.SchemaVersion
 import tools.jackson.databind.ObjectMapper
 import tools.jackson.databind.json.JsonMapper
 import java.nio.charset.StandardCharsets
@@ -61,7 +62,12 @@ class JavaCodeGenerator(
         val relationValues = list(document["x-objs-relations"])
             ?: throw JavaCodegenException("Codegen schema is missing root x-objs-relations metadata")
         val definitions = parseDefinitions(codegen["definitions"])
-        val entities = definitions.filter { it.kind == "ENTITY" && it.generated && !it.skip }
+        val entities = latestWinsByJavaType(
+            definitions.filter { it.kind == "ENTITY" && it.generated && !it.skip },
+        )
+        val edgeProperties = latestWinsByJavaType(
+            definitions.filter { it.kind == "EDGE_PROPERTIES" && it.generated && !it.skip },
+        )
         validateDefinitions(entities, defs)
         val diagnostics = mutableListOf<String>()
         diagnostics += parseDiagnostics(codegen["diagnostics"])
@@ -84,6 +90,8 @@ class JavaCodeGenerator(
         write("GeneratedRelationMetadata.java", relationMetadataSource(targetPackage, relations))
         write("GraphMutationBuilder.java", mutationBuilderSource(targetPackage, entities, relations))
         write("GeneratedReadView.java", readViewSource(targetPackage, entities))
+        write("EntityCatalog.java", entityCatalogSource(targetPackage, entities))
+        write("EdgeCatalog.java", edgeCatalogSource(targetPackage, edgeProperties))
         for (entity in entities.sortedBy { it.definitionKey }) {
             write("${entity.definitionKey}Ref.java", refSource(targetPackage, entity))
             write("${entity.definitionKey}Node.java", nodeSource(targetPackage, entity))
@@ -95,6 +103,17 @@ class JavaCodeGenerator(
         }
         return JavaGenerationReport(files, diagnostics)
     }
+
+    /** Lane A: one Java payload class → latest schemaVersion wins (G-W4). */
+    private fun latestWinsByJavaType(definitions: List<DefinitionSpec>): List<DefinitionSpec> =
+        definitions
+            .groupBy { it.javaTypeName }
+            .map { (_, group) ->
+                group.maxWithOrNull { a, b ->
+                    SchemaVersion.compare(a.schemaVersion, b.schemaVersion)
+                }!!
+            }
+            .sortedBy { it.definitionKey }
 
     private fun parseDefinitions(raw: Any?): List<DefinitionSpec> =
         list(raw)?.mapIndexed { index, value ->
@@ -724,6 +743,316 @@ class JavaCodeGenerator(
     private fun capitalizeJava(value: String): String =
         value.replaceFirstChar { it.uppercaseChar() }
 
+    private fun entityCatalogSource(packageName: String, entities: List<DefinitionSpec>): String {
+        val sorted = entities.sortedBy { it.definitionKey }
+        val putEntries = sorted.joinToString("\n") { entity ->
+            "            map.put(${entity.javaTypeName}.class, new Entry(" +
+                "${entity.definitionKey}Type.META, ${entity.javaTypeName}.class, " +
+                "${entity.definitionKey}Node.class));"
+        }
+        val toNodeBranches = sorted.joinToString("\n") { entity ->
+            """
+                if (type == ${entity.javaTypeName}.class) {
+                    return ${entity.definitionKey}Type.node(id, (${entity.javaTypeName}) payload);
+                }
+            """.trimIndent().prependIndent("        ")
+        }
+        val toNodeNoIdBranches = sorted.joinToString("\n") { entity ->
+            """
+                if (type == ${entity.javaTypeName}.class) {
+                    return ${entity.definitionKey}Type.node((${entity.javaTypeName}) payload);
+                }
+            """.trimIndent().prependIndent("        ")
+        }
+        val typedHelpers = sorted.joinToString("\n\n") { entity ->
+            val node = "${entity.definitionKey}Node"
+            val dto = entity.javaTypeName
+            val type = "${entity.definitionKey}Type"
+            """
+                public static $node to${entity.definitionKey}Node($dto payload) {
+                    return $type.node(payload);
+                }
+
+                public static $node to${entity.definitionKey}Node(UUID id, $dto payload) {
+                    return $type.node(id, payload);
+                }
+            """.trimIndent().prependIndent("    ")
+        }
+        return """
+            package $packageName;
+
+            import java.util.LinkedHashMap;
+            import java.util.Map;
+            import java.util.Objects;
+            import java.util.UUID;
+            import org.poc.objs.api.domain.Entity;
+            import org.poc.objs.api.typed.EntityTypeMeta;
+            import org.poc.objs.api.typed.PayloadMapper;
+            import org.poc.objs.api.typed.TypedEntity;
+
+            /**
+             * Write-side ENTITY catalog: exact {@code Class} → meta and conversions (Lane A / latest).
+             * Unknown payload classes fail closed with {@link IllegalArgumentException}.
+             */
+            public final class EntityCatalog {
+                private record Entry(
+                    EntityTypeMeta meta,
+                    Class<?> payloadClass,
+                    Class<?> nodeClass
+                ) {
+                }
+
+                private static final Map<Class<?>, Entry> BY_CLASS;
+
+                static {
+                    Map<Class<?>, Entry> map = new LinkedHashMap<>();
+            $putEntries
+                    BY_CLASS = Map.copyOf(map);
+                }
+
+                private EntityCatalog() {
+                }
+
+                public static boolean contains(Class<?> payloadClass) {
+                    return payloadClass != null && BY_CLASS.containsKey(payloadClass);
+                }
+
+                public static boolean supports(Class<?> payloadClass) {
+                    return contains(payloadClass);
+                }
+
+                public static EntityTypeMeta meta(Class<?> payloadClass) {
+                    return requireEntry(payloadClass).meta();
+                }
+
+                public static EntityTypeMeta meta(Object payload) {
+                    Objects.requireNonNull(payload, "payload");
+                    return meta(payload.getClass());
+                }
+
+                public static Class<?> payloadClass(EntityTypeMeta meta) {
+                    return requireEntry(meta).payloadClass();
+                }
+
+                @SuppressWarnings({"rawtypes", "unchecked"})
+                public static Class<? extends GeneratedNode<?>> nodeClass(EntityTypeMeta meta) {
+                    return (Class) requireEntry(meta).nodeClass();
+                }
+
+                public static Map<String, Object> toMap(Object payload, PayloadMapper mapper) {
+                    Objects.requireNonNull(payload, "payload");
+                    Objects.requireNonNull(mapper, "mapper");
+                    requireEntry(payload.getClass());
+                    return mapper.toMap(payload);
+                }
+
+                public static <P> P fromMap(
+                    Map<String, Object> map,
+                    Class<P> payloadClass,
+                    PayloadMapper mapper
+                ) {
+                    Objects.requireNonNull(map, "map");
+                    Objects.requireNonNull(payloadClass, "payloadClass");
+                    Objects.requireNonNull(mapper, "mapper");
+                    requireEntry(payloadClass);
+                    return mapper.fromMap(map, payloadClass);
+                }
+
+                public static Entity toEntity(Object payload, PayloadMapper mapper) {
+                    return toNode(payload).toEntity(mapper);
+                }
+
+                public static Entity toEntity(UUID id, Object payload, PayloadMapper mapper) {
+                    return toNode(id, payload).toEntity(mapper);
+                }
+
+                public static Entity toEntity(TypedEntity<?> typed, PayloadMapper mapper) {
+                    Objects.requireNonNull(typed, "typed");
+                    Objects.requireNonNull(mapper, "mapper");
+                    return typed.toEntity(mapper);
+                }
+
+                public static Entity toEntity(GeneratedNode<?> node, PayloadMapper mapper) {
+                    Objects.requireNonNull(node, "node");
+                    Objects.requireNonNull(mapper, "mapper");
+                    return node.toEntity(mapper);
+                }
+
+                public static TypedEntity<?> toTyped(Object payload) {
+                    return toNode(payload);
+                }
+
+                public static TypedEntity<?> toTyped(UUID id, Object payload) {
+                    return toNode(id, payload);
+                }
+
+                public static TypedEntity<?> toTyped(Entity entity, PayloadMapper mapper) {
+                    return fromEntity(entity, mapper);
+                }
+
+                public static GeneratedNode<?> toNode(Object payload) {
+                    Objects.requireNonNull(payload, "payload");
+                    Class<?> type = payload.getClass();
+            $toNodeNoIdBranches
+                    throw unknown(type);
+                }
+
+                public static GeneratedNode<?> toNode(UUID id, Object payload) {
+                    Objects.requireNonNull(payload, "payload");
+                    Class<?> type = payload.getClass();
+            $toNodeBranches
+                    throw unknown(type);
+                }
+
+                public static GeneratedNode<?> toNode(Entity entity, PayloadMapper mapper) {
+                    return fromEntity(entity, mapper);
+                }
+
+                public static GeneratedNode<?> fromEntity(Entity entity, PayloadMapper mapper) {
+                    Objects.requireNonNull(entity, "entity");
+                    Objects.requireNonNull(mapper, "mapper");
+                    Entry entry = requireEntryByTypeVersion(entity.getType(), entity.getSchemaVersion());
+                    Object payload = mapper.fromMap(entity.getPayload(), entry.payloadClass());
+                    GeneratedNode<?> node = entity.getId() == null
+                        ? toNode(payload)
+                        : toNode(entity.getId(), payload);
+                    node.getAnnotations().clear();
+                    node.getAnnotations().putAll(entity.getAnnotations());
+                    return node;
+                }
+
+            $typedHelpers
+
+                private static Entry requireEntry(Class<?> payloadClass) {
+                    Objects.requireNonNull(payloadClass, "payloadClass");
+                    Entry entry = BY_CLASS.get(payloadClass);
+                    if (entry == null) {
+                        throw unknown(payloadClass);
+                    }
+                    return entry;
+                }
+
+                private static Entry requireEntry(EntityTypeMeta meta) {
+                    Objects.requireNonNull(meta, "meta");
+                    for (Entry entry : BY_CLASS.values()) {
+                        if (entry.meta().equals(meta)) {
+                            return entry;
+                        }
+                    }
+                    throw new IllegalArgumentException(
+                        "Unknown entity meta: " + meta.getType() + "@" + meta.getSchemaVersion()
+                    );
+                }
+
+                private static Entry requireEntryByTypeVersion(String type, String schemaVersion) {
+                    Objects.requireNonNull(type, "type");
+                    Objects.requireNonNull(schemaVersion, "schemaVersion");
+                    for (Entry entry : BY_CLASS.values()) {
+                        if (entry.meta().getType().equals(type)
+                            && entry.meta().getSchemaVersion().equals(schemaVersion)) {
+                            return entry;
+                        }
+                    }
+                    throw new IllegalArgumentException(
+                        "Unknown entity pin: " + type + "@" + schemaVersion
+                    );
+                }
+
+                private static IllegalArgumentException unknown(Class<?> payloadClass) {
+                    return new IllegalArgumentException(
+                        "Unknown entity payload class: " + payloadClass.getName()
+                    );
+                }
+            }
+        """.trimIndent() + "\n"
+    }
+
+    private fun edgeCatalogSource(packageName: String, edges: List<DefinitionSpec>): String {
+        val sorted = edges.sortedBy { it.definitionKey }
+        val putEntries = sorted.joinToString("\n") { edge ->
+            "            map.put(${edge.javaTypeName}.class, new Entry(" +
+                "new EntityTypeMeta(\"${java(edge.type)}\", \"${java(edge.schemaVersion)}\", null), " +
+                "${edge.javaTypeName}.class));"
+        }
+        return """
+            package $packageName;
+
+            import java.util.LinkedHashMap;
+            import java.util.Map;
+            import java.util.Objects;
+            import org.poc.objs.api.typed.EntityTypeMeta;
+            import org.poc.objs.api.typed.PayloadMapper;
+
+            /**
+             * Write-side EDGE_PROPERTIES catalog: exact {@code Class} → meta and map conversions.
+             * Does not convert to Entity / Node / TypedEntity. Unknown classes fail closed with
+             * {@link IllegalArgumentException}.
+             */
+            public final class EdgeCatalog {
+                private record Entry(EntityTypeMeta meta, Class<?> payloadClass) {
+                }
+
+                private static final Map<Class<?>, Entry> BY_CLASS;
+
+                static {
+                    Map<Class<?>, Entry> map = new LinkedHashMap<>();
+            $putEntries
+                    BY_CLASS = Map.copyOf(map);
+                }
+
+                private EdgeCatalog() {
+                }
+
+                public static boolean contains(Class<?> payloadClass) {
+                    return payloadClass != null && BY_CLASS.containsKey(payloadClass);
+                }
+
+                public static boolean supports(Class<?> payloadClass) {
+                    return contains(payloadClass);
+                }
+
+                public static EntityTypeMeta meta(Class<?> payloadClass) {
+                    return requireEntry(payloadClass).meta();
+                }
+
+                public static EntityTypeMeta meta(Object payload) {
+                    Objects.requireNonNull(payload, "payload");
+                    return meta(payload.getClass());
+                }
+
+                public static Map<String, Object> toMap(Object payload, PayloadMapper mapper) {
+                    Objects.requireNonNull(payload, "payload");
+                    Objects.requireNonNull(mapper, "mapper");
+                    requireEntry(payload.getClass());
+                    return mapper.toMap(payload);
+                }
+
+                public static <P> P fromMap(
+                    Map<String, Object> map,
+                    Class<P> payloadClass,
+                    PayloadMapper mapper
+                ) {
+                    Objects.requireNonNull(map, "map");
+                    Objects.requireNonNull(payloadClass, "payloadClass");
+                    Objects.requireNonNull(mapper, "mapper");
+                    requireEntry(payloadClass);
+                    return mapper.fromMap(map, payloadClass);
+                }
+
+                private static Entry requireEntry(Class<?> payloadClass) {
+                    Objects.requireNonNull(payloadClass, "payloadClass");
+                    Entry entry = BY_CLASS.get(payloadClass);
+                    if (entry == null) {
+                        throw new IllegalArgumentException(
+                            "Unknown edge payload class: " + payloadClass.getName()
+                        );
+                    }
+                    return entry;
+                }
+            }
+        """.trimIndent() + "\n"
+    }
+
     private fun mutationBuilderSource(
         packageName: String,
         entities: List<DefinitionSpec>,
@@ -876,6 +1205,7 @@ class JavaCodeGenerator(
             import org.poc.objs.api.domain.GraphMutation;
             import org.poc.objs.api.domain.MutationMode;
             import org.poc.objs.api.typed.PayloadMapper;
+            import org.poc.objs.api.typed.TypedEntity;
 
             /** Generated, in-memory mutation assembly; it never persists or validates remotely. */
             public final class GraphMutationBuilder {
@@ -899,6 +1229,28 @@ class JavaCodeGenerator(
                 public GraphMutationBuilder mode(MutationMode mode) {
                     this.mode = Objects.requireNonNull(mode, "mode");
                     return this;
+                }
+
+                public GeneratedNode<?> add(Object payload) {
+                    return add(UUID.randomUUID(), payload);
+                }
+
+                public GeneratedNode<?> add(UUID id, Object payload) {
+                    GeneratedNode<?> node = EntityCatalog.toNode(requireId(id), payload);
+                    registerEntity(node.toEntity(mapper));
+                    return node;
+                }
+
+                public GeneratedNode<?> add(GeneratedNode<?> node) {
+                    Objects.requireNonNull(node, "node");
+                    registerEntity(node.toEntity(mapper));
+                    return node;
+                }
+
+                public TypedEntity<?> add(TypedEntity<?> typed) {
+                    Objects.requireNonNull(typed, "typed");
+                    registerEntity(typed.toEntity(mapper));
+                    return typed;
                 }
 
                 $addMethods

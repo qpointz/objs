@@ -57,6 +57,11 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | C-40 | Graph entity/edge vocabulary: freeze SQL + REST `/members`→`/entities` + graph `/edges` CRUD | refactoring | done | [`completed/20260924-graph-entity-edge-vocab/`](completed/20260924-graph-entity-edge-vocab/STORY.md) |
 | C-41 | Freeze-scoped edge history (graph version owns edge snapshots; drop separate edge pin+instance clock) | refactoring | backlog | Deferred after C-40 discussion; domain clarity not storage; no payload COW; [`completed/20260924-graph-entity-edge-vocab/GAPS.md`](completed/20260924-graph-entity-edge-vocab/GAPS.md) G-X4 |
 | C-42 | OpenAPI quality: tags/groups + completeness + Java/Python codegen smoke (`/api/v1/objs/**`, SBOM, AR) | improvement | done | [`completed/20260924-openapi-tags/`](completed/20260924-openapi-tags/STORY.md); follows D-9 |
+| C-43 | Codegen write-side type catalog (`Class`/payload → `EntityTypeMeta` / `toEntity` / `toNode`) | feature | in-progress | [`in-progress/codegen-write-type-catalog/`](in-progress/codegen-write-type-catalog/STORY.md), [`SEQUENCE.md`](SEQUENCE.md); after C-23 / C-35 |
+| C-44 | Codegen aggregate materializer (nested POJO graph → `GraphMutation`) | feature | planned | [`planned/codegen-aggregate-materializer/`](planned/codegen-aggregate-materializer/STORY.md), [`SEQUENCE.md`](SEQUENCE.md); C-23 G-19; prefer after C-43 |
+| C-45 | Schema migration follow-ups: edge-property upgrades + explicit persist rewrite | feature | backlog | C-35 [`GAPS.md`](completed/20260923-codegen-schema-evolution/GAPS.md) G-E5 / G-E6 / G-X3; no story folder yet |
+| C-46 | Kotlin codegen module (`objs-codegen-kotlin`) | feature | backlog | C-23 G-6; Java-only today; no story folder yet |
+| C-47 | Generated HTTP client for typed / domain APIs | feature | backlog | C-23 G-20; no story folder yet |
 
 ---
 
@@ -112,7 +117,7 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 
 | Status | Count |
 |--------|------:|
-| backlog | 3 |
-| planned | 1 |
-| in-progress | 0 |
+| backlog | 6 |
+| planned | 2 |
+| in-progress | 1 |
 | done | 48 |

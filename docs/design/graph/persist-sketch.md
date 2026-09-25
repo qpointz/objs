@@ -210,6 +210,7 @@ Programmatic recipes (Boot inject + lifecycle): [programmatic-recipes.md](progra
 | Matchers / select (reads) | [annotations-and-matchers.md](annotations-and-matchers.md) |
 | HTTP PATCH/PUT + lifecycle | [rest-api.md](../service/rest-api.md) |
 | Kotlin Boot recipes | [programmatic-recipes.md](programmatic-recipes.md) |
+| Typed convert (EntityCatalog) | [typed-conversion-recipes.md](typed-conversion-recipes.md) |
 | Boot autoconfigure how-to | [../core/spring-integration.md](../core/spring-integration.md) |
 | Transactions (Spring / non-Spring) | [../core/transaction-recipes.md](../core/transaction-recipes.md) |
 | Future backends | [../core/persistence-backends.md](../core/persistence-backends.md) |

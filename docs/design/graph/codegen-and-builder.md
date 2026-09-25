@@ -76,6 +76,8 @@ build/generated/sources/typed-bindings/
     ├── GeneratedRelationMetadata.java
     ├── GraphMutationBuilder.java
     ├── GeneratedReadView.java
+    ├── EntityCatalog.java          // C-43 write catalog (ENTITY)
+    ├── EdgeCatalog.java            // C-43 write catalog (EDGE_PROPERTIES)
     ├── ProductType.java
     ├── ProductRef.java
     ├── ProductNode.java
@@ -85,6 +87,8 @@ build/generated/sources/typed-bindings/
     ├── ComponentNode.java
     └── ComponentReadNode.java
 ```
+
+**Write catalogs (C-43):** `EntityCatalog` / `EdgeCatalog` map payload `Class` → `EntityTypeMeta` and provide conversions (`toEntity`, `toNode`, `toTyped`, `fromEntity`, map round-trips). Exact `Class` match; Lane A latest only; catalog misuse → `IllegalArgumentException`. Convert recipes: [`typed-conversion-recipes.md`](typed-conversion-recipes.md). Story: [`codegen-write-type-catalog`](../../workitems/in-progress/codegen-write-type-catalog/STORY.md).
 
 The exact list is determined by the exported definitions and relation manifest. Application
 classes are never emitted into `objs-api`, `objs-core`, or another root `objs-*` module.
@@ -175,9 +179,14 @@ ComponentNode component = mutations.addComponent(
     new Component().withName("Jackson")
 );
 
+// Generic path (EntityCatalog) — same registration as typed add*
+GeneratedNode<?> also = mutations.add(new Product().withName("Other"));
+
 mutations.containsComponent(product, component);
 GraphMutation mutation = mutations.build();
 ```
+
+Convert recipes: [`typed-conversion-recipes.md`](typed-conversion-recipes.md).
 
 The builder produces separate entity and edge mutation lists:
 
@@ -336,7 +345,10 @@ The following are explicit deferrals, not hidden requirements of the generated b
 - exhaustive consumer coverage for every `SCHEMA` policy combination;
 - complete wildcard and override behavior matrix in the consumer examples;
 - generated-consumer fixtures for historical schema versions and evolved snapshots;
-- recursive aggregate materialization;
+- recursive aggregate materialization (planned C-44);
 - generated HTTP clients; and
 - persist-time cardinality enforcement.
+
+Write-side **EntityCatalog** / **EdgeCatalog** shipped in **C-43** — convert recipes:
+[`typed-conversion-recipes.md`](typed-conversion-recipes.md).
 

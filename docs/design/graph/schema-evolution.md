@@ -8,6 +8,11 @@ Living design for C-35. Normative detail: [`docs/workitems/completed/20260923-co
 - Upgrade older stored pins for **typed read / examine** without rewriting the store.
 - Fingerprints / frozen versions remain **evidence** (as-saved); APIs may also return **examine** (latest projection).
 
+**Compose with write catalogs (C-43):** `EntityCatalog` / `EdgeCatalog` index **latest** Lane A
+classes only. Apps *may* upgrade an older stored pin (`UPGRADE_TO_LATEST`) then call catalog
+`toNode` / `toEntity`; exact-pin `fromEntity` remains valid when the pin is already latest.
+Recipes: [`typed-conversion-recipes.md`](typed-conversion-recipes.md).
+
 ## Step kinds
 
 Shared runtime: `SchemaUpgradeStep.apply(Map, PayloadMapper) → Map`.

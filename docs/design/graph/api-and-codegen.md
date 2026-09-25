@@ -40,6 +40,12 @@ For an entity such as `Product`, generated code has three distinct handles:
 the graph. A write node does not imply persistence; it is only converted into an `Entity` when the
 generated mutation builder is built.
 
+**Write catalogs (C-43):** generated `EntityCatalog` / `EdgeCatalog` are the Class→meta inverse of
+`GeneratedReadView` hydrate bindings. They convert payload POJOs ↔ `Entity` / `TypedEntity` /
+`GeneratedNode` without per-type application switches. See [`codegen-and-builder.md`](codegen-and-builder.md)
+and convert recipes in [`typed-conversion-recipes.md`](typed-conversion-recipes.md).
+Story: [`codegen-write-type-catalog`](../../workitems/in-progress/codegen-write-type-catalog/STORY.md).
+
 ## Write model
 
 Generated payload DTOs contain payload attributes. Relations are not serialized as nested entity

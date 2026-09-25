@@ -128,6 +128,7 @@ catalog tags are for ontology UX and export, not graph lifecycle.
 
 ## Related
 
+- [typed-conversion-recipes.md](typed-conversion-recipes.md) — payload ↔ Entity/Node via EntityCatalog
 - [persist-sketch.md](persist-sketch.md) — mutate order, REPLACE-empty ≡ `clearGraph`
 - [persistence.md](persistence.md) — tables, clocks, Flyway
 - [../core/spring-integration.md](../core/spring-integration.md) — Boot autoconfigure how-to
