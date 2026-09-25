@@ -6,7 +6,7 @@
 **Folder:** [`docs/workitems/planned/codegen-aggregate-materializer/`](.)  
 **Backlog:** [C-44](../../BACKLOG.md)  
 **Base:** `origin/dev`  
-**Depends on:** **C-23** ([`objs-api-codegen`](../../completed/20260828-objs-api-codegen/STORY.md)); prefer **C-43** ([`codegen-write-type-catalog`](../../in-progress/codegen-write-type-catalog/STORY.md)) first if both are in flight (catalog makes payload→meta lookup generic).  
+**Depends on:** **C-23** ([`objs-api-codegen`](../../completed/20260828-objs-api-codegen/STORY.md)); prefer **C-43** ([`codegen-write-type-catalog`](../../completed/20260925-codegen-write-type-catalog/STORY.md)) first if both are in flight (catalog makes payload→meta lookup generic).  
 **Independent of:** C-20; policy family; C-35 L2 hydrate (except “write latest Lane A” rule).  
 **Prior gap:** C-23 **G-19** ([`GAPS.md`](../../completed/20260828-objs-api-codegen/GAPS.md)); design note in [`codegen-and-builder.md`](../../../design/graph/codegen-and-builder.md) § Deferred.  
 **Gaps:** [`GAPS.md`](GAPS.md)  

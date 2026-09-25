@@ -88,7 +88,7 @@ build/generated/sources/typed-bindings/
     └── ComponentReadNode.java
 ```
 
-**Write catalogs (C-43):** `EntityCatalog` / `EdgeCatalog` map payload `Class` → `EntityTypeMeta` and provide conversions (`toEntity`, `toNode`, `toTyped`, `fromEntity`, map round-trips). Exact `Class` match; Lane A latest only; catalog misuse → `IllegalArgumentException`. Convert recipes: [`typed-conversion-recipes.md`](typed-conversion-recipes.md). Story: [`codegen-write-type-catalog`](../../workitems/in-progress/codegen-write-type-catalog/STORY.md).
+**Write catalogs (C-43):** `EntityCatalog` / `EdgeCatalog` map payload `Class` → `EntityTypeMeta` and provide conversions (`toEntity`, `toNode`, `toTyped`, `fromEntity`, map round-trips). Exact `Class` match; Lane A latest only; catalog misuse → `IllegalArgumentException`. Convert recipes: [`typed-conversion-recipes.md`](typed-conversion-recipes.md). Story: [`codegen-write-type-catalog`](../../workitems/completed/20260925-codegen-write-type-catalog/STORY.md).
 
 The exact list is determined by the exported definitions and relation manifest. Application
 classes are never emitted into `objs-api`, `objs-core`, or another root `objs-*` module.

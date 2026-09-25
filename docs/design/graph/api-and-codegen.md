@@ -44,7 +44,7 @@ generated mutation builder is built.
 `GeneratedReadView` hydrate bindings. They convert payload POJOs ↔ `Entity` / `TypedEntity` /
 `GeneratedNode` without per-type application switches. See [`codegen-and-builder.md`](codegen-and-builder.md)
 and convert recipes in [`typed-conversion-recipes.md`](typed-conversion-recipes.md).
-Story: [`codegen-write-type-catalog`](../../workitems/in-progress/codegen-write-type-catalog/STORY.md).
+Story: [`codegen-write-type-catalog`](../../workitems/completed/20260925-codegen-write-type-catalog/STORY.md).
 
 ## Write model
 

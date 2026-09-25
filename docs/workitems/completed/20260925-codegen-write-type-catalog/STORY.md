@@ -2,16 +2,17 @@
 
 **Slug:** `codegen-write-type-catalog`  
 **Branch:** `codegen-write-type-catalog`  
-**Status:** in-progress  
-**Folder:** [`docs/workitems/in-progress/codegen-write-type-catalog/`](.)  
+**Status:** completed  
+**Folder:** [`docs/workitems/completed/20260925-codegen-write-type-catalog/`](.)  
 **Backlog:** [C-43](../../BACKLOG.md)  
 **Base:** `origin/dev`  
 **Depends on:** **C-23** ([`objs-api-codegen`](../../completed/20260828-objs-api-codegen/STORY.md)) shipped; **C-35** ([`codegen-schema-evolution`](../../completed/20260923-codegen-schema-evolution/STORY.md)) for Lane A / latest pin rules.  
 **Independent of:** C-20 store text search; policy family.  
-**Design:** [`docs/design/graph/codegen-and-builder.md`](../../../design/graph/codegen-and-builder.md), [`docs/design/graph/api-and-codegen.md`](../../../design/graph/api-and-codegen.md); recipes (WI-005): [`typed-conversion-recipes.md`](../../../design/graph/typed-conversion-recipes.md) (created in-story)  
+**Design:** [`docs/design/graph/codegen-and-builder.md`](../../../design/graph/codegen-and-builder.md), [`docs/design/graph/api-and-codegen.md`](../../../design/graph/api-and-codegen.md); recipes: [`typed-conversion-recipes.md`](../../../design/graph/typed-conversion-recipes.md)  
 **Gaps:** [`GAPS.md`](GAPS.md)  
 **Consumers:** [`EXAMPLES.md`](EXAMPLES.md)  
-**Process:** [`docs/workitems/RULES.md`](../../RULES.md)
+**Process:** [`docs/workitems/RULES.md`](../../RULES.md)  
+**Closed:** 2026-09-25
 
 ## Goal
 
@@ -92,4 +93,4 @@ payload POJO → meta / TypedEntity / Entity
 
 1. One WI at a time; `[x]` + one commit + push per WI.  
 2. Do not start WI-002 until WI-001 checkboxes are done.  
-3. Do not close this story until the user asks.
+3. Story closed 2026-09-25 → [`completed/20260925-codegen-write-type-catalog/`](.).

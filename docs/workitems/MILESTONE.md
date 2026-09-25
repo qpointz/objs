@@ -73,10 +73,11 @@ for the **next** version only. See [`RULES.md`](RULES.md) § **Milestone ledger 
 - [`ar-perf-profile`](completed/20260924-ar-perf-profile/STORY.md) — AR `perf` multi-graph noise fill (objects/edges totals, versions/graph) + timed harness (D-10). WI-000…WI-003.
 - [`graph-entity-edge-vocab`](completed/20260924-graph-entity-edge-vocab/STORY.md) — Freeze SQL + REST entity/edge vocabulary (no member); graph-scoped `/edges` CRUD (C-40). WI-000…WI-007.
 - [`openapi-tags`](completed/20260924-openapi-tags/STORY.md) — OpenAPI tags/groups + completeness + Java/Python codegen smoke (C-42). WI-000…WI-005.
+- [`codegen-write-type-catalog`](completed/20260925-codegen-write-type-catalog/STORY.md) — Generated write catalog: payload → meta / `Entity` / node (C-43). WI-000…WI-005.
 
 ### In progress
 
-- [`codegen-write-type-catalog`](in-progress/codegen-write-type-catalog/STORY.md) — Generated write catalog: payload → meta / `Entity` / node (C-43). WI-000 done.
+_(none)_
 
 ### Planned
 
