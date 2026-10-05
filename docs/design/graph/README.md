@@ -26,6 +26,7 @@ Objs is an **entity store**: independent informational **entities** linked by **
 | [codegen-and-builder.md](codegen-and-builder.md) | Objs codegen + graph builder; **EntityCatalog** / **EdgeCatalog** (C-43) |
 | [typed-conversion-recipes.md](typed-conversion-recipes.md) | Write-catalog convert recipes: payload ↔ Entity/Node, identity, create |
 | [api-and-codegen.md](api-and-codegen.md) | Foundation vs app-owned generated bindings |
+| [unit-testing-sketch.md](unit-testing-sketch.md) | Unit-test fixtures: `ResolvedGraph`, multi-version schemas + L2 upgrade |
 | [../core/spring-integration.md](../core/spring-integration.md) | Boot `:objs-autoconfigure` how-to |
 | [../core/transaction-recipes.md](../core/transaction-recipes.md) | Spring / non-Spring transaction recipes |
 | [persistence.md](persistence.md) | PostgreSQL, JSONB, two Flyway lines, H2 tests |
