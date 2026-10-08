@@ -59,9 +59,10 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | C-42 | OpenAPI quality: tags/groups + completeness + Java/Python codegen smoke (`/api/v1/objs/**`, SBOM, AR) | improvement | done | [`completed/20260924-openapi-tags/`](completed/20260924-openapi-tags/STORY.md); follows D-9 |
 | C-43 | Codegen write-side type catalog (`Class`/payload → `EntityTypeMeta` / `toEntity` / `toNode`) | feature | done | [`completed/20260925-codegen-write-type-catalog/`](completed/20260925-codegen-write-type-catalog/STORY.md), [`SEQUENCE.md`](SEQUENCE.md); after C-23 / C-35 |
 | C-44 | Codegen aggregate materializer (nested POJO graph → `GraphMutation`) | feature | planned | [`planned/codegen-aggregate-materializer/`](planned/codegen-aggregate-materializer/STORY.md), [`SEQUENCE.md`](SEQUENCE.md); C-23 G-19; prefer after C-43 |
-| C-45 | Schema migration follow-ups: edge-property upgrades + explicit persist rewrite | feature | backlog | C-35 [`GAPS.md`](completed/20260923-codegen-schema-evolution/GAPS.md) G-E5 / G-E6 / G-X3; no story folder yet |
+| C-45 | Schema migration follow-ups: edge-property upgrades + explicit persist rewrite | feature | backlog | C-35 [`GAPS.md`](completed/20260923-codegen-schema-evolution/GAPS.md) G-E5 / G-E6 / G-X3; edge-property upgrades absorbed by **C-48** (G6-G10); persist rewrite still open |
 | C-46 | Kotlin codegen module (`objs-codegen-kotlin`) | feature | backlog | C-23 G-6; Java-only today; no story folder yet |
 | C-47 | Generated HTTP client for typed / domain APIs | feature | backlog | C-23 G-20; no story folder yet |
+| C-48 | Edge payload parity (entity vs edge payload gaps across all components) | feature | planned | [`planned/edge-payload-parity/`](planned/edge-payload-parity/STORY.md), [`GAPS.md`](planned/edge-payload-parity/GAPS.md); absorbs C-45 edge upgrades |
 
 ---
 
@@ -118,6 +119,6 @@ Internal tracker for planned product items. **Open** work uses **`backlog`**, **
 | Status | Count |
 |--------|------:|
 | backlog | 6 |
-| planned | 2 |
+| planned | 3 |
 | in-progress | 1 |
 | done | 48 |

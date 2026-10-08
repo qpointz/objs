@@ -83,3 +83,4 @@ _(none)_
 
 - [`store-text-search`](planned/store-text-search/STORY.md) — FB-3 contains/`q`; design first (C-20). Does not block C-18.
 - [`codegen-aggregate-materializer`](planned/codegen-aggregate-materializer/STORY.md) — Explicit nested POJO → `GraphMutation` (C-44 / C-23 G-19). Prefer after C-43; design first.
+- [`edge-payload-parity`](planned/edge-payload-parity/STORY.md) — Edge payload parity with entity payload; gap inventory G1–G65 (C-48, absorbs C-45 edge upgrades). Design first.

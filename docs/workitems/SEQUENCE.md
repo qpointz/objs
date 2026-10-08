@@ -65,6 +65,7 @@ C-24 flat evaluate
 | **C-43** | [`codegen-write-type-catalog`](completed/20260925-codegen-write-type-catalog/STORY.md) | done | After **C-23** / **C-35**. Write-side generated catalog: payload `Class`/`Object` → `EntityTypeMeta` / `toEntity` / `toNode` (inverse of `GeneratedReadView` bindings). Enables generic identity + create/validate without per-type service methods. Independent of C-20 / policy family. |
 | **C-44** | [`codegen-aggregate-materializer`](planned/codegen-aggregate-materializer/STORY.md) | planned | After **C-23**; prefer after **C-43**. Explicit nested POJO → `GraphMutation` (C-23 G-19). Independent of C-20 / policy family. |
 | **C-45…C-47** | — | backlog | Migration follow-ups / Kotlin codegen / HTTP client — see [`BACKLOG.md`](BACKLOG.md); no story folders yet. |
+| **C-48** | [`edge-payload-parity`](planned/edge-payload-parity/STORY.md) | planned | Edge payload parity with entity payload (evolution, query, annotations, typed, REST, engines, UI, examples). Absorbs C-45 edge upgrades. Design first (WI-001 triages [`GAPS.md`](planned/edge-payload-parity/GAPS.md)). Independent of C-20 / C-44 / policy family. |
 
 ---
 
