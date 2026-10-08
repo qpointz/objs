@@ -7,7 +7,8 @@
 **Backlog:** [C-48](../../BACKLOG.md) (absorbs [C-45](../../BACKLOG.md) edge-property upgrades)  
 **Base:** `origin/dev`  
 **Depends on:** —  
-**Gaps:** [`GAPS.md`](GAPS.md)  
+**Gap inventory (detail):** [`GAP-INVENTORY.md`](GAP-INVENTORY.md)  
+**Gaps (tracker):** [`GAPS.md`](GAPS.md)  
 **Process:** [`docs/workitems/RULES.md`](../../RULES.md)  
 **Prior trackers:** C-35 [`GAPS.md`](../../completed/20260923-codegen-schema-evolution/GAPS.md) G-E5 (edge-property migrations, deferred)
 
@@ -20,7 +21,8 @@ query/matcher, mutation/merge, REST, Gremlin, JGraphT, policies, workbench UI, a
 Today edge properties are stored, schema-validated, seeded, deep-versioned, and carried into the
 engines, but they **cannot evolve** (rule version pinning, no upgrade-on-read), **cannot be queried
 or addressed** (no obj-expr bindings, no GET-by-id, no list/search), have **no annotations**, and are
-**under-used** in typed views, UI, and examples. The full inventory is [`GAPS.md`](GAPS.md).
+**under-used** in typed views, UI, and examples. The full inventory (65 gaps, 4 blockers) is
+[`GAP-INVENTORY.md`](GAP-INVENTORY.md); decisions are tracked in [`GAPS.md`](GAPS.md).
 
 **Not ready to implement** until WI-001 triages the inventory and splits implementation WIs.
 

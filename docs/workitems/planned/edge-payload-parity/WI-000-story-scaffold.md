@@ -14,7 +14,8 @@ product code until the user starts this story and WI-001 triages the gaps.
 ## Deliverables
 
 - [ ] Story folder `docs/workitems/planned/edge-payload-parity/`
-- [ ] [`GAPS.md`](GAPS.md) inventory (G1–G65 + parity baseline)
+- [ ] [`GAP-INVENTORY.md`](GAP-INVENTORY.md) detailed inventory (G1–G65, severity, impact, evidence, parity baseline)
+- [ ] [`GAPS.md`](GAPS.md) decision tracker
 - [ ] `BACKLOG.md` row **C-48** (`planned`); C-45 marked as absorbed
 - [ ] `SEQUENCE.md` + `MILESTONE.md` Planned entry
 
